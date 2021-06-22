@@ -15,7 +15,7 @@
     <properties>
         <java.version>1.8</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <minecraft.server.plugin.dir>/Users/joker/minecraft/versions/1.16.5/server/paper/plugins</minecraft.server.plugin.dir>
+        <minecraft.server.plugin.dir>/Users/wangzhizhou/minecraft/versions/1.16.5/server/paper/plugins</minecraft.server.plugin.dir>
     </properties>
     <url>minecraft.jokerhub.cn</url>
 
@@ -56,8 +56,8 @@
                         <phase>package</phase>
                         <configuration>
                             <target>
-                                <property name="src_plugin_jar_path" value="${project.build.directory}/${project.build.finalName}.${project.packaging}" />
-                                <copy todir="${minecraft.server.plugin.dir}" file="${src_plugin_jar_path}" />
+                                <property name="src.plugin.jar.path" value="${project.build.directory}/${project.build.finalName}.${project.packaging}" />
+                                <copy todir="${minecraft.server.plugin.dir}" file="${src.plugin.jar.path}"/>
                             </target>
                         </configuration>
                     <goals>
