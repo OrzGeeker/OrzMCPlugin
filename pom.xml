@@ -50,23 +50,39 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-antrun-plugin</artifactId>
-                <version>3.0.0</version>
+                <version>1.8</version>
                 <executions>
                     <execution>
                         <id>Copy Plugin Jar File into Server Plugin Dir</id>
                         <phase>package</phase>
                         <configuration>
-                            <target>
-                                <copy todir="${minecraft.server.plugin.dir}" file="${project.build.plugin.jar.filePath}"/>
-                            </target>
+                            <tasks>
+                                <taskdef resource="net/sf/antcontrib/antcontrib.properties" />
+                                <if>
+                                    <available file="${minecraft.server.plugin.dir}" type="dir" />
+                                    <then>
+                                        <copy todir="${minecraft.server.plugin.dir}" file="${project.build.plugin.jar.filePath}"/>
+                                    </then>
+                                    <else>
+                                        <echo>🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥</echo>
+                                        <echo>🔥  minecraft server plugin dir not exist!!!  🔥 </echo>
+                                        <echo>🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥</echo>
+                                    </else>
+                                </if>
+                            </tasks>
                         </configuration>
                     <goals>
-                        <goal>
-                            run
-                        </goal>
+                        <goal>run</goal>
                     </goals>
                     </execution>
                 </executions>
+                <dependencies>
+                    <dependency>
+                        <groupId>ant-contrib</groupId>
+                        <artifactId>ant-contrib</artifactId>
+                        <version>20020829</version>
+                    </dependency>
+                </dependencies>
             </plugin>
         </plugins>
         <resources>
