@@ -63,7 +63,9 @@
                                 <if>
                                     <available file="${minecraft.server.plugin.dir}" type="dir" />
                                     <then>
+                                        <echo>✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅</echo>
                                         <copy todir="${minecraft.server.plugin.dir}" file="${project.build.plugin.jar.filePath}"/>
+                                        <echo>✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅</echo>
                                     </then>
                                     <else>
                                         <echo>🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥</echo>

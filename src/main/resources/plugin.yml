@@ -8,3 +8,8 @@ website: minecraft.jokerhub.cn
 commands:
   fly:
     description: fly like a bird
+  tpbow:
+    description: Teleport you to arrow
+    useage: /<command>
+  armstand:
+    description: amormstatnd
