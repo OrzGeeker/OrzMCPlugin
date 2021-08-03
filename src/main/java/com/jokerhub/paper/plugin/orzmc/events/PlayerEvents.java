@@ -6,7 +6,9 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import net.kyori.adventure.text.TextComponent;
 
+import java.awt.*;
 import java.net.URL;
 
 public class PlayerEvents implements Listener {
@@ -14,27 +16,36 @@ public class PlayerEvents implements Listener {
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
-        System.out.println(player.displayName() + "Join!!");
 
-        String msg = player.displayName() + "上线了！";
+        TextComponent playDisplayName = (TextComponent) player.displayName();
+        String playName = playDisplayName.content();
+        System.out.println(playName + "Join!!");
+
+        String msg = playName + "上线了！";
         sendQQGroupMsg(msg);
     }
 
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
-        System.out.println(player.displayName() + "Quit!!");
 
-        String msg = player.displayName() + "下线了！";
+        TextComponent playDisplayName = (TextComponent) player.displayName();
+        String playName = playDisplayName.content();
+        System.out.println(playName + "Quit!!");
+
+        String msg = playName + "下线了！";
         sendQQGroupMsg(msg);
     }
 
     @EventHandler
     public void onPlayerKickLeave(PlayerKickEvent event) {
         Player player = event.getPlayer();
-        System.out.println(player.displayName() + "KickLeave!!");
 
-        String msg = player.displayName() + "被踢了！";
+        TextComponent playDisplayName = (TextComponent) player.displayName();
+        String playName = playDisplayName.content();
+        System.out.println(playName + "KickLeave!!");
+
+        String msg = playName + "被踢了！";
         sendQQGroupMsg(msg);
     }
 
