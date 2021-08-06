@@ -1,5 +1,6 @@
 package com.jokerhub.paper.plugin.orzmc.events;
 
+import com.jokerhub.paper.plugin.orzmc.OrzMC;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -19,7 +20,8 @@ public class PlayerEvents implements Listener {
 
         TextComponent playDisplayName = (TextComponent) player.displayName();
         String playName = playDisplayName.content();
-        System.out.println(playName + "Join!!");
+
+        OrzMC.getLoggler().info(playName + "Join!!");
 
         String msg = playName + "上线了！";
         sendQQGroupMsg(msg);
@@ -31,7 +33,7 @@ public class PlayerEvents implements Listener {
 
         TextComponent playDisplayName = (TextComponent) player.displayName();
         String playName = playDisplayName.content();
-        System.out.println(playName + "Quit!!");
+        OrzMC.getLoggler().info(playName + "Quit!!");
 
         String msg = playName + "下线了！";
         sendQQGroupMsg(msg);
@@ -43,7 +45,7 @@ public class PlayerEvents implements Listener {
 
         TextComponent playDisplayName = (TextComponent) player.displayName();
         String playName = playDisplayName.content();
-        System.out.println(playName + "KickLeave!!");
+        OrzMC.getLoggler().info(playName + "KickLeave!!");
 
         String msg = playName + "被踢了！";
         sendQQGroupMsg(msg);
@@ -52,4 +54,6 @@ public class PlayerEvents implements Listener {
     void sendQQGroupMsg(String msg) {
         // TODO: 调用OPQ消息API发送消息到QQ群
     }
+
+
 }

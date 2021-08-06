@@ -1,5 +1,7 @@
 package com.jokerhub.paper.plugin.orzmc.commands;
 
+import com.destroystokyo.paper.utils.PaperPluginLogger;
+import com.jokerhub.paper.plugin.orzmc.OrzMC;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import org.bukkit.Material;
@@ -10,6 +12,7 @@ import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -36,7 +39,7 @@ public class TPBow implements CommandExecutor {
             player.getInventory().addItem(arrow);
 
         } else {
-            System.out.println("不是玩家，此命令无效！");
+            OrzMC.getLoggler().info("不是玩家，此命令无效！");
         }
         return false;
     }
