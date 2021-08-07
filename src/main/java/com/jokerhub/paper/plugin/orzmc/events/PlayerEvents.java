@@ -8,66 +8,91 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import net.kyori.adventure.text.TextComponent;
-
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.util.ArrayList;
 
 public class PlayerEvents implements Listener {
 
+    enum PlayerState {
+        JOIN,
+        QUIT,
+        KICK
+    }
+
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
-        Player player = event.getPlayer();
-
-        TextComponent playDisplayName = (TextComponent) player.displayName();
-        String playName = playDisplayName.content();
-        OrzMC.logger().info(playName + "Join!!");
-
-        String msg = playName + "上线了！";
-        notifyQQGroupWithMsg(msg);
+        notifyQQGroupWithMsg(event.getPlayer(), PlayerState.JOIN);
     }
 
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
-        Player player = event.getPlayer();
-
-        TextComponent playDisplayName = (TextComponent) player.displayName();
-        String playName = playDisplayName.content();
-        OrzMC.logger().info(playName + "Quit!!");
-
-        String msg = playName + "下线了！";
-        notifyQQGroupWithMsg(msg);
+        notifyQQGroupWithMsg(event.getPlayer(), PlayerState.QUIT);
     }
 
     @EventHandler
     public void onPlayerKickLeave(PlayerKickEvent event) {
-        Player player = event.getPlayer();
-
-        TextComponent playDisplayName = (TextComponent) player.displayName();
-        String playName = playDisplayName.content();
-        OrzMC.logger().info(playName + "KickLeave!!");
-
-        String msg = playName + "被踢了！";
-        notifyQQGroupWithMsg(msg);
+        notifyQQGroupWithMsg(event.getPlayer(), PlayerState.KICK);
     }
 
-    private void notifyQQGroupWithMsg(String msg) {
+    private void notifyQQGroupWithMsg(Player player, PlayerState state) {
         try {
-            StringBuilder msgBuilder = new StringBuilder(msg);
-            Object[] onlinePlayers = OrzMC.server().getOnlinePlayers().toArray();
-            String tip = String.format("------当前在线(%s/%d)------", onlinePlayers.length, OrzMC.server().getMaxPlayers());
-            msgBuilder.append("\n").append(tip);
-            for(Object obj: onlinePlayers){
+            ArrayList<Player> onlinePlayers = new ArrayList<>();
+
+            Object[] objects = OrzMC.server().getOnlinePlayers().toArray();
+            for(Object obj: objects) {
                 if(obj instanceof Player) {
-                    Player player = (Player) obj;
-                    TextComponent playDisplayName = (TextComponent) player.displayName();
-                    msgBuilder.append("\n").append(playDisplayName.content());
+                    Player p = (Player)obj;
+                    onlinePlayers.add(p);
                 }
             }
-            msg = msgBuilder.toString();
-            sendQQGroupMsg(msg);
+
+            int onlinePlayerCount = onlinePlayers.size();
+            int maxPlayerCount = OrzMC.server().getMaxPlayers();
+
+            String playerName = ((TextComponent) player.displayName()).content();
+            StringBuilder msgBuilder = new StringBuilder(playerName);
+
+            boolean isMinusCurrentPlayer = false;
+            switch (state) {
+                case JOIN:
+                {
+                    msgBuilder.append("上线了!");
+                }
+                    break;
+                case QUIT:
+                {
+                    isMinusCurrentPlayer = true;
+                    msgBuilder.append("下线了!");
+                }
+                    break;
+                case KICK:
+                {
+                    isMinusCurrentPlayer = true;
+                    msgBuilder.append("被踢了!");
+                }
+                    break;
+            }
+
+            if(isMinusCurrentPlayer) {
+                onlinePlayerCount -= 1;
+            }
+
+            msgBuilder.append("\n");
+            String tip = String.format("------当前在线(%s/%d)------", onlinePlayerCount, maxPlayerCount);
+            msgBuilder.append(tip);
+
+            for(Player p: onlinePlayers) {
+                if(p.getUniqueId() == player.getUniqueId() && isMinusCurrentPlayer) {
+                    continue;
+                }
+                String name = ((TextComponent)p.displayName()).content();
+                msgBuilder.append("\n").append(name);
+            }
+            sendQQGroupMsg(msgBuilder.toString());
         } catch (Exception e) {
             OrzMC.logger().info(e.toString());
         }
