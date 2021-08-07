@@ -39,7 +39,7 @@ public class TPBow implements CommandExecutor {
             player.getInventory().addItem(arrow);
 
         } else {
-            OrzMC.getLoggler().info("不是玩家，此命令无效！");
+            OrzMC.logger().info("不是玩家，此命令无效！");
         }
         return false;
     }

@@ -8,6 +8,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.ProjectileHitEvent;
+import org.bukkit.inventory.meta.ItemMeta;
 
 public class OnBowShoot implements Listener {
 
@@ -22,7 +23,11 @@ public class OnBowShoot implements Listener {
 
             if(arrow.getShooter() instanceof Player) {
                 Player player = (Player) arrow.getShooter();
-                Component mainHandItemName = player.getInventory().getItemInMainHand().getItemMeta().displayName();
+                ItemMeta meta = player.getInventory().getItemInMainHand().getItemMeta();
+                if(meta == null) {
+                    return;
+                }
+                Component mainHandItemName = meta.displayName();
                 if (mainHandItemName instanceof TextComponent) {
                     TextComponent displayName = (TextComponent) mainHandItemName;
                     if (displayName.content().equals("传送弓")) {

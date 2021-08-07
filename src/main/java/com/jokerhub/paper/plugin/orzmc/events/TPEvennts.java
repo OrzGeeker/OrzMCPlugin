@@ -1,6 +1,7 @@
 package com.jokerhub.paper.plugin.orzmc.events;
 
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
+import org.bukkit.entity.Enderman;
 import org.bukkit.entity.Tameable;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -14,9 +15,13 @@ public class TPEvennts implements Listener {
             return;
         }
 
+        if(event.getEntity() instanceof Enderman) {
+            return;
+        }
+
         // 禁用tp实体
         event.setCancelled(true);
-        OrzMC.getLoggler().info("实体传送被禁用:" + event.getEntity().getName());
+        OrzMC.logger().info("实体传送被禁用:" + event.getEntity().getName());
     }
 
 //    @EventHandler

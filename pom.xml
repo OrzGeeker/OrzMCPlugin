@@ -15,7 +15,7 @@
     <properties>
         <java.version>1.8</java.version>
         <papermc.version>1.17.1</papermc.version>
-        <orzmc.root.dir>/Users/wangzhizhou</orzmc.root.dir>
+        <orzmc.root.dir>/Users/joker</orzmc.root.dir>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.build.plugin.jar.filePath>${project.build.directory}/${project.build.finalName}.${project.packaging}</project.build.plugin.jar.filePath>
         <minecraft.server.plugin.dir>${orzmc.root.dir}/minecraft/versions/${papermc.version}/server/paper/plugins</minecraft.server.plugin.dir>
