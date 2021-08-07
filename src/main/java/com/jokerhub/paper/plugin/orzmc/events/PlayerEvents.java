@@ -55,10 +55,10 @@ public class PlayerEvents implements Listener {
     private void notifyQQGroupWithMsg(String msg) {
         try {
             StringBuilder msgBuilder = new StringBuilder(msg);
-            Object[] objs = OrzMC.server().getOnlinePlayers().toArray();
-            String tip = String.format("------当前在线(%s/%d)------", objs.length, OrzMC.server().getMaxPlayers());
+            Object[] onlinePlayers = OrzMC.server().getOnlinePlayers().toArray();
+            String tip = String.format("------当前在线(%s/%d)------", onlinePlayers.length, OrzMC.server().getMaxPlayers());
             msgBuilder.append(tip);
-            for(Object obj: objs){
+            for(Object obj: onlinePlayers){
                 if(obj instanceof Player) {
                     Player player = (Player) obj;
                     TextComponent playDisplayName = (TextComponent) player.displayName();
