@@ -58,7 +58,7 @@ public class PlayerEvents implements Listener {
             StringBuilder msgBuilder = new StringBuilder(msg);
             Object[] onlinePlayers = OrzMC.server().getOnlinePlayers().toArray();
             String tip = String.format("------当前在线(%s/%d)------", onlinePlayers.length, OrzMC.server().getMaxPlayers());
-            msgBuilder.append(tip);
+            msgBuilder.append("\n").append(tip);
             for(Object obj: onlinePlayers){
                 if(obj instanceof Player) {
                     Player player = (Player) obj;
