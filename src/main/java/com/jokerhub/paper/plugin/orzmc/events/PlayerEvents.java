@@ -13,6 +13,7 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLEncoder;
 
 public class PlayerEvents implements Listener {
 
@@ -74,7 +75,7 @@ public class PlayerEvents implements Listener {
 
     private void sendQQGroupMsg(String msg) throws Exception {
         String groupId = "1056934080";
-        String url = "http://localhost:8200/send_group_msg?group_id=" + groupId + "&message=" + msg;
+        String url = "http://localhost:8200/send_group_msg?group_id=" + groupId + "&message=" + URLEncoder.encode(msg,"utf-8");
 
         HttpURLConnection httpClient = (HttpURLConnection) new URL(url).openConnection();
         httpClient.setRequestMethod("GET");
