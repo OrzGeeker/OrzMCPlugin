@@ -46,7 +46,7 @@ public final class OrzMC extends JavaPlugin implements Listener {
 
     public void startQQBotServer() {
         try {
-            server = HttpServer.create(new InetSocketAddress(8200), 0);
+            server = HttpServer.create(new InetSocketAddress(8201), 0);
             server.createContext("/qqbot", new QQBotEvent());
             server.start();
             logger().info("QQBot Server started!");
