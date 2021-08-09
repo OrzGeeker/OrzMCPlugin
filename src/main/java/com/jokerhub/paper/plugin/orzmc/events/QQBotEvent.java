@@ -31,7 +31,6 @@ public class QQBotEvent implements HttpHandler {
             String jsonString = sb.toString();
             JSONParser jsonParser = new JSONParser();
             JSONObject json = (JSONObject) jsonParser.parse(jsonString);
-            OrzMC.logger().info(json.toString());
 
             String groupId = json.get("group_id").toString();
             String message = json.get("raw_message").toString();
