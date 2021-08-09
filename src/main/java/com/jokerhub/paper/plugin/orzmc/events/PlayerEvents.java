@@ -91,6 +91,9 @@ public class PlayerEvents implements Listener {
                 }
             }
             QQBotEvent.sendQQGroupMsg(msgBuilder.toString());
+            if(onlinePlayerCount == 0) {
+                QQBotEvent.sendPrivateMsg("服务器当前无玩家，可进行服务器维护");
+            }
         } catch (Exception e) {
             OrzMC.logger().info(e.toString());
         }

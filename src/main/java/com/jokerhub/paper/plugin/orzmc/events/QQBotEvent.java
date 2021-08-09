@@ -83,4 +83,16 @@ public class QQBotEvent implements HttpHandler {
             OrzMC.logger().info("Response Code : " + response.getStatusLine());
         }
     }
+
+    public static void sendPrivateMsg(String msg) throws Exception {
+        String userId = "824219521";
+        String url = "http://localhost:8200/send_msg?user_id=" + userId + "&message=" + URLEncoder.encode(msg,"utf-8");
+        try (CloseableHttpAsyncClient httpclient = HttpAsyncClients.createDefault()) {
+            httpclient.start();
+            HttpGet request = new HttpGet(url);
+            Future<HttpResponse> future = httpclient.execute(request, null);
+            HttpResponse response = future.get();
+            OrzMC.logger().info("Response Code : " + response.getStatusLine());
+        }
+    }
 }
