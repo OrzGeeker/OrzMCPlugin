@@ -6,7 +6,7 @@
 
     <groupId>com.jokerhub.paper.plugin</groupId>
     <artifactId>OrzMC</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>1.0</version>
     <packaging>jar</packaging>
 
     <name>OrzMC</name>
@@ -14,13 +14,13 @@
     <description>OrzMC for Paper Server Plugin</description>
     <properties>
         <java.version>1.8</java.version>
-        <papermc.version>1.17.1</papermc.version>
+        <paper.version>1.17.1</paper.version>
         <orzmc.root.dir>${user.home}</orzmc.root.dir>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.build.plugin.jar.filePath>${project.build.directory}/${project.build.finalName}.${project.packaging}</project.build.plugin.jar.filePath>
-        <minecraft.server.plugin.dir>${orzmc.root.dir}/minecraft/versions/${papermc.version}/server/paper/plugins</minecraft.server.plugin.dir>
+        <minecraft.server.plugin.dir>${orzmc.root.dir}/minecraft/versions/${paper.version}/server/paper/plugins</minecraft.server.plugin.dir>
     </properties>
-    <url>minecraft.jokerhub.cn</url>
+    <url>https://minecraft.jokerhub.cn</url>
 
     <build>
         <plugins>
