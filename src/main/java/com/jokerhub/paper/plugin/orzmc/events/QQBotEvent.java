@@ -61,6 +61,9 @@ public class QQBotEvent implements HttpHandler {
         for(Player p: onlinePlayers) {
             String name = ((TextComponent)p.displayName()).content();
             msgBuilder.append("\n").append(name);
+            if(p.isOp()) {
+                msgBuilder.append("(op)");
+            }
         }
         try {
             sendQQGroupMsg(msgBuilder.toString());

@@ -86,6 +86,9 @@ public class PlayerEvents implements Listener {
                 }
                 String name = ((TextComponent)p.displayName()).content();
                 msgBuilder.append("\n").append(name);
+                if(p.isOp()) {
+                    msgBuilder.append("(op)");
+                }
             }
             QQBotEvent.sendQQGroupMsg(msgBuilder.toString());
         } catch (Exception e) {
