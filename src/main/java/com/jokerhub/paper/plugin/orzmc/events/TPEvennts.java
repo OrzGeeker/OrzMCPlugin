@@ -1,18 +1,10 @@
 package com.jokerhub.paper.plugin.orzmc.events;
 
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.TextComponent;
-import org.bukkit.conversations.Conversation;
-import org.bukkit.entity.Enderman;
-import org.bukkit.entity.Player;
-import org.bukkit.entity.Tameable;
+import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityTeleportEvent;
-import org.bukkit.event.player.PlayerTeleportEvent;
-
-import java.awt.*;
 
 public class TPEvennts implements Listener {
     @EventHandler
@@ -22,7 +14,7 @@ public class TPEvennts implements Listener {
             return;
         }
 
-        if(event.getEntity() instanceof Enderman) {
+        if(event.getEntity() instanceof Enderman || event.getEntity() instanceof ArmorStand || event.getEntity() instanceof Shulker) {
             return;
         }
 

@@ -3,25 +3,41 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-
     <groupId>com.jokerhub.paper.plugin</groupId>
     <artifactId>OrzMC</artifactId>
     <version>1.0</version>
     <packaging>jar</packaging>
-
     <name>OrzMC</name>
-
+    <url>https://minecraft.jokerhub.cn</url>
     <description>OrzMC for Paper Server Plugin</description>
+    <repositories>
+        <repository>
+            <id>papermc</id>
+            <url>https://papermc.io/repo/repository/maven-public/</url>
+        </repository>
+        <repository>
+            <id>sonatype</id>
+            <url>https://oss.sonatype.org/content/groups/public/</url>
+        </repository>
+    </repositories>
+    <dependencies>
+        <dependency>
+            <groupId>io.papermc.paper</groupId>
+            <artifactId>paper-api</artifactId>
+            <version>1.17.1-R0.1-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
     <properties>
         <java.version>1.8</java.version>
         <paper.version>1.17.1</paper.version>
         <orzmc.root.dir>${user.home}</orzmc.root.dir>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.build.plugin.jar.filePath>${project.build.directory}/${project.build.finalName}.${project.packaging}</project.build.plugin.jar.filePath>
-        <minecraft.server.plugin.dir>${orzmc.root.dir}/minecraft/versions/${paper.version}/server/paper/plugins</minecraft.server.plugin.dir>
+        <minecraft.local.server.plugin.dir>${orzmc.root.dir}/minecraft/versions/${paper.version}/server/paper/plugins</minecraft.local.server.plugin.dir>
+        <minecraft.remote.server.ssh.host.name>ubuntu@jokerhub.cn</minecraft.remote.server.ssh.host.name>
+        <minecraft.remote.server.ssh.plugin.dir>${minecraft.remote.server.ssh.host.name}:~/minecraft/versions/${paper.version}/server/paper/plugins</minecraft.remote.server.ssh.plugin.dir>
     </properties>
-    <url>https://minecraft.jokerhub.cn</url>
-
     <build>
         <plugins>
             <plugin>
@@ -61,10 +77,10 @@
                             <tasks>
                                 <taskdef resource="net/sf/antcontrib/antcontrib.properties" />
                                 <if>
-                                    <available file="${minecraft.server.plugin.dir}" type="dir" />
+                                    <available file="${minecraft.local.server.plugin.dir}" type="dir" />
                                     <then>
                                         <echo>✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅</echo>
-                                        <copy todir="${minecraft.server.plugin.dir}" file="${project.build.plugin.jar.filePath}"/>
+                                        <copy todir="${minecraft.local.server.plugin.dir}" file="${project.build.plugin.jar.filePath}"/>
                                         <echo>✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅</echo>
                                     </then>
                                     <else>
@@ -88,6 +104,39 @@
                     </dependency>
                 </dependencies>
             </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.0.0</version>
+                <executions>
+                    <execution>
+                        <id>upload plugin to server</id>
+                        <phase>install</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>scp</executable>
+                            <arguments>
+                                <argument>${project.build.plugin.jar.filePath}</argument>
+                                <argument>${minecraft.remote.server.ssh.plugin.dir}</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <phase>install</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>echo</executable>
+                            <arguments>
+                                <argument>⭐⭐⭐✅✅✅ ️upload plugin completed! ✅✅✅⭐⭐⭐</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
         <resources>
             <resource>
@@ -96,24 +145,4 @@
             </resource>
         </resources>
     </build>
-
-    <repositories>
-        <repository>
-            <id>papermc</id>
-            <url>https://papermc.io/repo/repository/maven-public/</url>
-        </repository>
-        <repository>
-            <id>sonatype</id>
-            <url>https://oss.sonatype.org/content/groups/public/</url>
-        </repository>
-    </repositories>
-
-    <dependencies>
-        <dependency>
-            <groupId>io.papermc.paper</groupId>
-            <artifactId>paper-api</artifactId>
-            <version>1.17.1-R0.1-SNAPSHOT</version>
-            <scope>provided</scope>
-        </dependency>
-    </dependencies>
 </project>
