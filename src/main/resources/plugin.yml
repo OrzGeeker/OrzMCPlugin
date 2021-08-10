@@ -8,4 +8,5 @@ website: minecraft.jokerhub.cn
 commands:
   tpbow:
     description: 传送弓，射出的箭落地时会把自己传送到箭落地的位置
-    usage: /<command> 使用这个传送弓射箭，可以把你传送到箭落地的位置
+  guide:
+    description: 获取新手教程，更快的熟悉服务器

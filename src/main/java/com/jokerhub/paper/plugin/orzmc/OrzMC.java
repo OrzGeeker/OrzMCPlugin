@@ -1,5 +1,6 @@
 package com.jokerhub.paper.plugin.orzmc;
 
+import com.jokerhub.paper.plugin.orzmc.commands.GuideBook;
 import com.jokerhub.paper.plugin.orzmc.commands.TPBow;
 import com.jokerhub.paper.plugin.orzmc.events.OnBowShoot;
 import com.jokerhub.paper.plugin.orzmc.events.PlayerEvents;
@@ -31,6 +32,11 @@ public final class OrzMC extends JavaPlugin implements Listener {
         PluginCommand tpbowCmd = getCommand("tpbow");
         if(tpbowCmd != null) {
             tpbowCmd.setExecutor(new TPBow());
+        }
+
+        PluginCommand guideCmd = getCommand("guide");
+        if(guideCmd != null) {
+            guideCmd.setExecutor(new GuideBook());
         }
 
         startQQBotServer();

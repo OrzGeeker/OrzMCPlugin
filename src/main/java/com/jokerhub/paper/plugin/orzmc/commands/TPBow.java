@@ -35,6 +35,7 @@ public class TPBow implements CommandExecutor {
 
             ItemStack arrow = new ItemStack(Material.ARROW, 1);
             player.getInventory().addItem(arrow);
+            player.sendMessage("你获得了传送弓");
 
         } else {
             OrzMC.logger().info("不是玩家，此命令无效！");
