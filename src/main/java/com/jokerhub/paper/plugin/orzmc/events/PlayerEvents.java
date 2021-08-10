@@ -7,7 +7,6 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
-import net.kyori.adventure.text.TextComponent;
 import java.util.ArrayList;
 
 public class PlayerEvents implements Listener {
@@ -48,8 +47,8 @@ public class PlayerEvents implements Listener {
             int onlinePlayerCount = onlinePlayers.size();
             int maxPlayerCount = OrzMC.server().getMaxPlayers();
 
-            String playerName = ((TextComponent) player.displayName()).content();
-            StringBuilder msgBuilder = new StringBuilder(playerName);
+            String playerName = QQBotEvent.playerQQDisplayName (player);
+            StringBuilder msgBuilder = new StringBuilder(playerName).append(" ");
 
             boolean isMinusCurrentPlayer = false;
             switch (state) {
@@ -84,11 +83,8 @@ public class PlayerEvents implements Listener {
                 if(p.getUniqueId() == player.getUniqueId() && isMinusCurrentPlayer) {
                     continue;
                 }
-                String name = ((TextComponent)p.displayName()).content();
+                String name = QQBotEvent.playerQQDisplayName(p);
                 msgBuilder.append("\n").append(name);
-                if(p.isOp()) {
-                    msgBuilder.append("(op)");
-                }
             }
             QQBotEvent.sendQQGroupMsg(msgBuilder.toString());
             if(onlinePlayerCount == 0) {

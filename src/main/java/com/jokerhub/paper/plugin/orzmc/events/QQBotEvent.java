@@ -2,7 +2,6 @@ package com.jokerhub.paper.plugin.orzmc.events;
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
-import net.kyori.adventure.text.TextComponent;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
@@ -59,11 +58,8 @@ public class QQBotEvent implements HttpHandler {
         StringBuilder msgBuilder = new StringBuilder(tip);
 
         for(Player p: onlinePlayers) {
-            String name = ((TextComponent)p.displayName()).content();
+            String name = playerQQDisplayName(p);
             msgBuilder.append("\n").append(name);
-            if(p.isOp()) {
-                msgBuilder.append("(op)");
-            }
         }
         try {
             sendQQGroupMsg(msgBuilder.toString());
@@ -72,21 +68,27 @@ public class QQBotEvent implements HttpHandler {
         }
     }
 
+    public static String playerQQDisplayName(Player player) {
+        String ret=player.getPlayerProfile().getName();
+        if(player.isOp()) {
+            ret += "(op)";
+        }
+        return ret;
+    }
+
     public static void sendQQGroupMsg(String msg) throws Exception {
         String groupId = "1056934080";
         String url = "http://localhost:8200/send_group_msg?group_id=" + groupId + "&message=" + URLEncoder.encode(msg,"utf-8");
-        try (CloseableHttpAsyncClient httpclient = HttpAsyncClients.createDefault()) {
-            httpclient.start();
-            HttpGet request = new HttpGet(url);
-            Future<HttpResponse> future = httpclient.execute(request, null);
-            HttpResponse response = future.get();
-            OrzMC.logger().info("Response Code : " + response.getStatusLine());
-        }
+        asyncHttpRequest(url);
     }
 
     public static void sendPrivateMsg(String msg) throws Exception {
         String userId = "824219521";
         String url = "http://localhost:8200/send_msg?user_id=" + userId + "&message=" + URLEncoder.encode(msg,"utf-8");
+        asyncHttpRequest(url);
+    }
+
+    public  static void asyncHttpRequest(String url) throws Exception {
         try (CloseableHttpAsyncClient httpclient = HttpAsyncClients.createDefault()) {
             httpclient.start();
             HttpGet request = new HttpGet(url);
