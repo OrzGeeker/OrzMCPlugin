@@ -1,0 +1,10 @@
+# [YAML语言教程](https://www.ruanyifeng.com/blog/2016/07/yaml.html)
+test: 'hello config'
+array:
+  - '1'
+  - '2'
+  - '3'
+  - '4'
+ob1:
+  k1: 'v1'
+  k2: 'v2'

@@ -9,6 +9,7 @@ import com.jokerhub.paper.plugin.orzmc.events.TPEvennts;
 import com.sun.net.httpserver.HttpServer;
 import org.bukkit.Server;
 import org.bukkit.command.PluginCommand;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -22,6 +23,11 @@ public final class OrzMC extends JavaPlugin implements Listener {
     @Override
     public void onEnable() {
         super.onEnable();
+
+        // 从jar中读config.yml文件内容到内存中
+        getConfig().options().copyDefaults();
+        // 存储config.yml到插件数据目录下
+        saveDefaultConfig();
 
         // Plugin startup logic
         getLogger().info("OrzMC 插件生效!");
@@ -79,4 +85,6 @@ public final class OrzMC extends JavaPlugin implements Listener {
     public static Logger logger() {
         return OrzMC.plugin().getLogger();
     }
+
+    public static FileConfiguration config() { return OrzMC.plugin().getConfig(); }
 }

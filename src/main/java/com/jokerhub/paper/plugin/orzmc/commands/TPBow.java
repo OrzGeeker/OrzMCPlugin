@@ -22,7 +22,7 @@ public class TPBow implements CommandExecutor {
         if(sender instanceof Player) {
             Player player = (Player) sender;
 
-            ItemStack teleport_bow = new ItemStack(Material.BOW, 1);
+            ItemStack teleport_bow = new ItemStack(Material.BOW);
             ItemMeta meta = teleport_bow.getItemMeta();
             meta.addEnchant(Enchantment.ARROW_INFINITE,1,true);
             TextComponent name = Component.text("传送弓");
@@ -33,7 +33,7 @@ public class TPBow implements CommandExecutor {
             teleport_bow.setItemMeta(meta);
             player.getInventory().addItem(teleport_bow);
 
-            ItemStack arrow = new ItemStack(Material.ARROW, 1);
+            ItemStack arrow = new ItemStack(Material.ARROW);
             player.getInventory().addItem(arrow);
             player.sendMessage("你获得了传送弓");
 
