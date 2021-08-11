@@ -22,12 +22,12 @@ public class GuideBook implements CommandExecutor {
     public boolean onCommand(@NotNull CommandSender commandSender, @NotNull Command command, @NotNull String s, @NotNull String[] strings) {
         if (commandSender instanceof Player) {
             Player player = (Player) commandSender;
-            giveNewPlayerGuideBook(player);
+            openNewPlayerGuideBook(player);
         }
         return false;
     }
 
-    private void giveNewPlayerGuideBook(Player player) {
+    private void openNewPlayerGuideBook(Player player) {
 
         ItemStack guideBook = new ItemStack(Material.WRITTEN_BOOK);
         BookMeta bookMeta = (BookMeta) guideBook.getItemMeta();
