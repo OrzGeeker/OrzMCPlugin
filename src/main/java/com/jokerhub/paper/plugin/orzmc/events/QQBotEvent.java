@@ -12,6 +12,7 @@ import org.json.simple.parser.JSONParser;
 import java.io.*;
 import java.net.URLEncoder;
 import java.util.ArrayList;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 public class QQBotEvent implements HttpHandler {
@@ -88,13 +89,17 @@ public class QQBotEvent implements HttpHandler {
         asyncHttpRequest(url);
     }
 
-    public  static void asyncHttpRequest(String url) throws Exception {
-        try (CloseableHttpAsyncClient httpclient = HttpAsyncClients.createDefault()) {
-            httpclient.start();
-            HttpGet request = new HttpGet(url);
-            Future<HttpResponse> future = httpclient.execute(request, null);
-            HttpResponse response = future.get();
-            OrzMC.logger().info("Response Code : " + response.getStatusLine());
-        }
+    public  static void asyncHttpRequest(String url) {
+        new Thread(() -> {
+            try (CloseableHttpAsyncClient httpclient = HttpAsyncClients.createDefault()) {
+                httpclient.start();
+                HttpGet request = new HttpGet(url);
+                Future<HttpResponse> future = httpclient.execute(request, null);
+                HttpResponse response = future.get();
+                OrzMC.logger().info("Response Code : " + response.getStatusLine());
+            } catch (IOException | InterruptedException | ExecutionException e) {
+                OrzMC.logger().info(e.toString());
+            }
+        }).start();
     }
 }
