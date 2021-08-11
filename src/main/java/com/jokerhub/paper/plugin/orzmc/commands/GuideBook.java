@@ -89,7 +89,6 @@ public class GuideBook implements CommandExecutor {
             ItemStack guideBook = guideBook();
             player.getInventory().addItem(guideBook);
             player.sendMessage("获得新手指南");
-            player.openBook(guideBook);
         }
     }
 }
