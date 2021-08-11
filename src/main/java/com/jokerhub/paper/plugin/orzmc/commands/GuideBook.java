@@ -57,13 +57,13 @@ public class GuideBook implements CommandExecutor {
                 .append(Component.text("2. "))
                 .append(Component.text("玩家手册",linkStyle)
                         .clickEvent(ClickEvent.openUrl("https://minecraft.jokerhub.cn/user/"))
-                        .hoverEvent(HoverEvent.showText(Component.text("点击前往主页")))
+                        .hoverEvent(HoverEvent.showText(Component.text("点击查看玩家手册")))
                 )
                 .append(Component.newline())
                 .append(Component.text("3. "))
                 .append(Component.text("加入玩家QQ群",linkStyle)
                         .clickEvent(ClickEvent.openUrl("https://jq.qq.com/?_wv=1027&k=DUEQuLE6"))
-                        .hoverEvent(HoverEvent.showText(Component.text("点击前往主页")))
+                        .hoverEvent(HoverEvent.showText(Component.text("点击加入QQ群")))
                 )
                 .build();
         bookMeta.addPages(page2);
