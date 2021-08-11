@@ -1,6 +1,7 @@
 package com.jokerhub.paper.plugin.orzmc.events;
 
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
+import com.jokerhub.paper.plugin.orzmc.commands.GuideBook;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -19,6 +20,7 @@ public class PlayerEvents implements Listener {
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
+        GuideBook.giveNewPlayerAGuideBook(event.getPlayer());
         notifyQQGroupWithMsg(event.getPlayer(), PlayerState.JOIN);
     }
 

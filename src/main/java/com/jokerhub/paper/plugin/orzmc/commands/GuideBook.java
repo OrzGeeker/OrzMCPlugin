@@ -1,5 +1,6 @@
 package com.jokerhub.paper.plugin.orzmc.commands;
 
+import com.jokerhub.paper.plugin.orzmc.OrzMC;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.event.ClickEvent;
@@ -8,6 +9,7 @@ import net.kyori.adventure.text.format.Style;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Material;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -15,6 +17,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.BookMeta;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.UUID;
 
 
 public class GuideBook implements CommandExecutor {
@@ -28,12 +32,12 @@ public class GuideBook implements CommandExecutor {
         return false;
     }
 
-    private void openNewPlayerGuideBook(Player player) {
-
+    private static ItemStack guideBook() {
         ItemStack guideBook = new ItemStack(Material.WRITTEN_BOOK);
         BookMeta bookMeta = (BookMeta) guideBook.getItemMeta();
         bookMeta.setTitle("新手指南");
         bookMeta.setAuthor("腐竹");
+        bookMeta.setGeneration(BookMeta.Generation.COPY_OF_COPY);
 
         Style linkStyle = Style.style()
                 .color(TextColor.fromCSSHexString("#5555FF"))
@@ -69,7 +73,23 @@ public class GuideBook implements CommandExecutor {
         bookMeta.addPages(page2);
 
         guideBook.setItemMeta(bookMeta);
-        player.openBook(guideBook);
-        player.sendMessage("你获得了" + bookMeta.getTitle());
+
+        return guideBook;
+    }
+    private void openNewPlayerGuideBook(Player player) {
+        player.openBook(guideBook());
+    }
+
+    public static void giveNewPlayerAGuideBook(Player player) {
+        UUID playerUUID = player.getPlayerProfile().getId();
+        if(playerUUID == null) return;
+
+        OfflinePlayer offlinePlayer = OrzMC.server().getOfflinePlayer(playerUUID);
+        if(!offlinePlayer.hasPlayedBefore()) {
+            ItemStack guideBook = guideBook();
+            player.getInventory().addItem(guideBook);
+            player.sendMessage("获得新手指南");
+            player.openBook(guideBook);
+        }
     }
 }
