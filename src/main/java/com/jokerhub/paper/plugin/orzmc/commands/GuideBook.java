@@ -46,7 +46,7 @@ public class GuideBook implements CommandExecutor {
                 .append(Component.text("服务器中一些热爱创造的小伙伴在这里花费了大量心力建造出了各种漂亮的建筑，希望刚加入的朋友不要随意对其进行破坏，尊重他人的劳动成果。做一个有素质的MC玩家!"))
                 .append(Component.newline())
                 .append(Component.newline())
-                .append(Component.text("相关链接"))
+                .append(Component.text("相关链接").decorate(TextDecoration.BOLD))
                 .append(Component.newline())
                 .append(Component.text("1. "))
                 .append(Component.text("服务器主页",linkStyle)
