@@ -22,15 +22,4 @@ public class TPEvennts implements Listener {
         event.setCancelled(true);
         OrzMC.logger().info("实体传送被禁用:" + event.getEntity().getName());
     }
-
-//    @EventHandler
-//    public void onPlayerTeleport(PlayerTeleportEvent event) {
-//        Player player = event.getPlayer();
-//        switch (event.getCause()) {
-//            case COMMAND:
-//                event.setCancelled(true);
-//                OrzMC.logger().info("传送玩家命令已经被禁用了");
-//                break;
-//        }
-//    }
 }
