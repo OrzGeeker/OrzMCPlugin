@@ -1,4 +1,4 @@
-package com.jokerhub.paper.plugin.orzmc.events;
+package com.jokerhub.paper.plugin.orzmc.qqbot;
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;

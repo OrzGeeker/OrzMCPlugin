@@ -6,7 +6,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityTeleportEvent;
 
-public class TPEvennts implements Listener {
+public class TPEvennt implements Listener {
     @EventHandler
     public void onEntityTeleport(EntityTeleportEvent event) {
 

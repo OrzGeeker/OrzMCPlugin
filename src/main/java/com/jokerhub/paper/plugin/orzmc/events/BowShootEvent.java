@@ -10,19 +10,25 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.inventory.meta.ItemMeta;
 
-public class OnBowShoot implements Listener {
+public class BowShootEvent implements Listener {
 
     @EventHandler
     public void onBowShoot(ProjectileHitEvent event) {
 
         if (event.getEntity() instanceof Arrow) {
             Arrow arrow = (Arrow) event.getEntity();
-            if (arrow.isInWater()) {
-                return;
-            }
-
             if(arrow.getShooter() instanceof Player) {
                 Player player = (Player) arrow.getShooter();
+
+                if (arrow.isInWater()) {
+                    player.sendMessage("箭射进了水里!");
+                    return;
+                }
+                if(arrow.isInLava()) {
+                    player.sendMessage("箭射进了岩浆里!");
+                    return;
+                }
+
                 ItemMeta meta = player.getInventory().getItemInMainHand().getItemMeta();
                 if(meta == null) {
                     return;

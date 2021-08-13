@@ -2,10 +2,11 @@ package com.jokerhub.paper.plugin.orzmc;
 
 import com.jokerhub.paper.plugin.orzmc.commands.GuideBook;
 import com.jokerhub.paper.plugin.orzmc.commands.TPBow;
-import com.jokerhub.paper.plugin.orzmc.events.OnBowShoot;
-import com.jokerhub.paper.plugin.orzmc.events.PlayerEvents;
-import com.jokerhub.paper.plugin.orzmc.events.QQBotEvent;
-import com.jokerhub.paper.plugin.orzmc.events.TPEvennts;
+import com.jokerhub.paper.plugin.orzmc.events.BowShootEvent;
+import com.jokerhub.paper.plugin.orzmc.events.PlayerEvent;
+import com.jokerhub.paper.plugin.orzmc.events.TNTEvent;
+import com.jokerhub.paper.plugin.orzmc.qqbot.QQBotEvent;
+import com.jokerhub.paper.plugin.orzmc.events.TPEvennt;
 import com.sun.net.httpserver.HttpServer;
 import org.bukkit.Server;
 import org.bukkit.command.PluginCommand;
@@ -31,9 +32,10 @@ public final class OrzMC extends JavaPlugin implements Listener {
 
         // Plugin startup logic
         getLogger().info("OrzMC 插件生效!");
-        getServer().getPluginManager().registerEvents(new OnBowShoot(), this);
-        getServer().getPluginManager().registerEvents(new PlayerEvents(), this);
-        getServer().getPluginManager().registerEvents(new TPEvennts(), this);
+        getServer().getPluginManager().registerEvents(new BowShootEvent(), this);
+        getServer().getPluginManager().registerEvents(new PlayerEvent(), this);
+        getServer().getPluginManager().registerEvents(new TPEvennt(), this);
+        getServer().getPluginManager().registerEvents(new TNTEvent(), this);
 
         PluginCommand tpbowCmd = getCommand("tpbow");
         if(tpbowCmd != null) {

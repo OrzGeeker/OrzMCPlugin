@@ -2,6 +2,7 @@ package com.jokerhub.paper.plugin.orzmc.events;
 
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
 import com.jokerhub.paper.plugin.orzmc.commands.GuideBook;
+import com.jokerhub.paper.plugin.orzmc.qqbot.QQBotEvent;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -10,7 +11,7 @@ import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import java.util.ArrayList;
 
-public class PlayerEvents implements Listener {
+public class PlayerEvent implements Listener {
 
     enum PlayerState {
         JOIN,
