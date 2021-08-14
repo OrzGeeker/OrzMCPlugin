@@ -1,12 +1,10 @@
 package com.jokerhub.paper.plugin.orzmc;
 
+import com.jokerhub.paper.plugin.orzmc.commands.OrzMenuCommand;
 import com.jokerhub.paper.plugin.orzmc.commands.GuideBook;
 import com.jokerhub.paper.plugin.orzmc.commands.TPBow;
-import com.jokerhub.paper.plugin.orzmc.events.BowShootEvent;
-import com.jokerhub.paper.plugin.orzmc.events.PlayerEvent;
-import com.jokerhub.paper.plugin.orzmc.events.TNTEvent;
+import com.jokerhub.paper.plugin.orzmc.events.*;
 import com.jokerhub.paper.plugin.orzmc.qqbot.QQBotEvent;
-import com.jokerhub.paper.plugin.orzmc.events.TPEvennt;
 import com.sun.net.httpserver.HttpServer;
 import org.bukkit.Server;
 import org.bukkit.command.PluginCommand;
@@ -36,6 +34,7 @@ public final class OrzMC extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(new PlayerEvent(), this);
         getServer().getPluginManager().registerEvents(new TPEvennt(), this);
         getServer().getPluginManager().registerEvents(new TNTEvent(), this);
+        getServer().getPluginManager().registerEvents(new OrzMenuEvent(), this);
 
         PluginCommand tpbowCmd = getCommand("tpbow");
         if(tpbowCmd != null) {
@@ -45,6 +44,11 @@ public final class OrzMC extends JavaPlugin implements Listener {
         PluginCommand guideCmd = getCommand("guide");
         if(guideCmd != null) {
             guideCmd.setExecutor(new GuideBook());
+        }
+
+        PluginCommand menuCmd = getCommand("menu");
+        if(menuCmd != null) {
+            menuCmd.setExecutor(new OrzMenuCommand());
         }
 
         startQQBotServer();
