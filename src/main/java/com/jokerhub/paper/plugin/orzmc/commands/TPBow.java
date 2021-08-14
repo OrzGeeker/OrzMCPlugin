@@ -3,6 +3,7 @@ package com.jokerhub.paper.plugin.orzmc.commands;
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
+import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.Material;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -17,6 +18,19 @@ import java.util.ArrayList;
 
 public class TPBow implements CommandExecutor {
 
+    public static String name = "传送弓";
+
+    public static Component logText(String content) {
+        if(content.length() > 0) {
+            return Component.text().append(Component.text("[" + TPBow.name + "]")
+                            .color(TextColor.fromCSSHexString("#00FF00")))
+                    .append(Component.space())
+                    .append(Component.text(content))
+                    .build();
+        }
+        return null;
+    }
+
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
         if(sender instanceof Player) {
@@ -25,7 +39,7 @@ public class TPBow implements CommandExecutor {
             ItemStack teleport_bow = new ItemStack(Material.BOW);
             ItemMeta meta = teleport_bow.getItemMeta();
             meta.addEnchant(Enchantment.ARROW_INFINITE,1,true);
-            TextComponent name = Component.text("传送弓");
+            TextComponent name = Component.text(TPBow.name);
             meta.displayName(name);
             ArrayList<Component> loreList = new ArrayList<>();
             loreList.add(Component.text("可以把你传送到箭落地的位置"));
@@ -35,7 +49,7 @@ public class TPBow implements CommandExecutor {
 
             ItemStack arrow = new ItemStack(Material.ARROW);
             player.getInventory().addItem(arrow);
-            player.sendMessage("你获得了传送弓");
+            player.sendMessage("你获得了" + TPBow.name);
 
         } else {
             OrzMC.logger().info("不是玩家，此命令无效！");

@@ -10,6 +10,7 @@ import org.bukkit.entity.Player;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import java.io.*;
+import java.net.ConnectException;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.concurrent.ExecutionException;
@@ -97,7 +98,9 @@ public class QQBotEvent implements HttpHandler {
                 Future<HttpResponse> future = httpclient.execute(request, null);
                 HttpResponse response = future.get();
                 OrzMC.logger().info("Response Code : " + response.getStatusLine());
-            } catch (IOException | InterruptedException | ExecutionException e) {
+            } catch (ExecutionException e) {
+                OrzMC.logger().info("QQ机器人无法连接，工作异常");
+            } catch (Exception e) {
                 OrzMC.logger().info(e.toString());
             }
         }).start();
