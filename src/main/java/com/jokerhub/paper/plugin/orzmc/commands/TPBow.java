@@ -28,7 +28,7 @@ public class TPBow implements CommandExecutor {
                     .append(Component.text(content))
                     .build();
         }
-        return null;
+        return Component.empty();
     }
 
     @Override
