@@ -9,6 +9,6 @@ public class OrzMenuEvent implements Listener {
 
     @EventHandler
     public void onMenuItemClickEvent(InventoryClickEvent e) {
-        OrzMC.logger().info("onMenuItemClickEvent");
+//        OrzMC.logger().info("onMenuItemClickEvent");
     }
 }

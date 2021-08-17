@@ -21,10 +21,12 @@ public class TNTEvent implements Listener {
 
         event.setCancelled(true);
         TextComponent msg = Component.text("坐标: ")
-                .append(Component.text( x + ", " + y + ", " + z).color(TextColor.fromCSSHexString("#00FF00")))
+                .append(Component.text( x + " " + y + " " + z).color(TextColor.fromCSSHexString("#00FF00")))
                 .append(Component.space())
                 .append(Component.text("处有TNT被点燃！"));
         OrzMC.server().sendMessage(msg);
-        QQBotEvent.sendQQGroupMsg(msg.content());
+
+        String qqGroupMsg = "坐标: " + x + " " + y + " " + z + "处有TNT被点燃！";
+        QQBotEvent.sendQQGroupMsg(qqGroupMsg);
     }
 }
