@@ -80,7 +80,7 @@ public class TNTEvent implements Listener {
                     .build();
             OrzMC.server().sendMessage(msg);
 
-            String qqGroupMsg = playerName + " 在 " + x + " " + y + " " + z + " 放置了" + placedBlock.getType().name();
+            String qqGroupMsg = playerName + " 在 " + x + " " + y + " " + z + " 放置过" + placedBlock.getType().name();
             QQBotEvent.sendQQGroupMsg(qqGroupMsg);
         }
     }
