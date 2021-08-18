@@ -13,5 +13,7 @@ OrzMC Paper Server Plugin
 
 [Bukkit Wiki](https://bukkit.fandom.com/wiki/Main_Page)
 
+[TextComponent](https://docs.adventure.kyori.net/text.html#creating-components)
+
 
 
