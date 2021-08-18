@@ -90,7 +90,7 @@
                         <id>Copy Plugin Jar File into Server Plugin Dir</id>
                         <phase>package</phase>
                         <configuration>
-                            <tasks>
+                            <target>
                                 <taskdef resource="net/sf/antcontrib/antcontrib.properties" />
                                 <if>
                                     <available file="${minecraft.local.server.plugin.dir}" type="dir" />
@@ -105,7 +105,7 @@
                                         <echo>🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥</echo>
                                     </else>
                                 </if>
-                            </tasks>
+                            </target>
                         </configuration>
                     <goals>
                         <goal>run</goal>
