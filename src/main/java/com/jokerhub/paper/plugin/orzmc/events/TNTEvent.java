@@ -19,7 +19,7 @@ import org.bukkit.event.block.BlockPlaceEvent;
 
 public class TNTEvent implements Listener {
     @EventHandler
-    public void onTNTPrime(TNTPrimeEvent event) throws Exception {
+    public void onTNTPrime(TNTPrimeEvent event) {
         event.setCancelled(true);
 
         Entity entity = event.getPrimerEntity();
@@ -47,31 +47,30 @@ public class TNTEvent implements Listener {
                 .append(Component.text("处有TNT被点燃！"))
                 .build();
         OrzMC.server().sendMessage(msg);
-
-        OrzMC.logger().info("test: " + msg.content());
-
-        String qqGroupMsg = "坐标: " + x + " " + y + " " + z + "处有TNT被点燃！";
-        QQBotEvent.sendQQGroupMsg(qqGroupMsg);
     }
 
     @EventHandler
-    public void onPlaceBlock(BlockPlaceEvent event) {
+    public void onPlaceBlock(BlockPlaceEvent event) throws Exception {
         Block placedBlock = event.getBlockPlaced();
         if(placedBlock.getType() == Material.TNT || placedBlock.getType() == Material.TNT_MINECART) {
+
+            int x = placedBlock.getX();
+            int y = placedBlock.getY();
+            int z = placedBlock.getZ();
+
             Player player = event.getPlayer();
-            String playerName = player.getPlayerProfile().getName();
-            if(playerName == null) return;
+            String playerName = QQBotEvent.playerQQDisplayName(player);
             TextComponent msg = Component.text()
                     .append(Component.text(playerName).color(TextColor.fromHexString("#FF0000")))
                     .append(Component.space())
                     .append(Component.text("在"))
                     .append(Component.space())
                     .append(Component.text()
-                            .append(Component.text(placedBlock.getX()))
+                            .append(Component.text(x))
                             .append(Component.space())
-                            .append(Component.text(placedBlock.getY()))
+                            .append(Component.text(y))
                             .append(Component.space())
-                            .append(Component.text(placedBlock.getZ()))
+                            .append(Component.text(z))
                             .build()
                             .clickEvent(ClickEvent.copyToClipboard(placedBlock.getX() + " " + placedBlock.getY() + " " + placedBlock.getZ()))
                             .hoverEvent(HoverEvent.showText(Component.text("点击复制坐标位置")))
@@ -80,6 +79,9 @@ public class TNTEvent implements Listener {
                     .append(Component.text("处放置了TNT"))
                     .build();
             OrzMC.server().sendMessage(msg);
+
+            String qqGroupMsg = playerName + " 在 " + x + " " + y + " " + z + " 放置了" + placedBlock.getType().name();
+            QQBotEvent.sendQQGroupMsg(qqGroupMsg);
         }
     }
 }
