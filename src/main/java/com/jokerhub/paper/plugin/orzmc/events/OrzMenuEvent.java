@@ -1,6 +1,5 @@
 package com.jokerhub.paper.plugin.orzmc.events;
 
-import com.jokerhub.paper.plugin.orzmc.OrzMC;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
