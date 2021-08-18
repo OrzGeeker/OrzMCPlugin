@@ -59,7 +59,8 @@ public class TNTEvent implements Listener {
         Block placedBlock = event.getBlockPlaced();
         if(placedBlock.getType() == Material.TNT || placedBlock.getType() == Material.TNT_MINECART) {
             Player player = event.getPlayer();
-            String playerName = ((TextComponent)player.displayName()).content();
+            String playerName = player.getPlayerProfile().getName();
+            if(playerName == null) return;
             TextComponent msg = Component.text()
                     .append(Component.text(playerName).color(TextColor.fromHexString("#FF0000")))
                     .append(Component.space())
