@@ -1,7 +1,8 @@
 # User-specific stuff
-.idea/
+# .idea/
+.idea/libraries/
 
-*.iml
+# *.iml
 *.ipr
 *.iws
 
