@@ -20,15 +20,15 @@ import org.bukkit.event.block.BlockPlaceEvent;
 public class TNTEvent implements Listener {
     @EventHandler
     public void onTNTPrime(TNTPrimeEvent event) {
-        event.setCancelled(true);
+        Block placedBlock = event.getBlock();
+        int x = placedBlock.getX();
+        int y = placedBlock.getY();
+        int z = placedBlock.getZ();
 
-        Entity entity = event.getPrimerEntity();
-        if(entity == null) { return; }
-
-        Location loc = entity.getLocation();
-        int x = loc.getBlockX();
-        int y = loc.getBlockY();
-        int z = loc.getBlockZ();
+        if(hitInWhiteList(x,y,z)) return;
+        else {
+            event.setCancelled(true);
+        }
 
         TextComponent msg = Component.text()
                 .append(Component.text("坐标:"))
@@ -58,6 +58,8 @@ public class TNTEvent implements Listener {
             int y = placedBlock.getY();
             int z = placedBlock.getZ();
 
+            if(hitInWhiteList(x,y,z)) return;
+
             Player player = event.getPlayer();
             String playerName = QQBotEvent.playerQQDisplayName(player);
             TextComponent msg = Component.text()
@@ -83,5 +85,11 @@ public class TNTEvent implements Listener {
             String qqGroupMsg = playerName + " 在 " + x + " " + y + " " + z + " 放置过" + placedBlock.getType().name();
             QQBotEvent.sendQQGroupMsg(qqGroupMsg);
         }
+    }
+
+    boolean hitInWhiteList(int x, int y, int z) {
+        if(x >= 30746 && x <= 30808 && y >= 62 && z >= 10139 && z <= 10227) return true;
+        OrzMC.server().getLogger().info("TNT没命中白名单：" + x + ", " + y + ", " + z);
+        return false;
     }
 }
