@@ -10,6 +10,16 @@
     <name>OrzMC</name>
     <url>https://minecraft.jokerhub.cn</url>
     <description>OrzMC for Paper Server Plugin</description>
+    <properties>
+        <java.version>1.17</java.version>
+        <paper.version>1.18.2</paper.version>
+        <orzmc.root.dir>${user.home}</orzmc.root.dir>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.build.plugin.jar.filePath>${project.build.directory}/${project.build.finalName}.${project.packaging}</project.build.plugin.jar.filePath>
+        <minecraft.local.server.plugin.dir>${orzmc.root.dir}/minecraft/versions/${paper.version}/server/paper/plugins</minecraft.local.server.plugin.dir>
+        <minecraft.remote.server.ssh.host.name>ubuntu@jokerhub.cn</minecraft.remote.server.ssh.host.name>
+        <minecraft.remote.server.ssh.plugin.dir>${minecraft.remote.server.ssh.host.name}:~/minecraft/versions/${paper.version}/server/paper/plugins</minecraft.remote.server.ssh.plugin.dir>
+    </properties>
     <repositories>
         <repository>
             <id>papermc</id>
@@ -24,25 +34,15 @@
         <dependency>
             <groupId>io.papermc.paper</groupId>
             <artifactId>paper-api</artifactId>
-            <version>1.18.1-R0.1-SNAPSHOT</version>
+            <version>${paper.version}-R0.1-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.httpcomponents</groupId>
             <artifactId>httpasyncclient</artifactId>
-            <version>4.1.4</version>
+            <version>4.1.5</version>
         </dependency>
     </dependencies>
-    <properties>
-        <java.version>1.17</java.version>
-        <paper.version>1.18.1</paper.version>
-        <orzmc.root.dir>${user.home}</orzmc.root.dir>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <project.build.plugin.jar.filePath>${project.build.directory}/${project.build.finalName}.${project.packaging}</project.build.plugin.jar.filePath>
-        <minecraft.local.server.plugin.dir>${orzmc.root.dir}/minecraft/versions/${paper.version}/server/paper/plugins</minecraft.local.server.plugin.dir>
-        <minecraft.remote.server.ssh.host.name>ubuntu@jokerhub.cn</minecraft.remote.server.ssh.host.name>
-        <minecraft.remote.server.ssh.plugin.dir>${minecraft.remote.server.ssh.host.name}:~/minecraft/versions/${paper.version}/server/paper/plugins</minecraft.remote.server.ssh.plugin.dir>
-    </properties>
     <build>
         <plugins>
             <plugin>
