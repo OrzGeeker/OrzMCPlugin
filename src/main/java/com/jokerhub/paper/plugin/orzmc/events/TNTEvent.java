@@ -95,9 +95,6 @@ public class TNTEvent implements Listener {
 
     @EventHandler
     public void onFireworkExplode(FireworkExplodeEvent event) {
-//        String msg = event.getEntityType().name() + "爆炸";
-//        QQBotEvent.sendQQGroupMsg(msg);
-//        OrzMC.server().sendMessage(Component.text(event.getEntityType().name() + "爆炸"));
     }
 
     boolean hitInWhiteList(Block block) {
