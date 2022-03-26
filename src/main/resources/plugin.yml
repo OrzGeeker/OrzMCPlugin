@@ -1,7 +1,7 @@
 name: OrzMC
 version: ${project.version}
 main: com.jokerhub.paper.plugin.orzmc.OrzMC
-api-version: ${paper.version}
+api-version: ${paper.version.major}
 authors: [ wangzhizhou ]
 description: OrzMC for Paper Server Plugin
 website: minecraft.jokerhub.cn
