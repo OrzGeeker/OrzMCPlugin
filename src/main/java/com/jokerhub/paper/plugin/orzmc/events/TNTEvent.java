@@ -9,12 +9,16 @@ import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.TextColor;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.BlockExplodeEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.entity.EntityExplodeEvent;
+import org.bukkit.event.entity.FireworkExplodeEvent;
 import org.bukkit.inventory.ItemStack;
 
 public class TNTEvent implements Listener {
@@ -24,53 +28,40 @@ public class TNTEvent implements Listener {
         /* 点燃方式：红石信号、打火石、火焰弹、火弓射击 */
 
         Block placedBlock = event.getBlock();
-        int x = placedBlock.getX();
-        int y = placedBlock.getY();
-        int z = placedBlock.getZ();
-
-        if (hitInWhiteList(x, y, z)) return;
+        if (hitInWhiteList(placedBlock)) return;
         else {
             event.setCancelled(true);
         }
-
-        OrzMC.server().sendMessage(blockLocationInfo(placedBlock,"处有TNT被点燃！"));
+        OrzMC.server().sendMessage(blockLocationInfo(placedBlock, "处有TNT被点燃！"));
     }
 
     @EventHandler
-    public void onPlaceBlock(BlockPlaceEvent event) throws Exception {
+    public void onPlaceBlock(BlockPlaceEvent event) {
         /* 处理玩家放置方块事件，如果放置TNT，玩家会被全服通告，并发到QQ群里留底 */
+        boolean shouldNotify = false;
         Block placedBlock = event.getBlockPlaced();
-        if (placedBlock.getType() == Material.TNT || placedBlock.getType() == Material.TNT_MINECART) {
-
-            int x = placedBlock.getX();
-            int y = placedBlock.getY();
-            int z = placedBlock.getZ();
-
-            if (hitInWhiteList(x, y, z)) return;
-
+        Material placedBlockType = placedBlock.getType();
+        switch (placedBlockType) {
+            case TNT:
+                if (hitInWhiteList(placedBlock)) return;
+                shouldNotify = true;
+                break;
+            case RESPAWN_ANCHOR:
+                shouldNotify = true;
+                break;
+            default:
+                break;
+        }
+        if (shouldNotify) {
             Player player = event.getPlayer();
-            String playerName = QQBotEvent.playerQQDisplayName(player);
             TextComponent msg = Component.text()
-                    .append(Component.text(playerName).color(TextColor.fromHexString("#FF0000")))
+                    .append(playerInfo(player))
                     .append(Component.space())
                     .append(Component.text("在"))
-                    .append(Component.space())
-                    .append(Component.text()
-                            .append(Component.text(x))
-                            .append(Component.space())
-                            .append(Component.text(y))
-                            .append(Component.space())
-                            .append(Component.text(z))
-                            .build()
-                            .clickEvent(ClickEvent.copyToClipboard(placedBlock.getX() + " " + placedBlock.getY() + " " + placedBlock.getZ()))
-                            .hoverEvent(HoverEvent.showText(Component.text("点击复制坐标位置")))
-                            .color(TextColor.fromCSSHexString("#00FF00")))
-                    .append(Component.space())
-                    .append(Component.text("处放置了TNT"))
+                    .append(blockLocationInfo(placedBlock, "放置了 " + placedBlockType.name()))
                     .build();
             OrzMC.server().sendMessage(msg);
-
-            String qqGroupMsg = playerName + " 在 " + x + " " + y + " " + z + " 放置过" + placedBlock.getType().name();
+            String qqGroupMsg = QQBotEvent.playerQQDisplayName(player) + " 在" + locationString(placedBlock) + "放置了 " + placedBlockType.name();
             QQBotEvent.sendQQGroupMsg(qqGroupMsg);
         }
     }
@@ -80,43 +71,84 @@ public class TNTEvent implements Listener {
         /* 处理发射器发射物品事件，如果发射的是TNT，则取消发射，并全服通告 */
         /* 发射器直接发射TNT、发射器发射打火石点燃TNT、发射器发射火焰弹 */
         Block placedBlock = event.getBlock();
-        int x = placedBlock.getX();
-        int y = placedBlock.getY();
-        int z = placedBlock.getZ();
         ItemStack itemStack = event.getItemStack();
-        if ((itemStack.getType() == Material.TNT || itemStack.getType() == Material.TNT_MINECART) && !hitInWhiteList(x, y, z)) {
+        if ((itemStack.getType() == Material.TNT || itemStack.getType() == Material.TNT_MINECART) && !hitInWhiteList(placedBlock)) {
             event.setCancelled(true);
-            OrzMC.server().sendMessage(blockLocationInfo(event.getBlock(), "发射TNT被禁止"));
+            OrzMC.server().sendMessage(blockLocationInfo(event.getBlock(), "发射" + itemStack.getType().name() + "被禁止"));
         }
     }
 
-    boolean hitInWhiteList(int x, int y, int z) {
+    @EventHandler
+    public void onBlockExplode(BlockExplodeEvent event) {
+        Block block = event.getBlock();
+        String msg = locationString(block) + "处" + block.getType().name() + "爆炸";
+        QQBotEvent.sendQQGroupMsg(msg);
+        OrzMC.server().sendMessage(locationComponent(block).append(Component.text("处" + block.getType().name() + "爆炸")));
+    }
+
+    @EventHandler
+    public void onEntityExplode(EntityExplodeEvent event) {
+        String msg = locationString(event.getLocation()) + "处" + event.getEntityType().name() + "爆炸";
+        QQBotEvent.sendQQGroupMsg(msg);
+        OrzMC.server().sendMessage(locationComponent(event.getLocation()).append(Component.text("处" + event.getEntityType().name() + "爆炸")));
+    }
+
+    @EventHandler
+    public void onFireworkExplode(FireworkExplodeEvent event) {
+//        String msg = event.getEntityType().name() + "爆炸";
+//        QQBotEvent.sendQQGroupMsg(msg);
+//        OrzMC.server().sendMessage(Component.text(event.getEntityType().name() + "爆炸"));
+    }
+
+    boolean hitInWhiteList(Block block) {
+        int x = block.getX();
+        int y = block.getY();
+        int z = block.getZ();
         if (x >= 30746 && x <= 30808 && y >= 62 && z >= 10139 && z <= 10227) return true;
-        OrzMC.server().getLogger().info("TNT没命中白名单：" + x + ", " + y + ", " + z);
+        OrzMC.server().getLogger().info(x + ", " + y + ", " + z + "处的" + block.getType().name() + "不在豁免区");
         return false;
     }
 
     TextComponent blockLocationInfo(Block block, String message) {
-
-        int x = block.getX();
-        int y = block.getY();
-        int z = block.getZ();
-
         return Component.text()
                 .append(Component.text("坐标"))
                 .append(Component.space())
-                .append(Component.text()
-                        .append(Component.text(x))
-                        .append(Component.space())
-                        .append(Component.text(y))
-                        .append(Component.space())
-                        .append(Component.text(z))
-                        .build()
-                        .clickEvent(ClickEvent.copyToClipboard(x + " " + y + " " + z))
-                        .hoverEvent(HoverEvent.showText(Component.text("点击复制坐标位置")))
-                        .color(TextColor.fromCSSHexString("#00FF00")))
+                .append(locationComponent(block))
                 .append(Component.space())
                 .append(Component.text(message))
                 .build();
+    }
+
+    TextComponent playerInfo(Player player) {
+        String playerName = QQBotEvent.playerQQDisplayName(player);
+        return Component.text()
+                .append(Component.text(playerName).color(TextColor.fromHexString("#FF0000")))
+                .build();
+    }
+
+    TextComponent locationComponent(Block block) {
+        String blockLocation = locationString(block);
+        TextComponent blockComponent = Component.text()
+                .append(Component.text(blockLocation))
+                .build()
+                .clickEvent(ClickEvent.copyToClipboard(blockLocation))
+                .hoverEvent(HoverEvent.showText(Component.text("点击复制坐标位置")))
+                .color(TextColor.fromCSSHexString("#00FF00"));
+        return Component.text().append(blockComponent).build();
+    }
+
+    String locationString(Block block) {
+        int x = block.getX();
+        int y = block.getY();
+        int z = block.getZ();
+        return " " + x + " " + y + " " + z + " ";
+    }
+
+    String locationString(Location location) {
+        return " " + location.getBlockX() + " " + location.getBlockY() + " " + location.getBlockZ() + " ";
+    }
+
+    TextComponent locationComponent(Location location) {
+        return locationComponent(location.getBlock());
     }
 }

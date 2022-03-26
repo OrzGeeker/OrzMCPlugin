@@ -28,7 +28,7 @@ public class QQBotEvent implements HttpHandler {
             BufferedReader br = new BufferedReader(new InputStreamReader(is));
             String line;
             StringBuilder sb = new StringBuilder();
-            while((line = br.readLine()) != null) {
+            while ((line = br.readLine()) != null) {
                 sb.append(line);
             }
             // 请求的JSON参数解析
@@ -38,11 +38,11 @@ public class QQBotEvent implements HttpHandler {
 
             String groupId = json.get("group_id").toString();
             String message = json.get("raw_message").toString();
-            if(groupId.equals("1056934080") && message.contains("/list")) {
+            if (groupId.equals("1056934080") && message.contains("/list")) {
                 notifyQQGroupOnlinePlayers();
             }
 
-            exchange.sendResponseHeaders(200,0);
+            exchange.sendResponseHeaders(200, 0);
             exchange.getResponseBody().close();
         } catch (Exception e) {
             OrzMC.logger().info(e.toString());
@@ -52,9 +52,9 @@ public class QQBotEvent implements HttpHandler {
     private void notifyQQGroupOnlinePlayers() {
         ArrayList<Player> onlinePlayers = new ArrayList<>();
         Object[] objects = OrzMC.server().getOnlinePlayers().toArray();
-        for(Object obj: objects) {
-            if(obj instanceof Player) {
-                Player p = (Player)obj;
+        for (Object obj : objects) {
+            if (obj instanceof Player) {
+                Player p = (Player) obj;
                 onlinePlayers.add(p);
             }
         }
@@ -62,38 +62,63 @@ public class QQBotEvent implements HttpHandler {
         String tip = String.format("------当前在线(%d/%d)------", onlinePlayers.size(), OrzMC.server().getMaxPlayers());
         StringBuilder msgBuilder = new StringBuilder(tip);
 
-        for(Player p: onlinePlayers) {
+        for (Player p : onlinePlayers) {
             String name = playerQQDisplayName(p);
             msgBuilder.append("\n").append(name);
         }
+        sendQQGroupMsg(msgBuilder.toString());
+
+    }
+
+    public static String playerQQDisplayName(Player player) {
+        String ret = player.getPlayerProfile().getName();
+
+        if (player.isOp()) {
+            ret += "(op)";
+        }
+
+        String gameMode = "";
+        switch (player.getGameMode()) {
+            case CREATIVE:
+                gameMode = "创造";
+                break;
+            case SURVIVAL:
+                gameMode = "生存";
+                break;
+            case ADVENTURE:
+                gameMode = "冒险";
+                break;
+            case SPECTATOR:
+                gameMode = "观察";
+                break;
+            default:
+                break;
+        }
+        ret += " " + gameMode + "模式";
+        return ret;
+    }
+
+    public static void sendQQGroupMsg(String msg) {
         try {
-            sendQQGroupMsg(msgBuilder.toString());
+            String groupId = "1056934080";
+            String url = "http://localhost:8200/send_group_msg?group_id=" + groupId + "&message=" + URLEncoder.encode(msg, "utf-8");
+            asyncHttpRequest(url);
         } catch (Exception e) {
             OrzMC.logger().info(e.toString());
         }
     }
 
-    public static String playerQQDisplayName(Player player) {
-        String ret=player.getPlayerProfile().getName();
-        if(player.isOp()) {
-            ret += "(op)";
+    public static void sendPrivateMsg(String msg) {
+        try {
+            String userId = "824219521";
+            String url = "http://localhost:8200/send_msg?user_id=" + userId + "&message=" + URLEncoder.encode(msg, "utf-8");
+            asyncHttpRequest(url);
+        } catch (Exception e) {
+            OrzMC.logger().info(e.toString());
         }
-        return ret;
     }
 
-    public static void sendQQGroupMsg(String msg) throws Exception {
-        String groupId = "1056934080";
-        String url = "http://localhost:8200/send_group_msg?group_id=" + groupId + "&message=" + URLEncoder.encode(msg,"utf-8");
-        asyncHttpRequest(url);
-    }
-
-    public static void sendPrivateMsg(String msg) throws Exception {
-        String userId = "824219521";
-        String url = "http://localhost:8200/send_msg?user_id=" + userId + "&message=" + URLEncoder.encode(msg,"utf-8");
-        asyncHttpRequest(url);
-    }
-
-    public  static void asyncHttpRequest(String url) {
+    public static void asyncHttpRequest(String url) {
         new Thread(() -> {
             try (CloseableHttpAsyncClient httpclient = HttpAsyncClients.createDefault()) {
                 httpclient.start();
