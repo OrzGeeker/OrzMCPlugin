@@ -7,6 +7,7 @@ import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
 import org.apache.http.impl.nio.client.HttpAsyncClients;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -15,9 +16,11 @@ import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URLEncoder;
-import java.util.ArrayList;
+import java.text.SimpleDateFormat;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.stream.Collectors;
 
 public class QQBotEvent implements HttpHandler {
 
@@ -37,16 +40,96 @@ public class QQBotEvent implements HttpHandler {
             JSONObject json = (JSONObject) jsonParser.parse(jsonString);
 
             String groupId = json.get("group_id").toString();
-            String message = json.get("raw_message").toString();
-            if (groupId.equals("1056934080") && message.contains("/list")) {
-                notifyQQGroupOnlinePlayers();
+            String message = json.get("raw_message").toString().trim();
+            boolean isAdmin = ((JSONObject)json.get("sender")).get("role").toString().equals("admin");
+            if (groupId.equals("1056934080") && message.startsWith("/")) {
+                ArrayList<String> cmd = new ArrayList<>(Arrays.asList(message.split("[, ]+")));
+                String cmdName = cmd.remove(0);
+                Set<String> userNameSet = new HashSet<>(cmd);
+                // 普通命令
+                if(cmdName.contains("/list")) {
+                    notifyQQGroupOnlinePlayers();
+                }
+                else if(cmdName.contains("/wl")) {
+                    showWhiteList();
+                }
+                // 管理员命令
+                if(isAdmin) {
+                    if(cmdName.contains("/wa")) {
+                        addWhiteList(userNameSet);
+                    }
+                    else if(cmdName.contains("/wr")) {
+                        removeWhiteList(userNameSet);
+                    }
+                }
             }
-
             exchange.sendResponseHeaders(200, 0);
             exchange.getResponseBody().close();
         } catch (Exception e) {
             OrzMC.logger().info(e.toString());
         }
+    }
+    private void showWhiteList() {
+        ArrayList<OfflinePlayer> whiteListPlayers = allWhiteListPlayer();
+        StringBuilder whiteListInfo = new StringBuilder(String.format("------当前白名单玩家(%d)------", whiteListPlayers.size()));
+        for(OfflinePlayer player: whiteListPlayers) {
+            String playerName = player.getName();
+            String lastSeen = new SimpleDateFormat("MM/dd/ HH:mm").format(new Date(player.getLastSeen()));
+            String isOnline = player.isOnline() ? "•" : "◦";
+            whiteListInfo.append("\n")
+                    .append(isOnline)
+                    .append(" ")
+                    .append(playerName)
+                    .append(" ")
+                    .append(String.format("%s",lastSeen));
+        }
+        sendQQGroupMsg(whiteListInfo.toString());
+    }
+
+    private void addWhiteList(Set<String> userNames) {
+        for (String userName: userNames) {
+            String addUserCmd = String.format("whitelist add %s", userName);
+            OrzMC.server().dispatchCommand(OrzMC.server().getConsoleSender(), addUserCmd);
+        }
+        OrzMC.server().reloadWhitelist();
+        Set<String> allWhiteListName = allWhiteListPlayerName();
+        String message = "------白名单添加------\n";
+        if(allWhiteListName.containsAll(userNames)) {
+            message += String.join("\n", userNames.stream().map(name -> "✔︎ ︎" + name).collect(Collectors.toSet()));
+        }
+        userNames.removeAll(allWhiteListName);
+        if(userNames.size() > 0) {
+            message += String.join("\n", userNames.stream().map(name -> "✘ " + name).collect(Collectors.toSet()));
+        }
+        sendQQGroupMsg(message);
+    }
+
+    private void removeWhiteList(Set<String> userNames) {
+        for (String userName: userNames) {
+            String addUserCmd = String.format("whitelist remove %s", userName);
+            OrzMC.server().dispatchCommand(OrzMC.server().getConsoleSender(), addUserCmd);
+        }
+        OrzMC.server().reloadWhitelist();
+        Set<String> allWhiteListName = allWhiteListPlayerName();
+        String message = "------白名单移除------\n";
+        if(!allWhiteListName.containsAll(userNames)) {
+            message += String.join("\n", userNames.stream().map(name -> "✔︎ " + name).collect(Collectors.toSet()));
+        }
+        userNames.retainAll(allWhiteListName);
+        if(userNames.size() > 0){
+            message += String.join("\n", userNames.stream().map(name -> "✘ " + name).collect(Collectors.toSet()));
+        }
+        sendQQGroupMsg(message);
+    }
+
+    private ArrayList<OfflinePlayer> allWhiteListPlayer() {
+        ArrayList<OfflinePlayer> whiteListPlayers = new ArrayList<>(OrzMC.server().getWhitelistedPlayers());
+        whiteListPlayers.sort((o1, o2) -> Long.compare(o2.getLastSeen(), o1.getLastSeen()));
+        return whiteListPlayers;
+    }
+
+    private Set<String> allWhiteListPlayerName() {
+        return allWhiteListPlayer().stream().map(OfflinePlayer::getName).collect(Collectors.toSet());
     }
 
     private void notifyQQGroupOnlinePlayers() {

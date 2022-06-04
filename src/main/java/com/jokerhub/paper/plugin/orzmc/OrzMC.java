@@ -6,6 +6,8 @@ import com.jokerhub.paper.plugin.orzmc.commands.TPBow;
 import com.jokerhub.paper.plugin.orzmc.events.*;
 import com.jokerhub.paper.plugin.orzmc.qqbot.QQBotEvent;
 import com.sun.net.httpserver.HttpServer;
+import org.bukkit.Bukkit;
+import org.bukkit.GameMode;
 import org.bukkit.Server;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -53,6 +55,13 @@ public final class OrzMC extends JavaPlugin implements Listener {
         }
 
         startQQBotServer();
+
+        // 开启强制使用白名单机制
+        getServer().setWhitelist(true);
+        getServer().setWhitelistEnforced(true);
+        getServer().reloadWhitelist();
+        getServer().setDefaultGameMode(GameMode.SURVIVAL);
+        getLogger().info("服务端使用强制白名单机制");
     }
 
     @Override
@@ -66,6 +75,7 @@ public final class OrzMC extends JavaPlugin implements Listener {
         try {
             server = HttpServer.create(new InetSocketAddress(8201), 0);
             server.createContext("/qqbot", new QQBotEvent());
+            server.setExecutor(Bukkit.getScheduler().getMainThreadExecutor(OrzMC.plugin()));
             server.start();
             logger().info("QQBot Server started!");
         } catch(Exception e) {
