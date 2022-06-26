@@ -38,6 +38,7 @@ public final class OrzMC extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(new TNTEvent(), this);
         getServer().getPluginManager().registerEvents(new OrzMenuEvent(), this);
         getServer().getPluginManager().registerEvents(new ServerEvent(), this);
+        getServer().getPluginManager().registerEvents(new WhiteListEvent(), this);
 
         PluginCommand tpbowCmd = getCommand("tpbow");
         if(tpbowCmd != null) {
