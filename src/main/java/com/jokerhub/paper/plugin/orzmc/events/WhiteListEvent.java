@@ -17,13 +17,16 @@ public class WhiteListEvent implements Listener {
         if(player.getName() == null) {
             return;
         }
+        if(event.isWhitelisted()) {
+            return;
+        }
         String qqGroupId = OrzMC.config().getString("qq_group_id");
         TextComponent kickMsg = Component.text(player.getName())
                 .append(Component.text(" 不在白名单中，请先加入QQ群: " + qqGroupId + " 联系管理员进行添加"));
         event.kickMessage(kickMsg);
 
         // 通知QQ群
-        String qqGroupMsg = player.getName() + "尝试加入服务器，被白名单拦截";
+        String qqGroupMsg = player.getName() + " 尝试加入服务器，被白名单拦截";
         QQBotEvent.sendQQGroupMsg(qqGroupMsg);
     }
 }
