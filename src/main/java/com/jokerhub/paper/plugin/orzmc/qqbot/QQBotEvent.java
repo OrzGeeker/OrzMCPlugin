@@ -16,6 +16,7 @@ import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
@@ -42,7 +43,8 @@ public class QQBotEvent implements HttpHandler {
             String groupId = json.get("group_id").toString();
             String message = json.get("raw_message").toString().trim();
             boolean isAdmin = ((JSONObject)json.get("sender")).get("role").toString().equals("admin");
-            if (groupId.equals("1056934080") && message.startsWith("/")) {
+            String qqGroupId = OrzMC.config().getString("qq_group_id");
+            if (groupId.equals(qqGroupId) && message.startsWith("/")) {
                 ArrayList<String> cmd = new ArrayList<>(Arrays.asList(message.split("[, ]+")));
                 String cmdName = cmd.remove(0);
                 Set<String> userNameSet = new HashSet<>(cmd);
@@ -136,8 +138,7 @@ public class QQBotEvent implements HttpHandler {
         ArrayList<Player> onlinePlayers = new ArrayList<>();
         Object[] objects = OrzMC.server().getOnlinePlayers().toArray();
         for (Object obj : objects) {
-            if (obj instanceof Player) {
-                Player p = (Player) obj;
+            if (obj instanceof Player p) {
                 onlinePlayers.add(p);
             }
         }
@@ -162,20 +163,12 @@ public class QQBotEvent implements HttpHandler {
 
         String gameMode = "";
         switch (player.getGameMode()) {
-            case CREATIVE:
-                gameMode = "创造";
-                break;
-            case SURVIVAL:
-                gameMode = "生存";
-                break;
-            case ADVENTURE:
-                gameMode = "冒险";
-                break;
-            case SPECTATOR:
-                gameMode = "观察";
-                break;
-            default:
-                break;
+            case CREATIVE -> gameMode = "创造";
+            case SURVIVAL -> gameMode = "生存";
+            case ADVENTURE -> gameMode = "冒险";
+            case SPECTATOR -> gameMode = "观察";
+            default -> {
+            }
         }
         ret += " " + gameMode + "模式";
         return ret;
@@ -183,8 +176,8 @@ public class QQBotEvent implements HttpHandler {
 
     public static void sendQQGroupMsg(String msg) {
         try {
-            String groupId = "1056934080";
-            String url = "http://localhost:8200/send_group_msg?group_id=" + groupId + "&message=" + URLEncoder.encode(msg, "utf-8");
+            String groupId = OrzMC.config().getString("qq_group_id");
+            String url = "http://" + OrzMC.config().getString("qq_bot_api_host") + "/send_group_msg?group_id=" + groupId + "&message=" + URLEncoder.encode(msg, StandardCharsets.UTF_8);
             asyncHttpRequest(url);
         } catch (Exception e) {
             OrzMC.logger().info(e.toString());
@@ -193,8 +186,8 @@ public class QQBotEvent implements HttpHandler {
 
     public static void sendPrivateMsg(String msg) {
         try {
-            String userId = "824219521";
-            String url = "http://localhost:8200/send_msg?user_id=" + userId + "&message=" + URLEncoder.encode(msg, "utf-8");
+            String userId = OrzMC.config().getString("qq_admin_id");
+            String url = "http://" + OrzMC.config().getString("qq_bot_api_host") + "/send_msg?user_id=" + userId + "&message=" + URLEncoder.encode(msg, StandardCharsets.UTF_8);
             asyncHttpRequest(url);
         } catch (Exception e) {
             OrzMC.logger().info(e.toString());

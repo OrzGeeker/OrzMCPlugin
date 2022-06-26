@@ -17,8 +17,9 @@ public class WhiteListEvent implements Listener {
         if(player.getName() == null) {
             return;
         }
+        String qqGroupId = OrzMC.config().getString("qq_group_id");
         TextComponent kickMsg = Component.text(player.getName())
-                .append(Component.text(" 不在白名单中，请先加入QQ群: 1056934080  联系管理员进行添加"));
+                .append(Component.text(" 不在白名单中，请先加入QQ群: " + qqGroupId + " 联系管理员进行添加"));
         event.kickMessage(kickMsg);
 
         // 通知QQ群

@@ -1,10 +1,12 @@
 # [YAML语言教程](https://www.ruanyifeng.com/blog/2016/07/yaml.html)
-test: 'hello config'
-array:
-  - '1'
-  - '2'
-  - '3'
-  - '4'
-ob1:
-  k1: 'v1'
-  k2: 'v2'
+
+# QQ群消息发送服务配置
+qq_group_id: '1056934080'
+qq_admin_id: '824219521'
+qq_bot_api_host: 'localhost:8200'
+
+# 服务器是否开启强制白名单
+force_whitelist: true
+
+# 服务器爆炸事件监听
+explosion_report: false

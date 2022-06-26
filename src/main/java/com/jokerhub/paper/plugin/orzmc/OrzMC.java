@@ -35,7 +35,11 @@ public final class OrzMC extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(new BowShootEvent(), this);
         getServer().getPluginManager().registerEvents(new PlayerEvent(), this);
         getServer().getPluginManager().registerEvents(new TPEvennt(), this);
-        getServer().getPluginManager().registerEvents(new TNTEvent(), this);
+
+        if(config().getBoolean("explosion_report")) {
+            getServer().getPluginManager().registerEvents(new TNTEvent(), this);
+        }
+
         getServer().getPluginManager().registerEvents(new OrzMenuEvent(), this);
         getServer().getPluginManager().registerEvents(new ServerEvent(), this);
         getServer().getPluginManager().registerEvents(new WhiteListEvent(), this);
@@ -58,8 +62,9 @@ public final class OrzMC extends JavaPlugin implements Listener {
         startQQBotServer();
 
         // 开启强制使用白名单机制
-        getServer().setWhitelist(true);
-        getServer().setWhitelistEnforced(true);
+        boolean forceWhitelist = config().getBoolean("force_whitelist");
+        getServer().setWhitelist(forceWhitelist);
+        getServer().setWhitelistEnforced(forceWhitelist);
         getServer().reloadWhitelist();
         getServer().setDefaultGameMode(GameMode.SURVIVAL);
         getLogger().info("服务端使用强制白名单机制");
