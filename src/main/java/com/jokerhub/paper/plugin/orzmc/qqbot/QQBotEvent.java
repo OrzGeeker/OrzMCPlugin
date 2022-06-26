@@ -49,11 +49,15 @@ public class QQBotEvent implements HttpHandler {
                 String cmdName = cmd.remove(0);
                 Set<String> userNameSet = new HashSet<>(cmd);
                 // 普通命令
+
                 if(cmdName.contains("/list")) {
                     notifyQQGroupOnlinePlayers();
                 }
                 else if(cmdName.contains("/wl")) {
                     showWhiteList();
+                }
+                else if(cmdName.contains("/?")) {
+                    showQQCmdHelp();
                 }
                 // 管理员命令
                 if(isAdmin) {
@@ -70,6 +74,18 @@ public class QQBotEvent implements HttpHandler {
         } catch (Exception e) {
             OrzMC.logger().info(e.toString());
         }
+    }
+    private void showQQCmdHelp() {
+        String cmdHelp = new StringBuilder()
+                .append("👨‍💼 管理员命令：\n")
+                .append("/wa\t添加玩家到服务器白名单中\n")
+                .append("/wr\t从服务器白名单中移除玩家\n")
+                .append("👨🏻‍💻 通用命令: \n")
+                .append("/list\t查看当前在线玩家\n")
+                .append("/wl\t查看当前在白名单中的玩家\n")
+                .append("/?\t查看QQ群中可以使用的命令信息\n")
+                .toString();
+        sendQQGroupMsg(cmdHelp);
     }
     private void showWhiteList() {
         ArrayList<OfflinePlayer> whiteListPlayers = allWhiteListPlayer();
