@@ -12,17 +12,15 @@
     <description>OrzMC for Paper Server Plugin</description>
     <properties>
         <java.version>1.18</java.version>
-        <paper.version.major>1.18</paper.version.major>
-        <paper.version.minor>2</paper.version.minor>
+        <paper.version.major>1.19</paper.version.major>
+        <paper.version.minor>3</paper.version.minor>
         <paper.version>${paper.version.major}.${paper.version.minor}</paper.version>
         <orzmc.root.dir>${user.home}</orzmc.root.dir>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.build.plugin.jar.filePath>${project.build.directory}/${project.build.finalName}.${project.packaging}</project.build.plugin.jar.filePath>
-<!--        <minecraft.local.server.plugin.dir>${orzmc.root.dir}/minecraft/versions/${paper.version}/server/paper/plugins</minecraft.local.server.plugin.dir> -->
-        <minecraft.local.server.plugin.dir>${orzmc.root.dir}/minecraft/versions/1.19/server/paper/plugins</minecraft.local.server.plugin.dir>
+        <minecraft.local.server.plugin.dir>${orzmc.root.dir}/minecraft/versions/${paper.version}/server/paper/plugins</minecraft.local.server.plugin.dir>
         <minecraft.remote.server.ssh.host.name>ubuntu@jokerhub.cn</minecraft.remote.server.ssh.host.name>
-<!--        <minecraft.remote.server.ssh.plugin.dir>${minecraft.remote.server.ssh.host.name}:~/minecraft/versions/${paper.version}/server/paper/plugins</minecraft.remote.server.ssh.plugin.dir>-->
-        <minecraft.remote.server.ssh.plugin.dir>${minecraft.remote.server.ssh.host.name}:~/minecraft/versions/1.19/server/paper/plugins</minecraft.remote.server.ssh.plugin.dir>
+        <minecraft.remote.server.ssh.plugin.dir>${minecraft.remote.server.ssh.host.name}:~/minecraft/versions/${paper.version}/server/paper/plugins</minecraft.remote.server.ssh.plugin.dir>
     </properties>
     <repositories>
         <repository>
