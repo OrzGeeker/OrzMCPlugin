@@ -29,3 +29,9 @@ jobs:
         cache: maven
     - name: Build with Maven
       run: mvn package --file pom.xml
+    - name: Upload a Build Artifact
+      uses: actions/upload-artifact@v3.1.2
+      with:
+        name: OrzMC Plugin Jar File
+        path: 'target/OrzMC-1.0.jar'
+
