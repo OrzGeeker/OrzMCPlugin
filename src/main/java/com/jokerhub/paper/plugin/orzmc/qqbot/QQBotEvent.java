@@ -76,15 +76,15 @@ public class QQBotEvent implements HttpHandler {
         }
     }
     private void showQQCmdHelp() {
-        String cmdHelp = new StringBuilder()
-                .append("👨‍💼 管理员命令：\n")
-                .append("/wa\t添加玩家到服务器白名单中\n")
-                .append("/wr\t从服务器白名单中移除玩家\n")
-                .append("👨🏻‍💻 通用命令: \n")
-                .append("/list\t查看当前在线玩家\n")
-                .append("/wl\t查看当前在白名单中的玩家\n")
-                .append("/?\t查看QQ群中可以使用的命令信息\n")
-                .toString();
+        String cmdHelp = """
+                👨‍💼 管理员命令：
+                /wa\t添加玩家到服务器白名单中
+                /wr\t从服务器白名单中移除玩家
+                👨🏻‍💻 通用命令:\s
+                /list\t查看当前在线玩家
+                /wl\t查看当前在白名单中的玩家
+                /?\t查看QQ群中可以使用的命令信息
+                """;
         sendQQGroupMsg(cmdHelp);
     }
     private void showWhiteList() {
