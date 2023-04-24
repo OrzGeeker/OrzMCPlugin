@@ -10,3 +10,6 @@ force_whitelist: true
 
 # 服务器爆炸事件监听
 explosion_report: false
+
+# Discord频道链接
+discord_link: 'https://discord.gg/MnKfFQ58rD'
