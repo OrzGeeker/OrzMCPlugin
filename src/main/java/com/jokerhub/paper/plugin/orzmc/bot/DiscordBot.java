@@ -13,6 +13,9 @@ public class DiscordBot {
     private static JDA api;
 
     public static void setup() {
+        boolean enable  = OrzMC.config().getBoolean("enable_discord_bot");
+        if (!enable) return;
+
         String serverInfo = "jokerhub.cn";
         String base64BotToken = OrzMC.config().getString("base64_discord_bot_token");
         String botToken = new String(Base64.getDecoder().decode(base64BotToken));
@@ -23,6 +26,10 @@ public class DiscordBot {
     }
 
     public static void shutdown() {
+
+        boolean enable  = OrzMC.config().getBoolean("enable_discord_bot");
+        if (!enable) return;
+
         api.shutdown();
     }
 
