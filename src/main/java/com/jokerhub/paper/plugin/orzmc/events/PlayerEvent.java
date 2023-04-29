@@ -1,8 +1,9 @@
 package com.jokerhub.paper.plugin.orzmc.events;
 
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
+import com.jokerhub.paper.plugin.orzmc.bot.Notifier;
 import com.jokerhub.paper.plugin.orzmc.commands.GuideBook;
-import com.jokerhub.paper.plugin.orzmc.qqbot.QQBotEvent;
+import com.jokerhub.paper.plugin.orzmc.bot.QQBot;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -41,8 +42,7 @@ public class PlayerEvent implements Listener {
 
         Object[] objects = OrzMC.server().getOnlinePlayers().toArray();
         for (Object obj : objects) {
-            if (obj instanceof Player) {
-                Player p = (Player) obj;
+            if (obj instanceof Player p) {
                 onlinePlayers.add(p);
             }
         }
@@ -50,25 +50,22 @@ public class PlayerEvent implements Listener {
         int onlinePlayerCount = onlinePlayers.size();
         int maxPlayerCount = OrzMC.server().getMaxPlayers();
 
-        String playerName = QQBotEvent.playerQQDisplayName(player);
+        String playerName = Notifier.playerDisplayName(player);
         StringBuilder msgBuilder = new StringBuilder(playerName).append(" ");
 
         boolean isMinusCurrentPlayer = false;
         switch (state) {
-            case JOIN: {
-                msgBuilder.append("上线");
-            }
-            break;
-            case QUIT: {
+            case JOIN -> msgBuilder.append("上线");
+            case QUIT -> {
                 isMinusCurrentPlayer = true;
                 msgBuilder.append("下线");
             }
-            break;
-            case KICK: {
+            case KICK -> {
                 isMinusCurrentPlayer = true;
                 msgBuilder.append("被踢");
             }
-            break;
+            default -> {
+            }
         }
 
         if (isMinusCurrentPlayer) {
@@ -83,13 +80,13 @@ public class PlayerEvent implements Listener {
             if (p.getUniqueId() == player.getUniqueId() && isMinusCurrentPlayer) {
                 continue;
             }
-            String name = QQBotEvent.playerQQDisplayName(p);
+            String name = Notifier.playerDisplayName(p);
             msgBuilder.append("\n").append(name);
         }
-        QQBotEvent.sendQQGroupMsg(msgBuilder.toString());
+        QQBot.sendQQGroupMsg(msgBuilder.toString());
         OrzMC.logger().info(msgBuilder.toString());
         if (onlinePlayerCount == 0) {
-            QQBotEvent.sendPrivateMsg("服务器当前无玩家，可进行服务器维护");
+            QQBot.sendPrivateMsg("服务器当前无玩家，可进行服务器维护");
         }
     }
 }

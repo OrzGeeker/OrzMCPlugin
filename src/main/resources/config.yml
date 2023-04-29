@@ -13,3 +13,6 @@ explosion_report: false
 
 # Discord频道链接
 discord_link: 'https://discord.gg/MnKfFQ58rD'
+
+# Discord Bot Token
+discord_bot_token: 'MTEwMTQ2MTIwMjYyNzk4OTU3NA.GSNb_X.zJCrtVY0ZUZy8xRuzd-joH-7TeGwfErCCHyV8s'

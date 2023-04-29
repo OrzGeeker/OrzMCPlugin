@@ -3,7 +3,7 @@ package com.jokerhub.paper.plugin.orzmc.events;
 import com.destroystokyo.paper.event.profile.ProfileWhitelistVerifyEvent;
 import com.destroystokyo.paper.profile.PlayerProfile;
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
-import com.jokerhub.paper.plugin.orzmc.qqbot.QQBotEvent;
+import com.jokerhub.paper.plugin.orzmc.bot.QQBot;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import org.bukkit.event.EventHandler;
@@ -30,7 +30,7 @@ public class WhiteListEvent implements Listener {
 
         // 通知QQ群
         String qqGroupMsg = player.getName() + " 尝试加入服务器，被白名单拦截";
-        QQBotEvent.sendQQGroupMsg(qqGroupMsg);
+        QQBot.sendQQGroupMsg(qqGroupMsg);
     }
 }
 

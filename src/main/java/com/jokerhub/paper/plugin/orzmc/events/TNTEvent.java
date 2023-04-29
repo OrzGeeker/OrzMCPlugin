@@ -2,7 +2,8 @@ package com.jokerhub.paper.plugin.orzmc.events;
 
 import com.destroystokyo.paper.event.block.TNTPrimeEvent;
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
-import com.jokerhub.paper.plugin.orzmc.qqbot.QQBotEvent;
+import com.jokerhub.paper.plugin.orzmc.bot.Notifier;
+import com.jokerhub.paper.plugin.orzmc.bot.QQBot;
 import io.papermc.paper.event.block.BlockPreDispenseEvent;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
@@ -42,15 +43,13 @@ public class TNTEvent implements Listener {
         Block placedBlock = event.getBlockPlaced();
         Material placedBlockType = placedBlock.getType();
         switch (placedBlockType) {
-            case TNT:
+            case TNT -> {
                 if (hitInWhiteList(placedBlock)) return;
                 shouldNotify = true;
-                break;
-            case RESPAWN_ANCHOR:
-                shouldNotify = true;
-                break;
-            default:
-                break;
+            }
+            case RESPAWN_ANCHOR -> shouldNotify = true;
+            default -> {
+            }
         }
         if (shouldNotify) {
             Player player = event.getPlayer();
@@ -61,8 +60,8 @@ public class TNTEvent implements Listener {
                     .append(blockLocationInfo(placedBlock, "放置了 " + placedBlockType.name()))
                     .build();
             OrzMC.server().sendMessage(msg);
-            String qqGroupMsg = QQBotEvent.playerQQDisplayName(player) + " 在" + locationString(placedBlock) + "放置了 " + placedBlockType.name();
-            QQBotEvent.sendQQGroupMsg(qqGroupMsg);
+            String qqGroupMsg = Notifier.playerDisplayName(player) + " 在" + locationString(placedBlock) + "放置了 " + placedBlockType.name();
+            QQBot.sendQQGroupMsg(qqGroupMsg);
         }
     }
 
@@ -82,14 +81,14 @@ public class TNTEvent implements Listener {
     public void onBlockExplode(BlockExplodeEvent event) {
         Block block = event.getBlock();
         String msg = locationString(block) + "处" + block.getType().name() + "爆炸";
-        QQBotEvent.sendQQGroupMsg(msg);
+        QQBot.sendQQGroupMsg(msg);
         OrzMC.server().sendMessage(locationComponent(block).append(Component.text("处" + block.getType().name() + "爆炸")));
     }
 
     @EventHandler
     public void onEntityExplode(EntityExplodeEvent event) {
         String msg = locationString(event.getLocation()) + "处" + event.getEntityType().name() + "爆炸";
-        QQBotEvent.sendQQGroupMsg(msg);
+        QQBot.sendQQGroupMsg(msg);
         OrzMC.server().sendMessage(locationComponent(event.getLocation()).append(Component.text("处" + event.getEntityType().name() + "爆炸")));
     }
 
@@ -117,7 +116,7 @@ public class TNTEvent implements Listener {
     }
 
     TextComponent playerInfo(Player player) {
-        String playerName = QQBotEvent.playerQQDisplayName(player);
+        String playerName = Notifier.playerDisplayName(player);
         return Component.text()
                 .append(Component.text(playerName).color(TextColor.fromHexString("#FF0000")))
                 .build();
