@@ -9,12 +9,31 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerKickEvent;
+import org.bukkit.event.player.PlayerLoginEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
 import java.util.ArrayList;
 
 public class PlayerEvent implements Listener {
 
+    @EventHandler
+    public void onPlayerLogin(PlayerLoginEvent event) {
+
+        if (event.getResult() == PlayerLoginEvent.Result.ALLOWED) {
+            return;
+        }
+
+        String playerName = event.getPlayer().getName();
+        String ipAddress = event.getAddress().getHostAddress();
+        String hostName = event.getHostname();
+        String resultDesc = event.getResult().toString();
+
+        String qqMsg =
+                "--- " + resultDesc + " ---" + "\n"
+                + playerName + "\n"
+                + ipAddress + "\n";
+        QQBot.sendQQGroupMsg(qqMsg);
+    }
     enum PlayerState {
         JOIN,
         QUIT,
