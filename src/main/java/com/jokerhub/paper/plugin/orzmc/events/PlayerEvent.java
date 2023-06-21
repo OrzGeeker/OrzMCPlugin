@@ -1,9 +1,20 @@
 package com.jokerhub.paper.plugin.orzmc.events;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
 import com.jokerhub.paper.plugin.orzmc.bot.Notifier;
-import com.jokerhub.paper.plugin.orzmc.commands.GuideBook;
 import com.jokerhub.paper.plugin.orzmc.bot.QQBot;
+import com.jokerhub.paper.plugin.orzmc.commands.GuideBook;
+import org.apache.http.HttpStatus;
+import org.apache.http.StatusLine;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.util.EntityUtils;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -16,6 +27,31 @@ import java.util.ArrayList;
 
 public class PlayerEvent implements Listener {
 
+    private static String toPrettyFormat(String json) {
+        JsonParser jsonParser = new JsonParser();
+        JsonObject jsonObject = jsonParser.parse(json).getAsJsonObject();
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        return gson.toJson(jsonObject);
+    }
+    public String getAddressOfIPv4(String ipv4Address) {
+        String ret = "";
+        if (ipv4Address.length() > 0) {
+            try (CloseableHttpClient httpclient = HttpClients.createDefault()) {
+                String url = "http://ip-api.com/json/" + ipv4Address + "?lang=zh-CN";
+                HttpGet request = new HttpGet(url);
+                CloseableHttpResponse response = httpclient.execute(request);
+                StatusLine status = response.getStatusLine();
+                if (status.getStatusCode() == HttpStatus.SC_OK) {
+                    String result = EntityUtils.toString(response.getEntity());
+                    ret = toPrettyFormat(result);
+                }
+            } catch (Exception e) {
+                ret = e.toString();
+            }
+        }
+        return ret;
+    }
+
     @EventHandler
     public void onPlayerLogin(PlayerLoginEvent event) {
 
@@ -25,13 +61,13 @@ public class PlayerEvent implements Listener {
 
         String playerName = event.getPlayer().getName();
         String ipAddress = event.getAddress().getHostAddress();
-        String hostName = event.getHostname();
         String resultDesc = event.getResult().toString();
-
+        String addressInfo = getAddressOfIPv4(ipAddress);
         String qqMsg =
                 "--- " + resultDesc + " ---" + "\n"
                 + playerName + "\n"
-                + ipAddress + "\n";
+                + addressInfo;
+
         QQBot.sendQQGroupMsg(qqMsg);
     }
     enum PlayerState {
