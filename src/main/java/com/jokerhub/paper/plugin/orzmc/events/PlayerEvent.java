@@ -37,7 +37,7 @@ public class PlayerEvent implements Listener {
         String ret = "";
         if (ipv4Address.length() > 0) {
             try (CloseableHttpClient httpclient = HttpClients.createDefault()) {
-                String url = "http://ip-api.com/json/" + ipv4Address + "?lang=zh-CN";
+                String url = "http://www.90th.cn/api/ip?key=1c9ac0159c94d8d0&ip=" + ipv4Address;
                 HttpGet request = new HttpGet(url);
                 CloseableHttpResponse response = httpclient.execute(request);
                 StatusLine status = response.getStatusLine();
