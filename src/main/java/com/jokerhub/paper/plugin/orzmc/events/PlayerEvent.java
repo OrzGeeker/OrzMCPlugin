@@ -65,7 +65,7 @@ public class PlayerEvent implements Listener {
         String addressInfo = getAddressOfIPv4(ipAddress);
         String qqMsg =
                 "--- " + resultDesc + " ---" + "\n"
-                + playerName + "\n"
+                + playerName + "(" + ipAddress + ")" + "\n"
                 + addressInfo;
 
         QQBot.sendQQGroupMsg(qqMsg);
