@@ -82,7 +82,15 @@ public final class OrzMC extends JavaPlugin implements Listener {
         DiscordBot.shutdown();
     }
 
+    public boolean enableQQBot() {
+        return OrzMC.config().getBoolean("enable_qq_bot");
+    }
+
     public void startQQBotServer() {
+        if (!enableQQBot()) {
+            logger().info("QQBot disabled!");
+            return;
+        }
         try {
             server = HttpServer.create(new InetSocketAddress(8201), 0);
             server.createContext("/qqbot", new QQBot());

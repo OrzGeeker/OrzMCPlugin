@@ -14,7 +14,10 @@ public class DiscordBot {
 
     public static void setup() {
         boolean enable  = OrzMC.config().getBoolean("enable_discord_bot");
-        if (!enable) return;
+        if (!enable) {
+            OrzMC.logger().info("Discord Bot Disabled!");
+            return;
+        }
 
         String serverInfo = "jokerhub.cn";
         String base64BotToken = OrzMC.config().getString("base64_discord_bot_token");
