@@ -82,12 +82,8 @@ public final class OrzMC extends JavaPlugin implements Listener {
         DiscordBot.shutdown();
     }
 
-    public boolean enableQQBot() {
-        return OrzMC.config().getBoolean("enable_qq_bot");
-    }
-
     public void startQQBotServer() {
-        if (!enableQQBot()) {
+        if (!QQBot.enable()) {
             logger().info("QQBot disabled!");
             return;
         }

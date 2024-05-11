@@ -73,6 +73,9 @@ public class QQBot implements HttpHandler {
     }
 
     public static void asyncHttpRequest(String url) {
+        if (!enable()) {
+            return;
+        }
         new Thread(() -> {
             try (CloseableHttpAsyncClient httpclient = HttpAsyncClients.createDefault()) {
                 httpclient.start();
@@ -86,5 +89,9 @@ public class QQBot implements HttpHandler {
                 OrzMC.logger().info(e.toString());
             }
         }).start();
+    }
+
+    public static boolean enable() {
+        return OrzMC.config().getBoolean("enable_qq_bot");
     }
 }
