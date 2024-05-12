@@ -20,6 +20,10 @@ import java.util.concurrent.Future;
 
 public class QQBot implements HttpHandler {
 
+    public static boolean enable() {
+        return OrzMC.config().getBoolean("enable_qq_bot");
+    }
+
     @Override
     public void handle(HttpExchange exchange) {
         try {
@@ -53,6 +57,10 @@ public class QQBot implements HttpHandler {
     }
 
     public static void sendQQGroupMsg(String msg) {
+        LarkBot.sendMessage(msg);
+        if (!enable()) {
+            return;
+        }
         try {
             String groupId = OrzMC.config().getString("qq_group_id");
             String url = "http://" + OrzMC.config().getString("qq_bot_api_host") + "/send_group_msg?group_id=" + groupId + "&message=" + URLEncoder.encode(msg, StandardCharsets.UTF_8);
@@ -63,6 +71,9 @@ public class QQBot implements HttpHandler {
     }
 
     public static void sendPrivateMsg(String msg) {
+        if (!enable()) {
+            return;
+        }
         try {
             String userId = OrzMC.config().getString("qq_admin_id");
             String url = "http://" + OrzMC.config().getString("qq_bot_api_host") + "/send_msg?user_id=" + userId + "&message=" + URLEncoder.encode(msg, StandardCharsets.UTF_8);
@@ -72,10 +83,7 @@ public class QQBot implements HttpHandler {
         }
     }
 
-    public static void asyncHttpRequest(String url) {
-        if (!enable()) {
-            return;
-        }
+    private static void asyncHttpRequest(String url) {
         new Thread(() -> {
             try (CloseableHttpAsyncClient httpclient = HttpAsyncClients.createDefault()) {
                 httpclient.start();
@@ -89,9 +97,5 @@ public class QQBot implements HttpHandler {
                 OrzMC.logger().info(e.toString());
             }
         }).start();
-    }
-
-    public static boolean enable() {
-        return OrzMC.config().getBoolean("enable_qq_bot");
     }
 }

@@ -18,8 +18,7 @@ public class OrzMenuCommand implements CommandExecutor {
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
-        if(sender instanceof Player) {
-            Player p = (Player) sender;
+        if(sender instanceof Player p) {
 
             Component title = Component.text(OrzMenuCommand.name);
             Inventory menu = Bukkit.createInventory(p, InventoryType.CHEST, title);

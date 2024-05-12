@@ -16,17 +16,14 @@ public class BowShootEvent implements Listener {
     @EventHandler
     public void onBowShoot(ProjectileHitEvent event) {
 
-        if (event.getEntity() instanceof Arrow) {
-            Arrow arrow = (Arrow) event.getEntity();
-            if(arrow.getShooter() instanceof Player) {
-                Player player = (Player) arrow.getShooter();
+        if (event.getEntity() instanceof Arrow arrow) {
+            if(arrow.getShooter() instanceof Player player) {
                 ItemMeta meta = player.getInventory().getItemInMainHand().getItemMeta();
                 if(meta == null) {
                     return;
                 }
                 Component mainHandItemName = meta.displayName();
-                if (mainHandItemName instanceof TextComponent) {
-                    TextComponent displayName = (TextComponent) mainHandItemName;
+                if (mainHandItemName instanceof TextComponent displayName) {
                     if (displayName.content().equals(TPBow.name)) {
                         if (arrow.isInWater()) {
                             player.sendMessage(TPBow.logText("箭射进了水里!"));

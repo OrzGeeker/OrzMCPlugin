@@ -11,14 +11,14 @@
     <url>https://minecraft.jokerhub.cn</url>
     <description>OrzMC for Paper Server Plugin</description>
     <properties>
-        <java.version>1.18</java.version>
+        <java.version>1.16</java.version>
         <paper.version.major>1.20</paper.version.major>
-        <paper.version.minor>1</paper.version.minor>
+        <paper.version.minor>4</paper.version.minor>
         <paper.version>${paper.version.major}.${paper.version.minor}</paper.version>
         <orzmc.root.dir>${user.home}</orzmc.root.dir>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.build.plugin.jar.filePath>${project.build.directory}/${project.build.finalName}.${project.packaging}</project.build.plugin.jar.filePath>
-        <minecraft.local.server.plugin.dir>${orzmc.root.dir}/minecraft/versions/${paper.version}/server/paper/plugins</minecraft.local.server.plugin.dir>
+        <minecraft.local.server.plugin.dir>${orzmc.root.dir}/minecraft/manifest/1.20.6/server/paper/plugins</minecraft.local.server.plugin.dir>
         <minecraft.remote.server.ssh.host.name>ubuntu@jokerhub.cn</minecraft.remote.server.ssh.host.name>
         <minecraft.remote.server.ssh.plugin.dir>${minecraft.remote.server.ssh.host.name}:~/minecraft/versions/${paper.version}/server/paper/plugins</minecraft.remote.server.ssh.plugin.dir>
     </properties>
@@ -109,12 +109,14 @@
                                     <available file="${minecraft.local.server.plugin.dir}" type="dir" />
                                     <then>
                                         <echo>✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅</echo>
+                                        <echo>start copy plugin into local server plugins dir</echo>
                                         <copy todir="${minecraft.local.server.plugin.dir}" file="${project.build.plugin.jar.filePath}"/>
+                                        <echo>end copy plugin into local server plugins dir</echo>
                                         <echo>✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅</echo>
                                     </then>
                                     <else>
                                         <echo>🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥</echo>
-                                        <echo>🔥  minecraft server plugin dir not exist!!!  🔥 </echo>
+                                        <echo>🔥  minecraft local server plugin dir not exist!!!  🔥 </echo>
                                         <echo>🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥</echo>
                                     </else>
                                 </if>
