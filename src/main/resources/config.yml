@@ -1,6 +1,7 @@
 # [YAML语言教程](https://www.ruanyifeng.com/blog/2016/07/yaml.html)
 
 # QQ群消息发送服务配置
+enable_qq_bot: false
 qq_group_id: '1056934080'
 qq_admin_id: '824219521'
 qq_bot_api_host: 'localhost:8200'
@@ -13,3 +14,13 @@ explosion_report: false
 
 # Discord频道链接
 discord_link: 'https://discord.gg/MnKfFQ58rD'
+
+# control discord bot enable
+enable_discord_bot: false
+
+# Discord Bot Token(base64 encoded)
+base64_discord_bot_token: 'TVRFd01UUTJNVEl3TWpZeU56azRPVFUzTkEuR3dxellaLjY3anU5c0JnVVN0QkNsb3FwbzM3QlV2dEZUbXdobGE3ZFp2RDV3'
+
+# Lark飞书消息转发
+enable_lark_bot: false
+lark_bot_webhook: 'https://open.feishu.cn/open-apis/bot/v2/hook/37930747-46b7-4b47-af70-8f64b0a4e9b8'

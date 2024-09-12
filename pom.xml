@@ -11,14 +11,14 @@
     <url>https://minecraft.jokerhub.cn</url>
     <description>OrzMC for Paper Server Plugin</description>
     <properties>
-        <java.version>1.18</java.version>
-        <paper.version.major>1.19</paper.version.major>
+        <java.version>1.16</java.version>
+        <paper.version.major>1.20</paper.version.major>
         <paper.version.minor>4</paper.version.minor>
         <paper.version>${paper.version.major}.${paper.version.minor}</paper.version>
         <orzmc.root.dir>${user.home}</orzmc.root.dir>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.build.plugin.jar.filePath>${project.build.directory}/${project.build.finalName}.${project.packaging}</project.build.plugin.jar.filePath>
-        <minecraft.local.server.plugin.dir>${orzmc.root.dir}/minecraft/versions/${paper.version}/server/paper/plugins</minecraft.local.server.plugin.dir>
+        <minecraft.local.server.plugin.dir>${orzmc.root.dir}/minecraft/manifest/1.20.6/server/paper/plugins</minecraft.local.server.plugin.dir>
         <minecraft.remote.server.ssh.host.name>ubuntu@jokerhub.cn</minecraft.remote.server.ssh.host.name>
         <minecraft.remote.server.ssh.plugin.dir>${minecraft.remote.server.ssh.host.name}:~/minecraft/versions/${paper.version}/server/paper/plugins</minecraft.remote.server.ssh.plugin.dir>
     </properties>
@@ -43,6 +43,17 @@
             <groupId>org.apache.httpcomponents</groupId>
             <artifactId>httpasyncclient</artifactId>
             <version>4.1.5</version>
+        </dependency>
+        <dependency>
+            <groupId>net.dv8tion</groupId>
+            <artifactId>JDA</artifactId>
+            <version>5.0.0-beta.8</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>club.minnced</groupId>
+                    <artifactId>opus-java</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
     </dependencies>
     <build>
@@ -75,6 +86,7 @@
                                         <exclude>META-INF/NOTICE*</exclude>
                                         <exclude>META-INF/DEPENDENCIES</exclude>
                                         <exclude>META-INF/MANIFEST.MF</exclude>
+                                        <exclude>META-INF.versions.9.module-info</exclude>
                                     </excludes>
                                 </filter>
                             </filters>
@@ -97,12 +109,14 @@
                                     <available file="${minecraft.local.server.plugin.dir}" type="dir" />
                                     <then>
                                         <echo>✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅</echo>
+                                        <echo>start copy plugin into local server plugins dir</echo>
                                         <copy todir="${minecraft.local.server.plugin.dir}" file="${project.build.plugin.jar.filePath}"/>
+                                        <echo>end copy plugin into local server plugins dir</echo>
                                         <echo>✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅</echo>
                                     </then>
                                     <else>
                                         <echo>🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥</echo>
-                                        <echo>🔥  minecraft server plugin dir not exist!!!  🔥 </echo>
+                                        <echo>🔥  minecraft local server plugin dir not exist!!!  🔥 </echo>
                                         <echo>🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥</echo>
                                     </else>
                                 </if>

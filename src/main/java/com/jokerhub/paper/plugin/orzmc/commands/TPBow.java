@@ -33,8 +33,7 @@ public class TPBow implements CommandExecutor {
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
-        if(sender instanceof Player) {
-            Player player = (Player) sender;
+        if(sender instanceof Player player) {
 
             ItemStack teleport_bow = new ItemStack(Material.BOW);
             ItemMeta meta = teleport_bow.getItemMeta();

@@ -1,19 +1,75 @@
 package com.jokerhub.paper.plugin.orzmc.events;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
+import com.jokerhub.paper.plugin.orzmc.bot.Notifier;
+import com.jokerhub.paper.plugin.orzmc.bot.QQBot;
 import com.jokerhub.paper.plugin.orzmc.commands.GuideBook;
-import com.jokerhub.paper.plugin.orzmc.qqbot.QQBotEvent;
+import org.apache.http.HttpStatus;
+import org.apache.http.StatusLine;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.util.EntityUtils;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerKickEvent;
+import org.bukkit.event.player.PlayerLoginEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
 import java.util.ArrayList;
 
 public class PlayerEvent implements Listener {
 
+    private static String toPrettyFormat(String json) {
+        JsonParser jsonParser = new JsonParser();
+        JsonObject jsonObject = jsonParser.parse(json).getAsJsonObject();
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        return gson.toJson(jsonObject);
+    }
+    public String getAddressOfIPv4(String ipv4Address) {
+        String ret = "";
+        if (ipv4Address.length() > 0) {
+            try (CloseableHttpClient httpclient = HttpClients.createDefault()) {
+                String url = "http://www.90th.cn/api/ip?key=1c9ac0159c94d8d0&ip=" + ipv4Address;
+                HttpGet request = new HttpGet(url);
+                CloseableHttpResponse response = httpclient.execute(request);
+                StatusLine status = response.getStatusLine();
+                if (status.getStatusCode() == HttpStatus.SC_OK) {
+                    String result = EntityUtils.toString(response.getEntity());
+                    ret = toPrettyFormat(result);
+                }
+            } catch (Exception e) {
+                ret = e.toString();
+            }
+        }
+        return ret;
+    }
+
+    @EventHandler
+    public void onPlayerLogin(PlayerLoginEvent event) {
+
+        if (event.getResult() == PlayerLoginEvent.Result.ALLOWED) {
+            return;
+        }
+
+        String playerName = event.getPlayer().getName();
+        String ipAddress = event.getAddress().getHostAddress();
+        String resultDesc = event.getResult().toString();
+        String addressInfo = getAddressOfIPv4(ipAddress);
+        String qqMsg =
+                "--- " + resultDesc + " ---" + "\n"
+                + playerName + "(" + ipAddress + ")" + "\n"
+                + addressInfo;
+
+        QQBot.sendQQGroupMsg(qqMsg);
+    }
     enum PlayerState {
         JOIN,
         QUIT,
@@ -41,8 +97,7 @@ public class PlayerEvent implements Listener {
 
         Object[] objects = OrzMC.server().getOnlinePlayers().toArray();
         for (Object obj : objects) {
-            if (obj instanceof Player) {
-                Player p = (Player) obj;
+            if (obj instanceof Player p) {
                 onlinePlayers.add(p);
             }
         }
@@ -50,25 +105,22 @@ public class PlayerEvent implements Listener {
         int onlinePlayerCount = onlinePlayers.size();
         int maxPlayerCount = OrzMC.server().getMaxPlayers();
 
-        String playerName = QQBotEvent.playerQQDisplayName(player);
+        String playerName = Notifier.playerDisplayName(player);
         StringBuilder msgBuilder = new StringBuilder(playerName).append(" ");
 
         boolean isMinusCurrentPlayer = false;
         switch (state) {
-            case JOIN: {
-                msgBuilder.append("上线");
-            }
-            break;
-            case QUIT: {
+            case JOIN -> msgBuilder.append("上线");
+            case QUIT -> {
                 isMinusCurrentPlayer = true;
                 msgBuilder.append("下线");
             }
-            break;
-            case KICK: {
+            case KICK -> {
                 isMinusCurrentPlayer = true;
                 msgBuilder.append("被踢");
             }
-            break;
+            default -> {
+            }
         }
 
         if (isMinusCurrentPlayer) {
@@ -83,13 +135,13 @@ public class PlayerEvent implements Listener {
             if (p.getUniqueId() == player.getUniqueId() && isMinusCurrentPlayer) {
                 continue;
             }
-            String name = QQBotEvent.playerQQDisplayName(p);
+            String name = Notifier.playerDisplayName(p);
             msgBuilder.append("\n").append(name);
         }
-        QQBotEvent.sendQQGroupMsg(msgBuilder.toString());
+        QQBot.sendQQGroupMsg(msgBuilder.toString());
         OrzMC.logger().info(msgBuilder.toString());
         if (onlinePlayerCount == 0) {
-            QQBotEvent.sendPrivateMsg("服务器当前无玩家，可进行服务器维护");
+            QQBot.sendPrivateMsg("服务器当前无玩家，可进行服务器维护");
         }
     }
 }
