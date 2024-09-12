@@ -1,6 +1,5 @@
 package com.jokerhub.paper.plugin.orzmc.events;
 
-import com.destroystokyo.paper.event.block.TNTPrimeEvent;
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
 import com.jokerhub.paper.plugin.orzmc.bot.Notifier;
 import com.jokerhub.paper.plugin.orzmc.bot.QQBot;
@@ -18,6 +17,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockExplodeEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.block.TNTPrimeEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.entity.FireworkExplodeEvent;
 import org.bukkit.inventory.ItemStack;
