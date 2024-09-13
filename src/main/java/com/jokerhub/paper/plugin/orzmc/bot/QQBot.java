@@ -36,12 +36,29 @@ public class QQBot implements HttpHandler {
             }
             // 请求的JSON参数解析
             String jsonString = sb.toString();
+            // 处理qq消息
+            processJsonStringPayload(jsonString);
+
+            exchange.sendResponseHeaders(200, 0);
+            exchange.getResponseBody().close();
+        } catch (Exception e) {
+            OrzMC.logger().info(e.toString());
+        }
+    }
+
+    public static void processJsonStringPayload(String jsonString) {
+        if (jsonString == null || jsonString.isEmpty()) {
+            return;
+        }
+        try {
             JSONParser jsonParser = new JSONParser();
             JSONObject json = (JSONObject) jsonParser.parse(jsonString);
-
+            if (json.get("group_id") == null || json.get("raw_message") == null) {
+                return;
+            }
             String groupId = json.get("group_id").toString();
             String message = json.get("raw_message").toString().trim();
-            boolean isAdmin = ((JSONObject)json.get("sender")).get("role").toString().equals("admin");
+            boolean isAdmin = ((JSONObject) json.get("sender")).get("role").toString().equals("admin");
             String qqGroupId = OrzMC.config().getString("qq_group_id");
             if (groupId.equals(qqGroupId)) {
                 String info = Notifier.processMessage(message, isAdmin);
@@ -49,10 +66,8 @@ public class QQBot implements HttpHandler {
                     sendQQGroupMsg(info);
                 }
             }
-            exchange.sendResponseHeaders(200, 0);
-            exchange.getResponseBody().close();
         } catch (Exception e) {
-            OrzMC.logger().info(e.toString());
+             OrzMC.logger().info(e.toString());
         }
     }
 

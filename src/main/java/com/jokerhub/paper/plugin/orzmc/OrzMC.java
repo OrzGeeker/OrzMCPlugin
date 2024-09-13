@@ -14,14 +14,18 @@ import org.bukkit.command.PluginCommand;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.java_websocket.client.WebSocketClient;
+import org.java_websocket.handshake.ServerHandshake;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.URI;
 import java.util.logging.Logger;
 
 public final class OrzMC extends JavaPlugin implements Listener {
 
     private HttpServer server;
+    private WebSocketClient webSocketClient;
 
     @Override
     public void onEnable() {
@@ -74,6 +78,9 @@ public final class OrzMC extends JavaPlugin implements Listener {
         if (forceWhitelist) {
             getLogger().info("服务端使用强制白名单机制");
         }
+
+        // 建立websocket链接
+        setupWebSocketClient();
     }
 
     @Override
@@ -107,6 +114,44 @@ public final class OrzMC extends JavaPlugin implements Listener {
         if(server != null) {
             server.stop(5);
             logger().info("QQBot Server stopping!");
+        }
+    }
+
+    public void setupWebSocketClient() {
+        String wsServer = config().getString("qq_bot_ws_server");
+        if (wsServer == null || wsServer.isEmpty()) {
+            return;
+        }
+        try {
+            URI uri = new URI(wsServer);
+            webSocketClient = new WebSocketClient(uri) {
+                @Override
+                public void onOpen(ServerHandshake handShakeData) {
+                    logger().info("打开长链接");
+                }
+
+                @Override
+                public void onMessage(String message) {
+                    logger().info("接收到消息: " + message);
+                    QQBot.processJsonStringPayload(message);
+                }
+
+                @Override
+                public void onClose(int code, String reason, boolean remote) {
+                    logger().info("关闭长链接");
+                }
+
+                @Override
+                public void onError(Exception ex) {
+                    logger().severe(ex.toString());
+                }
+            };
+
+            webSocketClient.connect();
+            // 在这里可以发送消息，例如：webSocketClient.send("Hello, WebSockets!");
+
+        } catch (Exception e) {
+            logger().info(e.toString());
         }
     }
 
