@@ -63,7 +63,7 @@ public class QQBot implements HttpHandler {
         }
         try {
             String groupId = OrzMC.config().getString("qq_group_id");
-            String url = OrzMC.config().getString("qq_bot_api_host") + "/send_group_msg?group_id=" + groupId + "&message=" + URLEncoder.encode(msg, StandardCharsets.UTF_8);
+            String url = OrzMC.config().getString("qq_bot_api_server") + "/send_group_msg?group_id=" + groupId + "&message=" + URLEncoder.encode(msg, StandardCharsets.UTF_8);
             asyncHttpRequest(url);
         } catch (Exception e) {
             OrzMC.logger().info(e.toString());
@@ -76,7 +76,7 @@ public class QQBot implements HttpHandler {
         }
         try {
             String userId = OrzMC.config().getString("qq_admin_id");
-            String url = OrzMC.config().getString("qq_bot_api_host") + "/send_msg?user_id=" + userId + "&message=" + URLEncoder.encode(msg, StandardCharsets.UTF_8);
+            String url = OrzMC.config().getString("qq_bot_api_server") + "/send_msg?user_id=" + userId + "&message=" + URLEncoder.encode(msg, StandardCharsets.UTF_8);
             asyncHttpRequest(url);
         } catch (Exception e) {
             OrzMC.logger().info(e.toString());
