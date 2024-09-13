@@ -1,11 +1,11 @@
 package com.jokerhub.paper.plugin.orzmc;
 
-import com.jokerhub.paper.plugin.orzmc.commands.OrzMenuCommand;
-import com.jokerhub.paper.plugin.orzmc.commands.GuideBook;
-import com.jokerhub.paper.plugin.orzmc.commands.TPBow;
 import com.jokerhub.paper.plugin.orzmc.bot.DiscordBot;
-import com.jokerhub.paper.plugin.orzmc.events.*;
 import com.jokerhub.paper.plugin.orzmc.bot.QQBot;
+import com.jokerhub.paper.plugin.orzmc.commands.GuideBook;
+import com.jokerhub.paper.plugin.orzmc.commands.OrzMenuCommand;
+import com.jokerhub.paper.plugin.orzmc.commands.TPBow;
+import com.jokerhub.paper.plugin.orzmc.events.*;
 import com.sun.net.httpserver.HttpServer;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
@@ -15,6 +15,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.logging.Logger;
 
@@ -90,7 +91,8 @@ public final class OrzMC extends JavaPlugin implements Listener {
             return;
         }
         try {
-            server = HttpServer.create(new InetSocketAddress(8201), 0);
+            InetAddress ipv4Address = InetAddress.getByName("0.0.0.0");
+            server = HttpServer.create(new InetSocketAddress(ipv4Address,8201), 0);
             server.createContext("/qqbot", new QQBot());
             server.setExecutor(Bukkit.getScheduler().getMainThreadExecutor(OrzMC.plugin()));
             server.start();
