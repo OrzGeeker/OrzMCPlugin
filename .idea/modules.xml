@@ -4,6 +4,7 @@
     <modules>
       <module fileurl="file://$PROJECT_DIR$/OrzMC.iml" filepath="$PROJECT_DIR$/OrzMC.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/OrzMC.main.iml" filepath="$PROJECT_DIR$/.idea/modules/OrzMC.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/com.jokerhub.paper.plugin.OrzMC.main.iml" filepath="$PROJECT_DIR$/.idea/modules/com.jokerhub.paper.plugin.OrzMC.main.iml" />
     </modules>
   </component>
 </project>
