@@ -92,7 +92,7 @@ public final class OrzMC extends JavaPlugin implements Listener {
         }
         try {
             InetAddress ipv4Address = InetAddress.getByName("0.0.0.0");
-            server = HttpServer.create(new InetSocketAddress(ipv4Address,8201), 0);
+            server = HttpServer.create(new InetSocketAddress(ipv4Address,39740), 0);
             server.createContext("/qqbot", new QQBot());
             server.setExecutor(Bukkit.getScheduler().getMainThreadExecutor(OrzMC.plugin()));
             server.start();
