@@ -70,7 +70,9 @@ public final class OrzMC extends JavaPlugin implements Listener {
         getServer().setWhitelistEnforced(forceWhitelist);
         getServer().reloadWhitelist();
         getServer().setDefaultGameMode(GameMode.SURVIVAL);
-        getLogger().info("服务端使用强制白名单机制");
+        if (forceWhitelist) {
+            getLogger().info("服务端使用强制白名单机制");
+        }
     }
 
     @Override

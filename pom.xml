@@ -18,7 +18,7 @@
         <orzmc.root.dir>${user.home}</orzmc.root.dir>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.build.plugin.jar.filePath>${project.build.directory}/${project.build.finalName}.${project.packaging}</project.build.plugin.jar.filePath>
-        <minecraft.local.server.plugin.dir>${orzmc.root.dir}/minecraft/manifest/1.20.6/server/paper/plugins</minecraft.local.server.plugin.dir>
+        <minecraft.local.server.plugin.dir>${orzmc.root.dir}/minecraft/manifest/1.21.1/server/paper/plugins</minecraft.local.server.plugin.dir>
         <minecraft.remote.server.ssh.host.name>ubuntu@jokerhub.cn</minecraft.remote.server.ssh.host.name>
         <minecraft.remote.server.ssh.plugin.dir>${minecraft.remote.server.ssh.host.name}:~/minecraft/versions/${paper.version}/server/paper/plugins</minecraft.remote.server.ssh.plugin.dir>
     </properties>
