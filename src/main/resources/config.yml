@@ -1,6 +1,6 @@
 # [YAML语言教程](https://www.ruanyifeng.com/blog/2016/07/yaml.html)
 
-# QQ群消息发送服务配置
+# QQ群消息发送服务配置, qqbot消息接收服务器端点为：https://<host_name>:8201/qqbot
 enable_qq_bot: true
 qq_group_id: '1056934080'
 qq_admin_id: '824219521'
