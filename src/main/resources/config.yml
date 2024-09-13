@@ -1,10 +1,15 @@
 # [YAML语言教程](https://www.ruanyifeng.com/blog/2016/07/yaml.html)
 
-# QQ群消息发送服务配置, qqbot消息接收服务器端点为：https://<host_name>:8201/qqbot
+# QQ群消息发送服务配置
 enable_qq_bot: true
 qq_group_id: '1056934080'
 qq_admin_id: '824219521'
 qq_bot_api_server: 'https://api.qqbot.jokerhub.cn'
+# qqbot消息接收服务器端点为：https://<host_name>:8201/qqbot
+# 测试请求：
+# curl -X POST -H "content-type:application/json" \
+#   -d '{"group_id":"1056934080","raw_message":"/wl","sender":{"role":"admin"}}' \
+#   https://<host_name>:8201/qqbot
 
 # 服务器是否开启强制白名单
 force_whitelist: true
