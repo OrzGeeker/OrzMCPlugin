@@ -119,7 +119,7 @@ public final class OrzMC extends JavaPlugin implements Listener {
 
     public void setupWebSocketClient() {
         String wsServer = config().getString("qq_bot_ws_server");
-        if (wsServer == null || wsServer.isEmpty()) {
+        if (!QQBot.enable() || wsServer == null || wsServer.isEmpty()) {
             return;
         }
         try {
