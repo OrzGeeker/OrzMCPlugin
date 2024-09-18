@@ -36,12 +36,29 @@ public class QQBot implements HttpHandler {
             }
             // 请求的JSON参数解析
             String jsonString = sb.toString();
+            // 处理qq消息
+            processJsonStringPayload(jsonString);
+
+            exchange.sendResponseHeaders(200, 0);
+            exchange.getResponseBody().close();
+        } catch (Exception e) {
+            OrzMC.logger().info(e.toString());
+        }
+    }
+
+    public static void processJsonStringPayload(String jsonString) {
+        if (jsonString == null || jsonString.isEmpty()) {
+            return;
+        }
+        try {
             JSONParser jsonParser = new JSONParser();
             JSONObject json = (JSONObject) jsonParser.parse(jsonString);
-
+            if (json.get("group_id") == null || json.get("raw_message") == null) {
+                return;
+            }
             String groupId = json.get("group_id").toString();
             String message = json.get("raw_message").toString().trim();
-            boolean isAdmin = ((JSONObject)json.get("sender")).get("role").toString().equals("admin");
+            boolean isAdmin = ((JSONObject) json.get("sender")).get("role").toString().equals("admin");
             String qqGroupId = OrzMC.config().getString("qq_group_id");
             if (groupId.equals(qqGroupId)) {
                 String info = Notifier.processMessage(message, isAdmin);
@@ -49,10 +66,8 @@ public class QQBot implements HttpHandler {
                     sendQQGroupMsg(info);
                 }
             }
-            exchange.sendResponseHeaders(200, 0);
-            exchange.getResponseBody().close();
         } catch (Exception e) {
-            OrzMC.logger().info(e.toString());
+             OrzMC.logger().info(e.toString());
         }
     }
 
@@ -63,7 +78,7 @@ public class QQBot implements HttpHandler {
         }
         try {
             String groupId = OrzMC.config().getString("qq_group_id");
-            String url = "http://" + OrzMC.config().getString("qq_bot_api_host") + "/send_group_msg?group_id=" + groupId + "&message=" + URLEncoder.encode(msg, StandardCharsets.UTF_8);
+            String url = OrzMC.config().getString("qq_bot_api_server") + "/send_group_msg?group_id=" + groupId + "&message=" + URLEncoder.encode(msg, StandardCharsets.UTF_8);
             asyncHttpRequest(url);
         } catch (Exception e) {
             OrzMC.logger().info(e.toString());
@@ -76,7 +91,7 @@ public class QQBot implements HttpHandler {
         }
         try {
             String userId = OrzMC.config().getString("qq_admin_id");
-            String url = "http://" + OrzMC.config().getString("qq_bot_api_host") + "/send_msg?user_id=" + userId + "&message=" + URLEncoder.encode(msg, StandardCharsets.UTF_8);
+            String url = OrzMC.config().getString("qq_bot_api_server") + "/send_msg?user_id=" + userId + "&message=" + URLEncoder.encode(msg, StandardCharsets.UTF_8);
             asyncHttpRequest(url);
         } catch (Exception e) {
             OrzMC.logger().info(e.toString());
