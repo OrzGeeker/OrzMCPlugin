@@ -21,7 +21,7 @@ public class TPBow implements CommandExecutor {
     public static String name = "传送弓";
 
     public static Component logText(String content) {
-        if(content.length() > 0) {
+        if(!content.isEmpty()) {
             return Component.text().append(Component.text("[" + TPBow.name + "]")
                             .color(TextColor.fromCSSHexString("#00FF00")))
                     .append(Component.space())
