@@ -21,7 +21,7 @@ public class TPBow implements CommandExecutor {
     public static String name = "传送弓";
 
     public static Component logText(String content) {
-        if(content.length() > 0) {
+        if(!content.isEmpty()) {
             return Component.text().append(Component.text("[" + TPBow.name + "]")
                             .color(TextColor.fromCSSHexString("#00FF00")))
                     .append(Component.space())
@@ -37,7 +37,7 @@ public class TPBow implements CommandExecutor {
 
             ItemStack teleport_bow = new ItemStack(Material.BOW);
             ItemMeta meta = teleport_bow.getItemMeta();
-            meta.addEnchant(Enchantment.ARROW_INFINITE,1,true);
+            meta.addEnchant(Enchantment.INFINITY,1,true);
             TextComponent name = Component.text(TPBow.name);
             meta.displayName(name);
             ArrayList<Component> loreList = new ArrayList<>();

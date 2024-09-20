@@ -5,17 +5,18 @@
         <MavenGeneralSettings>
           <option name="alwaysUpdateSnapshots" value="false" />
           <option name="checksumPolicy" value="NOT_SET" />
+          <option name="customMavenHome" />
+          <option name="emulateTerminal" value="false" />
           <option name="failureBehavior" value="NOT_SET" />
           <option name="localRepository" value="" />
-          <option name="mavenHome" value="Bundled (Maven 3)" />
+          <option name="mavenHome" value="已捆绑(Maven 3)" />
+          <option name="mavenHomeTypeForPersistence" value="BUNDLED3" />
           <option name="nonRecursive" value="false" />
           <option name="outputLevel" value="INFO" />
-          <option name="pluginUpdatePolicy" value="DEFAULT" />
           <option name="printErrorStackTraces" value="false" />
           <option name="showDialogWithAdvancedSettings" value="false" />
           <option name="threads" />
           <option name="useMavenConfig" value="false" />
-          <option name="usePluginRegistry" value="false" />
           <option name="userSettingsFile" value="" />
           <option name="workOffline" value="false" />
         </MavenGeneralSettings>
@@ -38,6 +39,7 @@
       </option>
       <option name="myRunnerParameters">
         <MavenRunnerParameters>
+          <option name="cmdOptions" />
           <option name="profiles">
             <set />
           </option>
@@ -47,9 +49,13 @@
               <option value="package" />
             </list>
           </option>
+          <option name="multimoduleDir" />
           <option name="pomFileName" />
           <option name="profilesMap">
             <map />
+          </option>
+          <option name="projectsCmdOptionValues">
+            <list />
           </option>
           <option name="resolveToWorkspace" value="false" />
           <option name="workingDirPath" value="$PROJECT_DIR$" />
