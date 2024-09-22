@@ -11,7 +11,7 @@
     <url>https://minecraft.jokerhub.cn</url>
     <description>OrzMC for Paper Server Plugin</description>
     <properties>
-        <java.version>1.16</java.version>
+        <java.version>21</java.version>
         <paper.version.major>1.21</paper.version.major>
         <paper.version.minor>1</paper.version.minor>
         <paper.version>${paper.version.major}.${paper.version.minor}</paper.version>
