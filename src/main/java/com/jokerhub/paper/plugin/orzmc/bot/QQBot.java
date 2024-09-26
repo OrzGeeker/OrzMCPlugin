@@ -1,8 +1,6 @@
 package com.jokerhub.paper.plugin.orzmc.bot;
 
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpHandler;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
@@ -10,40 +8,15 @@ import org.apache.http.impl.nio.client.HttpAsyncClients;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 
-import java.io.BufferedReader;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
-public class QQBot implements HttpHandler {
+public class QQBot {
 
-    public static boolean enable() {
-        return OrzMC.config().getBoolean("enable_qq_bot");
-    }
-
-    @Override
-    public void handle(HttpExchange exchange) {
-        try {
-            InputStream is = exchange.getRequestBody();
-            BufferedReader br = new BufferedReader(new InputStreamReader(is));
-            String line;
-            StringBuilder sb = new StringBuilder();
-            while ((line = br.readLine()) != null) {
-                sb.append(line);
-            }
-            // 请求的JSON参数解析
-            String jsonString = sb.toString();
-            // 处理qq消息
-            processJsonStringPayload(jsonString);
-
-            exchange.sendResponseHeaders(200, 0);
-            exchange.getResponseBody().close();
-        } catch (Exception e) {
-            OrzMC.logger().info(e.toString());
-        }
+    public static boolean disable() {
+        return !OrzMC.config().getBoolean("enable_qq_bot");
     }
 
     public static void processJsonStringPayload(String jsonString) {
@@ -67,13 +40,13 @@ public class QQBot implements HttpHandler {
                 }
             }
         } catch (Exception e) {
-             OrzMC.logger().info(e.toString());
+            OrzMC.logger().info(e.toString());
         }
     }
 
     public static void sendQQGroupMsg(String msg) {
         LarkBot.sendMessage(msg);
-        if (!enable()) {
+        if (disable()) {
             return;
         }
         try {
@@ -86,7 +59,7 @@ public class QQBot implements HttpHandler {
     }
 
     public static void sendPrivateMsg(String msg) {
-        if (!enable()) {
+        if (disable()) {
             return;
         }
         try {

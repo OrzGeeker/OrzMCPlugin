@@ -17,25 +17,23 @@ public class Notifier {
         String info = null;
 
         ArrayList<String> cmd = new ArrayList<>(Arrays.asList(message.split("[, ]+")));
-        String cmdName = cmd.remove(0);
+        String cmdName = cmd.removeFirst();
         Set<String> userNameSet = new HashSet<>(cmd);
 
         // 普通命令
-        if(cmdName.contains("/list")) {
+        if (cmdName.contains("/list")) {
             info = onlinePlayersInfo();
-        }
-        else if(cmdName.contains("/wl")) {
+        } else if (cmdName.contains("/wl")) {
             info = whiteListInfo();
-        }
-        else if(cmdName.contains("/?")) {
+        } else if (cmdName.contains("/?")) {
             info = cmdHelpInfo();
         }
         // 管理员命令
-        else if(cmdName.contains("/wa") && isAdmin) {
+        else if (cmdName.contains("/wa") && isAdmin) {
             info = addWhiteListInfo(userNameSet);
         }
         // 管理员命令
-        else if(cmdName.contains("/wr") && isAdmin) {
+        else if (cmdName.contains("/wr") && isAdmin) {
             info = removeWhiteListInfo(userNameSet);
         }
 
@@ -93,36 +91,32 @@ public class Notifier {
                 /?\t查看QQ群中可以使用的命令信息
                 """;
     }
+
     private static String whiteListInfo() {
         ArrayList<OfflinePlayer> whiteListPlayers = allWhiteListPlayer();
         StringBuilder whiteListInfo = new StringBuilder(String.format("------当前白名单玩家(%d)------", whiteListPlayers.size()));
-        for(OfflinePlayer player: whiteListPlayers) {
+        for (OfflinePlayer player : whiteListPlayers) {
             String playerName = player.getName();
             String lastSeen = new SimpleDateFormat("MM/dd/ HH:mm").format(new Date(player.getLastSeen()));
             String isOnline = player.isOnline() ? "•" : "◦";
-            whiteListInfo.append("\n")
-                    .append(isOnline)
-                    .append(" ")
-                    .append(playerName)
-                    .append(" ")
-                    .append(String.format("%s",lastSeen));
+            whiteListInfo.append("\n").append(isOnline).append(" ").append(playerName).append(" ").append(String.format("%s", lastSeen));
         }
         return whiteListInfo.toString();
     }
 
     private static String addWhiteListInfo(Set<String> userNames) {
-        for (String userName: userNames) {
+        for (String userName : userNames) {
             String addUserCmd = String.format("whitelist add %s", userName);
             OrzMC.server().dispatchCommand(OrzMC.server().getConsoleSender(), addUserCmd);
         }
         OrzMC.server().reloadWhitelist();
         Set<String> allWhiteListName = allWhiteListPlayerName();
         String message = "------白名单添加------\n";
-        if(allWhiteListName.containsAll(userNames)) {
+        if (allWhiteListName.containsAll(userNames)) {
             message += String.join("\n", userNames.stream().map(name -> "✔︎ ︎" + name).collect(Collectors.toSet()));
         }
         userNames.removeAll(allWhiteListName);
-        if(userNames.size() > 0) {
+        if (!userNames.isEmpty()) {
             message += String.join("\n", userNames.stream().map(name -> "✘ " + name).collect(Collectors.toSet()));
         }
 
@@ -130,18 +124,18 @@ public class Notifier {
     }
 
     private static String removeWhiteListInfo(Set<String> userNames) {
-        for (String userName: userNames) {
+        for (String userName : userNames) {
             String addUserCmd = String.format("whitelist remove %s", userName);
             OrzMC.server().dispatchCommand(OrzMC.server().getConsoleSender(), addUserCmd);
         }
         OrzMC.server().reloadWhitelist();
         Set<String> allWhiteListName = allWhiteListPlayerName();
         String message = "------白名单移除------\n";
-        if(!allWhiteListName.containsAll(userNames)) {
+        if (!allWhiteListName.containsAll(userNames)) {
             message += String.join("\n", userNames.stream().map(name -> "✔︎ " + name).collect(Collectors.toSet()));
         }
         userNames.retainAll(allWhiteListName);
-        if(userNames.size() > 0){
+        if (!userNames.isEmpty()) {
             message += String.join("\n", userNames.stream().map(name -> "✘ " + name).collect(Collectors.toSet()));
         }
         return message;

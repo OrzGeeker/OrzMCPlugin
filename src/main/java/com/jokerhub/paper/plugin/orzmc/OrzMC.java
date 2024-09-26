@@ -6,8 +6,6 @@ import com.jokerhub.paper.plugin.orzmc.commands.GuideBook;
 import com.jokerhub.paper.plugin.orzmc.commands.OrzMenuCommand;
 import com.jokerhub.paper.plugin.orzmc.commands.TPBow;
 import com.jokerhub.paper.plugin.orzmc.events.*;
-import com.sun.net.httpserver.HttpServer;
-import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Server;
 import org.bukkit.command.PluginCommand;
@@ -17,14 +15,11 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
 
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
 import java.net.URI;
 import java.util.logging.Logger;
 
 public final class OrzMC extends JavaPlugin implements Listener {
 
-    private HttpServer server;
     private WebSocketClient webSocketClient;
 
     @Override
@@ -65,10 +60,6 @@ public final class OrzMC extends JavaPlugin implements Listener {
             menuCmd.setExecutor(new OrzMenuCommand());
         }
 
-        startQQBotServer();
-
-        DiscordBot.setup();
-
         // 开启强制使用白名单机制
         boolean forceWhitelist = config().getBoolean("force_whitelist");
         getServer().setWhitelist(forceWhitelist);
@@ -79,47 +70,20 @@ public final class OrzMC extends JavaPlugin implements Listener {
             getLogger().info("服务端使用强制白名单机制");
         }
 
-        // 建立websocket链接
+        DiscordBot.setup();
         setupWebSocketClient();
     }
 
     @Override
     public void onDisable() {
         super.onDisable();
-
-        stopQQBotServer();
-
         DiscordBot.shutdown();
-    }
-
-    public void startQQBotServer() {
-        if (!QQBot.enable()) {
-            logger().info("QQBot disabled!");
-            return;
-        }
-        try {
-            InetAddress ipv4Address = InetAddress.getByName("0.0.0.0");
-            server = HttpServer.create(new InetSocketAddress(ipv4Address,39740), 0);
-            server.createContext("/qqbot", new QQBot());
-            server.setExecutor(Bukkit.getScheduler().getMainThreadExecutor(OrzMC.plugin()));
-            server.start();
-            logger().info("QQBot Server started!");
-        } catch(Exception e) {
-            logger().info(e.toString());
-            stopQQBotServer();
-        }
-    }
-
-    public void stopQQBotServer() {
-        if(server != null) {
-            server.stop(5);
-            logger().info("QQBot Server stopping!");
-        }
+        shutdownWebSocketClient();
     }
 
     public void setupWebSocketClient() {
         String wsServer = config().getString("qq_bot_ws_server");
-        if (!QQBot.enable() || wsServer == null || wsServer.isEmpty()) {
+        if (QQBot.disable() || wsServer == null || wsServer.isEmpty()) {
             return;
         }
         try {
@@ -153,6 +117,10 @@ public final class OrzMC extends JavaPlugin implements Listener {
         } catch (Exception e) {
             logger().info(e.toString());
         }
+    }
+
+    public void shutdownWebSocketClient() {
+        webSocketClient.close();
     }
 
     public static JavaPlugin plugin() {
