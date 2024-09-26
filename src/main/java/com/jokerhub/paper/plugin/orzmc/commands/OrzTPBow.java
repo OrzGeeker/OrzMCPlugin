@@ -16,13 +16,13 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 
-public class TPBow implements CommandExecutor {
+public class OrzTPBow implements CommandExecutor {
 
     public static String name = "传送弓";
 
     public static Component logText(String content) {
         if(!content.isEmpty()) {
-            return Component.text().append(Component.text("[" + TPBow.name + "]")
+            return Component.text().append(Component.text("[" + OrzTPBow.name + "]")
                             .color(TextColor.fromCSSHexString("#00FF00")))
                     .append(Component.space())
                     .append(Component.text(content))
@@ -38,7 +38,7 @@ public class TPBow implements CommandExecutor {
             ItemStack teleport_bow = new ItemStack(Material.BOW);
             ItemMeta meta = teleport_bow.getItemMeta();
             meta.addEnchant(Enchantment.INFINITY,1,true);
-            TextComponent name = Component.text(TPBow.name);
+            TextComponent name = Component.text(OrzTPBow.name);
             meta.displayName(name);
             ArrayList<Component> loreList = new ArrayList<>();
             loreList.add(Component.text("可以把你传送到箭落地的位置"));
@@ -48,7 +48,7 @@ public class TPBow implements CommandExecutor {
 
             ItemStack arrow = new ItemStack(Material.ARROW);
             player.getInventory().addItem(arrow);
-            player.sendMessage("你获得了" + TPBow.name);
+            player.sendMessage("你获得了" + OrzTPBow.name);
 
         } else {
             OrzMC.logger().info("不是玩家，此命令无效！");

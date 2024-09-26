@@ -5,9 +5,9 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
-import com.jokerhub.paper.plugin.orzmc.bot.Notifier;
-import com.jokerhub.paper.plugin.orzmc.bot.QQBot;
-import com.jokerhub.paper.plugin.orzmc.commands.GuideBook;
+import com.jokerhub.paper.plugin.orzmc.bot.OrzNotifier;
+import com.jokerhub.paper.plugin.orzmc.bot.OrzQQBot;
+import com.jokerhub.paper.plugin.orzmc.commands.OrzGuideBook;
 import org.apache.http.HttpStatus;
 import org.apache.http.StatusLine;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -22,11 +22,10 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.event.player.PlayerLoginEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
-import org.json.simple.parser.JSONParser;
 
 import java.util.ArrayList;
 
-public class PlayerEvent implements Listener {
+public class OrzPlayerEvent implements Listener {
 
     private static String toPrettyFormat(String json) {
         JsonObject jsonObject = JsonParser.parseString(json).getAsJsonObject();
@@ -35,7 +34,7 @@ public class PlayerEvent implements Listener {
     }
     public String getAddressOfIPv4(String ipv4Address) {
         String ret = "";
-        if (ipv4Address.length() > 0) {
+        if (!ipv4Address.isEmpty()) {
             try (CloseableHttpClient httpclient = HttpClients.createDefault()) {
                 String url = "https://www.90th.cn/api/ip?key=1c9ac0159c94d8d0&ip=" + ipv4Address;
                 HttpGet request = new HttpGet(url);
@@ -68,7 +67,7 @@ public class PlayerEvent implements Listener {
                 + playerName + "(" + ipAddress + ")" + "\n"
                 + addressInfo;
 
-        QQBot.sendQQGroupMsg(qqMsg);
+        OrzQQBot.sendQQGroupMsg(qqMsg);
     }
     enum PlayerState {
         JOIN,
@@ -78,7 +77,7 @@ public class PlayerEvent implements Listener {
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
-        GuideBook.giveNewPlayerAGuideBook(event.getPlayer());
+        OrzGuideBook.giveNewPlayerAGuideBook(event.getPlayer());
         notifyQQGroupWithMsg(event.getPlayer(), PlayerState.JOIN);
     }
 
@@ -105,7 +104,7 @@ public class PlayerEvent implements Listener {
         int onlinePlayerCount = onlinePlayers.size();
         int maxPlayerCount = OrzMC.server().getMaxPlayers();
 
-        String playerName = Notifier.playerDisplayName(player);
+        String playerName = OrzNotifier.playerDisplayName(player);
         StringBuilder msgBuilder = new StringBuilder(playerName).append(" ");
 
         boolean isMinusCurrentPlayer = false;
@@ -135,13 +134,13 @@ public class PlayerEvent implements Listener {
             if (p.getUniqueId() == player.getUniqueId() && isMinusCurrentPlayer) {
                 continue;
             }
-            String name = Notifier.playerDisplayName(p);
+            String name = OrzNotifier.playerDisplayName(p);
             msgBuilder.append("\n").append(name);
         }
-        QQBot.sendQQGroupMsg(msgBuilder.toString());
+        OrzQQBot.sendQQGroupMsg(msgBuilder.toString());
         OrzMC.logger().info(msgBuilder.toString());
         if (onlinePlayerCount == 0) {
-            QQBot.sendPrivateMsg("服务器当前无玩家，可进行服务器维护");
+            OrzQQBot.sendPrivateMsg("服务器当前无玩家，可进行服务器维护");
         }
     }
 }

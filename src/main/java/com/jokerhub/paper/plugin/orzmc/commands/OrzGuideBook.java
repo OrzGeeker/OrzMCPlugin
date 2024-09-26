@@ -21,7 +21,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.UUID;
 
 
-public class GuideBook implements CommandExecutor {
+public class OrzGuideBook implements CommandExecutor {
 
     @Override
     public boolean onCommand(@NotNull CommandSender commandSender, @NotNull Command command, @NotNull String s, @NotNull String[] strings) {

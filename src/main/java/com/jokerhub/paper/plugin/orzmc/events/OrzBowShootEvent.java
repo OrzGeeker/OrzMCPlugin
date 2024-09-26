@@ -1,6 +1,6 @@
 package com.jokerhub.paper.plugin.orzmc.events;
 
-import com.jokerhub.paper.plugin.orzmc.commands.TPBow;
+import com.jokerhub.paper.plugin.orzmc.commands.OrzTPBow;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import org.bukkit.Sound;
@@ -11,7 +11,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.inventory.meta.ItemMeta;
 
-public class BowShootEvent implements Listener {
+public class OrzBowShootEvent implements Listener {
 
     @EventHandler
     public void onBowShoot(ProjectileHitEvent event) {
@@ -24,18 +24,18 @@ public class BowShootEvent implements Listener {
                 }
                 Component mainHandItemName = meta.displayName();
                 if (mainHandItemName instanceof TextComponent displayName) {
-                    if (displayName.content().equals(TPBow.name)) {
+                    if (displayName.content().equals(OrzTPBow.name)) {
                         if (arrow.isInWater()) {
-                            player.sendMessage(TPBow.logText("箭射进了水里!"));
+                            player.sendMessage(OrzTPBow.logText("箭射进了水里!"));
                             return;
                         }
                         if(arrow.isInLava()) {
-                            player.sendMessage(TPBow.logText("箭射进了岩浆里!"));
+                            player.sendMessage(OrzTPBow.logText("箭射进了岩浆里!"));
                             return;
                         }
                         player.teleport(arrow);
                         player.playSound(player.getLocation(), Sound.ENTITY_CAT_PURR, 1.0F, 1.0F);
-                        player.sendMessage(TPBow.logText("传送完成!"));
+                        player.sendMessage(OrzTPBow.logText("传送完成!"));
                     }
                 }
             }

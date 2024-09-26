@@ -8,7 +8,7 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class Notifier {
+public class OrzNotifier {
 
     public static String processMessage(String message, Boolean isAdmin) {
 
@@ -73,7 +73,7 @@ public class Notifier {
         StringBuilder msgBuilder = new StringBuilder(tip);
 
         for (Player p : onlinePlayers) {
-            String name = Notifier.playerDisplayName(p);
+            String name = OrzNotifier.playerDisplayName(p);
             msgBuilder.append("\n").append(name);
         }
 

@@ -8,7 +8,7 @@ import net.dv8tion.jda.api.requests.GatewayIntent;
 
 import java.util.Base64;
 
-public class DiscordBot {
+public class OrzDiscordBot {
 
     private static JDA api;
 
@@ -23,7 +23,7 @@ public class DiscordBot {
         String base64BotToken = OrzMC.config().getString("base64_discord_bot_token");
         String botToken = new String(Base64.getDecoder().decode(base64BotToken));
         api = JDABuilder.createLight(botToken, GatewayIntent.GUILD_MESSAGES, GatewayIntent.MESSAGE_CONTENT, GatewayIntent.GUILD_MEMBERS)
-                .addEventListeners(new DiscordEvent())
+                .addEventListeners(new OrzDiscordEvent())
                 .setActivity(Activity.playing(serverInfo))
                 .build();
     }

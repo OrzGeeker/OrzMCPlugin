@@ -13,7 +13,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
-public class QQBot {
+public class OrzQQBot {
 
     public static boolean disable() {
         return !OrzMC.config().getBoolean("enable_qq_bot");
@@ -34,7 +34,7 @@ public class QQBot {
             boolean isAdmin = ((JSONObject) json.get("sender")).get("role").toString().equals("admin");
             String qqGroupId = OrzMC.config().getString("qq_group_id");
             if (groupId.equals(qqGroupId)) {
-                String info = Notifier.processMessage(message, isAdmin);
+                String info = OrzNotifier.processMessage(message, isAdmin);
                 if (info != null) {
                     sendQQGroupMsg(info);
                 }
@@ -45,7 +45,7 @@ public class QQBot {
     }
 
     public static void sendQQGroupMsg(String msg) {
-        LarkBot.sendMessage(msg);
+        OrzLarkBot.sendMessage(msg);
         if (disable()) {
             return;
         }

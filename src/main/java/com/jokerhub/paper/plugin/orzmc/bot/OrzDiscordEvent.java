@@ -6,7 +6,7 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import org.jetbrains.annotations.NotNull;
 
-public class DiscordEvent extends ListenerAdapter {
+public class OrzDiscordEvent extends ListenerAdapter {
 
     @Override
     public void onMessageReceived(@NotNull MessageReceivedEvent event) {
@@ -17,7 +17,7 @@ public class DiscordEvent extends ListenerAdapter {
         Message message = event.getMessage();
         String content = message.getContentRaw();
         Boolean isAdmin = true;
-        String info = Notifier.processMessage(content, isAdmin);
+        String info = OrzNotifier.processMessage(content, isAdmin);
         if (info != null) {
             MessageChannel channel = event.getChannel();
             channel.sendMessage(info).queue();

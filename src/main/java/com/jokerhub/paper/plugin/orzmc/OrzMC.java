@@ -1,10 +1,10 @@
 package com.jokerhub.paper.plugin.orzmc;
 
-import com.jokerhub.paper.plugin.orzmc.bot.DiscordBot;
-import com.jokerhub.paper.plugin.orzmc.bot.QQBot;
-import com.jokerhub.paper.plugin.orzmc.commands.GuideBook;
+import com.jokerhub.paper.plugin.orzmc.bot.OrzDiscordBot;
+import com.jokerhub.paper.plugin.orzmc.bot.OrzQQBot;
+import com.jokerhub.paper.plugin.orzmc.commands.OrzGuideBook;
 import com.jokerhub.paper.plugin.orzmc.commands.OrzMenuCommand;
-import com.jokerhub.paper.plugin.orzmc.commands.TPBow;
+import com.jokerhub.paper.plugin.orzmc.commands.OrzTPBow;
 import com.jokerhub.paper.plugin.orzmc.events.*;
 import org.bukkit.GameMode;
 import org.bukkit.Server;
@@ -33,30 +33,30 @@ public final class OrzMC extends JavaPlugin implements Listener {
 
         // Plugin startup logic
         getLogger().info("OrzMC 插件生效!");
-        getServer().getPluginManager().registerEvents(new BowShootEvent(), this);
-        getServer().getPluginManager().registerEvents(new PlayerEvent(), this);
-        getServer().getPluginManager().registerEvents(new TPEvennt(), this);
+        getServer().getPluginManager().registerEvents(new OrzBowShootEvent(), this);
+        getServer().getPluginManager().registerEvents(new OrzPlayerEvent(), this);
+        getServer().getPluginManager().registerEvents(new OrzTPEvennt(), this);
 
-        if(config().getBoolean("explosion_report")) {
-            getServer().getPluginManager().registerEvents(new TNTEvent(), this);
+        if (config().getBoolean("explosion_report")) {
+            getServer().getPluginManager().registerEvents(new OrzTNTEvent(), this);
         }
 
         getServer().getPluginManager().registerEvents(new OrzMenuEvent(), this);
-        getServer().getPluginManager().registerEvents(new ServerEvent(), this);
-        getServer().getPluginManager().registerEvents(new WhiteListEvent(), this);
+        getServer().getPluginManager().registerEvents(new OrzServerEvent(), this);
+        getServer().getPluginManager().registerEvents(new OrzWhiteListEvent(), this);
 
         PluginCommand tpbowCmd = getCommand("tpbow");
-        if(tpbowCmd != null) {
-            tpbowCmd.setExecutor(new TPBow());
+        if (tpbowCmd != null) {
+            tpbowCmd.setExecutor(new OrzTPBow());
         }
 
         PluginCommand guideCmd = getCommand("guide");
-        if(guideCmd != null) {
-            guideCmd.setExecutor(new GuideBook());
+        if (guideCmd != null) {
+            guideCmd.setExecutor(new OrzGuideBook());
         }
 
         PluginCommand menuCmd = getCommand("menu");
-        if(menuCmd != null) {
+        if (menuCmd != null) {
             menuCmd.setExecutor(new OrzMenuCommand());
         }
 
@@ -70,20 +70,21 @@ public final class OrzMC extends JavaPlugin implements Listener {
             getLogger().info("服务端使用强制白名单机制");
         }
 
-        DiscordBot.setup();
+        OrzDiscordBot.setup();
         setupWebSocketClient();
     }
 
     @Override
     public void onDisable() {
         super.onDisable();
-        DiscordBot.shutdown();
+        OrzDiscordBot.shutdown();
         shutdownWebSocketClient();
+        OrzServerEvent.notifyServerStop();
     }
 
     public void setupWebSocketClient() {
         String wsServer = config().getString("qq_bot_ws_server");
-        if (QQBot.disable() || wsServer == null || wsServer.isEmpty()) {
+        if (OrzQQBot.disable() || wsServer == null || wsServer.isEmpty()) {
             return;
         }
         try {
@@ -97,7 +98,7 @@ public final class OrzMC extends JavaPlugin implements Listener {
                 @Override
                 public void onMessage(String message) {
                     logger().info("接收到消息: " + message);
-                    QQBot.processJsonStringPayload(message);
+                    OrzQQBot.processJsonStringPayload(message);
                 }
 
                 @Override
@@ -120,6 +121,9 @@ public final class OrzMC extends JavaPlugin implements Listener {
     }
 
     public void shutdownWebSocketClient() {
+        if (webSocketClient == null) {
+            return;
+        }
         webSocketClient.close();
     }
 
@@ -135,5 +139,7 @@ public final class OrzMC extends JavaPlugin implements Listener {
         return OrzMC.plugin().getLogger();
     }
 
-    public static FileConfiguration config() { return OrzMC.plugin().getConfig(); }
+    public static FileConfiguration config() {
+        return OrzMC.plugin().getConfig();
+    }
 }

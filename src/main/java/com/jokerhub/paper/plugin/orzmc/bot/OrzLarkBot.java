@@ -13,7 +13,7 @@ import org.json.simple.JSONObject;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
-public class LarkBot {
+public class OrzLarkBot {
 
     public static boolean enable() {
         return OrzMC.config().getBoolean("enable_lark_bot");
