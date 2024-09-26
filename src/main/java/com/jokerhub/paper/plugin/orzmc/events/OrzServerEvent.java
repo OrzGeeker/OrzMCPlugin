@@ -37,6 +37,5 @@ public class OrzServerEvent implements Listener {
                 "\n\n" +
                 "停止状态无法响应命令消息";
         OrzQQBot.sendQQGroupMsg(stringBuilder);
-        OrzMC.logger().info(stringBuilder);
     }
 }
