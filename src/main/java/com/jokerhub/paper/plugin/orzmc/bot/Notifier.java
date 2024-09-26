@@ -107,7 +107,7 @@ public class Notifier {
     private static String addWhiteListInfo(Set<String> userNames) {
         for (String userName : userNames) {
             String addUserCmd = String.format("whitelist add %s", userName);
-            OrzMC.server().dispatchCommand(OrzMC.server().getConsoleSender(), addUserCmd);
+            performCommandFromConsoleSender(addUserCmd);
         }
         OrzMC.server().reloadWhitelist();
         Set<String> allWhiteListName = allWhiteListPlayerName();
@@ -125,8 +125,8 @@ public class Notifier {
 
     private static String removeWhiteListInfo(Set<String> userNames) {
         for (String userName : userNames) {
-            String addUserCmd = String.format("whitelist remove %s", userName);
-            OrzMC.server().dispatchCommand(OrzMC.server().getConsoleSender(), addUserCmd);
+            String removeUserCmd = String.format("whitelist remove %s", userName);
+            performCommandFromConsoleSender(removeUserCmd);
         }
         OrzMC.server().reloadWhitelist();
         Set<String> allWhiteListName = allWhiteListPlayerName();
@@ -149,5 +149,9 @@ public class Notifier {
 
     private static Set<String> allWhiteListPlayerName() {
         return allWhiteListPlayer().stream().map(OfflinePlayer::getName).collect(Collectors.toSet());
+    }
+
+    private static void performCommandFromConsoleSender(String cmd) {
+        OrzMC.server().getScheduler().runTask(OrzMC.plugin(), () -> OrzMC.server().dispatchCommand(OrzMC.server().getConsoleSender(), cmd));
     }
 }

@@ -12,6 +12,8 @@
     <description>OrzMC for Paper Server Plugin</description>
     <properties>
         <java.version>21</java.version>
+        <maven.compiler.source>${java.version}</maven.compiler.source>
+        <maven.compiler.target>${java.version}</maven.compiler.target>
         <paper.version.major>1.21</paper.version.major>
         <paper.version.minor>1</paper.version.minor>
         <paper.version>${paper.version.major}.${paper.version.minor}</paper.version>
@@ -85,7 +87,7 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.8.1</version>
                 <configuration>
-                    <release>17</release>
+                    <release>${java.version}</release>
                 </configuration>
             </plugin>
             <plugin>
