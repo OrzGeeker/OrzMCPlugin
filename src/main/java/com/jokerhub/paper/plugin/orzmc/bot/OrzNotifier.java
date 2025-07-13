@@ -29,12 +29,12 @@ public class OrzNotifier {
             info = cmdHelpInfo();
         }
         // 管理员命令
-        else if (cmdName.contains("/wa") && isAdmin) {
-            info = addWhiteListInfo(userNameSet);
+        else if (cmdName.contains("/wa")) {
+            info = isAdmin ? addWhiteListInfo(userNameSet) : adminPermissionRequiredTip(cmdName);
         }
         // 管理员命令
-        else if (cmdName.contains("/wr") && isAdmin) {
-            info = removeWhiteListInfo(userNameSet);
+        else if (cmdName.contains("/wr")) {
+            info = isAdmin ? removeWhiteListInfo(userNameSet) : adminPermissionRequiredTip(cmdName);
         }
 
         return info;
@@ -90,6 +90,10 @@ public class OrzNotifier {
                 /wl\t查看当前在白名单中的玩家
                 /?\t查看QQ群中可以使用的命令信息
                 """;
+    }
+
+    public static String adminPermissionRequiredTip(String cmd) {
+        return cmd + "命令需要群管理员权限";
     }
 
     private static String whiteListInfo() {
