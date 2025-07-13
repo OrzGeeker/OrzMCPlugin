@@ -110,8 +110,8 @@ public class OrzNotifier {
 
     private static String addWhiteListInfo(Set<String> userNames) {
         for (String userName : userNames) {
-            String addUserCmd = String.format("whitelist add %s", userName);
-            performCommandFromConsoleSender(addUserCmd);
+            OfflinePlayer player = OrzMC.server().getOfflinePlayer(userName);
+            player.setWhitelisted(true);
         }
         OrzMC.server().reloadWhitelist();
         Set<String> allWhiteListName = allWhiteListPlayerName();
@@ -129,8 +129,8 @@ public class OrzNotifier {
 
     private static String removeWhiteListInfo(Set<String> userNames) {
         for (String userName : userNames) {
-            String removeUserCmd = String.format("whitelist remove %s", userName);
-            performCommandFromConsoleSender(removeUserCmd);
+            OfflinePlayer player = OrzMC.server().getOfflinePlayer(userName);
+            player.setWhitelisted(false);
         }
         OrzMC.server().reloadWhitelist();
         Set<String> allWhiteListName = allWhiteListPlayerName();
