@@ -45,6 +45,10 @@ public final class OrzMC extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(new OrzServerEvent(), this);
         getServer().getPluginManager().registerEvents(new OrzWhiteListEvent(), this);
 
+        if (OrzMC.config().getBoolean("enable_debug")) {
+            getServer().getPluginManager().registerEvents(new OrzDebugEvent(), this);
+        }
+
         PluginCommand tpbowCmd = getCommand("tpbow");
         if (tpbowCmd != null) {
             tpbowCmd.setExecutor(new OrzTPBow());
