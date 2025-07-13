@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.jokerhub.paper.plugin</groupId>
     <artifactId>OrzMC</artifactId>
-    <version>1.0</version>
+    <version>1.21.7</version>
     <packaging>jar</packaging>
     <name>OrzMC</name>
     <url>https://minecraft.jokerhub.cn</url>
@@ -15,7 +15,7 @@
         <maven.compiler.source>${java.version}</maven.compiler.source>
         <maven.compiler.target>${java.version}</maven.compiler.target>
         <paper.version.major>1.21</paper.version.major>
-        <paper.version.minor>3</paper.version.minor>
+        <paper.version.minor>7</paper.version.minor>
         <paper.version>${paper.version.major}.${paper.version.minor}</paper.version>
         <orzmc.root.dir>${user.home}</orzmc.root.dir>
         <orzmc.plugin.jar.finalName>${project.name}-${project.version}-all</orzmc.plugin.jar.finalName>
@@ -66,6 +66,11 @@
             <groupId>org.java-websocket</groupId>
             <artifactId>Java-WebSocket</artifactId>
             <version>1.5.2</version>
+        </dependency>
+        <dependency>
+            <groupId>com.googlecode.json-simple</groupId>
+            <artifactId>json-simple</artifactId>
+            <version>1.1.1</version>
         </dependency>
     </dependencies>
     <build>

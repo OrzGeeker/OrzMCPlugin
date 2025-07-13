@@ -1,5 +1,5 @@
 group = "com.jokerhub.paper.plugin"
-version = "1.0"
+version = "1.21.7"
 description = "OrzMC"
 
 java {
@@ -13,7 +13,7 @@ tasks {
         // Configure the Minecraft version for our task.
         // This is the only required configuration besides applying the plugin.
         // Your plugin's jar (or shadowJar if present) will be used automatically.
-        minecraftVersion("1.21.3")
+        minecraftVersion("1.21.7")
     }
 }
 
@@ -33,13 +33,14 @@ repositories {
 }
 
 dependencies {
+    compileOnly("io.papermc.paper:paper-api:1.21.7-R0.1-SNAPSHOT")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
-    compileOnly("io.papermc.paper:paper-api:1.21.3-R0.1-SNAPSHOT")
     implementation("org.apache.httpcomponents:httpasyncclient:4.1.5")
     implementation("net.dv8tion:JDA:5.1.0") {
         exclude(module = "opus-java")
     }
     implementation("org.java-websocket:Java-WebSocket:1.5.7")
+    implementation("com.googlecode.json-simple:json-simple:1.1.1")
 }
 
 tasks.build {

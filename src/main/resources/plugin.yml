@@ -1,12 +1,12 @@
 # plugin.yml: https://docs.papermc.io/paper/dev/plugin-yml
 name: OrzMC
-version: 1.0
+version: 1.21.7
 main: com.jokerhub.paper.plugin.orzmc.OrzMC
 description: OrzMC for Paper Server Plugin
 authors: [ wangzhizhou ]
 contributors: [wangzhizhou]
 website: https://minecraft.jokerhub.cn
-api-version: 1.21
+api-version: 1.21.7
 load: STARTUP
 commands:
   tpbow:
