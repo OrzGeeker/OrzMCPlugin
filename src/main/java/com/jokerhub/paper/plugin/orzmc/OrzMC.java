@@ -45,7 +45,7 @@ public final class OrzMC extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(new OrzServerEvent(), this);
         getServer().getPluginManager().registerEvents(new OrzWhiteListEvent(), this);
 
-        if (OrzMC.config().getBoolean("enable_debug")) {
+        if (OrzMC.enableDebug()) {
             getServer().getPluginManager().registerEvents(new OrzDebugEvent(), this);
         }
 
@@ -101,7 +101,9 @@ public final class OrzMC extends JavaPlugin implements Listener {
 
                 @Override
                 public void onMessage(String message) {
-                    logger().info("接收到消息: " + message);
+                    if(OrzMC.enableDebug()) {
+                        logger().info("接收到消息: " + message);
+                    }
                     OrzQQBot.processJsonStringPayload(message);
                 }
 
@@ -146,4 +148,9 @@ public final class OrzMC extends JavaPlugin implements Listener {
     public static FileConfiguration config() {
         return OrzMC.plugin().getConfig();
     }
+
+    public static boolean enableDebug() {
+        return OrzMC.config().getBoolean("enable_debug");
+    }
+
 }
