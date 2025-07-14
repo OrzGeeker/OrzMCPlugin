@@ -6,6 +6,10 @@ java {
     toolchain.languageVersion.set(JavaLanguageVersion.of(21))
 }
 
+kotlin {
+    jvmToolchain(21)
+}
+
 tasks {
     // 参考：https://docs.papermc.io/paper/dev/debugging#using-direct-debugging
     // gradle-plugin: https://github.com/jpenilla/run-task#basic-usage
@@ -18,7 +22,7 @@ tasks {
 }
 
 plugins {
-    kotlin("jvm") version "2.0.20"
+    kotlin("jvm") version "2.2.0"
     id("com.github.johnrengelman.shadow") version "8.1.1"
     id("xyz.jpenilla.run-paper") version "2.3.1"
 }
@@ -39,6 +43,7 @@ dependencies {
         exclude(module = "opus-java")
     }
     implementation("org.java-websocket:Java-WebSocket:1.5.7")
+    implementation("com.google.protobuf:protobuf-java:4.31.1")
 }
 
 tasks.build {
