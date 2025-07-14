@@ -40,7 +40,6 @@ dependencies {
         exclude(module = "opus-java")
     }
     implementation("org.java-websocket:Java-WebSocket:1.5.7")
-    implementation("com.googlecode.json-simple:json-simple:1.1.1")
 }
 
 tasks.build {

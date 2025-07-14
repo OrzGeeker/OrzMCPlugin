@@ -1,5 +1,6 @@
 package com.jokerhub.paper.plugin.orzmc.bot;
 
+import com.google.gson.Gson;
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpPost;
@@ -9,7 +10,6 @@ import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
 import org.apache.http.impl.nio.client.HttpAsyncClients;
 import org.apache.http.util.EntityUtils;
 import org.jetbrains.annotations.NotNull;
-import org.json.simple.JSONObject;
 
 import java.util.HashMap;
 import java.util.concurrent.ExecutionException;
@@ -53,11 +53,13 @@ public class OrzLarkBot {
     private static @NotNull HttpPost getHttpPost(String url, String msg) {
         HttpPost postReq = new HttpPost(url);
         postReq.setHeader("Content-Type", "application/json");
-        HashMap<String, String> params = new HashMap<>();
+        HashMap<String, Object> params = new HashMap<>();
         params.put("msg_type", "text");
-        params.put("content", msg);
-        JSONObject textMessage = new JSONObject(params);
-        StringEntity jsonEntity = new StringEntity(textMessage.toJSONString(), ContentType.APPLICATION_JSON);
+        HashMap<String, String> content = new HashMap<>();
+        content.put("text", msg);
+        params.put("content", content);
+        String paramJsonString = new Gson().toJson(params);
+        StringEntity jsonEntity = new StringEntity(paramJsonString, ContentType.APPLICATION_JSON);
         postReq.setEntity(jsonEntity);
         return postReq;
     }
