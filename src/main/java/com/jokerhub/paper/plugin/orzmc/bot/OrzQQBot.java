@@ -79,7 +79,9 @@ public class OrzQQBot {
                 HttpGet request = new HttpGet(url);
                 Future<HttpResponse> future = httpclient.execute(request, null);
                 HttpResponse response = future.get();
-                OrzMC.logger().info("Response Code : " + response.getStatusLine());
+                if (OrzMC.enableDebug()) {
+                    OrzMC.logger().info("Response Code : " + response.getStatusLine());
+                }
             } catch (ExecutionException e) {
                 OrzMC.logger().info("QQ机器人无法连接，工作异常");
             } catch (Exception e) {
