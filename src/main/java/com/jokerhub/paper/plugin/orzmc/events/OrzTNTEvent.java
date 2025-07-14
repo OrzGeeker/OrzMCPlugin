@@ -19,7 +19,6 @@ import org.bukkit.event.block.BlockExplodeEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.block.TNTPrimeEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
-import org.bukkit.event.entity.FireworkExplodeEvent;
 import org.bukkit.inventory.ItemStack;
 
 public class OrzTNTEvent implements Listener {
@@ -92,16 +91,12 @@ public class OrzTNTEvent implements Listener {
         OrzMC.server().sendMessage(locationComponent(event.getLocation()).append(Component.text("处" + event.getEntityType().name() + "爆炸")));
     }
 
-    @EventHandler
-    public void onFireworkExplode(FireworkExplodeEvent event) {
-    }
-
     boolean hitInWhiteList(Block block) {
         int x = block.getX();
         int y = block.getY();
         int z = block.getZ();
         if (x >= 30746 && x <= 30808 && y >= 62 && z >= 10139 && z <= 10227) return true;
-        OrzMC.server().getLogger().info(x + ", " + y + ", " + z + "处的" + block.getType().name() + "不在豁免区");
+        OrzMC.logger().info(x + ", " + y + ", " + z + "处的" + block.getType().name() + "不在豁免区");
         return false;
     }
 

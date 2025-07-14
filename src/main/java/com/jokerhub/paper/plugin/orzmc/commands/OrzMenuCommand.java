@@ -14,10 +14,10 @@ import org.jetbrains.annotations.NotNull;
 
 public class OrzMenuCommand implements CommandExecutor {
 
-    public static String name = "OrzMC Menu";
+    public static final String name = "OrzMC Menu";
 
     @Override
-    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
+    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String @NotNull [] args) {
         if(sender instanceof Player p) {
 
             Component title = Component.text(OrzMenuCommand.name);

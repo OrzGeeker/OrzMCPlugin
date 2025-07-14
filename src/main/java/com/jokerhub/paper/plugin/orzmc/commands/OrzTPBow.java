@@ -18,7 +18,7 @@ import java.util.ArrayList;
 
 public class OrzTPBow implements CommandExecutor {
 
-    public static String name = "传送弓";
+    public static final String name = "传送弓";
 
     public static Component logText(String content) {
         if(!content.isEmpty()) {
@@ -32,7 +32,7 @@ public class OrzTPBow implements CommandExecutor {
     }
 
     @Override
-    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
+    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String @NotNull [] args) {
         if(sender instanceof Player player) {
 
             ItemStack teleport_bow = new ItemStack(Material.BOW);

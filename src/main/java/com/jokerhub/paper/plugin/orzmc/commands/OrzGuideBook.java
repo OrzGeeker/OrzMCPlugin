@@ -24,7 +24,7 @@ import java.util.UUID;
 public class OrzGuideBook implements CommandExecutor {
 
     @Override
-    public boolean onCommand(@NotNull CommandSender commandSender, @NotNull Command command, @NotNull String s, @NotNull String[] strings) {
+    public boolean onCommand(@NotNull CommandSender commandSender, @NotNull Command command, @NotNull String s, String @NotNull [] strings) {
         if (commandSender instanceof Player player) {
             openNewPlayerGuideBook(player);
         }
