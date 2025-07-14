@@ -1,6 +1,7 @@
 package com.jokerhub.paper.plugin.orzmc.bot;
 
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
+import com.jokerhub.paper.plugin.orzmc.commands.OrzUserCmd;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 
@@ -22,19 +23,19 @@ public class OrzNotifier {
         Set<String> userNameSet = new HashSet<>(cmd);
 
         // 普通命令
-        if (cmdName.contains("/list")) {
+        if (cmdName.contains(OrzUserCmd.SHOW_PLAYERS.getCmdName())) {
             callback.accept(onlinePlayersInfo());
-        } else if (cmdName.contains("/wl")) {
+        } else if (cmdName.contains(OrzUserCmd.SHOW_WHITELIST.getCmdName())) {
             callback.accept(whiteListInfo());
-        } else if (cmdName.contains("/?")) {
-            callback.accept(cmdHelpInfo());
+        } else if (cmdName.contains(OrzUserCmd.SHOW_HELP.getCmdName())) {
+            callback.accept(OrzUserCmd.helpInfo());
         }
         // 管理员命令
-        else if (cmdName.contains("/wa")) {
+        else if (cmdName.contains(OrzUserCmd.ADD_PLAYER_TO_WHITELIST.getCmdName())) {
             addWhiteListInfo(cmdName, isAdmin, userNameSet, callback);
         }
         // 管理员命令
-        else if (cmdName.contains("/wr")) {
+        else if (cmdName.contains(OrzUserCmd.REMOVE_PLAYER_FROM_WHITELIST.getCmdName())) {
             removeWhiteListInfo(cmdName, isAdmin, userNameSet, callback);
         }
     }
@@ -77,18 +78,6 @@ public class OrzNotifier {
         }
 
         return msgBuilder.toString();
-    }
-
-    public static String cmdHelpInfo() {
-        return """
-                👨‍💼 管理员命令：
-                /wa\t添加玩家到服务器白名单中
-                /wr\t从服务器白名单中移除玩家
-                👨🏻‍💻 通用命令:\s
-                /list\t查看当前在线玩家
-                /wl\t查看当前在白名单中的玩家
-                /?\t查看QQ群中可以使用的命令信息
-                """;
     }
 
     public static String adminPermissionRequiredTip(String cmd) {
