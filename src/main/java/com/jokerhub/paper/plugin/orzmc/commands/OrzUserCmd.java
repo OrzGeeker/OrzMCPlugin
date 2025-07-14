@@ -29,10 +29,6 @@ public enum OrzUserCmd {
         return this.cmdName;
     }
 
-    public String getDescription() {
-        return this.description;
-    }
-
     @Override
     public String toString() {
         return this.cmdName + "\t" + this.description;

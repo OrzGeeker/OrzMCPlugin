@@ -16,8 +16,6 @@ public class OrzNotifier {
 
         if (!message.startsWith("/")) return;
 
-        String info = null;
-
         ArrayList<String> cmd = new ArrayList<>(Arrays.asList(message.split("[, ]+")));
         String cmdName = cmd.removeFirst();
         Set<String> userNameSet = new HashSet<>(cmd);
@@ -160,9 +158,5 @@ public class OrzNotifier {
 
     private static Set<String> allWhiteListPlayerName() {
         return allWhiteListPlayer().stream().map(OfflinePlayer::getName).collect(Collectors.toSet());
-    }
-
-    private static void performCommandFromConsoleSender(String cmd) {
-        OrzMC.server().getScheduler().runTask(OrzMC.plugin(), () -> OrzMC.server().dispatchCommand(OrzMC.server().getConsoleSender(), cmd));
     }
 }
