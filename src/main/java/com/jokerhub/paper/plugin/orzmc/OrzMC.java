@@ -26,9 +26,7 @@ public final class OrzMC extends JavaPlugin implements Listener {
     public void onEnable() {
         super.onEnable();
 
-        // 从jar中读config.yml文件内容到内存中
-        getConfig().options().copyDefaults();
-        // 存储config.yml到插件数据目录下
+        // 如果插件的数据目录下没有配置文件，则复制config.yml内容到插件的数据目录
         saveDefaultConfig();
 
         // Plugin startup logic

@@ -18,9 +18,9 @@ import org.apache.http.util.EntityUtils;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.player.AsyncPlayerPreLoginEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerKickEvent;
-import org.bukkit.event.player.PlayerLoginEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
 import java.util.ArrayList;
@@ -32,6 +32,7 @@ public class OrzPlayerEvent implements Listener {
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         return gson.toJson(jsonObject);
     }
+
     public String getAddressOfIPv4(String ipv4Address) {
         String ret = "";
         if (!ipv4Address.isEmpty()) {
@@ -52,23 +53,21 @@ public class OrzPlayerEvent implements Listener {
     }
 
     @EventHandler
-    public void onPlayerLogin(PlayerLoginEvent event) {
-
-        if (event.getResult() == PlayerLoginEvent.Result.ALLOWED) {
+    public void onPlayerPreLogin(AsyncPlayerPreLoginEvent event) {
+        if (event.getLoginResult() == AsyncPlayerPreLoginEvent.Result.ALLOWED) {
             return;
         }
-
-        String playerName = event.getPlayer().getName();
+        String playerName = event.getPlayerProfile().getName();
         String ipAddress = event.getAddress().getHostAddress();
-        String resultDesc = event.getResult().toString();
+        String resultDesc = event.getLoginResult().toString();
         String addressInfo = getAddressOfIPv4(ipAddress);
         String qqMsg =
                 "--- " + resultDesc + " ---" + "\n"
-                + playerName + "(" + ipAddress + ")" + "\n"
-                + addressInfo;
-
+                        + playerName + "(" + ipAddress + ")" + "\n"
+                        + addressInfo;
         OrzQQBot.sendQQGroupMsg(qqMsg);
     }
+
     enum PlayerState {
         JOIN,
         QUIT,
