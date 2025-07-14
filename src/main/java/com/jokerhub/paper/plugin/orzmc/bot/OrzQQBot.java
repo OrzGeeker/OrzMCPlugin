@@ -34,10 +34,11 @@ public class OrzQQBot {
             boolean isAdmin = ((JSONObject) json.get("sender")).get("role").toString().equals("admin");
             String qqGroupId = OrzMC.config().getString("qq_group_id");
             if (groupId.equals(qqGroupId)) {
-                String info = OrzNotifier.processMessage(message, isAdmin);
-                if (info != null) {
-                    sendQQGroupMsg(info);
-                }
+                OrzNotifier.processMessage(message, isAdmin, info -> {
+                    if (info != null) {
+                        sendQQGroupMsg(info);
+                    }
+                });
             }
         } catch (Exception e) {
             OrzMC.logger().info(e.toString());

@@ -6,13 +6,14 @@ import org.bukkit.entity.Player;
 
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class OrzNotifier {
 
-    public static String processMessage(String message, Boolean isAdmin) {
+    public static void processMessage(String message, Boolean isAdmin, Consumer<String> callback) {
 
-        if (!message.startsWith("/")) return null;
+        if (!message.startsWith("/")) return;
 
         String info = null;
 
@@ -22,22 +23,20 @@ public class OrzNotifier {
 
         // 普通命令
         if (cmdName.contains("/list")) {
-            info = onlinePlayersInfo();
+            callback.accept(onlinePlayersInfo());
         } else if (cmdName.contains("/wl")) {
-            info = whiteListInfo();
+            callback.accept(whiteListInfo());
         } else if (cmdName.contains("/?")) {
-            info = cmdHelpInfo();
+            callback.accept(cmdHelpInfo());
         }
         // 管理员命令
         else if (cmdName.contains("/wa")) {
-            info = isAdmin ? addWhiteListInfo(userNameSet) : adminPermissionRequiredTip(cmdName);
+            addWhiteListInfo(cmdName, isAdmin, userNameSet, callback);
         }
         // 管理员命令
         else if (cmdName.contains("/wr")) {
-            info = isAdmin ? removeWhiteListInfo(userNameSet) : adminPermissionRequiredTip(cmdName);
+            removeWhiteListInfo(cmdName, isAdmin, userNameSet, callback);
         }
-
-        return info;
     }
 
     public static String playerDisplayName(Player player) {
@@ -108,41 +107,60 @@ public class OrzNotifier {
         return whiteListInfo.toString();
     }
 
-    private static String addWhiteListInfo(Set<String> userNames) {
-        for (String userName : userNames) {
-            OfflinePlayer player = OrzMC.server().getOfflinePlayer(userName);
-            player.setWhitelisted(true);
+    private static void addWhiteListInfo(String cmdName, boolean isAdmin, Set<String> userNames, Consumer<String> callback) {
+        if (!isAdmin) {
+            callback.accept(adminPermissionRequiredTip(cmdName));
+            return;
         }
-        OrzMC.server().reloadWhitelist();
-        Set<String> allWhiteListName = allWhiteListPlayerName();
-        String message = "------白名单添加------\n";
-        if (allWhiteListName.containsAll(userNames)) {
-            message += String.join("\n", userNames.stream().map(name -> "✔︎ ︎" + name).collect(Collectors.toSet()));
-        }
-        userNames.removeAll(allWhiteListName);
-        if (!userNames.isEmpty()) {
-            message += String.join("\n", userNames.stream().map(name -> "✘ " + name).collect(Collectors.toSet()));
-        }
-
-        return message;
+        // 主线程上执行白名单操作
+        OrzMC.server().getScheduler().runTask(OrzMC.plugin(), () -> {
+            for (String userName : userNames) {
+                OfflinePlayer player = OrzMC.server().getOfflinePlayer(userName);
+                player.setWhitelisted(true);
+            }
+            // 回调异步执行
+            OrzMC.server().getScheduler().runTaskAsynchronously(OrzMC.plugin(), () -> {
+                OrzMC.server().reloadWhitelist();
+                Set<String> allWhiteListName = allWhiteListPlayerName();
+                String message = "------白名单添加------\n";
+                if (allWhiteListName.containsAll(userNames)) {
+                    message += String.join("\n", userNames.stream().map(name -> "✔︎ ︎" + name).collect(Collectors.toSet()));
+                }
+                userNames.removeAll(allWhiteListName);
+                if (!userNames.isEmpty()) {
+                    message += String.join("\n", userNames.stream().map(name -> "✘ " + name).collect(Collectors.toSet()));
+                }
+                callback.accept(message);
+            });
+        });
     }
 
-    private static String removeWhiteListInfo(Set<String> userNames) {
-        for (String userName : userNames) {
-            OfflinePlayer player = OrzMC.server().getOfflinePlayer(userName);
-            player.setWhitelisted(false);
+    private static void removeWhiteListInfo(String cmdName, boolean isAdmin, Set<String> userNames, Consumer<String> callback) {
+        if (!isAdmin) {
+            callback.accept(adminPermissionRequiredTip(cmdName));
+            return;
         }
-        OrzMC.server().reloadWhitelist();
-        Set<String> allWhiteListName = allWhiteListPlayerName();
-        String message = "------白名单移除------\n";
-        if (!allWhiteListName.containsAll(userNames)) {
-            message += String.join("\n", userNames.stream().map(name -> "✔︎ " + name).collect(Collectors.toSet()));
-        }
-        userNames.retainAll(allWhiteListName);
-        if (!userNames.isEmpty()) {
-            message += String.join("\n", userNames.stream().map(name -> "✘ " + name).collect(Collectors.toSet()));
-        }
-        return message;
+        // 主线程上执行白名单操作
+        OrzMC.server().getScheduler().runTask(OrzMC.plugin(), () -> {
+            for (String userName : userNames) {
+                OfflinePlayer player = OrzMC.server().getOfflinePlayer(userName);
+                player.setWhitelisted(false);
+            }
+            // 回调异步执行
+            OrzMC.server().getScheduler().runTaskAsynchronously(OrzMC.plugin(), () -> {
+                OrzMC.server().reloadWhitelist();
+                Set<String> allWhiteListName = allWhiteListPlayerName();
+                String message = "------白名单移除------\n";
+                if (!allWhiteListName.containsAll(userNames)) {
+                    message += String.join("\n", userNames.stream().map(name -> "✔︎ " + name).collect(Collectors.toSet()));
+                }
+                userNames.retainAll(allWhiteListName);
+                if (!userNames.isEmpty()) {
+                    message += String.join("\n", userNames.stream().map(name -> "✘ " + name).collect(Collectors.toSet()));
+                }
+                callback.accept(message);
+            });
+        });
     }
 
     private static ArrayList<OfflinePlayer> allWhiteListPlayer() {

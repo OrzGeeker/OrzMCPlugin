@@ -17,10 +17,11 @@ public class OrzDiscordEvent extends ListenerAdapter {
         Message message = event.getMessage();
         String content = message.getContentRaw();
         Boolean isAdmin = true;
-        String info = OrzNotifier.processMessage(content, isAdmin);
-        if (info != null) {
-            MessageChannel channel = event.getChannel();
-            channel.sendMessage(info).queue();
-        }
+        OrzNotifier.processMessage(content, isAdmin, info -> {
+            if (info != null) {
+                MessageChannel channel = event.getChannel();
+                channel.sendMessage(info).queue();
+            }
+        });
     }
 }

@@ -13,9 +13,12 @@ public class OrzDebugEvent implements Listener {
 
     @EventHandler
     public void cmdDebugHandler(ServerCommandEvent event) {
-        String result = OrzNotifier.processMessage(event.getCommand(), true);
-        String whitelistUserNames = OrzMC.server().getWhitelistedPlayers().stream().map((OfflinePlayer::getName)).collect(Collectors.joining(","));
-        OrzMC.logger().info("whitelist: " + whitelistUserNames);
-        OrzMC.logger().info("cmd debug: " + result);
+        OrzMC.server().getScheduler().runTaskAsynchronously(OrzMC.plugin(), () -> {
+            OrzNotifier.processMessage(event.getCommand(), true, result -> {
+                String whitelistUserNames = OrzMC.server().getWhitelistedPlayers().stream().map((OfflinePlayer::getName)).collect(Collectors.joining(","));
+                OrzMC.logger().info("whitelist: " + whitelistUserNames);
+                OrzMC.logger().info("cmd debug: " + result);
+            });
+        });
     }
 }
