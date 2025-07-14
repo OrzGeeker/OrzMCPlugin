@@ -1,12 +1,12 @@
 package com.jokerhub.paper.plugin.orzmc.bot;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
 import org.apache.http.impl.nio.client.HttpAsyncClients;
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -24,14 +24,13 @@ public class OrzQQBot {
             return;
         }
         try {
-            JSONParser jsonParser = new JSONParser();
-            JSONObject json = (JSONObject) jsonParser.parse(jsonString);
+            JsonObject json = JsonParser.parseString(jsonString).getAsJsonObject();
             if (json.get("group_id") == null || json.get("raw_message") == null) {
                 return;
             }
-            String groupId = json.get("group_id").toString();
-            String message = json.get("raw_message").toString().trim();
-            boolean isAdmin = ((JSONObject) json.get("sender")).get("role").toString().equals("admin");
+            String groupId = json.get("group_id").getAsString();
+            String message = json.get("raw_message").getAsString().trim();
+            boolean isAdmin = json.get("sender").getAsJsonObject().get("role").getAsString().equals("admin");
             String qqGroupId = OrzMC.config().getString("qq_group_id");
             if (groupId.equals(qqGroupId)) {
                 OrzNotifier.processMessage(message, isAdmin, info -> {
