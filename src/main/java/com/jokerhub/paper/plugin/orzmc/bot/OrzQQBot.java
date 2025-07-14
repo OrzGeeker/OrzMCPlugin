@@ -3,15 +3,13 @@ package com.jokerhub.paper.plugin.orzmc.bot;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
-import org.apache.http.impl.nio.client.HttpAsyncClients;
 
+import java.net.URI;
 import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 
 public class OrzQQBot {
 
@@ -72,20 +70,18 @@ public class OrzQQBot {
     }
 
     private static void asyncHttpRequest(String url) {
-        new Thread(() -> {
-            try (CloseableHttpAsyncClient httpclient = HttpAsyncClients.createDefault()) {
-                httpclient.start();
-                HttpGet request = new HttpGet(url);
-                Future<HttpResponse> future = httpclient.execute(request, null);
-                HttpResponse response = future.get();
+        try (HttpClient client = HttpClient.newHttpClient()) {
+            HttpRequest request = HttpRequest.newBuilder().uri(URI.create(url)).build();
+            client.sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenAcceptAsync(response -> {
                 if (OrzMC.enableDebug()) {
-                    OrzMC.logger().info("Response Code : " + response.getStatusLine());
+                    OrzMC.logger().info("Response Code : " + response.toString());
                 }
-            } catch (ExecutionException e) {
-                OrzMC.logger().info("QQ机器人无法连接，工作异常");
-            } catch (Exception e) {
-                OrzMC.logger().info(e.toString());
-            }
-        }).start();
+            }).exceptionally(e -> {
+                OrzMC.logger().severe("QQ机器人无法连接，工作异常: " + e.toString());
+                return null;
+            });
+        } catch (Exception e) {
+            OrzMC.logger().severe(e.toString());
+        }
     }
 }

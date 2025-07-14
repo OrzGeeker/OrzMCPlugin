@@ -35,7 +35,6 @@ repositories {
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.7-R0.1-SNAPSHOT")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
-    implementation("org.apache.httpcomponents:httpasyncclient:4.1.5")
     implementation("net.dv8tion:JDA:5.1.0") {
         exclude(module = "opus-java")
     }

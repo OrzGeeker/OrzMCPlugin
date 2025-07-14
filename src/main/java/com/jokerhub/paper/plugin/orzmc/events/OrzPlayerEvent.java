@@ -8,13 +8,6 @@ import com.jokerhub.paper.plugin.orzmc.OrzMC;
 import com.jokerhub.paper.plugin.orzmc.bot.OrzNotifier;
 import com.jokerhub.paper.plugin.orzmc.bot.OrzQQBot;
 import com.jokerhub.paper.plugin.orzmc.commands.OrzGuideBook;
-import org.apache.http.HttpStatus;
-import org.apache.http.StatusLine;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.util.EntityUtils;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -23,6 +16,10 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.ArrayList;
 
 public class OrzPlayerEvent implements Listener {
@@ -36,13 +33,14 @@ public class OrzPlayerEvent implements Listener {
     public String getAddressOfIPv4(String ipv4Address) {
         String ret = "";
         if (!ipv4Address.isEmpty()) {
-            try (CloseableHttpClient httpclient = HttpClients.createDefault()) {
+            try (HttpClient httpclient = HttpClient.newHttpClient()) {
                 String url = "https://www.90th.cn/api/ip?key=1c9ac0159c94d8d0&ip=" + ipv4Address;
-                HttpGet request = new HttpGet(url);
-                CloseableHttpResponse response = httpclient.execute(request);
-                StatusLine status = response.getStatusLine();
-                if (status.getStatusCode() == HttpStatus.SC_OK) {
-                    String result = EntityUtils.toString(response.getEntity());
+                HttpRequest request = HttpRequest.newBuilder()
+                        .uri(URI.create(url))
+                        .build();
+                HttpResponse<String> response = httpclient.send(request, HttpResponse.BodyHandlers.ofString());
+                if (response.statusCode() == 200) {
+                    String result = response.body();
                     ret = toPrettyFormat(result);
                 }
             } catch (Exception e) {

@@ -2,18 +2,12 @@ package com.jokerhub.paper.plugin.orzmc.bot;
 
 import com.google.gson.Gson;
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
-import org.apache.http.impl.nio.client.HttpAsyncClients;
-import org.apache.http.util.EntityUtils;
-import org.jetbrains.annotations.NotNull;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.HashMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 
 public class OrzLarkBot {
 
@@ -35,33 +29,32 @@ public class OrzLarkBot {
     }
 
     private static void asyncHttpRequest(String url, String msg) {
-        new Thread(() -> {
-            try (CloseableHttpAsyncClient httpclient = HttpAsyncClients.createDefault()) {
-                httpclient.start();
-                HttpPost postReq = getHttpPost(url, msg);
-                Future<HttpResponse> future = httpclient.execute(postReq, null);
-                HttpResponse response = future.get();
-                OrzMC.logger().info("Response : " + EntityUtils.toString(response.getEntity()));
-            } catch (ExecutionException e) {
-                OrzMC.logger().warning("Lark机器人无法连接，工作异常" + ":" + e);
-            } catch (Exception e) {
-                OrzMC.logger().warning(e.toString());
-            }
-        }).start();
-    }
-
-    private static @NotNull HttpPost getHttpPost(String url, String msg) {
-        HttpPost postReq = new HttpPost(url);
-        postReq.setHeader("Content-Type", "application/json");
         HashMap<String, Object> params = new HashMap<>();
         params.put("msg_type", "text");
         HashMap<String, String> content = new HashMap<>();
         content.put("text", msg);
         params.put("content", content);
-        String paramJsonString = new Gson().toJson(params);
-        StringEntity jsonEntity = new StringEntity(paramJsonString, ContentType.APPLICATION_JSON);
-        postReq.setEntity(jsonEntity);
-        return postReq;
+        String postBodyJsonString = new Gson().toJson(params);
+
+        try (HttpClient client = HttpClient.newHttpClient()) {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(postBodyJsonString))
+                    .build();
+            client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                    .thenAcceptAsync(response -> {
+                        if (OrzMC.enableDebug()) {
+                            OrzMC.logger().info("Response : " + response.toString());
+                        }
+                    })
+                    .exceptionally(e -> {
+                        OrzMC.logger().severe("Lark机器人无法连接，工作异常: " + e.toString());
+                        return null;
+                    });
+        } catch (Exception e) {
+            OrzMC.logger().severe(e.toString());
+        }
     }
 
     private static String larkBotWebhook() {
