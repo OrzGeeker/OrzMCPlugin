@@ -29,6 +29,3 @@ base64_discord_bot_token: 'TVRFd01UUTJNVEl3TWpZeU56azRPVFUzTkEuR3dxellaLjY3anU5c
 enable_lark_bot: false
 # Lark飞书群机器人webhook地址，插件 -> lark群 方向发消息
 lark_bot_webhook: 'https://open.feishu.cn/open-apis/bot/v2/hook/37930747-46b7-4b47-af70-8f64b0a4e9b8'
-
-# 开启test事件
-enable_debug: false

@@ -39,7 +39,7 @@ public final class OrzMC extends JavaPlugin implements Listener {
     }
 
     public static boolean enableDebug() {
-        return OrzMC.config().getBoolean("enable_debug");
+        return OrzDebugEvent.debug;
     }
 
     public static void debugInfo(String msg) {

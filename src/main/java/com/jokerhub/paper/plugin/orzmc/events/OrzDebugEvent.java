@@ -8,8 +8,16 @@ import org.bukkit.event.server.ServerCommandEvent;
 
 public class OrzDebugEvent implements Listener {
 
+    public static boolean debug = false;
+
     @EventHandler
     public void cmdDebugHandler(ServerCommandEvent event) {
-        OrzMC.server().getScheduler().runTaskAsynchronously(OrzMC.plugin(), () -> OrzNotifier.processMessage(event.getCommand(), true, result -> OrzMC.logger().info("cmd debug: \n" + result)));
+        String debugCmdPrefix = "debug";
+        debug = event.getCommand().startsWith(debugCmdPrefix);
+        if (!debug) {
+            return;
+        }
+        String cmd = event.getCommand().substring(debugCmdPrefix.length());
+        OrzMC.server().getScheduler().runTaskAsynchronously(OrzMC.plugin(), () -> OrzNotifier.processMessage(cmd, true, result -> OrzMC.logger().info("cmd debug: \n" + result)));
     }
 }
