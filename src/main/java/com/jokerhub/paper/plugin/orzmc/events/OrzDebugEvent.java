@@ -17,7 +17,7 @@ public class OrzDebugEvent implements Listener {
         if (!debug) {
             return;
         }
-        String cmd = event.getCommand().substring(debugCmdPrefix.length());
+        String cmd = event.getCommand().substring(debugCmdPrefix.length()).trim();
         OrzMC.server().getScheduler().runTaskAsynchronously(OrzMC.plugin(), () -> OrzNotifier.processMessage(cmd, true, result -> OrzMC.logger().info("cmd debug: \n" + result)));
     }
 }

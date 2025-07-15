@@ -38,12 +38,8 @@ public final class OrzMC extends JavaPlugin implements Listener {
         return OrzMC.plugin().getConfig();
     }
 
-    public static boolean enableDebug() {
-        return OrzDebugEvent.debug;
-    }
-
     public static void debugInfo(String msg) {
-        if (!OrzMC.enableDebug()) {
+        if (!OrzDebugEvent.debug) {
             return;
         }
         OrzMC.logger().info(msg);
@@ -69,10 +65,7 @@ public final class OrzMC extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(new OrzMenuEvent(), this);
         getServer().getPluginManager().registerEvents(new OrzServerEvent(), this);
         getServer().getPluginManager().registerEvents(new OrzWhiteListEvent(), this);
-
-        if (OrzMC.enableDebug()) {
-            getServer().getPluginManager().registerEvents(new OrzDebugEvent(), this);
-        }
+        getServer().getPluginManager().registerEvents(new OrzDebugEvent(), this);
 
         PluginCommand tpbowCmd = getCommand("tpbow");
         if (tpbowCmd != null) {
