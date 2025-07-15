@@ -21,19 +21,19 @@ public class OrzNotifier {
         Set<String> userNameSet = new HashSet<>(cmd);
 
         // 普通命令
-        if (cmdName.contains(OrzUserCmd.SHOW_PLAYERS.getCmdName())) {
+        if (cmdName.equals(OrzUserCmd.SHOW_PLAYERS.getCmdName())) {
             callback.accept(onlinePlayersInfo());
-        } else if (cmdName.contains(OrzUserCmd.SHOW_WHITELIST.getCmdName())) {
+        } else if (cmdName.equals(OrzUserCmd.SHOW_WHITELIST.getCmdName())) {
             callback.accept(whiteListInfo());
-        } else if (cmdName.contains(OrzUserCmd.SHOW_HELP.getCmdName())) {
+        } else if (cmdName.equals(OrzUserCmd.SHOW_HELP.getCmdName())) {
             callback.accept(OrzUserCmd.helpInfo());
         }
         // 管理员命令
-        else if (cmdName.contains(OrzUserCmd.ADD_PLAYER_TO_WHITELIST.getCmdName())) {
+        else if (cmdName.equals(OrzUserCmd.ADD_PLAYER_TO_WHITELIST.getCmdName())) {
             addWhiteListInfo(cmdName, isAdmin, userNameSet, callback);
         }
         // 管理员命令
-        else if (cmdName.contains(OrzUserCmd.REMOVE_PLAYER_FROM_WHITELIST.getCmdName())) {
+        else if (cmdName.equals(OrzUserCmd.REMOVE_PLAYER_FROM_WHITELIST.getCmdName())) {
             removeWhiteListInfo(cmdName, isAdmin, userNameSet, callback);
         }
     }
