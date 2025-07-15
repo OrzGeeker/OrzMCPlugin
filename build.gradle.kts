@@ -44,6 +44,7 @@ dependencies {
     }
     implementation("org.java-websocket:Java-WebSocket:1.5.7")
     implementation("com.google.protobuf:protobuf-java:4.31.1")
+    implementation("org.apache.commons:commons-lang3:3.18.0")
 }
 
 tasks.build {
