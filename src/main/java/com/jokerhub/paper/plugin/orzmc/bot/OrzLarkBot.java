@@ -43,9 +43,7 @@ public class OrzLarkBot {
                     .POST(HttpRequest.BodyPublishers.ofString(postBodyJsonString))
                     .build();
             client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-                    .thenAcceptAsync(response -> {
-                        OrzMC.debugInfo("Response : " + response.toString());
-                    })
+                    .thenAcceptAsync(response -> OrzMC.debugInfo("Response : " + response.toString()))
                     .exceptionally(e -> {
                         OrzMC.logger().severe("Lark机器人无法连接，工作异常: " + e.toString());
                         return null;

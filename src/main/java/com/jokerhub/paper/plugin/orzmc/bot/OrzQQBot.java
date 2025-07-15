@@ -72,9 +72,7 @@ public class OrzQQBot {
     private static void asyncHttpRequest(String url) {
         try (HttpClient client = HttpClient.newHttpClient()) {
             HttpRequest request = HttpRequest.newBuilder().uri(URI.create(url)).build();
-            client.sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenAcceptAsync(response -> {
-                OrzMC.debugInfo("Response Code : " + response.toString());
-            }).exceptionally(e -> {
+            client.sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenAcceptAsync(response -> OrzMC.debugInfo("Response Code : " + response.toString())).exceptionally(e -> {
                 OrzMC.logger().severe("QQ机器人无法连接，工作异常: " + e.toString());
                 return null;
             });
