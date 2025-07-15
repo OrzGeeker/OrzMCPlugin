@@ -9,7 +9,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityTeleportEvent;
 
-public class OrzTPEvennt implements Listener {
+public class OrzTPEvent implements Listener {
     @EventHandler
     public void onEntityTeleport(EntityTeleportEvent event) {
 
