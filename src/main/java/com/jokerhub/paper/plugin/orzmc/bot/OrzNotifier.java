@@ -22,9 +22,9 @@ public class OrzNotifier {
 
         // 普通命令
         if (cmdName.equals(OrzUserCmd.SHOW_PLAYERS.getCmdName())) {
-            callback.accept(onlinePlayersInfo());
+            onlinePlayersInfo(callback);
         } else if (cmdName.equals(OrzUserCmd.SHOW_WHITELIST.getCmdName())) {
-            callback.accept(whiteListInfo());
+            whiteListInfo(callback);
         } else if (cmdName.equals(OrzUserCmd.SHOW_HELP.getCmdName())) {
             callback.accept(OrzUserCmd.helpInfo());
         }
@@ -58,40 +58,44 @@ public class OrzNotifier {
         return ret;
     }
 
-    private static String onlinePlayersInfo() {
-        ArrayList<Player> onlinePlayers = new ArrayList<>();
-        Object[] objects = OrzMC.server().getOnlinePlayers().toArray();
-        for (Object obj : objects) {
-            if (obj instanceof Player p) {
-                onlinePlayers.add(p);
+    private static void onlinePlayersInfo(Consumer<String> callback) {
+        OrzMC.server().getScheduler().runTaskAsynchronously(OrzMC.plugin(), () -> {
+            ArrayList<Player> onlinePlayers = new ArrayList<>();
+            Object[] objects = OrzMC.server().getOnlinePlayers().toArray();
+            for (Object obj : objects) {
+                if (obj instanceof Player p) {
+                    onlinePlayers.add(p);
+                }
             }
-        }
+            String tip = String.format("------当前在线(%d/%d)------", onlinePlayers.size(), OrzMC.server().getMaxPlayers());
+            StringBuilder msgBuilder = new StringBuilder(tip);
 
-        String tip = String.format("------当前在线(%d/%d)------", onlinePlayers.size(), OrzMC.server().getMaxPlayers());
-        StringBuilder msgBuilder = new StringBuilder(tip);
-
-        for (Player p : onlinePlayers) {
-            String name = OrzNotifier.playerDisplayName(p);
-            msgBuilder.append("\n").append(name);
-        }
-
-        return msgBuilder.toString();
+            for (Player p : onlinePlayers) {
+                String name = OrzNotifier.playerDisplayName(p);
+                msgBuilder.append("\n").append(name);
+            }
+            String ret = msgBuilder.toString();
+            callback.accept(ret);
+        });
     }
 
     public static String adminPermissionRequiredTip(String cmd) {
         return cmd + "命令需要群管理员权限";
     }
 
-    private static String whiteListInfo() {
-        ArrayList<OfflinePlayer> whiteListPlayers = allWhiteListPlayer();
-        StringBuilder whiteListInfo = new StringBuilder(String.format("------当前白名单玩家(%d)------", whiteListPlayers.size()));
-        for (OfflinePlayer player : whiteListPlayers) {
-            String playerName = player.getName();
-            String lastSeen = new SimpleDateFormat("MM/dd/ HH:mm").format(new Date(player.getLastSeen()));
-            String isOnline = player.isOnline() ? "•" : "◦";
-            whiteListInfo.append("\n").append(isOnline).append(" ").append(playerName).append(" ").append(String.format("%s", lastSeen));
-        }
-        return whiteListInfo.toString();
+    private static void whiteListInfo(Consumer<String> callback) {
+        OrzMC.server().getScheduler().runTaskAsynchronously(OrzMC.plugin(), () -> {
+            ArrayList<OfflinePlayer> whiteListPlayers = allWhiteListPlayer();
+            StringBuilder whiteListInfo = new StringBuilder(String.format("------当前白名单玩家(%d)------", whiteListPlayers.size()));
+            for (OfflinePlayer player : whiteListPlayers) {
+                String playerName = player.getName();
+                String lastSeen = new SimpleDateFormat("MM/dd/ HH:mm").format(new Date(player.getLastSeen()));
+                String isOnline = player.isOnline() ? "•" : "◦";
+                whiteListInfo.append("\n").append(isOnline).append(" ").append(playerName).append(" ").append(String.format("%s", lastSeen));
+            }
+            String ret = whiteListInfo.toString();
+            callback.accept(ret);
+        });
     }
 
     private static void addWhiteListInfo(String cmdName, boolean isAdmin, Set<String> userNames, Consumer<String> callback) {
