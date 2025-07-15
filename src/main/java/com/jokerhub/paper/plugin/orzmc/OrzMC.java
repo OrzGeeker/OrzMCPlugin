@@ -22,6 +22,33 @@ public final class OrzMC extends JavaPlugin implements Listener {
 
     private WebSocketClient webSocketClient;
 
+    public static JavaPlugin plugin() {
+        return JavaPlugin.getPlugin(OrzMC.class);
+    }
+
+    public static Server server() {
+        return OrzMC.plugin().getServer();
+    }
+
+    public static Logger logger() {
+        return OrzMC.plugin().getLogger();
+    }
+
+    public static FileConfiguration config() {
+        return OrzMC.plugin().getConfig();
+    }
+
+    public static boolean enableDebug() {
+        return OrzMC.config().getBoolean("enable_debug");
+    }
+
+    public static void debugInfo(String msg) {
+        if (!OrzMC.enableDebug()) {
+            return;
+        }
+        OrzMC.logger().info(msg);
+    }
+
     @Override
     public void onEnable() {
         super.onEnable();
@@ -99,9 +126,7 @@ public final class OrzMC extends JavaPlugin implements Listener {
 
                 @Override
                 public void onMessage(String message) {
-                    if(OrzMC.enableDebug()) {
-                        logger().info("接收到消息: " + message);
-                    }
+                    OrzMC.debugInfo("接收到消息: " + message);
                     OrzQQBot.processJsonStringPayload(message);
                 }
 
@@ -129,26 +154,6 @@ public final class OrzMC extends JavaPlugin implements Listener {
             return;
         }
         webSocketClient.close();
-    }
-
-    public static JavaPlugin plugin() {
-        return JavaPlugin.getPlugin(OrzMC.class);
-    }
-
-    public static Server server() {
-        return OrzMC.plugin().getServer();
-    }
-
-    public static Logger logger() {
-        return OrzMC.plugin().getLogger();
-    }
-
-    public static FileConfiguration config() {
-        return OrzMC.plugin().getConfig();
-    }
-
-    public static boolean enableDebug() {
-        return OrzMC.config().getBoolean("enable_debug");
     }
 
 }

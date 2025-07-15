@@ -21,7 +21,7 @@ public class OrzTPBow implements CommandExecutor {
     public static final String name = "传送弓";
 
     public static Component logText(String content) {
-        if(!content.isEmpty()) {
+        if (!content.isEmpty()) {
             return Component.text().append(Component.text("[" + OrzTPBow.name + "]")
                             .color(TextColor.fromCSSHexString("#00FF00")))
                     .append(Component.space())
@@ -33,11 +33,10 @@ public class OrzTPBow implements CommandExecutor {
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String @NotNull [] args) {
-        if(sender instanceof Player player) {
-
+        if (sender instanceof Player player) {
             ItemStack teleport_bow = new ItemStack(Material.BOW);
             ItemMeta meta = teleport_bow.getItemMeta();
-            meta.addEnchant(Enchantment.INFINITY,1,true);
+            meta.addEnchant(Enchantment.INFINITY, 1, true);
             TextComponent name = Component.text(OrzTPBow.name);
             meta.displayName(name);
             ArrayList<Component> loreList = new ArrayList<>();
@@ -45,11 +44,9 @@ public class OrzTPBow implements CommandExecutor {
             meta.lore(loreList);
             teleport_bow.setItemMeta(meta);
             player.getInventory().addItem(teleport_bow);
-
             ItemStack arrow = new ItemStack(Material.ARROW);
             player.getInventory().addItem(arrow);
             player.sendMessage("你获得了" + OrzTPBow.name);
-
         } else {
             OrzMC.logger().info("不是玩家，此命令无效！");
         }

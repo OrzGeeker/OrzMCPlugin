@@ -13,9 +13,9 @@ public class OrzDiscordBot {
     private static JDA api;
 
     public static void setup() {
-        boolean enable  = OrzMC.config().getBoolean("enable_discord_bot");
+        boolean enable = OrzMC.config().getBoolean("enable_discord_bot");
         if (!enable) {
-            OrzMC.logger().info("Discord Bot Disabled!");
+            OrzMC.debugInfo("Discord Bot Disabled!");
             return;
         }
 
@@ -30,7 +30,7 @@ public class OrzDiscordBot {
 
     public static void shutdown() {
 
-        boolean enable  = OrzMC.config().getBoolean("enable_discord_bot");
+        boolean enable = OrzMC.config().getBoolean("enable_discord_bot");
         if (!enable) return;
 
         api.shutdown();

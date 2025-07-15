@@ -17,7 +17,7 @@ public class OrzLarkBot {
 
     public static void sendMessage(String msg) {
         if (!enable()) {
-            OrzMC.logger().info("Lark Bot Disabled!");
+            OrzMC.debugInfo("Lark Bot Disabled!");
             return;
         }
         try {
@@ -44,9 +44,7 @@ public class OrzLarkBot {
                     .build();
             client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
                     .thenAcceptAsync(response -> {
-                        if (OrzMC.enableDebug()) {
-                            OrzMC.logger().info("Response : " + response.toString());
-                        }
+                        OrzMC.debugInfo("Response : " + response.toString());
                     })
                     .exceptionally(e -> {
                         OrzMC.logger().severe("Lark机器人无法连接，工作异常: " + e.toString());
