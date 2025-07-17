@@ -30,11 +30,15 @@ public class OrzNotifier {
         }
         // 管理员命令
         else if (cmdName.equals(OrzUserCmd.ADD_PLAYER_TO_WHITELIST.getCmdName())) {
-            addWhiteListInfo(cmdName, isAdmin, userNameSet, callback);
+            addWhiteListInfo(isAdmin, userNameSet, callback);
         }
         // 管理员命令
         else if (cmdName.equals(OrzUserCmd.REMOVE_PLAYER_FROM_WHITELIST.getCmdName())) {
-            removeWhiteListInfo(cmdName, isAdmin, userNameSet, callback);
+            removeWhiteListInfo(isAdmin, userNameSet, callback);
+        }
+        // 未知命令，展示帮助信息
+        else {
+            callback.accept(OrzUserCmd.helpInfo());
         }
     }
 
@@ -79,35 +83,41 @@ public class OrzNotifier {
         });
     }
 
-    public static String adminPermissionRequiredTip(String cmd) {
-        return cmd + "命令需要群管理员权限";
-    }
-
     private static void whiteListInfo(Consumer<String> callback) {
         OrzMC.server().getScheduler().runTaskAsynchronously(OrzMC.plugin(), () -> {
             ArrayList<OfflinePlayer> whiteListPlayers = allWhiteListPlayer();
             StringBuilder whiteListInfo = new StringBuilder(String.format("------当前白名单玩家(%d)------", whiteListPlayers.size()));
             for (OfflinePlayer player : whiteListPlayers) {
                 String playerName = player.getName();
-                String lastSeen = new SimpleDateFormat("MM/dd/ HH:mm").format(new Date(player.getLastSeen()));
                 String isOnline = player.isOnline() ? "•" : "◦";
-                whiteListInfo.append("\n").append(isOnline).append(" ").append(playerName).append(" ").append(String.format("%s", lastSeen));
+                whiteListInfo.append("\n").append(isOnline).append(" ").append(playerName);
+                long lastSeenTimestamp = player.getLastSeen();
+                if (lastSeenTimestamp > 0) {
+                    String lastSeen = new SimpleDateFormat("yyyy/MM/dd HH:mm").format(new Date(lastSeenTimestamp));
+                    whiteListInfo.append(" ").append(String.format("%s", lastSeen));
+                }
             }
             String ret = whiteListInfo.toString();
             callback.accept(ret);
         });
     }
 
-    private static void addWhiteListInfo(String cmdName, boolean isAdmin, Set<String> userNames, Consumer<String> callback) {
+    private static void addWhiteListInfo(boolean isAdmin, Set<String> userNames, Consumer<String> callback) {
         if (!isAdmin) {
-            callback.accept(adminPermissionRequiredTip(cmdName));
+            callback.accept(OrzUserCmd.ADD_PLAYER_TO_WHITELIST.adminPermissionRequiredTip());
+            return;
+        }
+        if (userNames.isEmpty()) {
+            callback.accept(OrzUserCmd.ADD_PLAYER_TO_WHITELIST.usageTip());
             return;
         }
         // 主线程上执行白名单操作
         OrzMC.server().getScheduler().runTask(OrzMC.plugin(), () -> {
             for (String userName : userNames) {
                 OfflinePlayer player = OrzMC.server().getOfflinePlayer(userName);
-                player.setWhitelisted(true);
+                if (!player.isWhitelisted()) {
+                    player.setWhitelisted(true);
+                }
             }
             // 回调异步执行
             OrzMC.server().getScheduler().runTaskAsynchronously(OrzMC.plugin(), () -> {
@@ -126,16 +136,22 @@ public class OrzNotifier {
         });
     }
 
-    private static void removeWhiteListInfo(String cmdName, boolean isAdmin, Set<String> userNames, Consumer<String> callback) {
+    private static void removeWhiteListInfo(boolean isAdmin, Set<String> userNames, Consumer<String> callback) {
         if (!isAdmin) {
-            callback.accept(adminPermissionRequiredTip(cmdName));
+            callback.accept(OrzUserCmd.REMOVE_PLAYER_FROM_WHITELIST.adminPermissionRequiredTip());
+            return;
+        }
+        if (userNames.isEmpty()) {
+            callback.accept(OrzUserCmd.REMOVE_PLAYER_FROM_WHITELIST.usageTip());
             return;
         }
         // 主线程上执行白名单操作
         OrzMC.server().getScheduler().runTask(OrzMC.plugin(), () -> {
             for (String userName : userNames) {
                 OfflinePlayer player = OrzMC.server().getOfflinePlayer(userName);
-                player.setWhitelisted(false);
+                if (player.isWhitelisted()) {
+                    player.setWhitelisted(false);
+                }
             }
             // 回调异步执行
             OrzMC.server().getScheduler().runTaskAsynchronously(OrzMC.plugin(), () -> {
