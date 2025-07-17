@@ -18,7 +18,7 @@
         <paper.version.minor>7</paper.version.minor>
         <paper.version>${paper.version.major}.${paper.version.minor}</paper.version>
         <orzmc.root.dir>${user.home}</orzmc.root.dir>
-        <orzmc.plugin.jar.finalName>${project.name}-${project.version}-all</orzmc.plugin.jar.finalName>
+        <orzmc.plugin.jar.finalName>${project.name}-${project.version}</orzmc.plugin.jar.finalName>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.build.plugin.jar.filePath>${project.build.directory}/${orzmc.plugin.jar.finalName}.${project.packaging}
         </project.build.plugin.jar.filePath>
@@ -77,6 +77,12 @@
                         </manifestEntries>
                     </archive>
                 </configuration>
+                <executions>
+                    <execution>
+                        <id>default-jar</id>
+                        <phase>none</phase> <!-- 禁用默认打包 -->
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
