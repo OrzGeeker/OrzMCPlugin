@@ -65,4 +65,5 @@ tasks.shadowJar {
     manifest {
         attributes["paperweight-mappings-namespace"] = "mojang"
     }
+    archiveClassifier.set("") // 移除 `-all` 后缀（可选）
 }
