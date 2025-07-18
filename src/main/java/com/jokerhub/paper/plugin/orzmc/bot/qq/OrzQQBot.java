@@ -3,8 +3,8 @@ package com.jokerhub.paper.plugin.orzmc.bot.qq;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
-import com.jokerhub.paper.plugin.orzmc.utils.OrzMessageParser;
 import com.jokerhub.paper.plugin.orzmc.bot.base.OrzBaseBot;
+import com.jokerhub.paper.plugin.orzmc.utils.OrzMessageParser;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
 
@@ -61,7 +61,6 @@ public class OrzQQBot extends OrzBaseBot {
     }
 
     public void sendQQGroupMsg(String msg) {
-        OrzMC.larkBot.sendMessage(msg);
         if (!this.isEnable()) {
             return;
         }
@@ -115,7 +114,7 @@ public class OrzQQBot extends OrzBaseBot {
                 @Override
                 public void onMessage(String message) {
                     OrzMC.debugInfo("接收到消息: " + message);
-                    OrzMC.qqBot.processJsonStringPayload(message);
+                    processJsonStringPayload(message);
                 }
 
                 @Override

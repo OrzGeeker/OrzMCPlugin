@@ -16,13 +16,13 @@ public class OrzServerEvent implements Listener {
                 "服务停止" +
                 "\n\n" +
                 "停止状态无法响应命令消息";
-        OrzMC.qqBot.sendQQGroupMsg(stringBuilder);
+        OrzMC.sendPublicMessage(stringBuilder);
     }
 
     @EventHandler
     public void onException(ServerExceptionEvent event) {
         ServerException exception = event.getException();
-        OrzMC.qqBot.sendPrivateMsg(exception.toString());
+        OrzMC.sendPrivateMessage(exception.toString());
     }
 
     @EventHandler
@@ -36,6 +36,6 @@ public class OrzServerEvent implements Listener {
         }
         stringBuilder.append("\n\n");
         stringBuilder.append("发送 \"").append(OrzUserCmd.SHOW_HELP.getCmdName()).append("\" 查看支持的命令消息");
-        OrzMC.qqBot.sendQQGroupMsg(stringBuilder.toString());
+        OrzMC.sendPublicMessage(stringBuilder.toString());
     }
 }

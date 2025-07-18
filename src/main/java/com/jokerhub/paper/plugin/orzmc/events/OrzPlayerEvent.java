@@ -5,8 +5,8 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
-import com.jokerhub.paper.plugin.orzmc.utils.OrzMessageParser;
 import com.jokerhub.paper.plugin.orzmc.commands.OrzGuideBook;
+import com.jokerhub.paper.plugin.orzmc.utils.OrzMessageParser;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -34,9 +34,7 @@ public class OrzPlayerEvent implements Listener {
         if (!ipv4Address.isEmpty()) {
             try (HttpClient httpclient = HttpClient.newHttpClient()) {
                 String url = "https://www.90th.cn/api/ip?key=1c9ac0159c94d8d0&ip=" + ipv4Address;
-                HttpRequest request = HttpRequest.newBuilder()
-                        .uri(URI.create(url))
-                        .build();
+                HttpRequest request = HttpRequest.newBuilder().uri(URI.create(url)).build();
                 HttpResponse<String> response = httpclient.send(request, HttpResponse.BodyHandlers.ofString());
                 if (response.statusCode() == 200) {
                     String result = response.body();
@@ -58,11 +56,8 @@ public class OrzPlayerEvent implements Listener {
         String ipAddress = event.getAddress().getHostAddress();
         String resultDesc = event.getLoginResult().toString();
         String addressInfo = getAddressOfIPv4(ipAddress);
-        String qqMsg =
-                "--- " + resultDesc + " ---" + "\n"
-                        + playerName + "(" + ipAddress + ")" + "\n"
-                        + addressInfo;
-        OrzMC.qqBot.sendQQGroupMsg(qqMsg);
+        String qqMsg = "--- " + resultDesc + " ---" + "\n" + playerName + "(" + ipAddress + ")" + "\n" + addressInfo;
+        OrzMC.sendPublicMessage(qqMsg);
     }
 
     @EventHandler
@@ -127,16 +122,14 @@ public class OrzPlayerEvent implements Listener {
             String name = OrzMessageParser.playerDisplayName(p);
             msgBuilder.append("\n").append(name);
         }
-        OrzMC.qqBot.sendQQGroupMsg(msgBuilder.toString());
+        OrzMC.sendPublicMessage(msgBuilder.toString());
         OrzMC.logger().info(msgBuilder.toString());
         if (onlinePlayerCount == 0) {
-            OrzMC.qqBot.sendPrivateMsg("服务器当前无玩家，可进行服务器维护");
+            OrzMC.sendPrivateMessage("服务器当前无玩家，可进行服务器维护");
         }
     }
 
     enum PlayerState {
-        JOIN,
-        QUIT,
-        KICK
+        JOIN, QUIT, KICK
     }
 }

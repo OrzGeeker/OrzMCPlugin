@@ -59,7 +59,7 @@ public class OrzTNTEvent implements Listener {
                     .build();
             OrzMC.server().sendMessage(msg);
             String qqGroupMsg = OrzMessageParser.playerDisplayName(player) + " 在" + locationString(placedBlock) + "放置了 " + placedBlockType.name();
-            OrzMC.qqBot.sendQQGroupMsg(qqGroupMsg);
+            OrzMC.sendPublicMessage(qqGroupMsg);
         }
     }
 
@@ -79,14 +79,14 @@ public class OrzTNTEvent implements Listener {
     public void onBlockExplode(BlockExplodeEvent event) {
         Block block = event.getBlock();
         String msg = locationString(block) + "处" + block.getType().name() + "爆炸";
-        OrzMC.qqBot.sendQQGroupMsg(msg);
+        OrzMC.sendPublicMessage(msg);
         OrzMC.server().sendMessage(locationComponent(block).append(Component.text("处" + block.getType().name() + "爆炸")));
     }
 
     @EventHandler
     public void onEntityExplode(EntityExplodeEvent event) {
         String msg = locationString(event.getLocation()) + "处" + event.getEntityType().name() + "爆炸";
-        OrzMC.qqBot.sendQQGroupMsg(msg);
+        OrzMC.sendPublicMessage(msg);
         OrzMC.server().sendMessage(locationComponent(event.getLocation()).append(Component.text("处" + event.getEntityType().name() + "爆炸")));
     }
 

@@ -29,7 +29,7 @@ public class OrzWhiteListEvent implements Listener {
 
         // 通知QQ群
         String qqGroupMsg = player.getName() + " 尝试加入服务器，被白名单拦截";
-        OrzMC.qqBot.sendQQGroupMsg(qqGroupMsg);
+        OrzMC.sendPublicMessage(qqGroupMsg);
     }
 }
 

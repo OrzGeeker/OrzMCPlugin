@@ -18,10 +18,12 @@ import java.util.logging.Logger;
 
 public final class OrzMC extends JavaPlugin implements Listener {
 
-    public static final OrzDiscordBot discordBot = new OrzDiscordBot();
-    public static final OrzLarkBot larkBot = new OrzLarkBot();
-    public static final OrzQQBot qqBot = new OrzQQBot();
+    // 机器人配置
+    private static final OrzDiscordBot discordBot = new OrzDiscordBot();
+    private static final OrzLarkBot larkBot = new OrzLarkBot();
+    private static final OrzQQBot qqBot = new OrzQQBot();
 
+    // 公共静态成员
     public static JavaPlugin plugin() {
         return JavaPlugin.getPlugin(OrzMC.class);
     }
@@ -36,6 +38,16 @@ public final class OrzMC extends JavaPlugin implements Listener {
 
     public static FileConfiguration config() {
         return OrzMC.plugin().getConfig();
+    }
+
+    // 公共方法
+    public static void sendPublicMessage(String message) {
+        larkBot.sendMessage(message);
+        qqBot.sendQQGroupMsg(message);
+    }
+
+    public static void sendPrivateMessage(String message) {
+        qqBot.sendPrivateMsg(message);
     }
 
     public static void debugInfo(String msg) {
@@ -113,4 +125,5 @@ public final class OrzMC extends JavaPlugin implements Listener {
         larkBot.teardown();
         qqBot.teardown();
     }
+    // ---
 }
