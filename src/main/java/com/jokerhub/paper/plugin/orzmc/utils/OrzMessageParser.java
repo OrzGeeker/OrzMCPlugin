@@ -1,4 +1,4 @@
-package com.jokerhub.paper.plugin.orzmc.bot;
+package com.jokerhub.paper.plugin.orzmc.utils;
 
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
 import com.jokerhub.paper.plugin.orzmc.commands.OrzUserCmd;
@@ -10,9 +10,9 @@ import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-public class OrzNotifier {
+public class OrzMessageParser {
 
-    public static void processMessage(String message, Boolean isAdmin, Consumer<String> callback) {
+    public static void parse(String message, Boolean isAdmin, Consumer<String> callback) {
 
         if (!message.startsWith("/")) return;
 
@@ -75,7 +75,7 @@ public class OrzNotifier {
             StringBuilder msgBuilder = new StringBuilder(tip);
 
             for (Player p : onlinePlayers) {
-                String name = OrzNotifier.playerDisplayName(p);
+                String name = OrzMessageParser.playerDisplayName(p);
                 msgBuilder.append("\n").append(name);
             }
             String ret = msgBuilder.toString();

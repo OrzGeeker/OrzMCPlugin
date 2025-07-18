@@ -1,8 +1,7 @@
 package com.jokerhub.paper.plugin.orzmc.events;
 
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
-import com.jokerhub.paper.plugin.orzmc.bot.OrzNotifier;
-import com.jokerhub.paper.plugin.orzmc.bot.OrzQQBot;
+import com.jokerhub.paper.plugin.orzmc.utils.OrzMessageParser;
 import io.papermc.paper.event.block.BlockPreDispenseEvent;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
@@ -59,8 +58,8 @@ public class OrzTNTEvent implements Listener {
                     .append(blockLocationInfo(placedBlock, "放置了 " + placedBlockType.name()))
                     .build();
             OrzMC.server().sendMessage(msg);
-            String qqGroupMsg = OrzNotifier.playerDisplayName(player) + " 在" + locationString(placedBlock) + "放置了 " + placedBlockType.name();
-            OrzQQBot.sendQQGroupMsg(qqGroupMsg);
+            String qqGroupMsg = OrzMessageParser.playerDisplayName(player) + " 在" + locationString(placedBlock) + "放置了 " + placedBlockType.name();
+            OrzMC.qqBot.sendQQGroupMsg(qqGroupMsg);
         }
     }
 
@@ -80,14 +79,14 @@ public class OrzTNTEvent implements Listener {
     public void onBlockExplode(BlockExplodeEvent event) {
         Block block = event.getBlock();
         String msg = locationString(block) + "处" + block.getType().name() + "爆炸";
-        OrzQQBot.sendQQGroupMsg(msg);
+        OrzMC.qqBot.sendQQGroupMsg(msg);
         OrzMC.server().sendMessage(locationComponent(block).append(Component.text("处" + block.getType().name() + "爆炸")));
     }
 
     @EventHandler
     public void onEntityExplode(EntityExplodeEvent event) {
         String msg = locationString(event.getLocation()) + "处" + event.getEntityType().name() + "爆炸";
-        OrzQQBot.sendQQGroupMsg(msg);
+        OrzMC.qqBot.sendQQGroupMsg(msg);
         OrzMC.server().sendMessage(locationComponent(event.getLocation()).append(Component.text("处" + event.getEntityType().name() + "爆炸")));
     }
 
@@ -111,7 +110,7 @@ public class OrzTNTEvent implements Listener {
     }
 
     TextComponent playerInfo(Player player) {
-        String playerName = OrzNotifier.playerDisplayName(player);
+        String playerName = OrzMessageParser.playerDisplayName(player);
         return Component.text()
                 .append(Component.text(playerName).color(TextColor.fromHexString("#FF0000")))
                 .build();

@@ -1,5 +1,6 @@
-package com.jokerhub.paper.plugin.orzmc.bot;
+package com.jokerhub.paper.plugin.orzmc.bot.discord;
 
+import com.jokerhub.paper.plugin.orzmc.utils.OrzMessageParser;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -17,7 +18,7 @@ public class OrzDiscordEvent extends ListenerAdapter {
         Message message = event.getMessage();
         String content = message.getContentRaw();
         Boolean isAdmin = true;
-        OrzNotifier.processMessage(content, isAdmin, info -> {
+        OrzMessageParser.parse(content, isAdmin, info -> {
             if (info != null) {
                 MessageChannel channel = event.getChannel();
                 channel.sendMessage(info).queue();

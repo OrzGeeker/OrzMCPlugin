@@ -1,8 +1,12 @@
-package com.jokerhub.paper.plugin.orzmc.bot;
+package com.jokerhub.paper.plugin.orzmc.bot.qq;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
+import com.jokerhub.paper.plugin.orzmc.utils.OrzMessageParser;
+import com.jokerhub.paper.plugin.orzmc.bot.base.OrzBaseBot;
+import org.java_websocket.client.WebSocketClient;
+import org.java_websocket.handshake.ServerHandshake;
 
 import java.net.URI;
 import java.net.URLEncoder;
@@ -11,13 +15,25 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 
-public class OrzQQBot {
+public class OrzQQBot extends OrzBaseBot {
+    private WebSocketClient webSocketClient;
 
-    public static boolean disable() {
-        return !OrzMC.config().getBoolean("enable_qq_bot");
+    @Override
+    public boolean isEnable() {
+        return OrzMC.config().getBoolean("enable_qq_bot");
     }
 
-    public static void processJsonStringPayload(String jsonString) {
+    @Override
+    public void setup() {
+        this.setupWebSocketClient();
+    }
+
+    @Override
+    public void teardown() {
+        this.shutdownWebSocketClient();
+    }
+
+    public void processJsonStringPayload(String jsonString) {
         if (jsonString == null || jsonString.isEmpty()) {
             return;
         }
@@ -33,7 +49,7 @@ public class OrzQQBot {
             boolean isAdmin = senderRole.equals("admin");
             String qqGroupId = OrzMC.config().getString("qq_group_id");
             if (groupId.equals(qqGroupId)) {
-                OrzNotifier.processMessage(message, isAdmin || isOwner, info -> {
+                OrzMessageParser.parse(message, isAdmin || isOwner, info -> {
                     if (info != null) {
                         sendQQGroupMsg(info);
                     }
@@ -44,9 +60,9 @@ public class OrzQQBot {
         }
     }
 
-    public static void sendQQGroupMsg(String msg) {
-        OrzLarkBot.sendMessage(msg);
-        if (disable()) {
+    public void sendQQGroupMsg(String msg) {
+        OrzMC.larkBot.sendMessage(msg);
+        if (!this.isEnable()) {
             return;
         }
         try {
@@ -58,8 +74,8 @@ public class OrzQQBot {
         }
     }
 
-    public static void sendPrivateMsg(String msg) {
-        if (disable()) {
+    public void sendPrivateMsg(String msg) {
+        if (!this.isEnable()) {
             return;
         }
         try {
@@ -71,7 +87,7 @@ public class OrzQQBot {
         }
     }
 
-    private static void asyncHttpRequest(String url) {
+    private void asyncHttpRequest(String url) {
         try (HttpClient client = HttpClient.newHttpClient()) {
             HttpRequest request = HttpRequest.newBuilder().uri(URI.create(url)).build();
             client.sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenAcceptAsync(response -> OrzMC.debugInfo("Response Code : " + response.toString())).exceptionally(e -> {
@@ -81,5 +97,50 @@ public class OrzQQBot {
         } catch (Exception e) {
             OrzMC.logger().severe(e.toString());
         }
+    }
+
+    public void setupWebSocketClient() {
+        String wsServer = OrzMC.config().getString("qq_bot_ws_server");
+        if (!this.isEnable() || wsServer == null || wsServer.isEmpty()) {
+            return;
+        }
+        try {
+            URI uri = new URI(wsServer);
+            webSocketClient = new WebSocketClient(uri) {
+                @Override
+                public void onOpen(ServerHandshake handShakeData) {
+                    OrzMC.logger().info("打开长链接");
+                }
+
+                @Override
+                public void onMessage(String message) {
+                    OrzMC.debugInfo("接收到消息: " + message);
+                    OrzMC.qqBot.processJsonStringPayload(message);
+                }
+
+                @Override
+                public void onClose(int code, String reason, boolean remote) {
+                    OrzMC.logger().info("关闭长链接");
+                }
+
+                @Override
+                public void onError(Exception ex) {
+                    OrzMC.logger().severe(ex.toString());
+                }
+            };
+
+            webSocketClient.connect();
+            // 在这里可以发送消息，例如：webSocketClient.send("Hello, WebSockets!");
+
+        } catch (Exception e) {
+            OrzMC.logger().info(e.toString());
+        }
+    }
+
+    public void shutdownWebSocketClient() {
+        if (webSocketClient == null) {
+            return;
+        }
+        webSocketClient.close();
     }
 }

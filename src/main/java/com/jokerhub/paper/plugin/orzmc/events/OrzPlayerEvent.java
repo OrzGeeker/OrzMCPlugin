@@ -5,8 +5,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
-import com.jokerhub.paper.plugin.orzmc.bot.OrzNotifier;
-import com.jokerhub.paper.plugin.orzmc.bot.OrzQQBot;
+import com.jokerhub.paper.plugin.orzmc.utils.OrzMessageParser;
 import com.jokerhub.paper.plugin.orzmc.commands.OrzGuideBook;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -63,13 +62,7 @@ public class OrzPlayerEvent implements Listener {
                 "--- " + resultDesc + " ---" + "\n"
                         + playerName + "(" + ipAddress + ")" + "\n"
                         + addressInfo;
-        OrzQQBot.sendQQGroupMsg(qqMsg);
-    }
-
-    enum PlayerState {
-        JOIN,
-        QUIT,
-        KICK
+        OrzMC.qqBot.sendQQGroupMsg(qqMsg);
     }
 
     @EventHandler
@@ -101,7 +94,7 @@ public class OrzPlayerEvent implements Listener {
         int onlinePlayerCount = onlinePlayers.size();
         int maxPlayerCount = OrzMC.server().getMaxPlayers();
 
-        String playerName = OrzNotifier.playerDisplayName(player);
+        String playerName = OrzMessageParser.playerDisplayName(player);
         StringBuilder msgBuilder = new StringBuilder(playerName).append(" ");
 
         boolean isMinusCurrentPlayer = false;
@@ -131,13 +124,19 @@ public class OrzPlayerEvent implements Listener {
             if (p.getUniqueId() == player.getUniqueId() && isMinusCurrentPlayer) {
                 continue;
             }
-            String name = OrzNotifier.playerDisplayName(p);
+            String name = OrzMessageParser.playerDisplayName(p);
             msgBuilder.append("\n").append(name);
         }
-        OrzQQBot.sendQQGroupMsg(msgBuilder.toString());
+        OrzMC.qqBot.sendQQGroupMsg(msgBuilder.toString());
         OrzMC.logger().info(msgBuilder.toString());
         if (onlinePlayerCount == 0) {
-            OrzQQBot.sendPrivateMsg("服务器当前无玩家，可进行服务器维护");
+            OrzMC.qqBot.sendPrivateMsg("服务器当前无玩家，可进行服务器维护");
         }
+    }
+
+    enum PlayerState {
+        JOIN,
+        QUIT,
+        KICK
     }
 }

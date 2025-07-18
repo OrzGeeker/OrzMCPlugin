@@ -3,7 +3,6 @@ package com.jokerhub.paper.plugin.orzmc.events;
 import com.destroystokyo.paper.event.server.ServerExceptionEvent;
 import com.destroystokyo.paper.exception.ServerException;
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
-import com.jokerhub.paper.plugin.orzmc.bot.OrzQQBot;
 import com.jokerhub.paper.plugin.orzmc.commands.OrzUserCmd;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -17,13 +16,13 @@ public class OrzServerEvent implements Listener {
                 "服务停止" +
                 "\n\n" +
                 "停止状态无法响应命令消息";
-        OrzQQBot.sendQQGroupMsg(stringBuilder);
+        OrzMC.qqBot.sendQQGroupMsg(stringBuilder);
     }
 
     @EventHandler
     public void onException(ServerExceptionEvent event) {
         ServerException exception = event.getException();
-        OrzQQBot.sendPrivateMsg(exception.toString());
+        OrzMC.qqBot.sendPrivateMsg(exception.toString());
     }
 
     @EventHandler
@@ -37,6 +36,6 @@ public class OrzServerEvent implements Listener {
         }
         stringBuilder.append("\n\n");
         stringBuilder.append("发送 \"").append(OrzUserCmd.SHOW_HELP.getCmdName()).append("\" 查看支持的命令消息");
-        OrzQQBot.sendQQGroupMsg(stringBuilder.toString());
+        OrzMC.qqBot.sendQQGroupMsg(stringBuilder.toString());
     }
 }
