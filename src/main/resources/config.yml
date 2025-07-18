@@ -15,17 +15,17 @@ enable_qq_bot: false
 qq_group_id: '1057199014'
 # QQBot 所在QQ群管理员帐号
 qq_admin_id: '1092760538'
-# QQBot 机器人http服务地址，OneBot 11协议
+# QQBot 机器人 HTTP/HTTPS 服务端地址，OneBot 11协议
 qq_bot_api_server: 'http://127.0.0.1:3000'
-# QQBot 机器人websocket正向链接地址
+# QQBot 机器人 WebSocket 服务端地址
 qq_bot_ws_server: 'ws://127.0.0.1:3001'
 
 # Discord 频道机器人开关
 enable_discord_bot: false
-# Discord 频道机器人 api 授权 token (base64 encoded)
-base64_discord_bot_token: 'TVRFd01UUTJNVEl3TWpZeU56azRPVFUzTkEuR3dxellaLjY3anU5c0JnVVN0QkNsb3FwbzM3QlV2dEZUbXdobGE3ZFp2RDV3'
+# Discord 频道机器人 api 授权 token
+discord_bot_token: 'MTEwMTQ2MTIwMjYyNzk4OTU3NA.GwqzYZ.67ju9sBgUStBCloqpo37BUvtFTmwhla7dZvD5w'
 
 # Lark飞书群机器人开关
 enable_lark_bot: false
-# Lark飞书群机器人webhook地址，插件 -> lark群 方向发消息
+# Lark飞书群机器人webhook地址，插件 -> lark群 单方向发消息
 lark_bot_webhook: 'https://open.feishu.cn/open-apis/bot/v2/hook/9cebe3e2-1d33-4ce9-a838-bf1f1f262ecf'

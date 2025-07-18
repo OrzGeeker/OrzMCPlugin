@@ -7,8 +7,6 @@ import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Activity;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 
-import java.util.Base64;
-
 public class OrzDiscordBot extends OrzBaseBot {
 
     private static JDA api;
@@ -24,9 +22,9 @@ public class OrzDiscordBot extends OrzBaseBot {
             OrzMC.debugInfo("Discord Bot Disabled!");
             return;
         }
-        String serverInfo = "jokerhub.cn";
-        String base64BotToken = OrzMC.config().getString("base64_discord_bot_token");
-        String botToken = new String(Base64.getDecoder().decode(base64BotToken));
+        String minecraftVersion = OrzMC.server().getMinecraftVersion();
+        String serverInfo = "Minecraft" + "(" + minecraftVersion + ")";
+        String botToken = OrzMC.config().getString("discord_bot_token");
         api = JDABuilder.createLight(botToken, GatewayIntent.GUILD_MESSAGES, GatewayIntent.MESSAGE_CONTENT, GatewayIntent.GUILD_MEMBERS).addEventListeners(new OrzDiscordEvent()).setActivity(Activity.playing(serverInfo)).build();
     }
 
