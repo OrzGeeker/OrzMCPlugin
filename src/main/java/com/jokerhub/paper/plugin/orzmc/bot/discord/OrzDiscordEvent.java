@@ -21,7 +21,7 @@ public class OrzDiscordEvent extends ListenerAdapter {
         OrzMessageParser.parse(content, isAdmin, info -> {
             if (info != null) {
                 MessageChannel channel = event.getChannel();
-                channel.sendMessage(info).queue();
+                channel.sendMessage(OrzDiscordBot.markdownFormatMessage(info)).queue();
             }
         });
     }

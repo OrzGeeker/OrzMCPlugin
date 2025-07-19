@@ -26,6 +26,9 @@ enable_discord_bot: false
 # Create Token follow Link: https://discord.com/developers/applications
 # Use Shell Command to Generate this value: `echo -n "discord_token_value" | base64`
 discord_bot_token_base64_encoded: 'TVRFd01UUTJNVEl3TWpZeU56azRPVFUzTkEuR1lTMU5ILmxSVTE5ZFZ4N2R0T2JpanRsYXJIM0I1R1lOZG5vQW5fNEFxN1U4'
+# Discord 玩家文字频道，用来发送服务端上下线通知的频道
+# 获取方法，设置 -> 高级设置 -> 开发者模式 打开，长按对应文字频道，在弹出的菜单中选择最后一项：复制频道ID
+discord_player_text_channel_id: '1101910610033250468'
 
 # Lark飞书群机器人开关
 enable_lark_bot: false

@@ -42,6 +42,7 @@ public final class OrzMC extends JavaPlugin implements Listener {
 
     // 公共方法
     public static void sendPublicMessage(String message) {
+        discordBot.sendMessage(message);
         larkBot.sendMessage(message);
         qqBot.sendQQGroupMsg(message);
     }
