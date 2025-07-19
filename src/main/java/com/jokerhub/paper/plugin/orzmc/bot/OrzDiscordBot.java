@@ -24,8 +24,11 @@ public class OrzDiscordBot extends OrzBaseBot {
     private JDA api;
     private boolean isApiReady;
 
-    public static String markdownFormatMessage(String rawmessage) {
-        return "```\n" + rawmessage + "\n```";
+    private static String markdownFormatMessage(String rawMessage) {
+        String prefix = "```\n";
+        String suffix = "\n```";
+        String validMessage = rawMessage.substring(0, Math.min(rawMessage.length(), 2000 - prefix.length() - suffix.length()));
+        return prefix + validMessage + suffix;
     }
 
     @Override
