@@ -23,12 +23,8 @@ dependencies {
     implementation("org.java-websocket:Java-WebSocket:1.5.7")
     // Java Discord API
     implementation("net.dv8tion:JDA:5.1.0") {
-        exclude(module = "slf4j-api")
         exclude(module = "opus-java")
         exclude(module = "commons-collections4")
-        exclude(module = "Java-WebSocket")
-        exclude(module = "commons-lang3")
-        exclude(module = "protobuf-java")
         exclude(module = "jackson-databind")
         exclude(module = "jackson-core")
         exclude(module = "tink")
