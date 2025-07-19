@@ -4,8 +4,9 @@ import com.jokerhub.paper.plugin.orzmc.OrzMC;
 import com.jokerhub.paper.plugin.orzmc.utils.OrzMessageParser;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
+import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Activity;
-import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -56,11 +57,18 @@ public class OrzDiscordBot extends OrzBaseBot {
             public void onMessageReceived(@NotNull MessageReceivedEvent event) {
                 super.onMessageReceived(event);
 
+                // 机器人的消息忽略
                 if (event.getAuthor().isBot()) return;
 
-                Message message = event.getMessage();
-                String content = message.getContentRaw();
-                Boolean isAdmin = true;
+                // 获取消息发送者
+                Member member = event.getMember();
+                if (member == null) return;
+
+                // 判断是否是服主、管理员或者频道管理
+                boolean isAdmin = member.hasPermission(Permission.MANAGE_SERVER) || member.hasPermission(Permission.ADMINISTRATOR) || member.hasPermission(Permission.MANAGE_CHANNEL);
+
+                // 获取消息内容
+                String content = event.getMessage().getContentRaw();
                 OrzMessageParser.parse(content, isAdmin, info -> {
                     if (info != null) {
                         MessageChannel channel = event.getChannel();
