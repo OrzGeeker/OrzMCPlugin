@@ -1,8 +1,8 @@
 package com.jokerhub.paper.plugin.orzmc;
 
-import com.jokerhub.paper.plugin.orzmc.bot.discord.OrzDiscordBot;
-import com.jokerhub.paper.plugin.orzmc.bot.lark.OrzLarkBot;
-import com.jokerhub.paper.plugin.orzmc.bot.qq.OrzQQBot;
+import com.jokerhub.paper.plugin.orzmc.bot.OrzDiscordBot;
+import com.jokerhub.paper.plugin.orzmc.bot.OrzLarkBot;
+import com.jokerhub.paper.plugin.orzmc.bot.OrzQQBot;
 import com.jokerhub.paper.plugin.orzmc.commands.OrzGuideBook;
 import com.jokerhub.paper.plugin.orzmc.commands.OrzMenuCommand;
 import com.jokerhub.paper.plugin.orzmc.commands.OrzTPBow;

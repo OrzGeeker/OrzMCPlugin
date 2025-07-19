@@ -1,8 +1,7 @@
-package com.jokerhub.paper.plugin.orzmc.bot.lark;
+package com.jokerhub.paper.plugin.orzmc.bot;
 
 import com.google.gson.Gson;
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
-import com.jokerhub.paper.plugin.orzmc.bot.base.OrzBaseBot;
 
 import java.net.URI;
 import java.net.http.HttpClient;

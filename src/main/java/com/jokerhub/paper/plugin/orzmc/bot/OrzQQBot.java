@@ -1,9 +1,8 @@
-package com.jokerhub.paper.plugin.orzmc.bot.qq;
+package com.jokerhub.paper.plugin.orzmc.bot;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
-import com.jokerhub.paper.plugin.orzmc.bot.base.OrzBaseBot;
 import com.jokerhub.paper.plugin.orzmc.utils.OrzMessageParser;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;

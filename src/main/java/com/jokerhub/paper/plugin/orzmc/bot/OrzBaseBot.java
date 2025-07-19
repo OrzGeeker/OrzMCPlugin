@@ -1,4 +1,4 @@
-package com.jokerhub.paper.plugin.orzmc.bot.base;
+package com.jokerhub.paper.plugin.orzmc.bot;
 
 public abstract class OrzBaseBot {
 
