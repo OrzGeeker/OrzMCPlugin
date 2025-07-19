@@ -1,3 +1,5 @@
+// PaperMC 插件开发，项目配置文档: https://docs.papermc.io/paper/dev/project-setup
+
 group = "com.jokerhub.paper.plugin"
 version = "1.21.7"
 description = "OrzMC"
@@ -5,13 +7,44 @@ description = "OrzMC"
 java {
     toolchain.languageVersion.set(JavaLanguageVersion.of(21))
 }
+repositories {
+    maven {
+        name = "papermc"
+        url = uri("https://repo.papermc.io/repository/maven-public/")
+    }
+    maven {
+        name = "sonatype"
+        url = uri("https://oss.sonatype.org/content/groups/public/")
+    }
+}
+dependencies {
+    compileOnly("io.papermc.paper:paper-api:1.21.7-R0.1-SNAPSHOT")
+    // WebSocket Client For NapCat QQBot
+    implementation("org.java-websocket:Java-WebSocket:1.5.7")
+    // Java Discord API
+    implementation("net.dv8tion:JDA:5.1.0") {
+        exclude(module = "slf4j-api")
+        exclude(module = "opus-java")
+        exclude(module = "commons-collections4")
+        exclude(module = "Java-WebSocket")
+        exclude(module = "commons-lang3")
+        exclude(module = "protobuf-java")
+        exclude(module = "jackson-databind")
+        exclude(module = "jackson-core")
+        exclude(module = "tink")
+    }
+}
 
-kotlin {
-    jvmToolchain(21)
+// 项目编译时插件添加
+plugins {
+    kotlin("jvm") version "2.2.0"
+    id("com.github.johnrengelman.shadow") version "8.1.1"
+    // 工程内直接调试服务端插件：https://docs.papermc.io/paper/dev/debugging#using-direct-debugging
+    id("xyz.jpenilla.run-paper") version "2.3.1"
 }
 
 tasks {
-    // 参考：https://docs.papermc.io/paper/dev/debugging#using-direct-debugging
+    // 配置工程内直接调试服务端插件
     // gradle-plugin: https://github.com/jpenilla/run-task#basic-usage
     runServer {
         // Configure the Minecraft version for our task.
@@ -19,51 +52,20 @@ tasks {
         // Your plugin's jar (or shadowJar if present) will be used automatically.
         minecraftVersion("1.21.7")
     }
-}
-
-plugins {
-    kotlin("jvm") version "2.2.0"
-    id("com.github.johnrengelman.shadow") version "8.1.1"
-    id("xyz.jpenilla.run-paper") version "2.3.1"
-}
-
-// Paper Project Setup: https://docs.papermc.io/paper/dev/project-setup
-repositories {
-    mavenCentral()
-    maven("https://repo.papermc.io/repository/maven-public/")
-    maven("https://oss.sonatype.org/content/groups/public/") {
-        name = "sonatype"
+    // Mojang mappings: https://docs.papermc.io/paper/dev/project-setup/#mojang-mappings
+    jar {
+        manifest {
+            attributes["paperweight-mappings-namespace"] = "mojang"
+        }
     }
-}
-
-dependencies {
-    compileOnly("io.papermc.paper:paper-api:1.21.7-R0.1-SNAPSHOT")
-    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
-    implementation("net.dv8tion:JDA:5.1.0") {
-        exclude(module = "opus-java")
+    shadowJar {
+        manifest {
+            attributes["paperweight-mappings-namespace"] = "mojang"
+        }
+        // 移除 `-all` 后缀（可选）
+        archiveClassifier.set("")
     }
-    implementation("org.java-websocket:Java-WebSocket:1.5.7")
-    implementation("com.google.protobuf:protobuf-java:4.31.1")
-    implementation("org.apache.commons:commons-lang3:3.18.0")
-}
-
-tasks.build {
-    dependsOn("shadowJar")
-}
-
-tasks.withType<JavaCompile> {
-    options.compilerArgs.add("-Xlint:deprecation")
-}
-
-tasks.jar {
-    manifest {
-        attributes["paperweight-mappings-namespace"] = "mojang"
+    build {
+        dependsOn("shadowJar")
     }
-}
-// if you have shadowJar configured
-tasks.shadowJar {
-    manifest {
-        attributes["paperweight-mappings-namespace"] = "mojang"
-    }
-    archiveClassifier.set("") // 移除 `-all` 后缀（可选）
 }
