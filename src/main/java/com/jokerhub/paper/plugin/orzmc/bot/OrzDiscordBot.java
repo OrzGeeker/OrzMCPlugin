@@ -24,13 +24,13 @@ import java.util.stream.Collectors;
 public class OrzDiscordBot extends OrzBaseBot {
 
     private final ArrayList<String> toBeSendMessageWhenApiReady = new ArrayList<>();
-    private final int discordTextLengthLimit = 2_000;
     private final String codeBlockPrefix = "```\n";
     private final String codeBlockSuffix = "```";
     private JDA api;
     private boolean isApiReady;
 
     private List<String> codeBlockSplitMessage(String rawMessage) {
+        int discordTextLengthLimit = 2_000;
         return SplitUtil.split(rawMessage, discordTextLengthLimit - codeBlockPrefix.length() - codeBlockSuffix.length(), true, SplitUtil.Strategy.NEWLINE, SplitUtil.Strategy.ANYWHERE).stream().map(part -> codeBlockPrefix + part + codeBlockSuffix).collect(Collectors.toList());
 
     }
