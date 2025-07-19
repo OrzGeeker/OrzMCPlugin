@@ -22,8 +22,10 @@ qq_bot_ws_server: 'ws://127.0.0.1:3001'
 
 # Discord 频道机器人开关
 enable_discord_bot: false
-# Discord 频道机器人 api 授权 token
-discord_bot_token: 'MTEwMTQ2MTIwMjYyNzk4OTU3NA.GwqzYZ.67ju9sBgUStBCloqpo37BUvtFTmwhla7dZvD5w'
+# Discord 频道机器人 api 授权: discord_bot_token_base64_encoded = base64_encode(discord_bot_token)
+# Create Token follow Link: https://discord.com/developers/applications
+# Use Shell Command to Generate this value: `echo -n "discord_token_value" | base64`
+discord_bot_token_base64_encoded: 'TVRFd01UUTJNVEl3TWpZeU56azRPVFUzTkEuR1lTMU5ILmxSVTE5ZFZ4N2R0T2JpanRsYXJIM0I1R1lOZG5vQW5fNEFxN1U4'
 
 # Lark飞书群机器人开关
 enable_lark_bot: false

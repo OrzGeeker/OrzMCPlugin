@@ -7,6 +7,8 @@ import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Activity;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 
+import java.util.Base64;
+
 public class OrzDiscordBot extends OrzBaseBot {
 
     private static JDA api;
@@ -24,7 +26,8 @@ public class OrzDiscordBot extends OrzBaseBot {
         }
         String minecraftVersion = OrzMC.server().getMinecraftVersion();
         String serverInfo = "Minecraft" + "(" + minecraftVersion + ")";
-        String botToken = OrzMC.config().getString("discord_bot_token");
+        String botTokenBase64Encoded = OrzMC.config().getString("discord_bot_token_base64_encoded");
+        String botToken = new String(Base64.getDecoder().decode(botTokenBase64Encoded));
         api = JDABuilder.createLight(botToken, GatewayIntent.GUILD_MESSAGES, GatewayIntent.MESSAGE_CONTENT, GatewayIntent.GUILD_MEMBERS).addEventListeners(new OrzDiscordEvent()).setActivity(Activity.playing(serverInfo)).build();
     }
 
