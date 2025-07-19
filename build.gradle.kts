@@ -24,7 +24,6 @@ dependencies {
     // Java Discord API
     implementation("net.dv8tion:JDA:5.1.0") {
         exclude(module = "opus-java")
-        exclude(module = "commons-collections4")
         exclude(module = "jackson-databind")
         exclude(module = "jackson-core")
         exclude(module = "tink")
