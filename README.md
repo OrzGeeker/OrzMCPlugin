@@ -99,6 +99,14 @@ PaperMC 服务器添加此插件后，会自动开启强制白名单模式，不
   1. PaperMC 插件目录下提供一个名称 `update/`的目录，把要更新的插件文件放到这个目录下面
   2. 下次服务端重启时，插件会被自动移到`plugins/`目录下面，完成插件升级
 
+## 问题反馈
+
+- 如果你在使用过程中发现问题，欢迎给项目提建议：[issues](https://github.com/OrzGeeker/OrzMCPlugin/issues)
+
+- 也可以进入飞书问题或需求反馈群：
+
+    ![lark_issue_feedback_group](./images/lark_issue_feedback.png)
+
 ---
 ## 开发
 
