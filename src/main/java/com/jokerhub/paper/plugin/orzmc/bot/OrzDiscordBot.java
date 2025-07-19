@@ -13,22 +13,26 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.session.ReadyEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.requests.GatewayIntent;
+import net.dv8tion.jda.api.utils.SplitUtil;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class OrzDiscordBot extends OrzBaseBot {
 
     private final ArrayList<String> toBeSendMessageWhenApiReady = new ArrayList<>();
+    private final int discordTextLengthLimit = 2_000;
+    private final String codeBlockPrefix = "```\n";
+    private final String codeBlockSuffix = "```";
     private JDA api;
     private boolean isApiReady;
 
-    private static String markdownFormatMessage(String rawMessage) {
-        String prefix = "```\n";
-        String suffix = "\n```";
-        String validMessage = rawMessage.substring(0, Math.min(rawMessage.length(), 2000 - prefix.length() - suffix.length()));
-        return prefix + validMessage + suffix;
+    private List<String> codeBlockSplitMessage(String rawMessage) {
+        return SplitUtil.split(rawMessage, discordTextLengthLimit - codeBlockPrefix.length() - codeBlockSuffix.length(), true, SplitUtil.Strategy.NEWLINE, SplitUtil.Strategy.ANYWHERE).stream().map(part -> codeBlockPrefix + part + codeBlockSuffix).collect(Collectors.toList());
+
     }
 
     @Override
@@ -75,7 +79,7 @@ public class OrzDiscordBot extends OrzBaseBot {
                 OrzMessageParser.parse(content, isAdmin, info -> {
                     if (info != null) {
                         MessageChannel channel = event.getChannel();
-                        channel.sendMessage(OrzDiscordBot.markdownFormatMessage(info)).queue();
+                        codeBlockSplitMessage(info).forEach(part -> channel.sendMessage(part).queue());
                     }
                 });
             }
@@ -97,14 +101,15 @@ public class OrzDiscordBot extends OrzBaseBot {
             toBeSendMessageWhenApiReady.add(message);
             return;
         }
-        TextChannel channel = null;
+        TextChannel channel;
         String playerTextChannelId = OrzMC.config().getString("discord_player_text_channel_id");
         if (playerTextChannelId != null) {
             channel = api.getTextChannelById(playerTextChannelId);
+        } else {
+            channel = null;
         }
         if (channel != null) {
-            String markdownMessage = markdownFormatMessage(message);
-            channel.sendMessage(markdownMessage).queue();
+            codeBlockSplitMessage(message).forEach(part -> channel.sendMessage(part).queue());
         } else {
             OrzMC.logger().warning("your discord bot not in this text channel: " + playerTextChannelId);
         }
