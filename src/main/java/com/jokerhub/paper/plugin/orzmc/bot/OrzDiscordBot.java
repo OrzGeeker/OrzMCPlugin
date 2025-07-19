@@ -19,7 +19,7 @@ import java.util.Base64;
 
 public class OrzDiscordBot extends OrzBaseBot {
 
-    private final ArrayList<String> toBeSendMessageWhenApiReady = new ArrayList<String>();
+    private final ArrayList<String> toBeSendMessageWhenApiReady = new ArrayList<>();
     private JDA api;
     private boolean isApiReady;
 
@@ -48,9 +48,7 @@ public class OrzDiscordBot extends OrzBaseBot {
                 super.onReady(event);
 
                 isApiReady = true;
-                toBeSendMessageWhenApiReady.forEach(message -> {
-                    sendMessage(message);
-                });
+                toBeSendMessageWhenApiReady.forEach(message -> sendMessage(message));
                 toBeSendMessageWhenApiReady.clear();
             }
 
