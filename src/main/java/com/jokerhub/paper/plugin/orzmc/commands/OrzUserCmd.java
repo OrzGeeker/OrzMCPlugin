@@ -16,7 +16,7 @@ public enum OrzUserCmd {
     }
 
     private static String cmdPromptChar() {
-        return OrzMC.config().getString("cmd_prompt_char", "/");
+        return OrzMC.config().getString("cmd_prompt_char", "$");
     }
 
     public static boolean isValidCmd(String message) {
@@ -38,7 +38,7 @@ public enum OrzUserCmd {
 
     public String adminPermissionRequiredTip() {
         if (this.needAdminPermission) {
-            return this.getCmdString() + "命令需要群管理员权限";
+            return this.getCmdString() + " 命令需要群管理员权限";
         } else {
             return "";
         }
