@@ -36,8 +36,8 @@ public class OrzMessageParser {
         else if (cmdName.equals(OrzUserCmd.REMOVE_PLAYER_FROM_WHITELIST.getCmdName())) {
             removeWhiteListInfo(isAdmin, userNameSet, callback);
         }
-        // 未知命令，展示帮助信息
-        else {
+        // 匹配 / 后跟任何不是 / 单字符的命令时，展示帮助信息
+        else if (cmdName.matches("/[^/]")) {
             callback.accept(OrzUserCmd.helpInfo());
         }
     }
