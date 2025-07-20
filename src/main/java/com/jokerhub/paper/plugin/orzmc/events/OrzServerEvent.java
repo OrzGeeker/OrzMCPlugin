@@ -35,7 +35,7 @@ public class OrzServerEvent implements Listener {
             case RELOAD -> stringBuilder.append("重启完成");
         }
         stringBuilder.append("\n\n");
-        stringBuilder.append("发送 \"").append(OrzUserCmd.SHOW_HELP.getCmdName()).append("\" 查看支持的命令消息");
+        stringBuilder.append("发送 \"").append(OrzUserCmd.SHOW_HELP.getCmdString()).append("\" 查看支持的命令消息");
         OrzMC.sendPublicMessage(stringBuilder.toString());
     }
 }

@@ -14,30 +14,30 @@ public class OrzMessageParser {
 
     public static void parse(String message, Boolean isAdmin, Consumer<String> callback) {
 
-        if (!message.startsWith("/")) return;
+        if (!OrzUserCmd.isValidCmd(message)) return;
 
         ArrayList<String> cmd = new ArrayList<>(Arrays.asList(message.split("[, ]+")));
-        String cmdName = cmd.removeFirst();
+        String cmdString = cmd.removeFirst();
         Set<String> userNameSet = new HashSet<>(cmd);
 
         // 普通命令
-        if (cmdName.equals(OrzUserCmd.SHOW_PLAYERS.getCmdName())) {
+        if (cmdString.equals(OrzUserCmd.SHOW_PLAYERS.getCmdString())) {
             onlinePlayersInfo(callback);
-        } else if (cmdName.equals(OrzUserCmd.SHOW_WHITELIST.getCmdName())) {
+        } else if (cmdString.equals(OrzUserCmd.SHOW_WHITELIST.getCmdString())) {
             whiteListInfo(callback);
-        } else if (cmdName.equals(OrzUserCmd.SHOW_HELP.getCmdName())) {
+        } else if (cmdString.equals(OrzUserCmd.SHOW_HELP.getCmdString())) {
             callback.accept(OrzUserCmd.helpInfo());
         }
         // 管理员命令
-        else if (cmdName.equals(OrzUserCmd.ADD_PLAYER_TO_WHITELIST.getCmdName())) {
+        else if (cmdString.equals(OrzUserCmd.ADD_PLAYER_TO_WHITELIST.getCmdString())) {
             addWhiteListInfo(isAdmin, userNameSet, callback);
         }
         // 管理员命令
-        else if (cmdName.equals(OrzUserCmd.REMOVE_PLAYER_FROM_WHITELIST.getCmdName())) {
+        else if (cmdString.equals(OrzUserCmd.REMOVE_PLAYER_FROM_WHITELIST.getCmdString())) {
             removeWhiteListInfo(isAdmin, userNameSet, callback);
         }
-        // 匹配 / 后跟任何不是 / 单字符的命令时，展示帮助信息
-        else if (cmdName.matches("/[^/]")) {
+        // 其它命令，展示帮助信息
+        else {
             callback.accept(OrzUserCmd.helpInfo());
         }
     }

@@ -7,7 +7,10 @@ explosion_report: false
 # Discord 频道链接，用于提示玩家加入Discord讨论群
 discord_link: 'https://discord.gg/MnKfFQ58rD'
 
-# QQ机器人群消息发送服务配置
+# 机器人消息发送服务配置
+
+# 命令提示字符
+cmd_prompt_chat: '/'
 
 # 是否启用 QQBot 机器人功能：true/false
 enable_qq_bot: false
