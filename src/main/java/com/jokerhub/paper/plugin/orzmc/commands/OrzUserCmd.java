@@ -2,8 +2,6 @@ package com.jokerhub.paper.plugin.orzmc.commands;
 
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
 
-import java.util.Objects;
-
 public enum OrzUserCmd {
     SHOW_PLAYERS("l", "查看当前在线玩家", false), SHOW_WHITELIST("w", "查看当前在白名单中的玩家", false), SHOW_HELP("h", "查看QQ群中可以使用的命令信息", false), ADD_PLAYER_TO_WHITELIST("a", "添加玩家到服务器白名单中", true), REMOVE_PLAYER_FROM_WHITELIST("r", "从服务器白名单中移除玩家", true);
 
@@ -18,8 +16,7 @@ public enum OrzUserCmd {
     }
 
     private static String cmdPromptChar() {
-        String promptCharString = OrzMC.config().getString("cmd_prompt_char");
-        return Objects.requireNonNullElse(promptCharString, "/");
+        return OrzMC.config().getString("cmd_prompt_char", "/");
     }
 
     public static boolean isValidCmd(String message) {

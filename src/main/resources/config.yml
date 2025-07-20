@@ -9,8 +9,8 @@ discord_link: 'https://discord.gg/MnKfFQ58rD'
 
 # 机器人消息发送服务配置
 
-# 命令提示字符
-cmd_prompt_chat: '/'
+# 命令提示字符, 可修改为与应用场景不冲突的字符，例如: $
+cmd_prompt_char: '/'
 
 # 是否启用 QQBot 机器人功能：true/false
 enable_qq_bot: false
