@@ -79,7 +79,7 @@ hangarPublish {
         channel = if (isRelease) "Release" else "Snapshot"
         changelog = changelogContent
         id = "OrzMC"
-        apiKey = System.getenv("HANGAR_API_TOKEN")
+        apiKey = "3f1e7de2-e603-4ab4-b98b-99a9b31c962c.4d3d005a-9ad5-4e59-a18b-ec06cec48e44" // System.getenv("HANGAR_API_TOKEN")
         platforms {
             paper {
                 jar = tasks.shadowJar.flatMap { it.archiveFile }
