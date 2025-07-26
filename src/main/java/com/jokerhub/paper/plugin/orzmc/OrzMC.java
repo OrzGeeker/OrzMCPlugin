@@ -19,9 +19,9 @@ import java.util.logging.Logger;
 public final class OrzMC extends JavaPlugin implements Listener {
 
     // 机器人配置
-    private static final OrzDiscordBot discordBot = new OrzDiscordBot();
+    public static final OrzDiscordBot discordBot = new OrzDiscordBot();
+    public static final OrzQQBot qqBot = new OrzQQBot();
     private static final OrzLarkBot larkBot = new OrzLarkBot();
-    private static final OrzQQBot qqBot = new OrzQQBot();
 
     // 公共静态成员
     public static JavaPlugin plugin() {
