@@ -3,15 +3,13 @@ import java.io.ByteArrayOutputStream
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
+group = property("plugin_group_id") as String
+version = property("plugin_version") as String
+description = property("plugin_description") as String
+
 // PaperMC 插件开发，项目配置文档: https://docs.papermc.io/paper/dev/project-setup
-// 自动发布版本配置文档：https://docs.papermc.io/misc/hangar-publishing/
-
-group = "com.jokerhub.paper.plugin"
-version = "1.21.7"
-description = "OrzMC"
-
 java {
-    toolchain.languageVersion.set(JavaLanguageVersion.of(21))
+    toolchain.languageVersion.set(JavaLanguageVersion.of(property("plugin_jdk_min_version") as String))
 }
 repositories {
     maven {
@@ -24,7 +22,7 @@ repositories {
     }
 }
 dependencies {
-    compileOnly("io.papermc.paper:paper-api:1.21.7-R0.1-SNAPSHOT")
+    compileOnly("io.papermc.paper:paper-api:${property("plugin_use_papermc_api_version") as String}-R0.1-SNAPSHOT")
     // WebSocket Client For NapCat QQBot
     implementation("org.java-websocket:Java-WebSocket:1.5.7")
     // Java Discord API
@@ -42,7 +40,7 @@ plugins {
     id("com.gradleup.shadow") version "8.3.8"
     // 工程内直接调试服务端插件：https://docs.papermc.io/paper/dev/debugging#using-direct-debugging
     id("xyz.jpenilla.run-paper") version "2.3.1"
-    // Snapshot版本发布
+    // 自动发布版本配置文档：https://docs.papermc.io/misc/hangar-publishing/
     id("io.papermc.hangar-publish-plugin") version "0.1.3"
 }
 
@@ -60,14 +58,15 @@ fun latestCommitMessage(): String {
     return executeGitCommand("log", "-1", "--pretty=%B")
 }
 
+val github_run_number = System.getenv("GITHUB_RUN_NUMBER")
+val github_branch_name = System.getenv("GITHUB_REF_NAME")
+val timestamp_string = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmSS"))
 val versionString: String = version as String
-val isRelease: Boolean = false
-
+val isRelease: Boolean = (github_branch_name == "main")
 val suffixedVersion: String = if (isRelease) {
-    versionString
+    "${versionString}.${github_run_number}"
 } else {
-    // Give the version a unique name by using the GitHub Actions run number
-    versionString + "_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmSS"))
+    "${versionString}_${timestamp_string}"
 }
 
 // Use the commit description for the changelog
@@ -78,12 +77,12 @@ hangarPublish {
         version = suffixedVersion
         channel = if (isRelease) "Release" else "Snapshot"
         changelog = changelogContent
-        id = "OrzMC"
-        apiKey = "3f1e7de2-e603-4ab4-b98b-99a9b31c962c.4d3d005a-9ad5-4e59-a18b-ec06cec48e44" // System.getenv("HANGAR_API_TOKEN")
+        id = property("plugin_name") as String
+        apiKey = System.getenv("HANGAR_API_TOKEN")
         platforms {
             paper {
                 jar = tasks.shadowJar.flatMap { it.archiveFile }
-                platformVersions = (property("paperVersion") as String).split(",").map { it.trim() }
+                platformVersions = (property("plugin_support_paper_versions") as String).split(",").map { it.trim() }
             }
         }
     }
@@ -96,7 +95,7 @@ tasks {
         // Configure the Minecraft version for our task.
         // This is the only required configuration besides applying the plugin.
         // Your plugin's jar (or shadowJar if present) will be used automatically.
-        minecraftVersion("1.21.7")
+        minecraftVersion(property("plugin_debug_server_version") as String)
     }
     // Mojang mappings: https://docs.papermc.io/paper/dev/project-setup/#mojang-mappings
     jar {
