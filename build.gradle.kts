@@ -61,7 +61,6 @@ tasks {
         manifest {
             attributes["paperweight-mappings-namespace"] = "mojang"
         }
-        dependsOn("shadowJar")
     }
     shadowJar {
         manifest {
