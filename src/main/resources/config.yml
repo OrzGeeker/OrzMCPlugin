@@ -2,10 +2,9 @@
 
 # 服务器是否开启强制白名单
 force_whitelist: true
+
 # 服务器爆炸事件监听
 explosion_report: false
-# Discord 频道链接，用于提示玩家加入Discord讨论群
-discord_link: 'https://discord.gg/MnKfFQ58rD'
 
 # 机器人消息发送服务配置
 
@@ -32,6 +31,8 @@ discord_bot_token_base64_encoded: 'TVRFd01UUTJNVEl3TWpZeU56azRPVFUzTkEuR1lTMU5IL
 # Discord 玩家文字频道，用来发送服务端上下线通知的频道
 # 获取方法，设置 -> 高级设置 -> 开发者模式 打开，长按对应文字频道，在弹出的菜单中选择最后一项：复制频道ID
 discord_player_text_channel_id: '1101910610033250468'
+# Discord玩家服务器链接
+discord_server_link: 'https://discord.gg/mHGKYNWw'
 
 # Lark飞书群机器人开关
 enable_lark_bot: false
