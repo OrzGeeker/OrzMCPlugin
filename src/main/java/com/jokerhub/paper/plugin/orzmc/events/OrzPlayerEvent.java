@@ -63,20 +63,20 @@ public class OrzPlayerEvent implements Listener {
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         OrzGuideBook.giveNewPlayerAGuideBook(event.getPlayer());
-        notifyQQGroupWithMsg(event.getPlayer(), PlayerState.JOIN);
+        notifyPlayerChatGroupWithMsg(event.getPlayer(), PlayerState.JOIN);
     }
 
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
-        notifyQQGroupWithMsg(event.getPlayer(), PlayerState.QUIT);
+        notifyPlayerChatGroupWithMsg(event.getPlayer(), PlayerState.QUIT);
     }
 
     @EventHandler
     public void onPlayerKickLeave(PlayerKickEvent event) {
-        notifyQQGroupWithMsg(event.getPlayer(), PlayerState.KICK);
+        notifyPlayerChatGroupWithMsg(event.getPlayer(), PlayerState.KICK);
     }
 
-    private void notifyQQGroupWithMsg(Player player, PlayerState state) {
+    private void notifyPlayerChatGroupWithMsg(Player player, PlayerState state) {
         ArrayList<Player> onlinePlayers = new ArrayList<>();
 
         Object[] objects = OrzMC.server().getOnlinePlayers().toArray();
