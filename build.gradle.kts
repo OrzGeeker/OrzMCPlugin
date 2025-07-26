@@ -40,7 +40,7 @@ dependencies {
 // 项目编译时插件添加
 plugins {
     kotlin("jvm") version "2.2.0"
-    id("com.github.johnrengelman.shadow") version "8.1.1"
+    id("com.gradleup.shadow") version "8.3.8"
     // 工程内直接调试服务端插件：https://docs.papermc.io/paper/dev/debugging#using-direct-debugging
     id("xyz.jpenilla.run-paper") version "2.3.1"
     // Snapshot版本发布
