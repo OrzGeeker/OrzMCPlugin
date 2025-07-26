@@ -88,6 +88,7 @@ hangarPublish {
     }
 }
 
+val debug_server_vesion = property("plugin_debug_server_version") as String
 tasks {
     // 配置工程内直接调试服务端插件
     // gradle-plugin: https://github.com/jpenilla/run-task#basic-usage
@@ -95,7 +96,7 @@ tasks {
         // Configure the Minecraft version for our task.
         // This is the only required configuration besides applying the plugin.
         // Your plugin's jar (or shadowJar if present) will be used automatically.
-        minecraftVersion(property("plugin_debug_server_version") as String)
+        minecraftVersion(debug_server_vesion)
     }
     // Mojang mappings: https://docs.papermc.io/paper/dev/project-setup/#mojang-mappings
     jar {
