@@ -1,11 +1,22 @@
 import org.gradle.kotlin.dsl.support.serviceOf
+import org.yaml.snakeyaml.Yaml
 import java.io.ByteArrayOutputStream
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
-group = property("plugin_group_id") as String
-version = property("plugin_version") as String
-description = property("plugin_description") as String
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath("org.yaml:snakeyaml:2.4")
+    }
+}
+
+val pluginYaml = Yaml().load(File("src/main/resources/plugin.yml").inputStream()) as Map<String, Any>
+group = (pluginYaml["main"] as String).split('.').dropLast(2).joinToString(".")
+version = pluginYaml["version"] as String
+description = pluginYaml["description"] as String
 
 // PaperMC 插件开发，项目配置文档: https://docs.papermc.io/paper/dev/project-setup
 java {
@@ -22,7 +33,7 @@ repositories {
     }
 }
 dependencies {
-    compileOnly("io.papermc.paper:paper-api:${property("plugin_use_papermc_api_version") as String}-R0.1-SNAPSHOT")
+    compileOnly("io.papermc.paper:paper-api:${pluginYaml["api-version"]}-R0.1-SNAPSHOT")
     // WebSocket Client For NapCat QQBot
     implementation("org.java-websocket:Java-WebSocket:1.5.7")
     // Java Discord API
@@ -77,7 +88,7 @@ hangarPublish {
         version = suffixedVersion
         channel = if (isRelease) "Release" else "Snapshot"
         changelog = changelogContent
-        id = property("plugin_name") as String
+        id = pluginYaml["name"] as String
         apiKey = System.getenv("HANGAR_API_TOKEN")
         platforms {
             paper {
