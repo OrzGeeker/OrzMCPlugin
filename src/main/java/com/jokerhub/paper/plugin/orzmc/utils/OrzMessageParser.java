@@ -151,6 +151,10 @@ public class OrzMessageParser {
                 OfflinePlayer player = OrzMC.server().getOfflinePlayer(userName);
                 if (player.isWhitelisted()) {
                     player.setWhitelisted(false);
+                    Player onlinePlayer = OrzMC.server().getPlayer(player.getUniqueId());
+                    if (onlinePlayer != null) {
+                        onlinePlayer.kick();
+                    }
                 }
             }
             // 回调异步执行
