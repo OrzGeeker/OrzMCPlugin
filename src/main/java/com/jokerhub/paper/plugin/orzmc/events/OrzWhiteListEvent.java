@@ -5,6 +5,9 @@ import com.destroystokyo.paper.profile.PlayerProfile;
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
+import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 
@@ -18,18 +21,28 @@ public class OrzWhiteListEvent implements Listener {
         if (event.isWhitelisted()) {
             return;
         }
+        TextComponent.Builder kickMsgBuilder = Component.text();
         String qqGroupId = OrzMC.config().getString("qq_group_id");
-        String discordChannelLink = OrzMC.config().getString("discord_link");
-        TextComponent kickMsg = Component.text(player.getName())
-                .append(Component.text(" 不在白名单中，请先加入QQ群: " + qqGroupId + " 联系管理员进行添加"))
-                .append(Component.newline())
-                .append(Component.text("you are not in the whitelist, you can join the discord channel: " + discordChannelLink + " and ask the admin add your id into the whitelist!")
-                );
-        event.kickMessage(kickMsg);
+        if (qqGroupId != null && !qqGroupId.isEmpty()) {
+            if (!kickMsgBuilder.build().equals(Component.empty())) {
+                kickMsgBuilder.append(Component.newline()).append(Component.newline());
+            }
+            kickMsgBuilder.append(Component.text(player.getName()).color(NamedTextColor.RED).decorate(TextDecoration.BOLD)).append(Component.space()).append(Component.text("不在服务器白名单中，请先加入QQ群:")).append(Component.space()).append(Component.text(qqGroupId).color(NamedTextColor.YELLOW)).append(Component.space()).append(Component.text("，联系管理员添加白名单"));
+        }
+        String discordServerLink = OrzMC.config().getString("discord_server_link");
+        if (discordServerLink != null && !discordServerLink.isEmpty()) {
+            if (!kickMsgBuilder.build().equals(Component.empty())) {
+                kickMsgBuilder.append(Component.newline()).append(Component.newline());
+            }
+            kickMsgBuilder.append(Component.text("you can also join the discord server: ")).append(Component.text(discordServerLink).color(NamedTextColor.BLUE).decorate(TextDecoration.UNDERLINED).clickEvent(ClickEvent.openUrl(discordServerLink)));
+        }
+        if (!kickMsgBuilder.build().equals(Component.empty())) {
+            event.kickMessage(kickMsgBuilder.build());
+        }
 
-        // 通知QQ群
-        String qqGroupMsg = player.getName() + " 尝试加入服务器，被白名单拦截";
-        OrzMC.sendPublicMessage(qqGroupMsg);
+        // 通知玩家群
+        String playChatGroupMsg = player.getName() + " 尝试加入服务器，被白名单拦截";
+        OrzMC.sendPublicMessage(playChatGroupMsg);
     }
 }
 
