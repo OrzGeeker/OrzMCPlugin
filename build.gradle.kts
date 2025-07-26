@@ -1,4 +1,3 @@
-import io.papermc.hangarpublishplugin.model.Platforms
 import org.gradle.kotlin.dsl.support.serviceOf
 import java.io.ByteArrayOutputStream
 import java.time.LocalDateTime
@@ -47,37 +46,6 @@ plugins {
     id("io.papermc.hangar-publish-plugin") version "0.1.3"
 }
 
-tasks {
-    // 配置工程内直接调试服务端插件
-    // gradle-plugin: https://github.com/jpenilla/run-task#basic-usage
-    runServer {
-        // Configure the Minecraft version for our task.
-        // This is the only required configuration besides applying the plugin.
-        // Your plugin's jar (or shadowJar if present) will be used automatically.
-        minecraftVersion("1.21.7")
-    }
-    // Mojang mappings: https://docs.papermc.io/paper/dev/project-setup/#mojang-mappings
-    jar {
-        manifest {
-            attributes["paperweight-mappings-namespace"] = "mojang"
-        }
-    }
-    shadowJar {
-        manifest {
-            attributes["paperweight-mappings-namespace"] = "mojang"
-        }
-        // 移除 `-all` 后缀（可选）
-        archiveClassifier.set("")
-    }
-    build {
-        dependsOn("shadowJar")
-    }
-
-    publishAllPublicationsToHangar {
-        dependsOn("shadowJar")
-    }
-}
-
 // 版本发布相关
 fun executeGitCommand(vararg command: String): String {
     val byteOut = ByteArrayOutputStream()
@@ -107,17 +75,43 @@ val changelogContent: String = latestCommitMessage()
 
 hangarPublish {
     publications.register("plugin") {
-        version.set(suffixedVersion)
-        channel.set(if (isRelease) "Release" else "Snapshot")
-        changelog.set(changelogContent)
-        id.set("OrzMC")
-        apiKey.set(System.getenv("HANGAR_API_TOKEN"))
+        version = suffixedVersion
+        channel = if (isRelease) "Release" else "Snapshot"
+        changelog = changelogContent
+        id = "OrzMC"
+        apiKey = System.getenv("HANGAR_API_TOKEN")
         platforms {
-            register(Platforms.PAPER) {
-                jar.set(tasks.shadowJar.flatMap { it.archiveFile })
-                val versions: List<String> = (property("paperVersion") as String).split(",").map { it.trim() }
-                platformVersions.set(versions)
+            paper {
+                jar = tasks.shadowJar.flatMap { it.archiveFile }
+                platformVersions = (property("paperVersion") as String).split(",").map { it.trim() }
             }
         }
+    }
+}
+
+tasks {
+    // 配置工程内直接调试服务端插件
+    // gradle-plugin: https://github.com/jpenilla/run-task#basic-usage
+    runServer {
+        // Configure the Minecraft version for our task.
+        // This is the only required configuration besides applying the plugin.
+        // Your plugin's jar (or shadowJar if present) will be used automatically.
+        minecraftVersion("1.21.7")
+    }
+    // Mojang mappings: https://docs.papermc.io/paper/dev/project-setup/#mojang-mappings
+    jar {
+        manifest {
+            attributes["paperweight-mappings-namespace"] = "mojang"
+        }
+    }
+    shadowJar {
+        manifest {
+            attributes["paperweight-mappings-namespace"] = "mojang"
+        }
+        // 移除 `-all` 后缀（可选）
+        archiveClassifier.set("")
+    }
+    build {
+        dependsOn("shadowJar")
     }
 }
