@@ -7,17 +7,24 @@ on:
 jobs:
   publish:
     if: github.repository_owner == 'OrzGeeker'
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository
+      - name: checkout
         uses: actions/checkout@v3
-      - name: Validate Gradle Wrapper
+      - name: gradle
         uses: gradle/wrapper-validation-action@v1
-      - name: Set up JDK 21
+      - name: jdk
         uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: 21
+      # - name: build
+      #   run: gradle build
+      # - name: upload artifact
+      #   uses: actions/upload-artifact@v3.1.2
+      #   with:
+      #     name: OrzMC
+      #     path: target/OrzMC-1.0.jar
       - name: Publish
         env:
           HANGAR_API_TOKEN: ${{ secrets.HANGAR_API_TOKEN }}
