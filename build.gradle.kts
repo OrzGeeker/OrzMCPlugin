@@ -1,4 +1,10 @@
+import io.papermc.hangarpublishplugin.model.Platforms
+import java.io.ByteArrayOutputStream
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+
 // PaperMC 插件开发，项目配置文档: https://docs.papermc.io/paper/dev/project-setup
+// 自动发布版本配置文档：https://docs.papermc.io/misc/hangar-publishing/
 
 group = "com.jokerhub.paper.plugin"
 version = "1.21.7"
@@ -36,6 +42,8 @@ plugins {
     id("com.github.johnrengelman.shadow") version "8.1.1"
     // 工程内直接调试服务端插件：https://docs.papermc.io/paper/dev/debugging#using-direct-debugging
     id("xyz.jpenilla.run-paper") version "2.3.1"
+    // Snapshot版本发布
+    id("io.papermc.hangar-publish-plugin") version "0.1.2"
 }
 
 tasks {
@@ -62,5 +70,49 @@ tasks {
     }
     build {
         dependsOn("shadowJar")
+    }
+}
+
+// 版本发布相关
+fun executeGitCommand(vararg command: String): String {
+    val byteOut = ByteArrayOutputStream()
+    exec {
+        commandLine = listOf("git", *command)
+        standardOutput = byteOut
+    }
+    return byteOut.toString(Charsets.UTF_8.name()).trim()
+}
+
+fun latestCommitMessage(): String {
+    return executeGitCommand("log", "-1", "--pretty=%B")
+}
+
+val versionString: String = version as String
+val isRelease: Boolean = false
+
+val suffixedVersion: String = if (isRelease) {
+    versionString
+} else {
+    // Give the version a unique name by using the GitHub Actions run number
+    versionString + "_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmSS"))
+}
+
+// Use the commit description for the changelog
+val changelogContent: String = latestCommitMessage()
+
+hangarPublish {
+    publications.register("plugin") {
+        version.set(suffixedVersion)
+        channel.set(if (isRelease) "Release" else "Snapshot")
+        changelog.set(changelogContent)
+        id.set("OrzMC")
+        apiKey.set(System.getenv("HANGAR_API_TOKEN"))
+        platforms {
+            register(Platforms.PAPER) {
+                jar.set(tasks.shadowJar.flatMap { it.archiveFile })
+                val versions: List<String> = (property("paperVersion") as String).split(",").map { it.trim() }
+                platformVersions.set(versions)
+            }
+        }
     }
 }

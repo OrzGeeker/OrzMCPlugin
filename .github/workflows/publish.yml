@@ -1,8 +1,8 @@
 name: Publish to Hangar
 on:
   push:
-    branches:
-      - main
+#    branches:
+#      - main
 jobs:
   publish:
     if: github.repository_owner == 'OrzGeeker'
