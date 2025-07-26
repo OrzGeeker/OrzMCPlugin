@@ -1,4 +1,5 @@
 import io.papermc.hangarpublishplugin.model.Platforms
+import org.gradle.kotlin.dsl.support.serviceOf
 import java.io.ByteArrayOutputStream
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -76,7 +77,7 @@ tasks {
 // 版本发布相关
 fun executeGitCommand(vararg command: String): String {
     val byteOut = ByteArrayOutputStream()
-    exec {
+    serviceOf<ExecOperations>().exec {
         commandLine = listOf("git", *command)
         standardOutput = byteOut
     }
