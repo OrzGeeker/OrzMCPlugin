@@ -57,9 +57,11 @@ public class OrzTNTEvent implements Listener {
                     .append(Component.text("在"))
                     .append(blockLocationInfo(placedBlock, "放置了 " + placedBlockType.name()))
                     .build();
+            // MC服务器内部通告
             OrzMC.server().sendMessage(msg);
-            String qqGroupMsg = OrzMessageParser.playerDisplayName(player) + " 在" + locationString(placedBlock) + "放置了 " + placedBlockType.name();
-            OrzMC.sendPublicMessage(qqGroupMsg);
+            // 通过机器人发送到玩家群里通告
+            String noticeMsg = OrzMessageParser.playerDisplayName(player) + " 在" + locationString(placedBlock) + "放置了 " + placedBlockType.name();
+            OrzMC.sendPublicMessage(noticeMsg);
         }
     }
 
@@ -94,8 +96,9 @@ public class OrzTNTEvent implements Listener {
         int x = block.getX();
         int y = block.getY();
         int z = block.getZ();
-        if (x >= 30746 && x <= 30808 && y >= 62 && z >= 10139 && z <= 10227) return true;
-        OrzMC.logger().info(x + ", " + y + ", " + z + "处的" + block.getType().name() + "不在豁免区");
+        // TODO: 可获取配置信息，处理豁免区域
+        // if (x >= 30746 && x <= 30808 && y >= 62 && z >= 10139 && z <= 10227) return true;
+        // OrzMC.debugInfo(x + ", " + y + ", " + z + "处的" + block.getType().name() + "不在豁免区");
         return false;
     }
 
