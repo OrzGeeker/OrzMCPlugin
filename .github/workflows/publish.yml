@@ -3,7 +3,6 @@ on:
   push:
     branches:
       - main
-
 jobs:
   publish:
     if: github.repository_owner == 'OrzGeeker'
@@ -12,7 +11,7 @@ jobs:
       - name: checkout
         uses: actions/checkout@v3
       - name: gradle
-        uses: gradle/wrapper-validation-action@v1
+        uses: gradle/actions/wrapper-validation@v3
       - name: jdk
         uses: actions/setup-java@v3
         with:
