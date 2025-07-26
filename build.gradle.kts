@@ -44,7 +44,7 @@ plugins {
     // 工程内直接调试服务端插件：https://docs.papermc.io/paper/dev/debugging#using-direct-debugging
     id("xyz.jpenilla.run-paper") version "2.3.1"
     // Snapshot版本发布
-    id("io.papermc.hangar-publish-plugin") version "0.1.2"
+    id("io.papermc.hangar-publish-plugin") version "0.1.3"
 }
 
 tasks {
@@ -61,6 +61,7 @@ tasks {
         manifest {
             attributes["paperweight-mappings-namespace"] = "mojang"
         }
+        dependsOn("shadowJar")
     }
     shadowJar {
         manifest {
