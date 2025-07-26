@@ -72,6 +72,10 @@ tasks {
     build {
         dependsOn("shadowJar")
     }
+
+    publishAllPublicationsToHangar {
+        dependsOn("shadowJar")
+    }
 }
 
 // 版本发布相关
