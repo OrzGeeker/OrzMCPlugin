@@ -101,6 +101,13 @@ hangarPublish {
 
 val debug_server_vesion = property("plugin_debug_server_version") as String
 tasks {
+    withType<JavaCompile>() {
+        options.encoding = "UTF-8"
+        // 启用弃用警告
+        options.compilerArgs.add("-Xlint:deprecation")
+        // 同时启用未检查的类型转换警告
+        options.compilerArgs.add("-Xlint:unchecked")
+    }
     // 配置工程内直接调试服务端插件
     // gradle-plugin: https://github.com/jpenilla/run-task#basic-usage
     runServer {
