@@ -14,7 +14,7 @@ buildscript {
 }
 
 val pluginYaml = Yaml().load(File("src/main/resources/plugin.yml").inputStream()) as Map<String, Any>
-group = (pluginYaml["main"] as String).split('.').dropLast(2).joinToString(".")
+group = (pluginYaml["main"] as String).split('.').dropLast(1).joinToString(".")
 version = pluginYaml["version"] as String
 description = pluginYaml["description"] as String
 
