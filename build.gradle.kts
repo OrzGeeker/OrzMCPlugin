@@ -69,15 +69,15 @@ fun latestCommitMessage(): String {
     return executeGitCommand("log", "-1", "--pretty=%B")
 }
 
-val github_run_number = System.getenv("GITHUB_RUN_NUMBER")
-val github_branch_name = System.getenv("GITHUB_REF_NAME")
-val timestamp_string = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmSS"))
+val githubRunNumber: String? = System.getenv("GITHUB_RUN_NUMBER")
+val githubBranchName: String? = System.getenv("GITHUB_REF_NAME")
+val timestampString: String? = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmSS"))
 val versionString: String = version as String
-val isRelease: Boolean = (github_branch_name == "main")
+val isRelease: Boolean = (githubBranchName == "main")
 val suffixedVersion: String = if (isRelease) {
-    "${versionString}.${github_run_number}"
+    "${versionString}.${githubRunNumber}"
 } else {
-    "${versionString}_${timestamp_string}"
+    "${versionString}_${timestampString}"
 }
 
 // Use the commit description for the changelog
@@ -99,9 +99,9 @@ hangarPublish {
     }
 }
 
-val debug_server_vesion = property("plugin_debug_server_version") as String
+val debugServerVesion = property("plugin_debug_server_version") as String
 tasks {
-    withType<JavaCompile>() {
+    withType<JavaCompile> {
         options.encoding = "UTF-8"
         // 启用弃用警告
         options.compilerArgs.add("-Xlint:deprecation")
@@ -114,7 +114,7 @@ tasks {
         // Configure the Minecraft version for our task.
         // This is the only required configuration besides applying the plugin.
         // Your plugin's jar (or shadowJar if present) will be used automatically.
-        minecraftVersion(debug_server_vesion)
+        minecraftVersion(debugServerVesion)
     }
     // Mojang mappings: https://docs.papermc.io/paper/dev/project-setup/#mojang-mappings
     jar {
