@@ -1,12 +1,13 @@
 # [YAML语言教程](https://www.ruanyifeng.com/blog/2016/07/yaml.html)
 
-# 服务器是否开启强制白名单
+# ==================================================
+#             服务器是否开启强制白名单
+# ==================================================
 force_whitelist: true
 
-# 服务器爆炸事件监听
-explosion_report: false
-
-# 机器人消息发送服务配置
+# ==================================================
+#               机器人消息发送服务配置
+# ==================================================
 
 # 命令提示字符, 可修改为与应用场景不冲突的字符，例如: /
 cmd_prompt_char: '$'
@@ -38,3 +39,39 @@ discord_server_link: 'https://discord.gg/mHGKYNWw'
 enable_lark_bot: false
 # Lark飞书群机器人webhook地址，插件 -> lark群 单方向发消息
 lark_bot_webhook: 'https://open.feishu.cn/open-apis/bot/v2/hook/9cebe3e2-1d33-4ce9-a838-bf1f1f262ecf'
+
+
+# ==================================================
+#                   TNT 检查配置
+# ==================================================
+
+tnt:
+  # 是否允许使用TNT
+  enable: false
+  # 是否允许放置重生锚
+  enable_respawn_anchor: false
+  # TNT放置的冷却时间，单位为：秒，防止TNT放置太快
+  place_cooldown: 5
+  # TNT放置区域白名单
+  whitelist:
+    - minX: 0
+      maxX: 0
+      minY: 0
+      maxY: 0
+      minZ: 0
+      maxZ: 0
+      world: 'world'
+    - minX: 0
+      maxX: 0
+      minY: 0
+      maxY: 0
+      minZ: 0
+      maxZ: 0
+      world: 'world_nether'
+    - minX: 0
+      maxX: 0
+      minY: 0
+      maxY: 0
+      minZ: 0
+      maxZ: 0
+      world: 'world_the_end'
