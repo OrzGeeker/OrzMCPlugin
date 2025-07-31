@@ -11,6 +11,7 @@ import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -20,128 +21,261 @@ import org.bukkit.event.block.TNTPrimeEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.inventory.ItemStack;
 
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+
 public class OrzTNTEvent implements Listener {
+    
+    // 配置相关
+    private final FileConfiguration config;
+    private List<Region> whiteListRegions = new ArrayList<>();
+    private boolean enableTNT = false;
+    private boolean enableRespawnAnchor = false;
+    private int tntPlaceCooldown = 0; // 秒
+    
+    // 冷却时间跟踪
+    private final Map<UUID, Long> playerCooldowns = new ConcurrentHashMap<>();
+    
+    public OrzTNTEvent() {
+        this.config = OrzMC.getPlugin().getConfig();
+        loadConfig();
+    }
+    
+    private void loadConfig() {
+        // 从配置文件加载设置
+        this.enableTNT = config.getBoolean("tnt.enabled", false);
+        this.enableRespawnAnchor = config.getBoolean("respawn-anchor.enabled", false);
+        this.tntPlaceCooldown = config.getInt("tnt.place-cooldown", 0);
+        
+        // 加载白名单区域
+        whiteListRegions.clear();
+        List<Map<?, ?>> regions = config.getMapList("regions.white-list");
+        for (Map<?, ?> regionMap : regions) {
+            Region region = new Region(
+                ((Number)regionMap.get("minX")).intValue(),
+                ((Number)regionMap.get("maxX")).intValue(),
+                ((Number)regionMap.get("minY")).intValue(),
+                ((Number)regionMap.get("maxY")).intValue(),
+                ((Number)regionMap.get("minZ")).intValue(),
+                ((Number)regionMap.get("maxZ")).intValue(),
+                (String)regionMap.get("world")
+            );
+            whiteListRegions.add(region);
+        }
+    }
+    
     @EventHandler
     public void onTNTPrime(TNTPrimeEvent event) {
-        /* 处理TNT被点燃事件， 不在白名单坐标区域的TNT点燃后不会爆炸，TNT被点燃时，会全服通告 */
-        /* 点燃方式：红石信号、打火石、火焰弹、火弓射击 */
-
         Block placedBlock = event.getBlock();
-        if (hitInWhiteList(placedBlock)) return;
-        else {
+        
+        // 如果全局禁用TNT且不在白名单区域，取消事件
+        if (!enableTNT && !isInWhiteList(placedBlock)) {
             event.setCancelled(true);
+            notifyTNTEvent(placedBlock, "TNT被点燃（已禁止）");
+            return;
         }
-        OrzMC.server().sendMessage(blockLocationInfo(placedBlock, "处有TNT被点燃！"));
+        
+        // 即使允许，也记录TNT点燃事件
+        notifyTNTEvent(placedBlock, "TNT被点燃");
     }
-
+    
     @EventHandler
     public void onPlaceBlock(BlockPlaceEvent event) {
-        /* 处理玩家放置方块事件，如果放置TNT，玩家会被全服通告，并发到QQ群里留底 */
-        boolean shouldNotify = false;
         Block placedBlock = event.getBlockPlaced();
         Material placedBlockType = placedBlock.getType();
-        switch (placedBlockType) {
-            case TNT -> {
-                if (hitInWhiteList(placedBlock)) return;
-                shouldNotify = true;
-            }
-            case RESPAWN_ANCHOR -> shouldNotify = true;
-            default -> {
-            }
+        Player player = event.getPlayer();
+        
+        // 处理TNT放置
+        if (placedBlockType == Material.TNT) {
+            handleTNTPlace(event, player, placedBlock);
+            return;
         }
-        if (shouldNotify) {
-            Player player = event.getPlayer();
-            TextComponent msg = Component.text()
-                    .append(playerInfo(player))
-                    .append(Component.space())
-                    .append(Component.text("在"))
-                    .append(blockLocationInfo(placedBlock, "放置了 " + placedBlockType.name()))
-                    .build();
-            // MC服务器内部通告
-            OrzMC.server().sendMessage(msg);
-            // 通过机器人发送到玩家群里通告
-            String noticeMsg = OrzMessageParser.playerDisplayName(player) + " 在" + locationString(placedBlock) + "放置了 " + placedBlockType.name();
-            OrzMC.sendPublicMessage(noticeMsg);
+        
+        // 处理重生锚放置
+        if (placedBlockType == Material.RESPAWN_ANCHOR && !enableRespawnAnchor) {
+            event.setCancelled(true);
+            player.sendMessage(Component.text("重生锚放置已被管理员禁用").color(TextColor.color(0xFF5555)));
+            return;
         }
     }
-
+    
+    private void handleTNTPlace(BlockPlaceEvent event, Player player, Block placedBlock) {
+        // 检查冷却时间
+        if (tntPlaceCooldown > 0 && checkCooldown(player)) {
+            event.setCancelled(true);
+            long remaining = (playerCooldowns.get(player.getUniqueId()) + tntPlaceCooldown * 1000L - System.currentTimeMillis()) / 1000;
+            player.sendMessage(Component.text()
+                .append(Component.text("放置TNT冷却中，请等待 "))
+                .append(Component.text(remaining + "秒").color(TextColor.color(0xFFAA00)))
+                .build());
+            return;
+        }
+        
+        // 如果全局禁用TNT且不在白名单区域，取消放置
+        if (!enableTNT && !isInWhiteList(placedBlock)) {
+            event.setCancelled(true);
+            player.sendMessage(Component.text("TNT放置已被管理员禁用").color(TextColor.color(0xFF5555)));
+            return;
+        }
+        
+        // 记录冷却时间
+        if (tntPlaceCooldown > 0) {
+            playerCooldowns.put(player.getUniqueId(), System.currentTimeMillis());
+        }
+        
+        // 发送放置通知
+        sendPlacementNotification(player, placedBlock, "TNT");
+    }
+    
+    private boolean checkCooldown(Player player) {
+        if (!playerCooldowns.containsKey(player.getUniqueId())) {
+            return false;
+        }
+        long lastPlaceTime = playerCooldowns.get(player.getUniqueId());
+        return System.currentTimeMillis() - lastPlaceTime < tntPlaceCooldown * 1000L;
+    }
+    
     @EventHandler
     public void onBlockPreDispense(BlockPreDispenseEvent event) {
-        /* 处理发射器发射物品事件，如果发射的是TNT，则取消发射，并全服通告 */
-        /* 发射器直接发射TNT、发射器发射打火石点燃TNT、发射器发射火焰弹 */
-        Block placedBlock = event.getBlock();
         ItemStack itemStack = event.getItemStack();
-        if ((itemStack.getType() == Material.TNT || itemStack.getType() == Material.TNT_MINECART) && !hitInWhiteList(placedBlock)) {
+        Material itemType = itemStack.getType();
+        
+        // 只处理TNT相关物品
+        if (itemType != Material.TNT && itemType != Material.TNT_MINECART) {
+            return;
+        }
+        
+        Block dispenser = event.getBlock();
+        
+        // 如果全局禁用TNT且不在白名单区域，取消发射
+        if (!enableTNT && !isInWhiteList(dispenser)) {
             event.setCancelled(true);
-            OrzMC.server().sendMessage(blockLocationInfo(event.getBlock(), "发射" + itemStack.getType().name() + "被禁止"));
+            notifyTNTEvent(dispenser, "发射" + itemType.name() + "被禁止");
         }
     }
-
+    
     @EventHandler
     public void onBlockExplode(BlockExplodeEvent event) {
         Block block = event.getBlock();
-        String msg = locationString(block) + "处" + block.getType().name() + "爆炸";
-        OrzMC.sendPublicMessage(msg);
-        OrzMC.server().sendMessage(locationComponent(block).append(Component.text("处" + block.getType().name() + "爆炸")));
+        notifyExplosionEvent(block.getLocation(), block.getType().name() + "爆炸");
     }
-
+    
     @EventHandler
     public void onEntityExplode(EntityExplodeEvent event) {
-        String msg = locationString(event.getLocation()) + "处" + event.getEntityType().name() + "爆炸";
-        OrzMC.sendPublicMessage(msg);
-        OrzMC.server().sendMessage(locationComponent(event.getLocation()).append(Component.text("处" + event.getEntityType().name() + "爆炸")));
+        notifyExplosionEvent(event.getLocation(), event.getEntityType().name() + "爆炸");
     }
-
-    boolean hitInWhiteList(Block block) {
-        int x = block.getX();
-        int y = block.getY();
-        int z = block.getZ();
-        // TODO: 可获取配置信息，处理豁免区域
-        // if (x >= 30746 && x <= 30808 && y >= 62 && z >= 10139 && z <= 10227) return true;
-        // OrzMC.debugInfo(x + ", " + y + ", " + z + "处的" + block.getType().name() + "不在豁免区");
+    
+    // 区域检查方法
+    private boolean isInWhiteList(Block block) {
+        Location loc = block.getLocation();
+        for (Region region : whiteListRegions) {
+            if (region.contains(loc)) {
+                return true;
+            }
+        }
         return false;
     }
-
-    TextComponent blockLocationInfo(Block block, String message) {
-        return Component.text()
-                .append(Component.text("坐标"))
-                .append(Component.space())
-                .append(locationComponent(block))
-                .append(Component.space())
-                .append(Component.text(message))
-                .build();
+    
+    // 通知方法
+    private void notifyTNTEvent(Block block, String message) {
+        TextComponent msg = Component.text()
+            .append(Component.text("[TNT警报] ").color(TextColor.color(0xFF5555)))
+            .append(playerInfo(block)) // 尝试获取放置玩家
+            .append(Component.space())
+            .append(locationComponent(block))
+            .append(Component.space())
+            .append(Component.text(message))
+            .build();
+        
+        OrzMC.server().sendMessage(msg);
+        OrzMC.sendPublicMessage("[TNT警报] " + locationString(block) + message);
     }
-
-    TextComponent playerInfo(Player player) {
-        String playerName = OrzMessageParser.playerDisplayName(player);
-        return Component.text()
-                .append(Component.text(playerName).color(TextColor.fromHexString("#FF0000")))
-                .build();
+    
+    private void notifyExplosionEvent(Location location, String message) {
+        TextComponent msg = Component.text()
+            .append(Component.text("[爆炸警报] ").color(TextColor.color(0xFFAA00)))
+            .append(locationComponent(location))
+            .append(Component.space())
+            .append(Component.text(message))
+            .build();
+        
+        OrzMC.server().sendMessage(msg);
+        OrzMC.sendPublicMessage("[爆炸警报] " + locationString(location) + message);
     }
-
-    TextComponent locationComponent(Block block) {
-        String blockLocation = locationString(block);
-        TextComponent blockComponent = Component.text()
-                .append(Component.text(blockLocation))
-                .build()
-                .clickEvent(ClickEvent.copyToClipboard(blockLocation))
-                .hoverEvent(HoverEvent.showText(Component.text("点击复制坐标位置")))
-                .color(TextColor.fromCSSHexString("#00FF00"));
-        return Component.text().append(blockComponent).build();
+    
+    private void sendPlacementNotification(Player player, Block block, String itemName) {
+        TextComponent msg = Component.text()
+            .append(playerInfo(player))
+            .append(Component.space())
+            .append(Component.text("在"))
+            .append(locationComponent(block))
+            .append(Component.space())
+            .append(Component.text("放置了 " + itemName))
+            .build();
+        
+        OrzMC.server().sendMessage(msg);
+        OrzMC.sendPublicMessage(OrzMessageParser.playerDisplayName(player) + 
+            " 在" + locationString(block) + "放置了 " + itemName);
     }
-
-    String locationString(Block block) {
-        int x = block.getX();
-        int y = block.getY();
-        int z = block.getZ();
-        return " " + x + " " + y + " " + z + " ";
+    
+    // 信息构建工具
+    private TextComponent playerInfo(Player player) {
+        return Component.text(player.getName())
+            .color(TextColor.color(0xFF5555))
+            .hoverEvent(HoverEvent.showText(Component.text("点击查看玩家信息")))
+            .clickEvent(ClickEvent.runCommand("/profile " + player.getName()));
     }
-
-    String locationString(Location location) {
-        return " " + location.getBlockX() + " " + location.getBlockY() + " " + location.getBlockZ() + " ";
+    
+    private TextComponent playerInfo(Block block) {
+        // 这里可以添加获取最后修改该方块的玩家的逻辑
+        // 需要配合区块记录插件使用
+        return Component.text("未知玩家").color(TextColor.color(0xAAAAAA));
     }
-
-    TextComponent locationComponent(Location location) {
-        return locationComponent(location.getBlock());
+    
+    private TextComponent locationComponent(Block block) {
+        return locationComponent(block.getLocation());
+    }
+    
+    private TextComponent locationComponent(Location location) {
+        String locString = locationString(location);
+        return Component.text(locString)
+            .color(TextColor.color(0x55FF55))
+            .hoverEvent(HoverEvent.showText(Component.text("点击复制坐标")))
+            .clickEvent(ClickEvent.copyToClipboard(locString.trim()));
+    }
+    
+    private String locationString(Block block) {
+        return locationString(block.getLocation());
+    }
+    
+    private String locationString(Location location) {
+        return String.format(" [%s] %d %d %d ", 
+            location.getWorld().getName(),
+            location.getBlockX(),
+            location.getBlockY(),
+            location.getBlockZ());
+    }
+    
+    // 区域内部类
+    private static class Region {
+        private final int minX, maxX, minY, maxY, minZ, maxZ;
+        private final String world;
+        
+        public Region(int minX, int maxX, int minY, int maxY, int minZ, int maxZ, String world) {
+            this.minX = Math.min(minX, maxX);
+            this.maxX = Math.max(minX, maxX);
+            this.minY = Math.min(minY, maxY);
+            this.maxY = Math.max(minY, maxY);
+            this.minZ = Math.min(minZ, maxZ);
+            this.maxZ = Math.max(minZ, maxZ);
+            this.world = world;
+        }
+        
+        public boolean contains(Location loc) {
+            return loc.getWorld().getName().equals(world) &&
+                   loc.getX() >= minX && loc.getX() <= maxX &&
+                   loc.getY() >= minY && loc.getY() <= maxY &&
+                   loc.getZ() >= minZ && loc.getZ() <= maxZ;
+        }
     }
 }
