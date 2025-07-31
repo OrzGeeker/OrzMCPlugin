@@ -10,16 +10,17 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.jetbrains.annotations.NotNull;
 
 public class OrzBowShootEvent implements Listener {
 
     @EventHandler
-    public void onBowShoot(ProjectileHitEvent event) {
+    public void onBowShoot(@NotNull ProjectileHitEvent event) {
 
         if (event.getEntity() instanceof Arrow arrow) {
-            if(arrow.getShooter() instanceof Player player) {
+            if (arrow.getShooter() instanceof Player player) {
                 ItemMeta meta = player.getInventory().getItemInMainHand().getItemMeta();
-                if(meta == null) {
+                if (meta == null) {
                     return;
                 }
                 Component mainHandItemName = meta.displayName();
@@ -29,7 +30,7 @@ public class OrzBowShootEvent implements Listener {
                             player.sendMessage(OrzTPBow.logText("箭射进了水里!"));
                             return;
                         }
-                        if(arrow.isInLava()) {
+                        if (arrow.isInLava()) {
                             player.sendMessage(OrzTPBow.logText("箭射进了岩浆里!"));
                             return;
                         }
