@@ -70,11 +70,7 @@ public final class OrzMC extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(new OrzBowShootEvent(), this);
         getServer().getPluginManager().registerEvents(new OrzPlayerEvent(), this);
         getServer().getPluginManager().registerEvents(new OrzTPEvent(), this);
-
-        if (config().getBoolean("explosion_report")) {
-            getServer().getPluginManager().registerEvents(new OrzTNTEvent(), this);
-        }
-
+        getServer().getPluginManager().registerEvents(new OrzTNTEvent(), this);
         getServer().getPluginManager().registerEvents(new OrzMenuEvent(), this);
         getServer().getPluginManager().registerEvents(new OrzServerEvent(), this);
         getServer().getPluginManager().registerEvents(new OrzWhiteListEvent(), this);
