@@ -79,6 +79,11 @@ val suffixedVersion: String = if (isRelease) {
 } else {
     "${versionString}_${timestampString}"
 }
+val archiveClassifierSuffix: String = if (githubRunNumber != null) {
+    githubRunNumber
+} else {
+    ""
+}
 
 // Use the commit description for the changelog
 val changelogContent: String = latestCommitMessage()
@@ -121,13 +126,14 @@ tasks {
         manifest {
             attributes["paperweight-mappings-namespace"] = "mojang"
         }
+        archiveClassifier.set(archiveClassifierSuffix)
     }
     shadowJar {
         manifest {
             attributes["paperweight-mappings-namespace"] = "mojang"
         }
-        // 移除 `-all` 后缀（可选）
-        archiveClassifier.set("")
+        dependsOn("jar")
+        archiveClassifier.set(archiveClassifierSuffix)
     }
     build {
         dependsOn("shadowJar")

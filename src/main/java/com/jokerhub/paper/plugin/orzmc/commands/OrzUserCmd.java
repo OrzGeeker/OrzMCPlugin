@@ -3,7 +3,7 @@ package com.jokerhub.paper.plugin.orzmc.commands;
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
 
 public enum OrzUserCmd {
-    SHOW_PLAYERS("l", "查看当前在线玩家", false), SHOW_WHITELIST("w", "查看当前在白名单中的玩家", false), SHOW_HELP("h", "查看QQ群中可以使用的命令信息", false), ADD_PLAYER_TO_WHITELIST("a", "添加玩家到服务器白名单中", true), REMOVE_PLAYER_FROM_WHITELIST("r", "从服务器白名单中移除玩家", true);
+    SHOW_PLAYERS("l", "查看在线玩家", false), SHOW_WHITELIST("w", "查看白名单玩家", false), SHOW_HELP("h", "查看帮助信息", false), ADD_PLAYER_TO_WHITELIST("a", "添加玩家到白名单", true), REMOVE_PLAYER_FROM_WHITELIST("r", "从白名单移除玩家", true);
 
     private final String cmdName;
     private final String description;
@@ -38,7 +38,7 @@ public enum OrzUserCmd {
 
     public String adminPermissionRequiredTip() {
         if (this.needAdminPermission) {
-            return this.getCmdString() + " 命令需要群管理员权限";
+            return this.getCmdString() + " 需要管理员权限";
         } else {
             return "";
         }
