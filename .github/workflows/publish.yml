@@ -1,11 +1,13 @@
 name: Publish to Hangar
 on:
-  push:
+  pull_request:
+    types: [closed]
     branches:
       - main
       - dev
 jobs:
   publish:
+    if: ${{ github.event.pull_request.merged == true }}
     runs-on: ubuntu-latest
     steps:
       - name: checkout
@@ -21,8 +23,3 @@ jobs:
         env:
           HANGAR_API_TOKEN: ${{ secrets.HANGAR_API_TOKEN }}
         run: ./gradlew clean publishPluginPublicationToHangar --stacktrace
-#      - name: upload artifact to github
-#        uses: actions/upload-artifact@v3.1.2
-#        with:
-#          name: OrzMC
-#          path: target/OrzMC-1.0.jar

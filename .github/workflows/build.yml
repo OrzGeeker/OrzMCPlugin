@@ -1,4 +1,14 @@
-name: Build Check
+name: Pull Request Build Check
+on:
+  pull_request:
+    branches:
+      - main
+      - dev
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -13,6 +23,22 @@ jobs:
           distribution: 'temurin'
           java-version: 21
       - name: build shadowJar
-        env:
-          HANGAR_API_TOKEN: ${{ secrets.HANGAR_API_TOKEN }}
         run: ./gradlew clean build --stacktrace
+      - name: upload jar to github
+        id: artifact-upload-step
+        uses: actions/upload-artifact@v4
+        with:
+          path: build/libs/*.jar
+          if-no-files-found: error
+      - name: generate build summary
+        run: |
+          echo "### Build Summary" > summary.md
+          echo "- **BuildID:** $GITHUB_RUN_ID" >> summary.md
+          echo "- **CommitID:** ${GITHUB_SHA:0:10}" >> summary.md
+          echo "- **Artifact:** [Download](${{ steps.artifact-upload-step.outputs.artifact-url }})" >> summary.md
+          echo
+          echo you can download this artifact to test
+      - name: post build summary to pull_request
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          path: summary.md       
