@@ -11,6 +11,7 @@ import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -155,6 +156,9 @@ public class OrzTNTEvent implements Listener {
 
     @EventHandler
     public void onEntityExplode(@NotNull EntityExplodeEvent event) {
+        if (event.getEntityType() == EntityType.CREEPER) {
+            return;
+        }
         notifyExplosionEvent(event.getLocation(), event.getEntityType().name() + "爆炸");
     }
 
