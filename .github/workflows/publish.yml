@@ -1,13 +1,11 @@
 name: Publish to Hangar
 on:
-  pull_request:
-    types: [closed]
+  push:
     branches:
       - main
       - dev
 jobs:
   publish:
-    if: ${{ github.event.pull_request.merged == true }}
     runs-on: ubuntu-latest
     steps:
       - name: checkout
