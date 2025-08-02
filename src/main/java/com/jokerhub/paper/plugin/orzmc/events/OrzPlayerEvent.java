@@ -29,35 +29,35 @@ public class OrzPlayerEvent implements Listener {
         return gson.toJson(jsonObject);
     }
 
-    public String getAddressOfIPv4(String ipv4Address) {
-        String ret = "";
-        if (!ipv4Address.isEmpty()) {
-            try (HttpClient httpclient = HttpClient.newHttpClient()) {
-                String url = "https://www.90th.cn/api/ip?key=1c9ac0159c94d8d0&ip=" + ipv4Address;
-                HttpRequest request = HttpRequest.newBuilder().uri(URI.create(url)).build();
-                HttpResponse<String> response = httpclient.send(request, HttpResponse.BodyHandlers.ofString());
-                if (response.statusCode() == 200) {
-                    String result = response.body();
-                    ret = toPrettyFormat(result);
-                }
-            } catch (Exception e) {
-                ret = e.toString();
-            }
-        }
-        return ret;
-    }
-
     @EventHandler
     public void onPlayerPreLogin(AsyncPlayerPreLoginEvent event) {
         if (event.getLoginResult() == AsyncPlayerPreLoginEvent.Result.ALLOWED) {
             return;
         }
-        String playerName = event.getPlayerProfile().getName();
         String ipAddress = event.getAddress().getHostAddress();
+        String playerName = event.getPlayerProfile().getName();
         String resultDesc = event.getLoginResult().toString();
-        String addressInfo = getAddressOfIPv4(ipAddress);
-        String qqMsg = "--- " + resultDesc + " ---" + "\n" + playerName + "(" + ipAddress + ")" + "\n" + addressInfo;
-        OrzMC.sendPublicMessage(qqMsg);
+        if (!ipAddress.isEmpty()) {
+            try (HttpClient client = HttpClient.newHttpClient()) {
+                // use ip parse service: https://www.geojs.io/docs/v1/endpoints/geo/
+                String url = "https://get.geojs.io/v1/ip/geo/" + ipAddress + ".json";
+                HttpRequest request = HttpRequest.newBuilder().uri(URI.create(url)).build();
+                client.sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenAcceptAsync(response -> {
+                    OrzMC.debugInfo("Response Code : " + response.toString());
+                    if (response.statusCode() == 200) {
+                        String result = response.body();
+                        String addressInfo = toPrettyFormat(result);
+                        String qqMsg = "--- " + resultDesc + " ---" + "\n" + playerName + "(" + ipAddress + ")" + "\n" + addressInfo;
+                        OrzMC.sendPublicMessage(qqMsg);
+                    }
+                }).exceptionally(e -> {
+                    OrzMC.logger().warning("IP地址解析服务异常: " + e.toString());
+                    return null;
+                });
+            } catch (Exception e) {
+                OrzMC.logger().severe(e.toString());
+            }
+        }
     }
 
     @EventHandler
