@@ -7,7 +7,6 @@ import com.jokerhub.paper.plugin.orzmc.commands.OrzGuideBook;
 import com.jokerhub.paper.plugin.orzmc.commands.OrzMenuCommand;
 import com.jokerhub.paper.plugin.orzmc.commands.OrzTPBow;
 import com.jokerhub.paper.plugin.orzmc.events.*;
-import org.bukkit.GameMode;
 import org.bukkit.Server;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -42,12 +41,14 @@ public final class OrzMC extends JavaPlugin implements Listener {
 
     // 公共方法
     public static void sendPublicMessage(String message) {
+        OrzMC.debugInfo(message);
         discordBot.sendMessage(message);
         larkBot.sendMessage(message);
         qqBot.sendQQGroupMsg(message);
     }
 
     public static void sendPrivateMessage(String message) {
+        OrzMC.debugInfo(message);
         qqBot.sendPrivateMsg(message);
     }
 
@@ -91,15 +92,7 @@ public final class OrzMC extends JavaPlugin implements Listener {
             menuCmd.setExecutor(new OrzMenuCommand());
         }
 
-        // 开启强制使用白名单机制
-        boolean forceWhitelist = config().getBoolean("force_whitelist");
-        getServer().setWhitelist(forceWhitelist);
-        getServer().setWhitelistEnforced(forceWhitelist);
-        getServer().reloadWhitelist();
-        getServer().setDefaultGameMode(GameMode.SURVIVAL);
-        if (forceWhitelist) {
-            getLogger().info("服务端使用强制白名单机制");
-        }
+        OrzWhiteListEvent.setupServerForceWhitelist();
 
         setupBots();
     }
