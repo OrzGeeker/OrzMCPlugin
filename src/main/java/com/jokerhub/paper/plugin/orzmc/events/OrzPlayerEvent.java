@@ -57,11 +57,17 @@ public class OrzPlayerEvent implements Listener {
                         String result = response.body();
                         JsonObject jsonObject = parseToJsonObject(result);
                         String addressInfo = toPrettyFormat(jsonObject);
-                        String countryCode = String.valueOf(jsonObject.get("country_code").getAsString());
-                        if (!allowCountList.contains(countryCode) && !ipAddress.equals("127.0.0.1")) {
-                            String msg = playerName + "(" + ipAddress + ")" + "\n" + countryCode + "\n" + "IP位置不在服务支持区域" + String.join(",", allowCountList);
-                            OrzMC.sendPublicMessage(msg + "\n" + addressInfo);
-                            event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_OTHER, Component.text(msg));
+                        if (jsonObject.has("country_code")) {
+                            String countryCode = String.valueOf(jsonObject.get("country_code").getAsString());
+                            if (!allowCountList.contains(countryCode)) {
+                                String msg = playerName + "(" + ipAddress + ")" + "\n" + countryCode + "\n" + "IP位置不在服务支持区域" + String.join(",", allowCountList);
+                                OrzMC.sendPublicMessage(msg + "\n" + addressInfo);
+                                event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_OTHER, Component.text(msg));
+                            } else {
+                                OrzMC.debugInfo("allowCountList contains: " + countryCode);
+                            }
+                        } else {
+                            OrzMC.debugInfo("ip info has no field: country_code");
                         }
                     }
                 }).exceptionally(e -> {
