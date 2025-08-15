@@ -79,11 +79,7 @@ val suffixedVersion: String = if (isRelease) {
 } else {
     "${versionString}_${timestampString}"
 }
-val archiveClassifierSuffix: String = if (githubRunNumber != null) {
-    githubRunNumber
-} else {
-    ""
-}
+val archiveClassifierSuffix: String = githubRunNumber ?: ""
 
 // Use the commit description for the changelog
 val changelogContent: String = latestCommitMessage()

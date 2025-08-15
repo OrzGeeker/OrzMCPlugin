@@ -16,7 +16,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
-public class OrzQQBot extends OrzBaseBot {
+public class OrzQQBot implements IOrzBaseBot {
     private WebSocketClient webSocketClient;
 
     @Override
