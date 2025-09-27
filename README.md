@@ -52,17 +52,17 @@ cmd_prompt_char: '$'
 # 是否启用 QQBot 机器人功能：true/false
 enable_qq_bot: false
 # QQBot 所在QQ群号：group_id
-qq_group_id: '1057199014'
+qq_group_id: '<QQ玩家群号>'
 # QQBot 所在QQ群管理员帐号
-qq_admin_id: '1092760538'
+qq_admin_id: '<QQ群里服务器管理员对应的QQ号>'
 # QQBot 机器人 HTTP/HTTPS 服务端地址，OneBot 11协议
 qq_bot_api_server: 'http://127.0.0.1:3000'
 # QQBot 机器人 HTTP/HTTPS 服务请求token
-qq_bot_api_server_token: ''
+qq_bot_api_server_token: '<HTTP_Server_Token>'
 # QQBot 机器人 WebSocket 服务端地址
 qq_bot_ws_server: 'ws://127.0.0.1:3001'
 # QQBot 机器人 WebSocket 服务请求Token
-qq_bot_ws_server_token: ''
+qq_bot_ws_server_token: '<Websocket_Server_Token>'
 ```
 > 2025年9月5日，QQ机器人服务因安全问题被黑客利用，
 > 后续添加了 token 鉴权机制，强制配置服务器 token
@@ -79,11 +79,11 @@ enable_discord_bot: false
 # Discord 频道机器人 api 授权: discord_bot_token_base64_encoded = base64_encode(discord_bot_token)
 # Create Token follow Link: https://discord.com/developers/applications
 # Use Shell Command to Generate this value: `echo -n "discord_token_value" | base64`
-discord_bot_token_base64_encoded: 'TVRFd01UUTJNVEl3TWpZeU56azRPVFUzTkEuR1lTMU5ILmxSVTE5ZFZ4N2R0T2JpanRsYXJIM0I1R1lOZG5vQW5fNEFxN1U4'
+discord_bot_token_base64_encoded: '<不带空格和回车的Discord机器人Token值进行base64加密后的值>'
 # Discord 玩家文字频道，用来发送服务端上下线通知的频道
 # 获取方法，设置 -> 高级设置 -> 开发者模式 打开，长按对应文字频道，在弹出的菜单中选择最后一项：复制频道ID
-discord_player_text_channel_id: '1101910610033250468'
-# Discord玩家服务器链接
+discord_player_text_channel_id: '<Discord文字频道，需要拉入上面配置的Discord机器人做为成员>'
+# Discord玩家服务器链接，用在提示文案中引导玩家跳入Discord服务器
 discord_server_link: 'https://discord.gg/bqvQdHnmG9'
 ```
 
@@ -98,7 +98,7 @@ discord_server_link: 'https://discord.gg/bqvQdHnmG9'
 # Lark飞书群机器人开关
 enable_lark_bot: false
 # Lark飞书群机器人webhook地址，插件 -> lark群 单方向发消息
-lark_bot_webhook: 'https://open.feishu.cn/open-apis/bot/v2/hook/9cebe3e2-1d33-4ce9-a838-bf1f1f262ecf'
+lark_bot_webhook: '<飞书机器人对应的webhook地址>'
 ```
 
 ### 5. 提供玩家指令
