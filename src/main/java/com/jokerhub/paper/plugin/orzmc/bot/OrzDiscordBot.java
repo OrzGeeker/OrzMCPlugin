@@ -21,7 +21,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class OrzDiscordBot extends OrzBaseBot {
+public class OrzDiscordBot implements IOrzBaseBot {
 
     private final ArrayList<String> toBeSendMessageWhenApiReady = new ArrayList<>();
     private final String codeBlockPrefix = "```\n";
