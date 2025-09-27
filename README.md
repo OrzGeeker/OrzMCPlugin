@@ -57,9 +57,15 @@ qq_group_id: '1057199014'
 qq_admin_id: '1092760538'
 # QQBot 机器人 HTTP/HTTPS 服务端地址，OneBot 11协议
 qq_bot_api_server: 'http://127.0.0.1:3000'
+# QQBot 机器人 HTTP/HTTPS 服务请求token
+qq_bot_api_server_token: ''
 # QQBot 机器人 WebSocket 服务端地址
 qq_bot_ws_server: 'ws://127.0.0.1:3001'
+# QQBot 机器人 WebSocket 服务请求Token
+qq_bot_ws_server_token: ''
 ```
+> 2025年9月5日，QQ机器人服务因安全问题被黑客利用，
+> 后续添加了 token 鉴权机制，强制配置服务器 token
 
 ### 3. Discord频道服务器管理
 
@@ -167,7 +173,7 @@ allow_country_code:
 
 - 如果你在使用过程中发现问题，欢迎给项目提建议：[issues](https://github.com/OrzGeeker/OrzMCPlugin/issues)
 
-- 也可以进入飞书问题或需求反馈群：
+- 也可以进入QQ频道进行问题反馈：
 
     ![lark_issue_feedback_group](./images/lark_issue_feedback.png)
 
