@@ -104,18 +104,18 @@ public class OrzQQBot extends OrzBaseBot {
 
     private Map<String, String> httpServerHeaderMap() {
         Map<String, String> httpHeaders = new HashMap<>();
-        String apiServerToken = OrzMC.config().getString("qq_bot_api_server_token");
-        if (apiServerToken != null && !apiServerToken.isEmpty()) {
-            httpHeaders.put("Authorization", "Bearer " + apiServerToken);
+        String httpServerBearerToken = OrzMC.config().getString("qq_bot_api_server_token");
+        if (httpServerBearerToken != null && !httpServerBearerToken.isEmpty()) {
+            httpHeaders.put("Authorization", "Bearer " + httpServerBearerToken);
         }
         return httpHeaders;
     }
 
     private Map<String, String> websocketServerHeaderMap() {
         Map<String, String> httpHeaders = new HashMap<>();
-        String apiServerToken = OrzMC.config().getString("qq_bot_ws_server_token");
-        if (apiServerToken != null && !apiServerToken.isEmpty()) {
-            httpHeaders.put("Authorization", "Bearer " + apiServerToken);
+        String websocketServerBearerToken = OrzMC.config().getString("qq_bot_ws_server_token");
+        if (websocketServerBearerToken != null && !websocketServerBearerToken.isEmpty()) {
+            httpHeaders.put("Authorization", "Bearer " + websocketServerBearerToken);
         }
         return httpHeaders;
     }
@@ -141,7 +141,7 @@ public class OrzQQBot extends OrzBaseBot {
 
                 @Override
                 public void onClose(int code, String reason, boolean remote) {
-                    OrzMC.logger().info("关闭长链接");
+                    OrzMC.logger().info("关闭长链接: code: " + code + ", reason: " + reason + ", remote: " + remote);
                 }
 
                 @Override
