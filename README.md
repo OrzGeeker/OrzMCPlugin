@@ -35,8 +35,12 @@ qq_group_id: '<QQ玩家群号>'
 qq_admin_id: '<QQ群里服务器管理员对应的QQ号>'
 # QQBot 机器人 HTTP/HTTPS 服务端地址，OneBot 11协议
 qq_bot_api_server: 'http://127.0.0.1:3000'
+# QQBot 机器人 HTTP/HTTPS NapCat 服务器 token
+qq_bot_api_server_token: ''
 # QQBot 机器人 WebSocket 服务端地址
 qq_bot_ws_server: 'ws://127.0.0.1:3001'
+# QQBot 机器人 WebSocket NapCat 服务器 token
+qq_bot_ws_server_token: ''
 
 # Discord 频道机器人开关
 enable_discord_bot: false

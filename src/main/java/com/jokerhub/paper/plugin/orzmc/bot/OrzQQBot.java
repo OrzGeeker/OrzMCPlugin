@@ -13,6 +13,8 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
 
 public class OrzQQBot extends OrzBaseBot {
     private WebSocketClient webSocketClient;
@@ -87,7 +89,10 @@ public class OrzQQBot extends OrzBaseBot {
 
     private void asyncHttpRequest(String url) {
         try (HttpClient client = HttpClient.newHttpClient()) {
-            HttpRequest request = HttpRequest.newBuilder().uri(URI.create(url)).build();
+            HttpRequest.Builder requestBuilder = HttpRequest.newBuilder();
+            requestBuilder.uri(URI.create(url));
+            this.httpServerHeaderMap().forEach(requestBuilder::setHeader);
+            HttpRequest request = requestBuilder.build();
             client.sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenAcceptAsync(response -> OrzMC.debugInfo("Response Code : " + response.toString())).exceptionally(e -> {
                 OrzMC.logger().severe("QQ机器人无法连接，工作异常: " + e.toString());
                 return null;
@@ -97,6 +102,24 @@ public class OrzQQBot extends OrzBaseBot {
         }
     }
 
+    private Map<String, String> httpServerHeaderMap() {
+        Map<String, String> httpHeaders = new HashMap<>();
+        String httpServerBearerToken = OrzMC.config().getString("qq_bot_api_server_token");
+        if (httpServerBearerToken != null && !httpServerBearerToken.isEmpty()) {
+            httpHeaders.put("Authorization", "Bearer " + httpServerBearerToken);
+        }
+        return httpHeaders;
+    }
+
+    private Map<String, String> websocketServerHeaderMap() {
+        Map<String, String> httpHeaders = new HashMap<>();
+        String websocketServerBearerToken = OrzMC.config().getString("qq_bot_ws_server_token");
+        if (websocketServerBearerToken != null && !websocketServerBearerToken.isEmpty()) {
+            httpHeaders.put("Authorization", "Bearer " + websocketServerBearerToken);
+        }
+        return httpHeaders;
+    }
+
     public void setupWebSocketClient() {
         String wsServer = OrzMC.config().getString("qq_bot_ws_server");
         if (!this.isEnable() || wsServer == null || wsServer.isEmpty()) {
@@ -104,7 +127,7 @@ public class OrzQQBot extends OrzBaseBot {
         }
         try {
             URI uri = new URI(wsServer);
-            webSocketClient = new WebSocketClient(uri) {
+            webSocketClient = new WebSocketClient(uri, this.websocketServerHeaderMap()) {
                 @Override
                 public void onOpen(ServerHandshake handShakeData) {
                     OrzMC.logger().info("打开长链接");
@@ -118,7 +141,7 @@ public class OrzQQBot extends OrzBaseBot {
 
                 @Override
                 public void onClose(int code, String reason, boolean remote) {
-                    OrzMC.logger().info("关闭长链接");
+                    OrzMC.logger().info("关闭长链接: code: " + code + ", reason: " + reason + ", remote: " + remote);
                 }
 
                 @Override
