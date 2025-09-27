@@ -9,7 +9,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.HashMap;
 
-public class OrzLarkBot extends OrzBaseBot {
+public class OrzLarkBot implements IOrzBaseBot {
     @Override
     public boolean isEnable() {
         return OrzMC.config().getBoolean("enable_lark_bot");

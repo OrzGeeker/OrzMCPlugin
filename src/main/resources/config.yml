@@ -5,6 +5,12 @@
 # ==================================================
 force_whitelist: true
 
+# IP地址拦截白名单，在列表区域中的IP被允许登录服务器
+allow_country_code:
+#  - CN
+#  - JP
+#  - TW
+
 # ==================================================
 #               机器人消息发送服务配置
 # ==================================================
@@ -20,8 +26,12 @@ qq_group_id: '1057199014'
 qq_admin_id: '1092760538'
 # QQBot 机器人 HTTP/HTTPS 服务端地址，OneBot 11协议
 qq_bot_api_server: 'http://127.0.0.1:3000'
+# QQBot 机器人 HTTP/HTTPS 服务请求token
+qq_bot_api_server_token: ''
 # QQBot 机器人 WebSocket 服务端地址
 qq_bot_ws_server: 'ws://127.0.0.1:3001'
+# QQBot 机器人 WebSocket 服务请求Token
+qq_bot_ws_server_token: ''
 
 # Discord 频道机器人开关
 enable_discord_bot: false
