@@ -4,8 +4,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
 import com.jokerhub.paper.plugin.orzmc.utils.OrzMessageParser;
-import org.java_websocket.client.WebSocketClient;
-import org.java_websocket.handshake.ServerHandshake;
+import com.jokerhub.paper.plugin.orzmc.utils.RobustWebSocketClient;
 
 import java.net.URI;
 import java.net.URLEncoder;
@@ -17,7 +16,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class OrzQQBot implements IOrzBaseBot {
-    private WebSocketClient webSocketClient;
+    private RobustWebSocketClient webSocketClient;
 
     @Override
     public boolean isEnable() {
@@ -126,27 +125,10 @@ public class OrzQQBot implements IOrzBaseBot {
             return;
         }
         try {
-            URI uri = new URI(wsServer);
-            webSocketClient = new WebSocketClient(uri, this.websocketServerHeaderMap()) {
+            webSocketClient = new RobustWebSocketClient(wsServer, 10, 5000, this.websocketServerHeaderMap()) {
                 @Override
-                public void onOpen(ServerHandshake handShakeData) {
-                    OrzMC.logger().info("打开长链接");
-                }
-
-                @Override
-                public void onMessage(String message) {
-                    OrzMC.debugInfo("接收到消息: " + message);
+                public void handleMessage(String message) {
                     processJsonStringPayload(message);
-                }
-
-                @Override
-                public void onClose(int code, String reason, boolean remote) {
-                    OrzMC.logger().info("关闭长链接: code: " + code + ", reason: " + reason + ", remote: " + remote);
-                }
-
-                @Override
-                public void onError(Exception ex) {
-                    OrzMC.logger().severe(ex.toString());
                 }
             };
 
@@ -162,6 +144,6 @@ public class OrzQQBot implements IOrzBaseBot {
         if (webSocketClient == null) {
             return;
         }
-        webSocketClient.close();
+        webSocketClient.disconnect();
     }
 }
