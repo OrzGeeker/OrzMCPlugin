@@ -66,7 +66,7 @@ public class OrzGuideBook implements CommandExecutor {
                 }
                 linkTextBuilder.append(Component.text(linkItem.content()));
                 if (!linkItem.url().isEmpty()) {
-                    Style defaultLinkStyle = Style.style().color(TextColor.fromCSSHexString("#5555FF")).decorate(TextDecoration.UNDERLINED).build();
+                    Style defaultLinkStyle = Style.style().color(TextColor.fromCSSHexString("#5555FF")).build();
                     linkTextBuilder.style(defaultLinkStyle);
                     linkTextBuilder.clickEvent(ClickEvent.openUrl(linkItem.url()));
                     linkTextBuilder.hoverEvent(HoverEvent.showText(Component.text(linkItem.hoverText())));
