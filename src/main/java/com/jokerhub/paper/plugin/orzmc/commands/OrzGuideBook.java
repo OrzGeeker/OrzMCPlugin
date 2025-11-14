@@ -1,6 +1,7 @@
 package com.jokerhub.paper.plugin.orzmc.commands;
 
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
+import com.jokerhub.paper.plugin.orzmc.utils.OrzUtil;
 import com.jokerhub.paper.plugin.orzmc.utils.guidebook.GuideBookConfigParser;
 import com.jokerhub.paper.plugin.orzmc.utils.guidebook.models.*;
 import net.kyori.adventure.text.Component;
@@ -97,6 +98,7 @@ public class OrzGuideBook implements CommandExecutor {
     private void openNewPlayerGuideBook(Player player) {
         ItemStack guideBook = guideBook();
         if (guideBook == null) {
+            player.sendMessage(OrzUtil.failureText("服主未配置新手指南"));
             return;
         }
         player.openBook(guideBook);
@@ -111,7 +113,7 @@ public class OrzGuideBook implements CommandExecutor {
             ItemStack guideBook = guideBook();
             if (guideBook != null) {
                 player.getInventory().addItem(guideBook);
-                player.sendMessage("获得新手指南");
+                player.sendMessage(OrzUtil.successText("获得新手指南"));
             }
         }
     }
