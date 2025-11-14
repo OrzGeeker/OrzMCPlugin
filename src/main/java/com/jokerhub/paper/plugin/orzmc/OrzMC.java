@@ -117,8 +117,16 @@ public final class OrzMC extends JavaPlugin implements Listener {
         configManager.setDefaults("config", config -> {
             // 配置默认值
         });
+        configManager.registerConfig("bot");
+        configManager.setDefaults("bot", config -> {
+            // 配置默认值
+        });
         configManager.registerConfig("guide_book");
         configManager.setDefaults("guide_book", config -> {
+            // 配置默认值
+        });
+        configManager.registerConfig("tnt");
+        configManager.setDefaults("tnt", config -> {
             // 配置默认值
         });
     }
