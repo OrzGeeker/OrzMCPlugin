@@ -9,24 +9,15 @@ import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
-import org.bukkit.GameMode;
 import org.bukkit.event.EventHandler;
-import org.bukkit.event.Listener;
 
-public class OrzWhiteListEvent implements Listener {
-    static private boolean isEnableForceWhitelist() {
-        return OrzMC.config().getBoolean("force_whitelist");
+public class OrzWhiteListEvent extends OrzBaseListener {
+    public OrzWhiteListEvent(OrzMC plugin) {
+        super(plugin);
     }
 
-    public static void setupServerForceWhitelist() {
-        boolean forceWhitelist = isEnableForceWhitelist();
-        OrzMC.server().setWhitelist(forceWhitelist);
-        OrzMC.server().setWhitelistEnforced(forceWhitelist);
-        OrzMC.server().reloadWhitelist();
-        OrzMC.server().setDefaultGameMode(GameMode.SURVIVAL);
-        if (forceWhitelist) {
-            OrzMC.logger().info("服务端使用强制白名单机制");
-        }
+    private boolean isEnableForceWhitelist() {
+        return plugin.getConfig().getBoolean("force_whitelist");
     }
 
     @EventHandler
@@ -59,13 +50,13 @@ public class OrzWhiteListEvent implements Listener {
 
         // 通知玩家群
         String playChatGroupMsg = player.getName() + " 尝试加入服务器，被白名单拦截";
-        OrzMC.sendPublicMessage(playChatGroupMsg);
+        plugin.sendPublicMessage(playChatGroupMsg);
     }
 
     @EventHandler
     public void onWhitelistToggled(WhitelistToggleEvent event) {
         if (isEnableForceWhitelist() && !event.isEnabled()) {
-            OrzMC.sendPublicMessage("‼️服务器白名单异常关闭");
+            plugin.sendPublicMessage("‼️服务器白名单异常关闭");
         }
     }
 }

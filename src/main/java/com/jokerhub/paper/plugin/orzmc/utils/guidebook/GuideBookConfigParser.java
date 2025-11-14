@@ -1,6 +1,6 @@
-package com.jokerhub.paper.plugin.orzmc.guidebook;
+package com.jokerhub.paper.plugin.orzmc.utils.guidebook;
 
-import com.jokerhub.paper.plugin.orzmc.guidebook.models.*;
+import com.jokerhub.paper.plugin.orzmc.utils.guidebook.models.*;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 

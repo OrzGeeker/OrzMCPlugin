@@ -1,4 +1,4 @@
-package com.jokerhub.paper.plugin.orzmc.guidebook.models;
+package com.jokerhub.paper.plugin.orzmc.utils.guidebook.models;
 
 import org.jetbrains.annotations.NotNull;
 

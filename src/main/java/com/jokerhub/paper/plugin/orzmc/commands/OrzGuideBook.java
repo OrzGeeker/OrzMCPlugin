@@ -1,8 +1,8 @@
 package com.jokerhub.paper.plugin.orzmc.commands;
 
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
-import com.jokerhub.paper.plugin.orzmc.guidebook.GuideBookConfigParser;
-import com.jokerhub.paper.plugin.orzmc.guidebook.models.*;
+import com.jokerhub.paper.plugin.orzmc.utils.guidebook.GuideBookConfigParser;
+import com.jokerhub.paper.plugin.orzmc.utils.guidebook.models.*;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.event.ClickEvent;

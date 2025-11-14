@@ -1,4 +1,4 @@
-package com.jokerhub.paper.plugin.orzmc.guidebook.models;
+package com.jokerhub.paper.plugin.orzmc.utils.guidebook.models;
 
 // 文本样式类
 public class TextStyle {

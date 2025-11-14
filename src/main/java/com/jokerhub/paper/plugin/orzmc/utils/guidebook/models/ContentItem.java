@@ -1,4 +1,4 @@
-package com.jokerhub.paper.plugin.orzmc.guidebook.models;
+package com.jokerhub.paper.plugin.orzmc.utils.guidebook.models;
 
 // 内容项包装类
 public class ContentItem {
