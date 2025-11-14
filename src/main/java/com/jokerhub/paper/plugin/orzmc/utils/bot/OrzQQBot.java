@@ -1,11 +1,11 @@
-package com.jokerhub.paper.plugin.orzmc.bot;
+package com.jokerhub.paper.plugin.orzmc.utils.bot;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
 import com.jokerhub.paper.plugin.orzmc.utils.OrzMessageParser;
-import org.java_websocket.client.WebSocketClient;
-import org.java_websocket.handshake.ServerHandshake;
+import com.jokerhub.paper.plugin.orzmc.utils.RobustWebSocketClient;
+import org.bukkit.plugin.java.JavaPlugin;
 
 import java.net.URI;
 import java.net.URLEncoder;
@@ -16,8 +16,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
-public class OrzQQBot implements IOrzBaseBot {
-    private WebSocketClient webSocketClient;
+public class OrzQQBot extends OrzBaseBot {
+    private RobustWebSocketClient webSocketClient;
+
+    public OrzQQBot(JavaPlugin plugin) {
+        super(plugin);
+    }
 
     @Override
     public boolean isEnable() {
@@ -32,6 +36,34 @@ public class OrzQQBot implements IOrzBaseBot {
     @Override
     public void teardown() {
         this.shutdownWebSocketClient();
+    }
+
+    @Override
+    public void sendMessage(String message) {
+        if (!this.isEnable()) {
+            return;
+        }
+        try {
+            String groupId = OrzMC.config().getString("qq_group_id");
+            String url = OrzMC.config().getString("qq_bot_api_server") + "/send_group_msg?group_id=" + groupId + "&message=" + URLEncoder.encode(message, StandardCharsets.UTF_8);
+            asyncHttpRequest(url);
+        } catch (Exception e) {
+            OrzMC.logger().info(e.toString());
+        }
+    }
+
+    @Override
+    public void sendPrivateMessage(String message) {
+        if (!this.isEnable()) {
+            return;
+        }
+        try {
+            String userId = OrzMC.config().getString("qq_admin_id");
+            String url = OrzMC.config().getString("qq_bot_api_server") + "/send_msg?user_id=" + userId + "&message=" + URLEncoder.encode(message, StandardCharsets.UTF_8);
+            asyncHttpRequest(url);
+        } catch (Exception e) {
+            OrzMC.logger().info(e.toString());
+        }
     }
 
     public void processJsonStringPayload(String jsonString) {
@@ -52,36 +84,10 @@ public class OrzQQBot implements IOrzBaseBot {
             if (groupId.equals(qqGroupId)) {
                 OrzMessageParser.parse(message, isAdmin || isOwner, info -> {
                     if (info != null) {
-                        sendQQGroupMsg(info);
+                        sendMessage(info);
                     }
                 });
             }
-        } catch (Exception e) {
-            OrzMC.logger().info(e.toString());
-        }
-    }
-
-    public void sendQQGroupMsg(String msg) {
-        if (!this.isEnable()) {
-            return;
-        }
-        try {
-            String groupId = OrzMC.config().getString("qq_group_id");
-            String url = OrzMC.config().getString("qq_bot_api_server") + "/send_group_msg?group_id=" + groupId + "&message=" + URLEncoder.encode(msg, StandardCharsets.UTF_8);
-            asyncHttpRequest(url);
-        } catch (Exception e) {
-            OrzMC.logger().info(e.toString());
-        }
-    }
-
-    public void sendPrivateMsg(String msg) {
-        if (!this.isEnable()) {
-            return;
-        }
-        try {
-            String userId = OrzMC.config().getString("qq_admin_id");
-            String url = OrzMC.config().getString("qq_bot_api_server") + "/send_msg?user_id=" + userId + "&message=" + URLEncoder.encode(msg, StandardCharsets.UTF_8);
-            asyncHttpRequest(url);
         } catch (Exception e) {
             OrzMC.logger().info(e.toString());
         }
@@ -126,27 +132,10 @@ public class OrzQQBot implements IOrzBaseBot {
             return;
         }
         try {
-            URI uri = new URI(wsServer);
-            webSocketClient = new WebSocketClient(uri, this.websocketServerHeaderMap()) {
+            webSocketClient = new RobustWebSocketClient(wsServer, 10, 5000, this.websocketServerHeaderMap()) {
                 @Override
-                public void onOpen(ServerHandshake handShakeData) {
-                    OrzMC.logger().info("打开长链接");
-                }
-
-                @Override
-                public void onMessage(String message) {
-                    OrzMC.debugInfo("接收到消息: " + message);
+                public void handleMessage(String message) {
                     processJsonStringPayload(message);
-                }
-
-                @Override
-                public void onClose(int code, String reason, boolean remote) {
-                    OrzMC.logger().info("关闭长链接: code: " + code + ", reason: " + reason + ", remote: " + remote);
-                }
-
-                @Override
-                public void onError(Exception ex) {
-                    OrzMC.logger().severe(ex.toString());
                 }
             };
 
@@ -162,6 +151,6 @@ public class OrzQQBot implements IOrzBaseBot {
         if (webSocketClient == null) {
             return;
         }
-        webSocketClient.close();
+        webSocketClient.disconnect();
     }
 }

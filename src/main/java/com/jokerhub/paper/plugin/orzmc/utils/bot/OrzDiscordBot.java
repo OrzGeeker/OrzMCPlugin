@@ -1,4 +1,4 @@
-package com.jokerhub.paper.plugin.orzmc.bot;
+package com.jokerhub.paper.plugin.orzmc.utils.bot;
 
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
 import com.jokerhub.paper.plugin.orzmc.utils.OrzMessageParser;
@@ -14,6 +14,7 @@ import net.dv8tion.jda.api.events.session.ReadyEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import net.dv8tion.jda.api.utils.SplitUtil;
+import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -21,13 +22,17 @@ import java.util.Base64;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class OrzDiscordBot implements IOrzBaseBot {
+public class OrzDiscordBot extends OrzBaseBot {
 
     private final ArrayList<String> toBeSendMessageWhenApiReady = new ArrayList<>();
     private final String codeBlockPrefix = "```\n";
     private final String codeBlockSuffix = "```";
     private JDA api;
     private boolean isApiReady;
+
+    public OrzDiscordBot(JavaPlugin plugin) {
+        super(plugin);
+    }
 
     private List<String> codeBlockSplitMessage(String rawMessage) {
         int discordTextLengthLimit = 2_000;
@@ -88,8 +93,9 @@ public class OrzDiscordBot implements IOrzBaseBot {
 
     @Override
     public void teardown() {
-        if (!this.isEnable()) return;
-        api.shutdown();
+        if (this.isEnable()) {
+            api.shutdown();
+        }
     }
 
     public void sendMessage(String message) {
@@ -113,5 +119,10 @@ public class OrzDiscordBot implements IOrzBaseBot {
         } else {
             OrzMC.logger().warning("your discord bot not in this text channel: " + playerTextChannelId);
         }
+    }
+
+    @Override
+    public void sendPrivateMessage(String message) {
+
     }
 }
