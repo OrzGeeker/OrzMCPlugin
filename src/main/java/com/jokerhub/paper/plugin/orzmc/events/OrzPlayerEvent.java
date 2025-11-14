@@ -37,8 +37,8 @@ public class OrzPlayerEvent extends OrzBaseListener {
         return gson.toJson(jsonObject);
     }
 
-    private static List<String> allowCountryList() {
-        return OrzMC.config().getStringList("allow_country_code");
+    private List<String> allowCountryList() {
+        return plugin.configManager.getConfig("config").getStringList("allow_country_code");
     }
 
     @EventHandler

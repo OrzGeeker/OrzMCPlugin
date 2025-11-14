@@ -1,7 +1,6 @@
 package com.jokerhub.paper.plugin.orzmc.utils;
 
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
-import com.jokerhub.paper.plugin.orzmc.commands.OrzUserCmd;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 

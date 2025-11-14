@@ -10,7 +10,6 @@ import org.bukkit.GameMode;
 import org.bukkit.Server;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.PluginCommand;
-import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -19,7 +18,7 @@ import java.util.Map;
 import java.util.logging.Logger;
 
 public final class OrzMC extends JavaPlugin implements Listener {
-    private AdvancedConfigManager configManager;
+    public AdvancedConfigManager configManager;
     private OrzBotManager botManager;
 
     @Override
@@ -51,10 +50,6 @@ public final class OrzMC extends JavaPlugin implements Listener {
 
     public static Logger logger() {
         return OrzMC.plugin().getLogger();
-    }
-
-    public static FileConfiguration config() {
-        return OrzMC.plugin().getConfig();
     }
 
     // 公共方法

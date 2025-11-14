@@ -17,6 +17,9 @@
 ## 插件配置文件
 
 - [config.yml](./src/main/resources/config.yml)
+- [bot.yml](./src/main/resources/bot.yml)
+- [guide_book.yml](./src/main/resources/guide_book.yml)
+- [tnt.yml](./src/main/resources/tnt.yml)
 
 ## 插件提供的能力
 
@@ -116,36 +119,35 @@ lark_bot_webhook: '<飞书机器人对应的webhook地址>'
 可通过配置文件设置，开启服务器爆炸监听、报警和防护。支持在不同世界配置TNT可用白名单，在设置的白名单区域内，TNT相关功能可正常生效
 
 ```yaml
-tnt:
-  # 是否允许使用TNT
-  enable: false
-  # 是否允许放置重生锚
-  enable_respawn_anchor: false
-  # TNT放置的冷却时间，单位为：秒，防止TNT放置太快
-  place_cooldown: 5
-  # TNT放置区域白名单
-  whitelist:
-    - minX: 0
-      maxX: 0
-      minY: 0
-      maxY: 0
-      minZ: 0
-      maxZ: 0
-      world: 'world'
-    - minX: 0
-      maxX: 0
-      minY: 0
-      maxY: 0
-      minZ: 0
-      maxZ: 0
-      world: 'world_nether'
-    - minX: 0
-      maxX: 0
-      minY: 0
-      maxY: 0
-      minZ: 0
-      maxZ: 0
-      world: 'world_the_end'
+# 是否允许使用TNT
+enable: false
+# 是否允许放置重生锚
+enable_respawn_anchor: false
+# TNT放置的冷却时间，单位为：秒，防止TNT放置太快
+place_cooldown: 5
+# TNT放置区域白名单
+whitelist:
+  - minX: 0
+    maxX: 0
+    minY: 0
+    maxY: 0
+    minZ: 0
+    maxZ: 0
+    world: 'world'
+  - minX: 0
+    maxX: 0
+    minY: 0
+    maxY: 0
+    minZ: 0
+    maxZ: 0
+    world: 'world_nether'
+  - minX: 0
+    maxX: 0
+    minY: 0
+    maxY: 0
+    minZ: 0
+    maxZ: 0
+    world: 'world_the_end'
 ```
 
 ### 7. 服务区域限制
@@ -163,6 +165,7 @@ allow_country_code:
 ### 8. guide_book.yml 中可配置新手指南手的内容
 
 ```yaml
+enable: true
 title: '新手指南'
 author: '腐竹'
 content:

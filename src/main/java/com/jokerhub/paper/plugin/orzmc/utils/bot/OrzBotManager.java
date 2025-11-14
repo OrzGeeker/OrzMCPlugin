@@ -1,14 +1,14 @@
 package com.jokerhub.paper.plugin.orzmc.utils.bot;
 
-import org.bukkit.plugin.java.JavaPlugin;
+import com.jokerhub.paper.plugin.orzmc.OrzMC;
 
 import java.util.Map;
 
 public class OrzBotManager {
-    private final JavaPlugin plugin;
+    private final OrzMC plugin;
     private Map<String, OrzBaseBot> bots;
 
-    public OrzBotManager(JavaPlugin plugin) {
+    public OrzBotManager(OrzMC plugin) {
         this.plugin = plugin;
     }
 

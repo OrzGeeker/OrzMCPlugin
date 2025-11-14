@@ -1,0 +1,32 @@
+# ==================================================
+#                   TNT 检查配置
+# ==================================================
+# 是否允许使用TNT
+enable: false
+# 是否允许放置重生锚
+enable_respawn_anchor: false
+# TNT放置的冷却时间，单位为：秒，防止TNT放置太快
+place_cooldown: 5
+# TNT放置区域白名单
+whitelist:
+  - minX: 0
+    maxX: 0
+    minY: 0
+    maxY: 0
+    minZ: 0
+    maxZ: 0
+    world: 'world'
+  - minX: 0
+    maxX: 0
+    minY: 0
+    maxY: 0
+    minZ: 0
+    maxZ: 0
+    world: 'world_nether'
+  - minX: 0
+    maxX: 0
+    minY: 0
+    maxY: 0
+    minZ: 0
+    maxZ: 0
+    world: 'world_the_end'

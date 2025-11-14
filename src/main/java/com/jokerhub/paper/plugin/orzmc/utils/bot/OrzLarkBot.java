@@ -2,7 +2,6 @@ package com.jokerhub.paper.plugin.orzmc.utils.bot;
 
 import com.google.gson.Gson;
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
-import org.bukkit.plugin.java.JavaPlugin;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -11,13 +10,13 @@ import java.net.http.HttpResponse;
 import java.util.HashMap;
 
 public class OrzLarkBot extends OrzBaseBot {
-    public OrzLarkBot(JavaPlugin plugin) {
+    public OrzLarkBot(OrzMC plugin) {
         super(plugin);
     }
 
     @Override
     public boolean isEnable() {
-        return OrzMC.config().getBoolean("enable_lark_bot");
+        return botConfig.getBoolean("enable_lark_bot");
     }
 
     @Override
@@ -36,7 +35,7 @@ public class OrzLarkBot extends OrzBaseBot {
             return;
         }
         try {
-            String larkBotWebhookUrl = OrzMC.config().getString("lark_bot_webhook");
+            String larkBotWebhookUrl = botConfig.getString("lark_bot_webhook");
             asyncHttpRequest(larkBotWebhookUrl, msg);
         } catch (Exception e) {
             OrzMC.logger().info(e.toString());

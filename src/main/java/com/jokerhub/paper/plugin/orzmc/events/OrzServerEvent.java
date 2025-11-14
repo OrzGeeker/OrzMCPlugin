@@ -3,7 +3,7 @@ package com.jokerhub.paper.plugin.orzmc.events;
 import com.destroystokyo.paper.event.server.ServerExceptionEvent;
 import com.destroystokyo.paper.exception.ServerException;
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
-import com.jokerhub.paper.plugin.orzmc.commands.OrzUserCmd;
+import com.jokerhub.paper.plugin.orzmc.utils.OrzUserCmd;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.server.ServerLoadEvent;
 
