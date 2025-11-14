@@ -1,26 +1,102 @@
 package com.jokerhub.paper.plugin.orzmc;
 
-import com.jokerhub.paper.plugin.orzmc.bot.OrzDiscordBot;
-import com.jokerhub.paper.plugin.orzmc.bot.OrzLarkBot;
-import com.jokerhub.paper.plugin.orzmc.bot.OrzQQBot;
 import com.jokerhub.paper.plugin.orzmc.commands.OrzGuideBook;
 import com.jokerhub.paper.plugin.orzmc.commands.OrzMenuCommand;
 import com.jokerhub.paper.plugin.orzmc.commands.OrzTPBow;
 import com.jokerhub.paper.plugin.orzmc.events.*;
+import com.jokerhub.paper.plugin.orzmc.utils.bot.OrzBaseBot;
+import com.jokerhub.paper.plugin.orzmc.utils.bot.OrzDiscordBot;
+import com.jokerhub.paper.plugin.orzmc.utils.bot.OrzLarkBot;
+import com.jokerhub.paper.plugin.orzmc.utils.bot.OrzQQBot;
+import org.bukkit.GameMode;
 import org.bukkit.Server;
+import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.util.Arrays;
+import java.util.Map;
 import java.util.logging.Logger;
 
 public final class OrzMC extends JavaPlugin implements Listener {
 
-    // 机器人配置
-    public static final OrzDiscordBot discordBot = new OrzDiscordBot();
-    public static final OrzQQBot qqBot = new OrzQQBot();
-    private static final OrzLarkBot larkBot = new OrzLarkBot();
+    private Listener[] eventListeners;
+    private Map<String, CommandExecutor> commandHandlers;
+    private Map<String, OrzBaseBot> bots;
+
+    Listener[] getEventListeners() {
+        if (eventListeners == null) {
+            eventListeners = new Listener[]{
+                    new OrzBowShootEvent(),
+                    new OrzPlayerEvent(this),
+                    new OrzTPEvent(),
+                    new OrzTNTEvent(this),
+                    new OrzMenuEvent(),
+                    new OrzServerEvent(this),
+                    new OrzWhiteListEvent(this),
+                    new OrzDebugEvent()
+            };
+        }
+        return eventListeners;
+    }
+
+    Map<String, CommandExecutor> getCommandHandlers() {
+        if (commandHandlers == null) {
+            commandHandlers = Map.of(
+                    "tpbow", new OrzTPBow(),
+                    "guide", new OrzGuideBook(),
+                    "menu", new OrzMenuCommand()
+            );
+        }
+        return commandHandlers;
+    }
+
+    Map<String, OrzBaseBot> getBots() {
+        if (bots == null) {
+            bots = Map.of(
+                    "qq", new OrzQQBot(this),
+                    "discord", new OrzDiscordBot(this),
+                    "lark", new OrzLarkBot(this)
+            );
+        }
+        return bots;
+    }
+
+    @Override
+    public void onEnable() {
+        super.onEnable();
+
+        getLogger().info("OrzMC 插件生效!");
+
+        // 如果插件的数据目录下没有配置文件，则复制config.yml内容到插件的数据目录
+        saveDefaultConfig();
+
+        // 注册所有事件处理器
+        Arrays.stream(getEventListeners()).forEach(eventListener -> getServer().getPluginManager().registerEvents(eventListener, this));
+
+        // 设置所有命令处理器
+        getCommandHandlers().forEach((key, value) -> {
+            PluginCommand cmd = getCommand(key);
+            if (cmd != null) {
+                cmd.setExecutor(value);
+            }
+        });
+
+        // 配置通知机器人
+        getBots().values().forEach(OrzBaseBot::setup);
+
+        // 设置是否开启强制白名单
+        setupServerForceWhitelist();
+    }
+
+    @Override
+    public void onDisable() {
+        super.onDisable();
+        notifyServerStop();
+        bots.values().forEach(OrzBaseBot::teardown);
+    }
 
     // 公共静态成员
     public static JavaPlugin plugin() {
@@ -28,7 +104,7 @@ public final class OrzMC extends JavaPlugin implements Listener {
     }
 
     public static Server server() {
-        return OrzMC.plugin().getServer();
+        return plugin().getServer();
     }
 
     public static Logger logger() {
@@ -40,16 +116,14 @@ public final class OrzMC extends JavaPlugin implements Listener {
     }
 
     // 公共方法
-    public static void sendPublicMessage(String message) {
+    public void sendPublicMessage(String message) {
         OrzMC.debugInfo(message);
-        discordBot.sendMessage(message);
-        larkBot.sendMessage(message);
-        qqBot.sendQQGroupMsg(message);
+        bots.values().forEach(bot -> bot.sendMessage(message));
     }
 
-    public static void sendPrivateMessage(String message) {
-        OrzMC.debugInfo(message);
-        qqBot.sendPrivateMsg(message);
+    public void sendPrivateMessage(String message) {
+        debugInfo(message);
+        bots.values().forEach(bot -> bot.sendPrivateMessage(message));
     }
 
     public static void debugInfo(String msg) {
@@ -59,61 +133,20 @@ public final class OrzMC extends JavaPlugin implements Listener {
         OrzMC.logger().info(msg);
     }
 
-    @Override
-    public void onEnable() {
-        super.onEnable();
+    private void notifyServerStop() {
+        String minecraftVersion = getServer().getMinecraftVersion();
+        String stringBuilder = "Minecraft " + minecraftVersion + "\n" + "------" + "\n" + "服务停止" + "\n\n" + "停止状态无法响应命令消息";
+        sendPublicMessage(stringBuilder);
+    }
 
-        // 如果插件的数据目录下没有配置文件，则复制config.yml内容到插件的数据目录
-        saveDefaultConfig();
-
-        // Plugin startup logic
-        getLogger().info("OrzMC 插件生效!");
-        getServer().getPluginManager().registerEvents(new OrzBowShootEvent(), this);
-        getServer().getPluginManager().registerEvents(new OrzPlayerEvent(), this);
-        getServer().getPluginManager().registerEvents(new OrzTPEvent(), this);
-        getServer().getPluginManager().registerEvents(new OrzTNTEvent(), this);
-        getServer().getPluginManager().registerEvents(new OrzMenuEvent(), this);
-        getServer().getPluginManager().registerEvents(new OrzServerEvent(), this);
-        getServer().getPluginManager().registerEvents(new OrzWhiteListEvent(), this);
-        getServer().getPluginManager().registerEvents(new OrzDebugEvent(), this);
-
-        PluginCommand tpbowCmd = getCommand("tpbow");
-        if (tpbowCmd != null) {
-            tpbowCmd.setExecutor(new OrzTPBow());
+    private void setupServerForceWhitelist() {
+        boolean forceWhitelist = getConfig().getBoolean("force_whitelist");
+        getServer().setWhitelist(forceWhitelist);
+        getServer().setWhitelistEnforced(forceWhitelist);
+        getServer().reloadWhitelist();
+        getServer().setDefaultGameMode(GameMode.SURVIVAL);
+        if (forceWhitelist) {
+            getLogger().info("服务端使用强制白名单机制");
         }
-
-        PluginCommand guideCmd = getCommand("guide");
-        if (guideCmd != null) {
-            guideCmd.setExecutor(new OrzGuideBook());
-        }
-
-        PluginCommand menuCmd = getCommand("menu");
-        if (menuCmd != null) {
-            menuCmd.setExecutor(new OrzMenuCommand());
-        }
-
-        OrzWhiteListEvent.setupServerForceWhitelist();
-
-        setupBots();
     }
-
-    @Override
-    public void onDisable() {
-        super.onDisable();
-        teardownBots();
-        OrzServerEvent.notifyServerStop();
-    }
-
-    private void setupBots() {
-        discordBot.setup();
-        larkBot.setup();
-        qqBot.setup();
-    }
-
-    private void teardownBots() {
-        discordBot.teardown();
-        larkBot.teardown();
-        qqBot.teardown();
-    }
-    // ---
 }

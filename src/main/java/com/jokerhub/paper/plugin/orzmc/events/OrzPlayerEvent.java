@@ -10,7 +10,6 @@ import com.jokerhub.paper.plugin.orzmc.utils.OrzMessageParser;
 import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
-import org.bukkit.event.Listener;
 import org.bukkit.event.player.AsyncPlayerPreLoginEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerKickEvent;
@@ -23,7 +22,11 @@ import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
 
-public class OrzPlayerEvent implements Listener {
+public class OrzPlayerEvent extends OrzBaseListener {
+
+    public OrzPlayerEvent(OrzMC plugin) {
+        super(plugin);
+    }
 
     private static JsonObject parseToJsonObject(String json) {
         return JsonParser.parseString(json).getAsJsonObject();
@@ -61,7 +64,7 @@ public class OrzPlayerEvent implements Listener {
                             String countryCode = String.valueOf(jsonObject.get("country_code").getAsString());
                             if (!allowCountList.contains(countryCode)) {
                                 String msg = playerName + "(" + ipAddress + ")" + "\n" + countryCode + "\n" + "IP位置不在服务支持区域" + String.join(",", allowCountList);
-                                OrzMC.sendPublicMessage(msg + "\n" + addressInfo);
+                                plugin.sendPublicMessage(msg + "\n" + addressInfo);
                                 event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_OTHER, Component.text(msg));
                             } else {
                                 OrzMC.debugInfo("allowCountList contains: " + countryCode);
@@ -73,13 +76,13 @@ public class OrzPlayerEvent implements Listener {
                 }).exceptionally(e -> {
                     String msg = "IP地址解析服务异常: " + e.toString();
                     OrzMC.logger().warning(msg);
-                    OrzMC.sendPublicMessage(msg);
+                    plugin.sendPublicMessage(msg);
                     return null;
                 });
             } catch (Exception e) {
                 String msg = e.toString();
-                OrzMC.logger().severe(msg);
-                OrzMC.sendPublicMessage(msg);
+                plugin.getLogger().severe(msg);
+                plugin.sendPublicMessage(msg);
             }
         }
     }
@@ -146,10 +149,10 @@ public class OrzPlayerEvent implements Listener {
             String name = OrzMessageParser.playerDisplayName(p);
             msgBuilder.append("\n").append(name);
         }
-        OrzMC.sendPublicMessage(msgBuilder.toString());
-        OrzMC.logger().info(msgBuilder.toString());
+        plugin.sendPublicMessage(msgBuilder.toString());
+        plugin.getLogger().info(msgBuilder.toString());
         if (onlinePlayerCount == 0) {
-            OrzMC.sendPrivateMessage("服务器当前无玩家，可进行服务器维护");
+            plugin.sendPrivateMessage("服务器当前无玩家，可进行服务器维护");
         }
     }
 

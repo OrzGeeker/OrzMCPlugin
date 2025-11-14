@@ -36,7 +36,6 @@ public class RobustWebSocketClient {
             public void onOpen(ServerHandshake handshakeData) {
                 OrzMC.logger().info("WebSocket连接建立");
                 retryCount = 0;
-                onConnected();
             }
 
             @Override
@@ -48,7 +47,6 @@ public class RobustWebSocketClient {
             @Override
             public void onClose(int code, String reason, boolean remote) {
                 OrzMC.logger().info("WebSocket连接关闭: " + reason);
-                onDisconnected();
                 if (shouldReconnect) {
                     scheduleReconnect();
                 }
@@ -78,14 +76,6 @@ public class RobustWebSocketClient {
         shouldReconnect = false;
         client.close();
         executor.shutdown();
-    }
-
-    public void sendMessage(String message) {
-        if (client != null && client.isOpen()) {
-            client.send(message);
-        } else {
-            OrzMC.logger().severe("连接未建立，无法发送消息");
-        }
     }
 
     private void scheduleReconnect() {
@@ -121,20 +111,8 @@ public class RobustWebSocketClient {
         return (long) (baseRetryInterval * Math.pow(2, retryCount - 1));
     }
 
-    // 以下方法供子类重写
-    protected void onConnected() {
-        // 连接建立后的处理
-    }
-
-    protected void onDisconnected() {
-        // 连接断开后的处理
-    }
-
     protected void handleMessage(String message) {
         // 消息处理逻辑
     }
 
-    public boolean isConnected() {
-        return client != null && client.isOpen();
-    }
 }

@@ -1,4 +1,5 @@
 # OrzMCPlugin
+
 [![OrzMC](https://img.shields.io/hangar/dt/OrzMC?link=https%3A%2F%2Fhangar.papermc.io%2Fwangzhizhou666%2FOrzMC&style=flat)](https://hangar.papermc.io/wangzhizhou666/OrzMC)
 [![OrzMC](https://img.shields.io/hangar/stars/OrzMC?link=https%3A%2F%2Fhangar.papermc.io%2Fwangzhizhou666%2FOrzMC&style=flat)](https://hangar.papermc.io/wangzhizhou666/OrzMC)
 [![OrzMC](https://img.shields.io/hangar/views/OrzMC?link=https%3A%2F%2Fhangar.papermc.io%2Fwangzhizhou666%2FOrzMC&style=flat)](https://hangar.papermc.io/wangzhizhou666/OrzMC)
@@ -64,6 +65,7 @@ qq_bot_ws_server: 'ws://127.0.0.1:3001'
 # QQBot 机器人 WebSocket 服务请求Token
 qq_bot_ws_server_token: '<Websocket_Server_Token>'
 ```
+
 > 2025年9月5日，QQ机器人服务因安全问题被黑客利用，
 > 后续添加了 token 鉴权机制，强制配置服务器 token
 
@@ -158,16 +160,45 @@ allow_country_code:
 #  - TW
 ```
 
+### 8. guide_book.yml 中可配置新手指南手的内容
+
+```yaml
+title: '新手指南'
+author: '腐竹'
+content:
+  - text:
+      content: '欢迎新朋友来到我的世界！'
+      newline_count: 2
+  - text:
+      content: '服务器中一些热爱创造的小伙伴在这里花费了大量心力建造出了各种漂亮的建筑，希望刚加入的朋友不要随意对其进行破坏，尊重他人的劳动成果。做一个有素质的MC玩家!'
+      newline_count: 2
+  - text:
+      content: '相关链接'
+      style:
+        bold: true
+  - link:
+      content: '服务器主页'
+      url: 'https://minecraft.jokerhub.cn'
+      hover_text: '点击前往主页'
+      style:
+        bold: true
+  - link:
+      content: '玩家手册'
+      url: 'https://minecraft.jokerhub.cn/user/'
+      hover_text: '点击查看玩家手册'
+```
+
 ---
+
 ## 插件使用
 
 - 首次使用插件
-  1. 下载本插件后，直接放到 PaperMC 服务器插件目录 `plugins/` 下，启动服务端后，本插件的数据目录就会出现
-  2. 修改插件数据目录下的`config.yml`配置文件，重启服务
+    1. 下载本插件后，直接放到 PaperMC 服务器插件目录 `plugins/` 下，启动服务端后，本插件的数据目录就会出现
+    2. 修改插件数据目录下的`config.yml`配置文件，重启服务
 
 - 更新插件：
-  1. PaperMC 插件目录下提供一个名称 `update/`的目录，把要更新的插件文件放到这个目录下面
-  2. 下次服务端重启时，插件会被自动移到`plugins/`目录下面，完成插件升级
+    1. PaperMC 插件目录下提供一个名称 `update/`的目录，把要更新的插件文件放到这个目录下面
+    2. 下次服务端重启时，插件会被自动移到`plugins/`目录下面，完成插件升级
 
 ## 问题反馈
 
@@ -175,16 +206,17 @@ allow_country_code:
 
 - 也可以进入QQ频道进行问题反馈：
 
-    ![lark_issue_feedback_group](./images/lark_issue_feedback.png)
+  ![lark_issue_feedback_group](./images/lark_issue_feedback.png)
 
 ---
+
 ## 开发
 
 本插件构建支持 maven 或 gradle，具体使用什么方式构建可以根据自己的喜好进行选择
 
 支持命令行方式构建，也支持使用IDE开发，推荐使用
-**[IntelliJ IDEA Community Edition](https://www.jetbrains.com/idea/download)** + 
-**[Minecraft Development插件](https://plugins.jetbrains.com/plugin/8327-minecraft-development)** 
+**[IntelliJ IDEA Community Edition](https://www.jetbrains.com/idea/download)** +
+**[Minecraft Development插件](https://plugins.jetbrains.com/plugin/8327-minecraft-development)**
 进行插件开发
 
 > 以下假设你在MacOS上进行插件开发

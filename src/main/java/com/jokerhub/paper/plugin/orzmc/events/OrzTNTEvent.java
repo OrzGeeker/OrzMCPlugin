@@ -14,7 +14,6 @@ import org.bukkit.block.Block;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
-import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockExplodeEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.block.TNTPrimeEvent;
@@ -29,7 +28,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class OrzTNTEvent implements Listener {
+public class OrzTNTEvent extends OrzBaseListener {
     // 白名单区域内，可以允许 TNT
     private final List<Region> whiteListRegions = new ArrayList<>();
     private final boolean enableTNT;
@@ -38,7 +37,8 @@ public class OrzTNTEvent implements Listener {
     // 冷却时间跟踪
     private final Map<UUID, Long> playerCooldowns = new ConcurrentHashMap<>();
 
-    public OrzTNTEvent() {
+    public OrzTNTEvent(OrzMC plugin) {
+        super(plugin);
         this.enableTNT = OrzMC.config().getBoolean("tnt.enable", false);
         this.enableRespawnAnchor = OrzMC.config().getBoolean("tnt.enable_respawn_anchor", false);
         this.tntPlaceCooldown = OrzMC.config().getInt("tnt.place_cooldown", 0);
@@ -184,8 +184,8 @@ public class OrzTNTEvent implements Listener {
                 .append(Component.text(message))
                 .build();
 
-        OrzMC.server().sendMessage(msg);
-        OrzMC.sendPublicMessage("[TNT警报] " + locationString(block) + message);
+        plugin.getServer().sendMessage(msg);
+        plugin.sendPublicMessage("[TNT警报] " + locationString(block) + message);
     }
 
     private void notifyExplosionEvent(Location location, String message) {
@@ -196,8 +196,8 @@ public class OrzTNTEvent implements Listener {
                 .append(Component.text(message))
                 .build();
 
-        OrzMC.server().sendMessage(msg);
-        OrzMC.sendPublicMessage("[爆炸警报] " + locationString(location) + message);
+        plugin.getServer().sendMessage(msg);
+        plugin.sendPublicMessage("[爆炸警报] " + locationString(location) + message);
     }
 
     private void sendPlacementNotification(Player player, Block block) {
@@ -210,8 +210,8 @@ public class OrzTNTEvent implements Listener {
                 .append(Component.text("放置了 " + "TNT"))
                 .build();
 
-        OrzMC.server().sendMessage(msg);
-        OrzMC.sendPublicMessage(OrzMessageParser.playerDisplayName(player) +
+        plugin.getServer().sendMessage(msg);
+        plugin.sendPublicMessage(OrzMessageParser.playerDisplayName(player) +
                 " 在" + locationString(block) + "放置了 " + "TNT");
     }
 

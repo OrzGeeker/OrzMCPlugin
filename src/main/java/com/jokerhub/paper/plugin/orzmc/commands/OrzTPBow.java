@@ -1,6 +1,7 @@
 package com.jokerhub.paper.plugin.orzmc.commands;
 
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
+import com.jokerhub.paper.plugin.orzmc.utils.OrzUtil;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.format.TextColor;
@@ -46,7 +47,7 @@ public class OrzTPBow implements CommandExecutor {
             player.getInventory().addItem(teleport_bow);
             ItemStack arrow = new ItemStack(Material.ARROW);
             player.getInventory().addItem(arrow);
-            player.sendMessage("你获得了" + OrzTPBow.name);
+            player.sendMessage(OrzUtil.successText("你获得了" + OrzTPBow.name));
         } else {
             OrzMC.logger().info("不是玩家，此命令无效！");
         }

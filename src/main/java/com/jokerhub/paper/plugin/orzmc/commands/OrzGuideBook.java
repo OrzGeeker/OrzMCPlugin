@@ -1,6 +1,9 @@
 package com.jokerhub.paper.plugin.orzmc.commands;
 
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
+import com.jokerhub.paper.plugin.orzmc.utils.OrzUtil;
+import com.jokerhub.paper.plugin.orzmc.utils.guidebook.GuideBookConfigParser;
+import com.jokerhub.paper.plugin.orzmc.utils.guidebook.models.*;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.event.ClickEvent;
@@ -17,7 +20,9 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.BookMeta;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
+import java.util.Collections;
 import java.util.UUID;
 
 
@@ -31,63 +36,85 @@ public class OrzGuideBook implements CommandExecutor {
         return false;
     }
 
-    private static ItemStack guideBook() {
+    private static @Nullable ItemStack guideBook() {
+        GuideBookConfigParser guideBookConfigParser = new GuideBookConfigParser(OrzMC.plugin());
+        GuideBookConfig guideBookConfig = guideBookConfigParser.parseConfig();
+        if (guideBookConfig == null || !guideBookConfig.enable()) {
+            return null;
+        }
+
         ItemStack guideBook = new ItemStack(Material.WRITTEN_BOOK);
         BookMeta bookMeta = (BookMeta) guideBook.getItemMeta();
-        bookMeta.setTitle("新手指南");
-        bookMeta.setAuthor("腐竹");
+        bookMeta.setTitle(guideBookConfig.title());
+        bookMeta.setAuthor(guideBookConfig.author());
         bookMeta.setGeneration(BookMeta.Generation.COPY_OF_COPY);
 
-        Style linkStyle = Style.style()
-                .color(TextColor.fromCSSHexString("#5555FF"))
-                .decorate(TextDecoration.UNDERLINED)
-                .build();
-        TextComponent page2 = Component.text()
-                .append(Component.text("欢迎新朋友来到我的世界！"))
-                .append(Component.newline())
-                .append(Component.newline())
-                .append(Component.text("服务器中一些热爱创造的小伙伴在这里花费了大量心力建造出了各种漂亮的建筑，希望刚加入的朋友不要随意对其进行破坏，尊重他人的劳动成果。做一个有素质的MC玩家!"))
-                .append(Component.newline())
-                .append(Component.newline())
-                .append(Component.text("相关链接").decorate(TextDecoration.BOLD))
-                .append(Component.newline())
-                .append(Component.text("1. "))
-                .append(Component.text("服务器主页",linkStyle)
-                        .clickEvent(ClickEvent.openUrl("https://minecraft.jokerhub.cn"))
-                        .hoverEvent(HoverEvent.showText(Component.text("点击前往主页")))
-                )
-                .append(Component.newline())
-                .append(Component.text("2. "))
-                .append(Component.text("玩家手册",linkStyle)
-                        .clickEvent(ClickEvent.openUrl("https://minecraft.jokerhub.cn/user/"))
-                        .hoverEvent(HoverEvent.showText(Component.text("点击查看玩家手册")))
-                )
-                .append(Component.newline())
-                .append(Component.text("3. "))
-                .append(Component.text("加入玩家QQ群",linkStyle)
-                        .clickEvent(ClickEvent.openUrl("https://jq.qq.com/?_wv=1027&k=DUEQuLE6"))
-                        .hoverEvent(HoverEvent.showText(Component.text("点击加入QQ群")))
-                )
-                .build();
-        bookMeta.addPages(page2);
-
+        TextComponent.Builder guideBookPageBuilder = Component.text();
+        for (ContentItem item : guideBookConfig.content()) {
+            TextComponent.Builder textComponentBuilder = Component.text();
+            if (item.isText()) {
+                TextContent textItem = item.getText();
+                if (textItem.content().isEmpty()) {
+                    continue;
+                }
+                textComponentBuilder.append(Component.text(textItem.content()));
+            } else if (item.isLink()) {
+                LinkContent linkItem = item.getLink();
+                TextComponent.Builder linkTextBuilder = Component.text();
+                if (linkItem.content().isEmpty()) {
+                    continue;
+                }
+                linkTextBuilder.append(Component.text(linkItem.content()));
+                if (!linkItem.url().isEmpty()) {
+                    Style defaultLinkStyle = Style.style().color(TextColor.fromCSSHexString("#5555FF")).decorate(TextDecoration.UNDERLINED).build();
+                    linkTextBuilder.style(defaultLinkStyle);
+                    linkTextBuilder.clickEvent(ClickEvent.openUrl(linkItem.url()));
+                    linkTextBuilder.hoverEvent(HoverEvent.showText(Component.text(linkItem.hoverText())));
+                }
+                textComponentBuilder.append(linkTextBuilder.build());
+            }
+            if (item.getStyle() != null) {
+                TextStyle style = item.getStyle();
+                if (style.getBold()) {
+                    textComponentBuilder.decorate(TextDecoration.BOLD);
+                }
+                if (style.getUnderlined()) {
+                    textComponentBuilder.decorate(TextDecoration.UNDERLINED);
+                }
+                if (!style.getColor().isEmpty()) {
+                    TextColor textColor = TextColor.fromCSSHexString(style.getColor());
+                    textComponentBuilder.color(textColor);
+                }
+            }
+            Collections.nCopies(item.getNewlineCount(), Component.newline()).forEach(textComponentBuilder::append);
+            TextComponent textComponent = textComponentBuilder.build();
+            guideBookPageBuilder.append(textComponent);
+        }
+        bookMeta.addPages(guideBookPageBuilder.build());
         guideBook.setItemMeta(bookMeta);
-
         return guideBook;
     }
+
     private void openNewPlayerGuideBook(Player player) {
-        player.openBook(guideBook());
+        ItemStack guideBook = guideBook();
+        if (guideBook == null) {
+            player.sendMessage(OrzUtil.failureText("服主未配置新手指南"));
+            return;
+        }
+        player.openBook(guideBook);
     }
 
     public static void giveNewPlayerAGuideBook(Player player) {
         UUID playerUUID = player.getPlayerProfile().getId();
-        if(playerUUID == null) return;
+        if (playerUUID == null) return;
 
         OfflinePlayer offlinePlayer = OrzMC.server().getOfflinePlayer(playerUUID);
-        if(!offlinePlayer.hasPlayedBefore()) {
+        if (!offlinePlayer.hasPlayedBefore()) {
             ItemStack guideBook = guideBook();
-            player.getInventory().addItem(guideBook);
-            player.sendMessage("获得新手指南");
+            if (guideBook != null) {
+                player.getInventory().addItem(guideBook);
+                player.sendMessage(OrzUtil.successText("获得新手指南"));
+            }
         }
     }
 }
