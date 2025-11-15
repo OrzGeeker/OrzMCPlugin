@@ -1,4 +1,4 @@
-package com.jokerhub.paper.plugin.orzmc.commands;
+package com.jokerhub.paper.plugin.orzmc.utils;
 
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
 
@@ -16,7 +16,7 @@ public enum OrzUserCmd {
     }
 
     private static String cmdPromptChar() {
-        return OrzMC.config().getString("cmd_prompt_char", "$");
+        return OrzMC.plugin().getConfig().getString("cmd_prompt_char", "$");
     }
 
     public static boolean isValidCmd(String message) {

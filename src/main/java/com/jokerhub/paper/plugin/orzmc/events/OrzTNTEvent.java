@@ -11,6 +11,7 @@ import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -39,12 +40,13 @@ public class OrzTNTEvent extends OrzBaseListener {
 
     public OrzTNTEvent(OrzMC plugin) {
         super(plugin);
-        this.enableTNT = OrzMC.config().getBoolean("tnt.enable", false);
-        this.enableRespawnAnchor = OrzMC.config().getBoolean("tnt.enable_respawn_anchor", false);
-        this.tntPlaceCooldown = OrzMC.config().getInt("tnt.place_cooldown", 0);
+        FileConfiguration tntConfig = plugin.configManager.getConfig("tnt");
+        this.enableTNT = tntConfig.getBoolean("enable", false);
+        this.enableRespawnAnchor = tntConfig.getBoolean("enable_respawn_anchor", false);
+        this.tntPlaceCooldown = tntConfig.getInt("place_cooldown", 0);
 
         // 加载TNT放置区域白名单
-        List<Map<?, ?>> regions = OrzMC.config().getMapList("tnt.whitelist");
+        List<Map<?, ?>> regions = tntConfig.getMapList("whitelist");
         for (Map<?, ?> regionMap : regions) {
             Region region = new Region(
                     ((Number) regionMap.get("minX")).intValue(),

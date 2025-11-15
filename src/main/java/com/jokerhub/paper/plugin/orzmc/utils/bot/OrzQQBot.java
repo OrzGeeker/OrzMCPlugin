@@ -5,7 +5,6 @@ import com.google.gson.JsonParser;
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
 import com.jokerhub.paper.plugin.orzmc.utils.OrzMessageParser;
 import com.jokerhub.paper.plugin.orzmc.utils.RobustWebSocketClient;
-import org.bukkit.plugin.java.JavaPlugin;
 
 import java.net.URI;
 import java.net.URLEncoder;
@@ -19,13 +18,13 @@ import java.util.Map;
 public class OrzQQBot extends OrzBaseBot {
     private RobustWebSocketClient webSocketClient;
 
-    public OrzQQBot(JavaPlugin plugin) {
+    public OrzQQBot(OrzMC plugin) {
         super(plugin);
     }
 
     @Override
     public boolean isEnable() {
-        return OrzMC.config().getBoolean("enable_qq_bot");
+        return botConfig.getBoolean("enable_qq_bot");
     }
 
     @Override
@@ -44,8 +43,8 @@ public class OrzQQBot extends OrzBaseBot {
             return;
         }
         try {
-            String groupId = OrzMC.config().getString("qq_group_id");
-            String url = OrzMC.config().getString("qq_bot_api_server") + "/send_group_msg?group_id=" + groupId + "&message=" + URLEncoder.encode(message, StandardCharsets.UTF_8);
+            String groupId = botConfig.getString("qq_group_id");
+            String url = botConfig.getString("qq_bot_api_server") + "/send_group_msg?group_id=" + groupId + "&message=" + URLEncoder.encode(message, StandardCharsets.UTF_8);
             asyncHttpRequest(url);
         } catch (Exception e) {
             OrzMC.logger().info(e.toString());
@@ -58,8 +57,8 @@ public class OrzQQBot extends OrzBaseBot {
             return;
         }
         try {
-            String userId = OrzMC.config().getString("qq_admin_id");
-            String url = OrzMC.config().getString("qq_bot_api_server") + "/send_msg?user_id=" + userId + "&message=" + URLEncoder.encode(message, StandardCharsets.UTF_8);
+            String userId = botConfig.getString("qq_admin_id");
+            String url = botConfig.getString("qq_bot_api_server") + "/send_msg?user_id=" + userId + "&message=" + URLEncoder.encode(message, StandardCharsets.UTF_8);
             asyncHttpRequest(url);
         } catch (Exception e) {
             OrzMC.logger().info(e.toString());
@@ -80,7 +79,7 @@ public class OrzQQBot extends OrzBaseBot {
             String senderRole = json.get("sender").getAsJsonObject().get("role").getAsString();
             boolean isOwner = senderRole.equals("owner");
             boolean isAdmin = senderRole.equals("admin");
-            String qqGroupId = OrzMC.config().getString("qq_group_id");
+            String qqGroupId = botConfig.getString("qq_group_id");
             if (groupId.equals(qqGroupId)) {
                 OrzMessageParser.parse(message, isAdmin || isOwner, info -> {
                     if (info != null) {
@@ -110,7 +109,7 @@ public class OrzQQBot extends OrzBaseBot {
 
     private Map<String, String> httpServerHeaderMap() {
         Map<String, String> httpHeaders = new HashMap<>();
-        String httpServerBearerToken = OrzMC.config().getString("qq_bot_api_server_token");
+        String httpServerBearerToken = botConfig.getString("qq_bot_api_server_token");
         if (httpServerBearerToken != null && !httpServerBearerToken.isEmpty()) {
             httpHeaders.put("Authorization", "Bearer " + httpServerBearerToken);
         }
@@ -119,7 +118,7 @@ public class OrzQQBot extends OrzBaseBot {
 
     private Map<String, String> websocketServerHeaderMap() {
         Map<String, String> httpHeaders = new HashMap<>();
-        String websocketServerBearerToken = OrzMC.config().getString("qq_bot_ws_server_token");
+        String websocketServerBearerToken = botConfig.getString("qq_bot_ws_server_token");
         if (websocketServerBearerToken != null && !websocketServerBearerToken.isEmpty()) {
             httpHeaders.put("Authorization", "Bearer " + websocketServerBearerToken);
         }
@@ -127,7 +126,7 @@ public class OrzQQBot extends OrzBaseBot {
     }
 
     public void setupWebSocketClient() {
-        String wsServer = OrzMC.config().getString("qq_bot_ws_server");
+        String wsServer = botConfig.getString("qq_bot_ws_server");
         if (!this.isEnable() || wsServer == null || wsServer.isEmpty()) {
             return;
         }

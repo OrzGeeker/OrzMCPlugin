@@ -14,7 +14,6 @@ import net.dv8tion.jda.api.events.session.ReadyEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import net.dv8tion.jda.api.utils.SplitUtil;
-import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -30,7 +29,7 @@ public class OrzDiscordBot extends OrzBaseBot {
     private JDA api;
     private boolean isApiReady;
 
-    public OrzDiscordBot(JavaPlugin plugin) {
+    public OrzDiscordBot(OrzMC plugin) {
         super(plugin);
     }
 
@@ -42,7 +41,7 @@ public class OrzDiscordBot extends OrzBaseBot {
 
     @Override
     public boolean isEnable() {
-        return OrzMC.config().getBoolean("enable_discord_bot");
+        return botConfig.getBoolean("enable_discord_bot");
     }
 
     @Override
@@ -53,7 +52,7 @@ public class OrzDiscordBot extends OrzBaseBot {
         }
         String minecraftVersion = OrzMC.server().getMinecraftVersion();
         String serverInfo = "Minecraft" + "(" + minecraftVersion + ")";
-        String botTokenBase64Encoded = OrzMC.config().getString("discord_bot_token_base64_encoded");
+        String botTokenBase64Encoded = botConfig.getString("discord_bot_token_base64_encoded");
         String botToken = new String(Base64.getDecoder().decode(botTokenBase64Encoded));
         api = JDABuilder.createLight(botToken, GatewayIntent.GUILD_MESSAGES, GatewayIntent.MESSAGE_CONTENT, GatewayIntent.GUILD_MEMBERS).addEventListeners(new ListenerAdapter() {
             @Override
@@ -108,7 +107,7 @@ public class OrzDiscordBot extends OrzBaseBot {
             return;
         }
         TextChannel channel;
-        String playerTextChannelId = OrzMC.config().getString("discord_player_text_channel_id");
+        String playerTextChannelId = botConfig.getString("discord_player_text_channel_id");
         if (playerTextChannelId != null) {
             channel = api.getTextChannelById(playerTextChannelId);
         } else {

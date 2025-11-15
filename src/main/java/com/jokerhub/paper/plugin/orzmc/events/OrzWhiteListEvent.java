@@ -9,6 +9,7 @@ import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.event.EventHandler;
 
 public class OrzWhiteListEvent extends OrzBaseListener {
@@ -30,14 +31,15 @@ public class OrzWhiteListEvent extends OrzBaseListener {
             return;
         }
         TextComponent.Builder kickMsgBuilder = Component.text();
-        String qqGroupId = OrzMC.config().getString("qq_group_id");
+        FileConfiguration botConfig = plugin.configManager.getConfig("bot");
+        String qqGroupId = botConfig.getString("qq_group_id");
         if (qqGroupId != null && !qqGroupId.isEmpty()) {
             if (!kickMsgBuilder.build().equals(Component.empty())) {
                 kickMsgBuilder.append(Component.newline()).append(Component.newline());
             }
             kickMsgBuilder.append(Component.text(player.getName()).color(NamedTextColor.RED).decorate(TextDecoration.BOLD)).append(Component.space()).append(Component.text("不在服务器白名单中，请先加入QQ群:")).append(Component.space()).append(Component.text(qqGroupId).color(NamedTextColor.YELLOW)).append(Component.space()).append(Component.text("，联系管理员添加白名单"));
         }
-        String discordServerLink = OrzMC.config().getString("discord_server_link");
+        String discordServerLink = botConfig.getString("discord_server_link");
         if (discordServerLink != null && !discordServerLink.isEmpty()) {
             if (!kickMsgBuilder.build().equals(Component.empty())) {
                 kickMsgBuilder.append(Component.newline()).append(Component.newline());

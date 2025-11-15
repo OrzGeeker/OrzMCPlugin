@@ -1,6 +1,7 @@
 package com.jokerhub.paper.plugin.orzmc.utils.bot;
 
-import org.bukkit.plugin.java.JavaPlugin;
+import com.jokerhub.paper.plugin.orzmc.OrzMC;
+import org.bukkit.configuration.file.FileConfiguration;
 
 public abstract class OrzBaseBot {
     // 机器人是否可用
@@ -18,9 +19,12 @@ public abstract class OrzBaseBot {
     // 发送私信
     public abstract void sendPrivateMessage(String message);
 
-    protected final JavaPlugin plugin;
+    protected final OrzMC plugin;
 
-    protected OrzBaseBot(JavaPlugin plugin) {
+    protected FileConfiguration botConfig;
+
+    protected OrzBaseBot(OrzMC plugin) {
         this.plugin = plugin;
+        botConfig = plugin.configManager.getConfig("bot");
     }
 }
