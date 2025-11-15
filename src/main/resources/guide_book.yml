@@ -18,8 +18,6 @@ content:
       content: '服务器主页'
       url: 'https://minecraft.jokerhub.cn'
       hover_text: '点击前往主页'
-      style:
-        bold: true
   - link:
       content: '玩家手册'
       url: 'https://minecraft.jokerhub.cn/user/'
