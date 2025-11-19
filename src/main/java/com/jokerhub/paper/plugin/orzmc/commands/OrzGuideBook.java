@@ -22,6 +22,7 @@ import org.bukkit.inventory.meta.BookMeta;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.UUID;
 
@@ -49,6 +50,7 @@ public class OrzGuideBook implements CommandExecutor {
         bookMeta.setAuthor(guideBookConfig.author());
         bookMeta.setGeneration(BookMeta.Generation.COPY_OF_COPY);
 
+        ArrayList<TextComponent> bookPageComponents = new ArrayList<>();
         TextComponent.Builder guideBookPageBuilder = Component.text();
         for (ContentItem item : guideBookConfig.content()) {
             TextComponent.Builder textComponentBuilder = Component.text();
@@ -89,8 +91,17 @@ public class OrzGuideBook implements CommandExecutor {
             Collections.nCopies(item.getNewlineCount(), Component.newline()).forEach(textComponentBuilder::append);
             TextComponent textComponent = textComponentBuilder.build();
             guideBookPageBuilder.append(textComponent);
+            if (item.getPageBreak()) {
+                TextComponent pageContent = guideBookPageBuilder.build();
+                bookPageComponents.add(pageContent);
+                guideBookPageBuilder = Component.text();
+            }
         }
-        bookMeta.addPages(guideBookPageBuilder.build());
+        TextComponent lastPageContent = guideBookPageBuilder.build();
+        if (!lastPageContent.children().isEmpty()) {
+            bookPageComponents.add(lastPageContent);
+        }
+        bookMeta.addPages(bookPageComponents.toArray(new TextComponent[0]));
         guideBook.setItemMeta(bookMeta);
         return guideBook;
     }

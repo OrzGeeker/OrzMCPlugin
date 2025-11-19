@@ -165,7 +165,6 @@ allow_country_code:
 ### 8. guide_book.yml 中可配置新手指南手的内容
 
 ```yaml
-enable: true
 title: '新手指南'
 author: '腐竹'
 content:
@@ -183,12 +182,15 @@ content:
       content: '服务器主页'
       url: 'https://minecraft.jokerhub.cn'
       hover_text: '点击前往主页'
-      style:
-        bold: true
   - link:
       content: '玩家手册'
       url: 'https://minecraft.jokerhub.cn/user/'
       hover_text: '点击查看玩家手册'
+  - link:
+      content: MC插件使用百科书
+      url: 'https://mineplugin.org/'
+      hover_text: 点击跳转插件百科
+      page_break: true
 ```
 
 ---

@@ -21,7 +21,7 @@ public abstract class OrzBaseBot {
 
     protected final OrzMC plugin;
 
-    protected FileConfiguration botConfig;
+    protected final FileConfiguration botConfig;
 
     protected OrzBaseBot(OrzMC plugin) {
         this.plugin = plugin;

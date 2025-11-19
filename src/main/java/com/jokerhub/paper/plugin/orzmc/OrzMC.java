@@ -40,7 +40,7 @@ public final class OrzMC extends JavaPlugin implements Listener {
     }
 
     // 公共静态成员
-    public static JavaPlugin plugin() {
+    public static OrzMC plugin() {
         return JavaPlugin.getPlugin(OrzMC.class);
     }
 
