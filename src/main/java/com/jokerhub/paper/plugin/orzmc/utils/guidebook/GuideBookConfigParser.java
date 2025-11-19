@@ -1,19 +1,19 @@
 package com.jokerhub.paper.plugin.orzmc.utils.guidebook;
 
+import com.jokerhub.paper.plugin.orzmc.OrzMC;
 import com.jokerhub.paper.plugin.orzmc.utils.guidebook.models.*;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.plugin.java.JavaPlugin;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 
 public class GuideBookConfigParser {
-    private final JavaPlugin plugin;
+    private final OrzMC plugin;
 
-    public GuideBookConfigParser(JavaPlugin plugin) {
+    public GuideBookConfigParser(OrzMC plugin) {
         this.plugin = plugin;
     }
 
@@ -21,16 +21,15 @@ public class GuideBookConfigParser {
      * 解析完整的指南书配置
      */
     public GuideBookConfig parseConfig() {
-        String guideBookConfigFileName = "guide_book.yml";
+        String guideBookConfigFileName = "guide_book";
         try {
-            File configFile = new File(plugin.getDataFolder(), guideBookConfigFileName);
-            if (!configFile.exists()) {
-                plugin.saveResource(guideBookConfigFileName, false);
+            plugin.configManager.reloadConfig(guideBookConfigFileName);
+            FileConfiguration configFile = plugin.configManager.getConfig("guide_book");
+            if (configFile instanceof YamlConfiguration) {
+                return parseGuideBookConfig((YamlConfiguration) configFile);
+            } else {
+                return null;
             }
-
-            YamlConfiguration config = YamlConfiguration.loadConfiguration(configFile);
-            return parseGuideBookConfig(config);
-
         } catch (Exception e) {
             plugin.getLogger().log(Level.SEVERE, "解析" + guideBookConfigFileName + "配置文件时发生错误", e);
             return null;
@@ -109,8 +108,9 @@ public class GuideBookConfigParser {
         String content = (String) textMap.get("content");
         TextStyle style = parseTextStyle(getStyleMap(textMap));
         int newlineCount = getNewlineCount(textMap); // 解析换行数量
+        boolean pageBreak = getPageBreak(textMap);
 
-        return new TextContent(content, style, newlineCount);
+        return new TextContent(content, style, newlineCount, pageBreak);
     }
 
     /**
@@ -122,8 +122,9 @@ public class GuideBookConfigParser {
         String hoverText = (String) linkMap.get("hover_text");
         TextStyle style = parseTextStyle(getStyleMap(linkMap));
         int newlineCount = getNewlineCount(linkMap); // 解析换行数量
+        boolean pageBreak = getPageBreak(linkMap);
 
-        return new LinkContent(content, url, hoverText, style, newlineCount);
+        return new LinkContent(content, url, hoverText, style, newlineCount, pageBreak);
     }
 
     /**
@@ -168,4 +169,13 @@ public class GuideBookConfigParser {
         }
         return 1; // 默认值
     }
+
+    private boolean getPageBreak(Map<String, Object> contentMap) {
+        Object pageBreakObj = contentMap.get("page_break");
+        if (pageBreakObj instanceof Boolean) {
+            return (Boolean) pageBreakObj;
+        }
+        return false;
+    }
+
 }

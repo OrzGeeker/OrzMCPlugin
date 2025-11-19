@@ -41,6 +41,12 @@ public class ContentItem {
         return 0;
     }
 
+    public boolean getPageBreak() {
+        if (isText()) return text.pageBreak();
+        if (isLink()) return link.pageBreak();
+        return false;
+    }
+
     public TextStyle getStyle() {
         if (isText()) return text.style();
         if (isLink()) return link.style();
