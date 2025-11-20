@@ -56,7 +56,7 @@ cmd_prompt_char: '$'
 # 是否启用 QQBot 机器人功能：true/false
 enable_qq_bot: false
 # QQBot 所在QQ群号：group_id
-qq_group_id: '<QQ玩家群号>'
+qq_group_id: '<QQ群号>'
 # QQBot 所在QQ群管理员帐号
 qq_admin_id: '<QQ群里服务器管理员对应的QQ号>'
 # QQBot 机器人 HTTP/HTTPS 服务端地址，OneBot 11协议

@@ -31,8 +31,12 @@ public class OrzWhiteListEvent extends OrzBaseListener {
             return;
         }
         TextComponent.Builder kickMsgBuilder = Component.text();
+        FileConfiguration config = plugin.configManager.getConfig("config");
         FileConfiguration botConfig = plugin.configManager.getConfig("bot");
-        String qqGroupId = botConfig.getString("qq_group_id");
+        String qqGroupId = config.getString("qq_player_group_id");
+        if (qqGroupId == null || qqGroupId.isEmpty()) {
+            qqGroupId = botConfig.getString("qq_group_id");
+        }
         if (qqGroupId != null && !qqGroupId.isEmpty()) {
             if (!kickMsgBuilder.build().equals(Component.empty())) {
                 kickMsgBuilder.append(Component.newline()).append(Component.newline());
