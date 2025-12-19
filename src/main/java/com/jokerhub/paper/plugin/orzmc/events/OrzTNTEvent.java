@@ -158,7 +158,11 @@ public class OrzTNTEvent extends OrzBaseListener {
 
     @EventHandler
     public void onEntityExplode(@NotNull EntityExplodeEvent event) {
-        if (event.getEntityType() == EntityType.CREEPER) {
+        EntityType entityType = event.getEntityType();
+        if (entityType == EntityType.CREEPER) {
+            return;
+        }
+        if (entityType == EntityType.BREEZE_WIND_CHARGE || entityType == EntityType.WIND_CHARGE) {
             return;
         }
         notifyExplosionEvent(event.getLocation(), event.getEntityType().name() + "爆炸");
