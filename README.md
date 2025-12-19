@@ -226,18 +226,6 @@ content:
 
 > 以下假设你在MacOS上进行插件开发
 
-### 使用 maven 构建
-
-命令行构建，需安装 maven 工具链: `brew install maven`，执行以下命令进行打包：
-
-```bash
-$ mvn clean package
-```
-
-使用 IntelliJ IDEA CE(社区免费版) 构建：
-
-![maven build](./images/maven_build_guide.png)
-
 ### 使用 Gradle 构建
 
 命令行构建，需安装 gradle 工具链： `brew install gradle`，执行以下命令进行打包：
@@ -257,6 +245,18 @@ $ gradle runServer
 和 [Wiki](https://github.com/jpenilla/run-task/wiki)
 
 ![gradle build](./images/gradle_build_guide.png)
+
+### 使用 maven 构建(已废弃)
+
+命令行构建，需安装 maven 工具链: `brew install maven`，执行以下命令进行打包：
+
+```bash
+$ mvn clean package
+```
+
+使用 IntelliJ IDEA CE(社区免费版) 构建：
+
+![maven build](./images/maven_build_guide.png)
 
 ## 相关链接
 
