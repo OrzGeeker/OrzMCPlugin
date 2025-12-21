@@ -153,9 +153,12 @@ public class OrzTNTEvent extends OrzBaseListener {
     @EventHandler
     public void onBlockExplode(@NotNull BlockExplodeEvent event) {
         Block block = event.getBlock();
-        notifyExplosionEvent(block.getLocation(), block.getType().name() + "爆炸");
+        Material material = block.getType();
+        if (material.isAir()) {
+            return;
+        }
+        notifyExplosionEvent(block.getLocation(), material.name() + "爆炸");
     }
-
     @EventHandler
     public void onEntityExplode(@NotNull EntityExplodeEvent event) {
         EntityType entityType = event.getEntityType();
@@ -165,7 +168,7 @@ public class OrzTNTEvent extends OrzBaseListener {
         if (entityType == EntityType.BREEZE_WIND_CHARGE || entityType == EntityType.WIND_CHARGE) {
             return;
         }
-        notifyExplosionEvent(event.getLocation(), event.getEntityType().name() + "爆炸");
+        notifyExplosionEvent(event.getLocation(), entityType.name() + "爆炸");
     }
 
     // 区域检查方法
