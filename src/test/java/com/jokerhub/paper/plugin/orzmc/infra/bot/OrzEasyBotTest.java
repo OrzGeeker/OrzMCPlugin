@@ -10,7 +10,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.jokerhub.paper.plugin.orzmc.core.bot.BotInboundHandler;
-import com.jokerhub.paper.plugin.orzmc.core.bot.MessageEnvelope;
 import com.jokerhub.paper.plugin.orzmc.core.ports.server.ServerLogger;
 import com.jokerhub.paper.plugin.orzmc.infra.config.ConfigService;
 import com.jokerhub.paper.plugin.orzmc.infra.health.HealthRegistry;
@@ -36,7 +35,6 @@ class OrzEasyBotTest {
         config.set("platforms.qq.admin_group", "qq:admin-chat");
         config.set("platforms.qq.player_group", "qq:player-chat");
         config.set("platforms.qq.admin_dm", "qq:admin-dm");
-        config.set("channels.ops-alert.qq", "qq:ops-chat");
 
         ConfigService configService = mock(ConfigService.class);
         when(configService.getConfig("easybot")).thenReturn(config);
@@ -63,8 +61,8 @@ class OrzEasyBotTest {
     }
 
     @Test
-    void processInboundEvent_allowsConfiguredChannelTargetAndAdminRole() {
-        bot.processInboundEvent(event("qq", "qq:ops-chat", "$b", "Admin"));
+    void processInboundEvent_allowsConfiguredAdminConversationAndRole() {
+        bot.processInboundEvent(event("qq", "qq:admin-chat", "$b", "Admin"));
 
         verify(inboundHandler).handleMessage(eq("$b"), eq(true), any());
     }
@@ -76,13 +74,6 @@ class OrzEasyBotTest {
         verify(inboundHandler, never()).handleMessage(any(), eq(true), any());
         verify(throttledLogger)
                 .warning(eq("easybot-inbound-target"), eq("EasyBot 忽略未授权会话消息: platform=qq, target=qq:unknown-chat"));
-    }
-
-    @Test
-    void sendChannel_rejectsMissingMappingWithoutPublicFallback() {
-        bot.send(MessageEnvelope.channelMessage("missing-channel", "secret alert"));
-
-        verify(throttledLogger).warning(eq("easybot-channel"), eq("EasyBot 渠道未配置，已拒绝发送: missing-channel"));
     }
 
     @Test

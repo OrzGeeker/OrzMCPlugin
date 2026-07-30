@@ -16,7 +16,6 @@ public record EasyBotConfig(
         String apiKey,
         String parseMode,
         Map<String, PlatformEntry> platforms,
-        Map<String, Map<String, String>> channels,
         int httpConnectTimeoutSec,
         int httpRequestTimeoutSec,
         int httpMaxRetries,
@@ -67,22 +66,7 @@ public record EasyBotConfig(
     public static EasyBotConfig from(ConfigurationSection cfg) {
         if (cfg == null) {
             return new EasyBotConfig(
-                    "",
-                    "",
-                    "",
-                    "markdown",
-                    Collections.emptyMap(),
-                    Collections.emptyMap(),
-                    3,
-                    3,
-                    3,
-                    10,
-                    5000,
-                    60000,
-                    10,
-                    20000,
-                    false,
-                    60000);
+                    "", "", "", "markdown", Collections.emptyMap(), 3, 3, 3, 10, 5000, 60000, 10, 20000, false, 60000);
         }
 
         // 解析 platforms 段
@@ -95,34 +79,12 @@ public record EasyBotConfig(
             }
         }
 
-        // 解析 channels 段
-        Map<String, Map<String, String>> channels = Collections.emptyMap();
-        ConfigurationSection channelsSec = cfg.getConfigurationSection("channels");
-        if (channelsSec != null) {
-            channels = new HashMap<>();
-            for (String channelKey : channelsSec.getKeys(false)) {
-                ConfigurationSection targetSec = channelsSec.getConfigurationSection(channelKey);
-                if (targetSec == null) continue;
-                Map<String, String> targets = new HashMap<>();
-                for (String platformKey : targetSec.getKeys(false)) {
-                    String target = targetSec.getString(platformKey);
-                    if (target != null && !target.isEmpty()) {
-                        targets.put(platformKey, target);
-                    }
-                }
-                if (!targets.isEmpty()) {
-                    channels.put(channelKey, targets);
-                }
-            }
-        }
-
         return new EasyBotConfig(
                 cfg.getString("api_server", "http://127.0.0.1:8080"),
                 cfg.getString("ws_server", "ws://127.0.0.1:8080"),
                 cfg.getString("api_key", ""),
                 cfg.getString("parse_mode", "markdown"),
                 platforms,
-                channels,
                 cfg.getInt("http_connect_timeout_seconds", 3),
                 cfg.getInt("http_request_timeout_seconds", 3),
                 cfg.getInt("http_max_retries", 3),

@@ -74,7 +74,7 @@ class TntEventServiceTest extends ServiceTestBase {
         when(templateOpts.coordUnitLabel()).thenReturn("m");
         when(configs.templateOptions()).thenReturn(templateOpts);
         when(configs.renderEvent(anyString(), anyMap()))
-                .thenReturn(new MessageEnvelope(TargetType.CHANNEL, "msg", "alert", Format.DEFAULT));
+                .thenReturn(new MessageEnvelope(TargetType.PUBLIC, "msg", Format.DEFAULT));
 
         templateResolversMock = mockStatic(TemplateResolvers.class);
         templateResolversMock
@@ -131,7 +131,7 @@ class TntEventServiceTest extends ServiceTestBase {
         TntConfig tntConfig = new TntConfig(true, false, 0, 1000L, List.of(), List.of());
         when(configs.tnt()).thenReturn(tntConfig);
         when(configs.renderEvent(anyString(), anyMap()))
-                .thenReturn(new MessageEnvelope(TargetType.CHANNEL, "msg", "alert", Format.DEFAULT));
+                .thenReturn(new MessageEnvelope(TargetType.PUBLIC, "msg", Format.DEFAULT));
         service = new TntEventService(configs, styles, notifier, throttledNotifier);
 
         Location loc = mock(Location.class);
@@ -154,7 +154,7 @@ class TntEventServiceTest extends ServiceTestBase {
         TntConfig tntConfig = new TntConfig(true, false, 0, 1000L, List.of(), List.of());
         when(configs.tnt()).thenReturn(tntConfig);
         when(configs.renderEvent(anyString(), anyMap()))
-                .thenReturn(new MessageEnvelope(TargetType.CHANNEL, "msg", "alert", Format.DEFAULT));
+                .thenReturn(new MessageEnvelope(TargetType.PUBLIC, "msg", Format.DEFAULT));
         service = new TntEventService(configs, styles, notifier, throttledNotifier);
 
         Location loc = mock(Location.class);
@@ -178,7 +178,7 @@ class TntEventServiceTest extends ServiceTestBase {
         TntConfig tntConfig = new TntConfig(false, false, 0, 1000L, List.of(), List.of());
         when(configs.tnt()).thenReturn(tntConfig);
         when(configs.renderEvent(anyString(), anyMap()))
-                .thenReturn(new MessageEnvelope(TargetType.CHANNEL, "msg", "alert", Format.DEFAULT));
+                .thenReturn(new MessageEnvelope(TargetType.PUBLIC, "msg", Format.DEFAULT));
         service = new TntEventService(configs, styles, notifier, throttledNotifier);
 
         Location loc = mock(Location.class);

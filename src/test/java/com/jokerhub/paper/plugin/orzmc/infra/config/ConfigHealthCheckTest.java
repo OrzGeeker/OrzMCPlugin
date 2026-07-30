@@ -160,7 +160,6 @@ class ConfigHealthCheckTest {
             templates.set("templates." + cmd, "x");
         }
 
-        templates.createSection("notifications").set("tnt_alert.public.enabled", true);
         templates.createSection("styles").createSection("colors");
         templates
                 .getConfigurationSection("styles")
@@ -875,20 +874,7 @@ class ConfigHealthCheckTest {
         assertTrue(issues.contains("templates.yml 未加载"));
     }
 
-    @Test
-    void templatesMissingNotifications_reportsIssue() {
-        addFullValidConfig_whitelist();
-        addFullValidConfig_maintenance();
-        addFullValidConfig_tnt();
-        addFullValidConfig_geoip();
-        addFullValidConfig_commandPolicies();
-        addFullValidConfig_bot();
-        addMinimalValidConfig_templates_witoutNotifications();
-        List<String> issues = runValidate();
-        assertTrue(issues.contains("templates.yml 缺失 notifications 配置段"));
-    }
-
-    private void addMinimalValidConfig_templates_witoutNotifications() {
+    private void addMinimalValidConfig_templatesBase() {
         templates.set("templates.player_join", "x");
         templates.set("templates.player_quit", "x");
         templates.set("templates.player_kick", "x");
@@ -983,8 +969,7 @@ class ConfigHealthCheckTest {
         addFullValidConfig_geoip();
         addFullValidConfig_commandPolicies();
         addFullValidConfig_bot();
-        addMinimalValidConfig_templates_witoutNotifications();
-        templates.createSection("notifications").set("tnt_alert.public.enabled", true);
+        addMinimalValidConfig_templatesBase();
         templates.set("styles", null);
         List<String> issues = runValidate();
         assertTrue(issues.contains("templates.yml 缺失 styles 配置段"));
@@ -1006,7 +991,6 @@ class ConfigHealthCheckTest {
         templates.set("templates.progress_units.rate", "per_sec");
         templates.set("templates.progress_units.eta", "ms");
         templates.set("templates.locale", "zh-CN");
-        templates.createSection("notifications").set("tnt_alert.public.enabled", true);
         templates.createSection("styles").createSection("colors");
         templates
                 .getConfigurationSection("styles")
@@ -1015,39 +999,6 @@ class ConfigHealthCheckTest {
         List<String> issues = runValidate();
         assertTrue(issues.contains("缺失: templates.player_quit"));
         assertTrue(issues.contains("缺失: templates.player_kick"));
-    }
-
-    // ================================================================
-    // Notifications section
-    // ================================================================
-
-    @Test
-    void notificationsTntAlertNonBool_reportsIssue() {
-        addFullValidConfig_whitelist();
-        addFullValidConfig_maintenance();
-        addFullValidConfig_tnt();
-        addFullValidConfig_geoip();
-        addFullValidConfig_commandPolicies();
-        addFullValidConfig_bot();
-        addMinimalValidConfig_templates();
-        templates.getConfigurationSection("notifications").set("tnt_alert.public.enabled", "yes");
-        List<String> issues = runValidate();
-        assertTrue(issues.contains("类型错误: notifications.tnt_alert.public.enabled 需为布尔值"));
-    }
-
-    @Test
-    void notificationsChannelKeyNoMapping_reportsIssue() {
-        addFullValidConfig_whitelist();
-        addFullValidConfig_maintenance();
-        addFullValidConfig_tnt();
-        addFullValidConfig_geoip();
-        addFullValidConfig_commandPolicies();
-        addFullValidConfig_bot();
-        addMinimalValidConfig_templates();
-        templates.getConfigurationSection("notifications").set("player_join.channel_key", "missing_channel");
-        templates.getConfigurationSection("notifications").set("player_join.public.enabled", true);
-        List<String> issues = runValidate();
-        assertTrue(issues.contains("通知频道未映射: notifications.player_join.channel_key=missing_channel"));
     }
 
     // ================================================================

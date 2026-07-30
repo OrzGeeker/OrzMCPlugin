@@ -38,7 +38,7 @@ public final class BotModule implements ServiceModule, Initializable {
                 healthRegistry);
 
         // Phase D: 创建 Notifier（依赖 BotMessageService）
-        this.notifier = new Notifier(platform.serverAccess(), platform.configService(), botMessageService);
+        this.notifier = new Notifier(platform.serverAccess(), botMessageService);
 
         // BotStatusService
         this.botStatusService = new BotStatusService(platform.textStyles(), new HealthAccessor(healthRegistry));

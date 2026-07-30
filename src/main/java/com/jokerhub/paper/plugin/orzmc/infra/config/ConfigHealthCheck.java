@@ -19,7 +19,7 @@ public final class ConfigHealthCheck {
         List<String> issues = new ArrayList<>();
         validateConfig(provider.apply("config"), provider, issues);
         validateEasyBot(provider.apply("easybot"), issues);
-        validateTemplates(provider.apply("templates"), provider, issues);
+        validateTemplates(provider.apply("templates"), issues);
         validatePortals(provider.apply("portals"), issues);
         return issues;
     }
@@ -210,20 +210,6 @@ public final class ConfigHealthCheck {
             issues.add("非法: easybot.parse_mode 取值 none/markdown/html");
         }
 
-        ConfigurationSection channelsSec = cfg.getConfigurationSection("channels");
-        if (channelsSec != null) {
-            for (String channelKey : channelsSec.getKeys(false)) {
-                ConfigurationSection channel = channelsSec.getConfigurationSection(channelKey);
-                if (channel == null) {
-                    issues.add("非法: easybot.channels." + channelKey + " 需为对象");
-                    continue;
-                }
-                for (String platform : channel.getKeys(false)) {
-                    validateTarget(channel, platform, platform, "easybot.channels." + channelKey, issues);
-                }
-            }
-        }
-
         // Validate HTTP timeouts
         int httpConn = cfg.getInt("http_connect_timeout_seconds", 3);
         int httpReq = cfg.getInt("http_request_timeout_seconds", 3);
@@ -318,21 +304,12 @@ public final class ConfigHealthCheck {
         }
     }
 
-    private static void validateTemplates(
-            FileConfiguration cfg, Function<String, FileConfiguration> provider, List<String> issues) {
+    private static void validateTemplates(FileConfiguration cfg, List<String> issues) {
         if (cfg == null) {
             issues.add("templates.yml 未加载");
             return;
         }
         issues.addAll(TemplatePlaceholderValidator.validate(cfg));
-
-        // Validate notifications section
-        ConfigurationSection notificationsSection = cfg.getConfigurationSection("notifications");
-        if (notificationsSection == null) {
-            issues.add("templates.yml 缺失 notifications 配置段");
-        } else {
-            validateNotificationsSection(notificationsSection, provider.apply("easybot"), cfg, issues);
-        }
 
         // Validate styles section
         ConfigurationSection stylesSection = cfg.getConfigurationSection("styles");
@@ -418,37 +395,6 @@ public final class ConfigHealthCheck {
                 if (!cfg.contains("templates." + key)) {
                     issues.add("建议: templates.format." + key + " 未找到对应模板");
                 }
-            }
-        }
-    }
-
-    private static void validateNotificationsSection(
-            ConfigurationSection section,
-            FileConfiguration botCfg,
-            FileConfiguration templatesCfg,
-            List<String> issues) {
-        String key = "notifications.tnt_alert.public.enabled";
-        Object v = section.get("tnt_alert.public.enabled");
-        if (!(v instanceof Boolean)) issues.add("类型错误: " + key + " 需为布尔值");
-        for (String eventKey : section.getKeys(false)) {
-            if (templatesCfg != null && !templatesCfg.contains("templates." + eventKey)) {
-                issues.add("通知事件缺少模板: notifications." + eventKey);
-            }
-            String ckey = section.getString(eventKey + ".channel_key", "");
-            if (ckey.isEmpty()) continue;
-            ConfigurationSection channel = botCfg == null ? null : botCfg.getConfigurationSection("channels." + ckey);
-            boolean mappedToConfiguredPlatform = false;
-            if (channel != null) {
-                for (String platform : channel.getKeys(false)) {
-                    String target = channel.getString(platform, "");
-                    if (!target.isEmpty() && botCfg.isConfigurationSection("platforms." + platform)) {
-                        mappedToConfiguredPlatform = true;
-                        break;
-                    }
-                }
-            }
-            if (!mappedToConfiguredPlatform) {
-                issues.add("通知频道未映射: notifications." + eventKey + ".channel_key=" + ckey);
             }
         }
     }

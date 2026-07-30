@@ -89,28 +89,6 @@ platforms:
     admin_dm: 'wechat:wxid_xxxxxxxxxxxxxx'
 
 # ===========================================================================
-#  渠道映射
-#  按用途定义消息渠道，可跨平台混搭
-#  CHANNEL 消息只按这里定向发送，缺少映射时拒绝发送并记录告警
-#  启用新平台时，在对应渠道下添加该平台的 target 即可
-# ===========================================================================
-channels:
-  # 管理告警（仅管理员可见）
-  ops-alert:
-    qq: 'qq:YOUR_GROUP_ID'
-    #discord: 'discord:YOUR_CHANNEL_ID'
-    #telegram: 'telegram:YOUR_GROUP_ID'
-  # 玩家通知（所有玩家可见）
-  player-announce:
-    qq: ''
-  # 备份通知
-  backup-notify:
-    qq: 'qq:YOUR_GROUP_ID'
-  # 安全告警（IP 黑名单、异常登录等）
-  security-alert:
-    qq: 'qq:YOUR_GROUP_ID'
-
-# ===========================================================================
 #  HTTP 超时与重试
 # ===========================================================================
 http_connect_timeout_seconds: 3

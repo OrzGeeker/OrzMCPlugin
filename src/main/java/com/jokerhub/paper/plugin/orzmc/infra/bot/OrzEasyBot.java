@@ -38,7 +38,6 @@ import java.util.function.Consumer;
  * <ul>
  *   <li>PUBLIC → 遍历所有平台的 {@code player_group}（空则降级 {@code admin_group}）</li>
  *   <li>PRIVATE → 遍历所有平台的 {@code admin_dm}</li>
- *   <li>CHANNEL → 查 {@code channels.{key}.{platform}} 映射</li>
  * </ul>
  */
 public class OrzEasyBot implements BotMessageService {
@@ -139,7 +138,6 @@ public class OrzEasyBot implements BotMessageService {
      * <ul>
      *   <li>PUBLIC → 各平台 {@code player_group}（空则降级 {@code admin_group}）</li>
      *   <li>PRIVATE → 各平台 {@code admin_dm}（空则跳过）</li>
-     *   <li>CHANNEL → {@code channels.{channelKey}} 映射</li>
      * </ul>
      */
     @Override
@@ -157,7 +155,6 @@ public class OrzEasyBot implements BotMessageService {
         switch (envelope.targetType()) {
             case PUBLIC -> sendPublic(cfg, parts);
             case PRIVATE -> sendPrivate(cfg, parts);
-            case CHANNEL -> sendChannel(cfg, envelope.channelKey(), parts);
         }
     }
 
@@ -181,29 +178,6 @@ public class OrzEasyBot implements BotMessageService {
                 continue;
             }
             String target = entry.getValue().adminDm();
-            if (target != null && !target.isEmpty()) {
-                sendParts(cfg, target, parts);
-            }
-        }
-    }
-
-    private void sendChannel(EasyBotConfig cfg, String channelKey, List<String> parts) {
-        if (channelKey == null || channelKey.isEmpty()) {
-            throttledLogger.warning("easybot-channel", "EasyBot CHANNEL 消息缺少 channelKey，已拒绝发送");
-            return;
-        }
-        Map<String, String> targets = cfg.channels().get(channelKey);
-        if (targets == null || targets.isEmpty()) {
-            throttledLogger.warning("easybot-channel", "EasyBot 渠道未配置，已拒绝发送: " + channelKey);
-            return;
-        }
-        for (var entry : targets.entrySet()) {
-            // 只发送到已启用的平台
-            EasyBotConfig.PlatformEntry platform = cfg.platforms().get(entry.getKey());
-            if (platform == null || !platform.enabled()) {
-                continue;
-            }
-            String target = entry.getValue();
             if (target != null && !target.isEmpty()) {
                 sendParts(cfg, target, parts);
             }
@@ -512,9 +486,7 @@ public class OrzEasyBot implements BotMessageService {
         if (target.equals(entry.adminGroup()) || target.equals(entry.playerGroup()) || target.equals(entry.adminDm())) {
             return true;
         }
-        return cfg.channels().values().stream()
-                .map(targets -> targets.get(platform))
-                .anyMatch(target::equals);
+        return false;
     }
 
     private static String normalizeTarget(String platform, String chatId) {

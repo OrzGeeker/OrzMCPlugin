@@ -5,7 +5,6 @@ import com.jokerhub.paper.plugin.orzmc.infra.config.configs.CommandPolicies;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.IpWhitelist;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.MainConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.MaintenanceConfig;
-import com.jokerhub.paper.plugin.orzmc.infra.config.configs.NotifyPolicy.Notifications;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.Portals;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.Styles;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.TemplateOptions;
@@ -53,7 +52,6 @@ public class ConfigResourceSmokeTest {
         YamlConfiguration cfg = load("templates.yml");
         Assertions.assertNotNull(TemplateOptions.from(cfg));
         Assertions.assertNotNull(Templates.from(cfg));
-        Assertions.assertNotNull(Notifications.from(cfg.getConfigurationSection("notifications")));
         Assertions.assertNotNull(Styles.from(cfg.getConfigurationSection("styles")));
     }
 

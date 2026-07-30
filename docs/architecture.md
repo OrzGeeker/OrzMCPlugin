@@ -55,7 +55,7 @@ PlatformModule
 
 - **config/** — 配置加载、类型化包装与健康检查
     - ConfigService, ConfigManager, ConfigHealthCheck
-    - `configs/` 子包中每个配置对应一个记录类（`BotConfig`, `Styles`, `TntConfig`, `WhitelistConfig`, `Portals`, `MainConfig`, `MaintenanceConfig`, `CommandPolicies`, `TemplateOptions`, `Templates`, `NotifyPolicy`, `IpWhitelist`, `WhitelistKickMessage`）
+    - `configs/` 子包中每个配置对应一个记录类（`BotConfig`, `Styles`, `TntConfig`, `WhitelistConfig`, `Portals`, `MainConfig`, `MaintenanceConfig`, `CommandPolicies`, `TemplateOptions`, `Templates`, `IpWhitelist`, `WhitelistKickMessage`）
     - `SafeKeys` YAML 键名安全编码（解决 '.' 被识别为层级分隔的问题）
     - `PortalsWriter` 持久化传送门配置
 - **notify/** — 通知派发与限流
@@ -280,9 +280,6 @@ platforms:
     admin_group: 'qq:YOUR_GROUP_ID'
     player_group: ''
     admin_dm: 'qq:YOUR_USER_ID'
-channels:
-  ops-alert:
-    qq: 'qq:YOUR_GROUP_ID'
 ```
 
 - 支持多平台：QQ / Discord / Telegram / 飞书 / 微信

@@ -127,7 +127,7 @@ platforms:
 
 #### 消息路由规则
 
-EasyBot 适配器的消息路由分层如下：
+EasyBot 适配器只保留公开与管理员私聊两类路由：
 
 ```
 消息发送请求（MessageEnvelope）
@@ -135,26 +135,11 @@ EasyBot 适配器的消息路由分层如下：
     ├─ PUBLIC 类型 → 遍历所有已启用平台的 player_group
     │                  ↓ 为空则降级为 admin_group
     │
-    ├─ PRIVATE 类型 → 遍历所有已启用平台的 admin_dm
-    │
-    └─ CHANNEL 类型 → 查 channels.{channelKey}.{platform} 映射
-                       ↓ 找不到则拒绝发送并记录告警
+    └─ PRIVATE 类型 → 遍历所有已启用平台的 admin_dm
 ```
 
-渠道映射（channels）按用途进行精细化分发，目标值同样使用 EasyBot 的**会话 key**：
-
-```yaml
-channels:
-  ops-alert:           # 管理告警
-    qq: 'qq:conv_xxxxxxxx'
-    telegram: 'telegram:conv_zzzzzzzz'
-  player-announce:     # 玩家通知
-    qq: 'qq:conv_yyyyyyyy'
-  backup-notify:       # 备份通知
-    qq: 'qq:conv_xxxxxxxx'
-  security-alert:      # 安全告警
-    qq: 'qq:conv_xxxxxxxx'
-```
+事件投递目标由代码固定：玩家状态、服务器状态、TNT、GeoIP 和白名单事件走
+PUBLIC；异常、维护失败及无玩家维护提示走 PRIVATE。
 
 #### 飞书多实例注意事项
 
@@ -395,7 +380,7 @@ channels:
 
 | 组件 | 说明 |
 |------|------|
-| **Bot 消息路由** | OrzEasyBot 根据 PUBLIC / PRIVATE / CHANNEL 统一路由至各平台会话 |
+| **Bot 消息路由** | OrzEasyBot 根据 PUBLIC / PRIVATE 统一路由至玩家群或管理员私聊 |
 | **多文件配置** | config.yml、easybot.yml、templates.yml、portals.yml、ip_blacklist.yml，支持热重载 |
 | **样式系统** | 可配置颜色调色板（成功/信息/警告/错误/坐标/玩家等），CSS 十六进制色值 |
 | **模板系统** | 变量替换、坐标格式化（缩放/精度/单位）、世界别名/角色别名/i18n |
@@ -413,7 +398,7 @@ channels:
 
 - **config.yml** — 核心配置（白名单、TNT、维护、GeoIP、命令策略）
 - **easybot.yml** — Bot 通用设置与 EasyBot IM Gateway 连接配置（多平台消息路由、WebSocket + HTTP）
-- **templates.yml** — 通知模板、样式配色、通知策略、坐标格式、世界别名、角色别名、i18n 覆盖（含旧 `notifications.yml` 的 fallback 兼容）
+- **templates.yml** — 通知模板、样式配色、坐标格式、世界别名、角色别名、i18n 覆盖
 - **portals.yml** — 传送门数据（运行时修改）
 - **ip_blacklist.yml** — IP 黑名单数据（运行时修改）
 
