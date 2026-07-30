@@ -73,7 +73,7 @@ public class CommandAndEventIntegrationTest {
         MessageEnvelope envelope = got.get();
         Assertions.assertNotNull(envelope, "missing bot command response");
         Assertions.assertEquals(MessageEnvelope.Format.CODE_BLOCK, envelope.format());
-        Assertions.assertTrue(envelope.message().contains("QQBot:"), envelope.message());
+        Assertions.assertTrue(envelope.message().contains("EasyBot:"), envelope.message());
     }
 
     private static BotModule getBotModule(OrzMC plugin) {

@@ -28,7 +28,7 @@ public interface HealthStatus {
     /**
      * 查询指定服务的健康状态。
      *
-     * @param service 服务名称，如 "qq"、"discord"、"lark"
+     * @param service 服务名称，如 "easybot"
      * @return 该服务的健康快照
      */
     Entry get(String service);

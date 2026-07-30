@@ -206,7 +206,7 @@ public final class FeatureModule implements ServiceModule {
                     false,
                     sender -> teleportBowService.giveAndEquip((Player) sender));
             registerSimple(commands, "bot", "查看机器人健康状态", List.of(), cp, true, sender -> {
-                botModule.botMessageService().tryReconnectQqWsIfDisconnected();
+                botModule.botMessageService().tryReconnectIfDisconnected();
                 sender.sendMessage(botModule.botStatusService().buildStatusMessage());
             });
 

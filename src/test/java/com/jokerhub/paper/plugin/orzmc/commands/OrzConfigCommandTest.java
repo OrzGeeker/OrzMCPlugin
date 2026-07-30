@@ -179,7 +179,7 @@ class OrzConfigCommandTest {
     @Test
     void set_configNull_sendsError() {
         // Return null config for a different config file
-        when(configService.getConfig("bot")).thenReturn(null);
+        when(configService.getConfig("easybot")).thenReturn(null);
 
         cmd.onCommand(sender, command, "orzmc", new String[] {"set", "cmd_prompt_char", "$"});
 

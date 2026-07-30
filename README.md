@@ -7,7 +7,7 @@
 [![Dependabot Updates](https://github.com/OrzMC/OrzMCPlugin/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/OrzMC/OrzMCPlugin/actions/workflows/dependabot/dependabot-updates)
 [![Publish](https://github.com/OrzMC/OrzMCPlugin/actions/workflows/publish.yml/badge.svg)](https://github.com/OrzMC/OrzMCPlugin/actions/workflows/publish.yml)
 
-多平台机器人集成的 Paper 服务器管理插件（QQ / Discord / Lark / EasyBot 网关）
+通过 EasyBot 统一接入多平台机器人的 Paper 服务器管理插件
 
 > 插件针对 [PaperMC](https://papermc.io/) 服务器进行开发，由于
 > `PaperAPI`兼容`BukkitAPI`和`SpigotAPI`，
@@ -20,7 +20,7 @@
 | 功能模块 | 能力说明 |
 |---------|---------|
 | 白名单管理 | 控制服务器准入，管理员可通过 Bot 命令（$a/$r/$w）添加/移除白名单，自动清理不活跃玩家，非白名单玩家踢出时附带提示 |
-| 多平台 Bot 系统 | 接入 QQ（NapCatQQ / OneBot 11）、Discord（Bot API）、Lark（Webhook）、EasyBot 网关五端，9 个 Bot 命令实现玩家管理/查询/互动，30 余个可定制消息模板将服务器事件推送到对应群聊或频道 |
+| 多平台 Bot 系统 | 通过 EasyBot 网关统一接入 QQ、Telegram、Discord、飞书和微信，9 个 Bot 命令实现玩家管理/查询/互动，30 余个可定制消息模板将服务器事件推送到对应群聊或频道 |
 | 跨服传送门 | 管理员可创建或删除传送门，玩家踩踏传送门时跨服 transfer 跳转，可选集成 LoginSecurity 验证身份后再传送 |
 | TNT 保护 | 限制 TNT 放置范围，允许区域白名单豁免，TNT 爆炸时群聊通知，并可控制重生锚的爆炸行为 |
 | 安全控制 | 按 GeoIP 判断玩家所在国家限制加入，精确 IP/CIDR 段/通配符三种黑名单模式，可选集成 LoginSecurity 二次验证 |
@@ -38,25 +38,7 @@
 
 ## 机器人服务配置
 
-OrzMC 的机器人功能需配合外部 IM 网关使用，支持两种接入方案，可按需选择或同时启用：
-
-| 方案 | 配置文件 | 适用场景 |
-|------|---------|---------|
-| **NapCatQQ** | `bot.yml` | 仅需 QQ Bot（OneBot 11 协议） |
-| **EasyBot 网关** | `easybot.yml` | 多平台统一管理（QQ / Telegram / Discord / 飞书 / 微信） |
-
-### QQ Bot（NapCatQQ）
-
-QQ Bot 基于 [NapCatQQ](https://github.com/NapNeko/NapCatQQ)（OneBot 11）运行：
-
-1. 部署 NapCatQQ（支持 Windows GUI / Docker / Linux 脚本）
-2. 启动后 NapCatQQ 暴露 HTTP API（`:3000`）和 WebSocket（`:3001`）
-3. 在插件 `bot.yml` 中填入连接地址和群号，设置 `enable_qq_bot: true`
-4. 重启服务端或执行 `/config reload` 生效
-
-> 详细参数：[QQ Bot 配置指南](./docs/features.md#25-qq-bot-配置指南napcatqq)
-
-### 多平台 Bot（EasyBot 网关）
+OrzMC 的机器人功能统一通过外部 EasyBot IM 网关接入。
 
 [EasyBot](https://github.com/easyIndie/EasyBot) 统一管理 QQ / Telegram / Discord / 飞书 / 微信：
 
@@ -65,12 +47,14 @@ QQ Bot 基于 [NapCatQQ](https://github.com/NapNeko/NapCatQQ)（OneBot 11）运�
 3. `api_key` 从 EasyBot 后台创建**客服类 API Key** 获取
 4. `admin_group` 等目标值非平台原生 ID，需从 EasyBot 后台的**会话管理**获取**会话 key**（如 `qq:conv_xxxxxxxx`）
 
-> 详细路由规则：[EasyBot 配置指南](./docs/features.md#26-easybot-网关配置指南)
+> 详细路由规则：[EasyBot 配置指南](./docs/features.md#25-easybot-网关配置指南)
 
-### Discord & Lark
+### 从旧版直连配置升级
 
-- **Discord Bot**：创建 Discord Application 获取 Bot Token，Base64 编码后填入 `bot.yml` 的 `discord_bot_token_base64_encoded`
-- **Lark（飞书）**：在飞书开放平台创建机器人，获取 Webhook 地址填入 `bot.yml` 的 `lark_bot_webhook`（仅单向推送通知）
+旧版的 `bot.yml` 不再加载。升级前请将其中仍需保留的 `cmd_prompt_char`、
+`discord_server_link`、`qq_group_id` 和 `log_throttle_ms` 迁移到 `easybot.yml`，
+并在 EasyBot 后台完成各平台会话配置。NapCatQQ、Discord JDA 和飞书 Webhook
+直连参数可以删除。
 
 ## 更新插件
 PaperMC服务端在插件目录下提供一个名称为`update/`的目录，把需要更新的插件jar文件放到这个目录下面。下次服务端重启时，插件会被自动移到`plugins/`目录下面，完成插件升级。

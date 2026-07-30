@@ -5,7 +5,6 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.jokerhub.paper.plugin.orzmc.core.bot.BotInboundHandler;
 import com.jokerhub.paper.plugin.orzmc.core.bot.MessageEnvelope;
-import com.jokerhub.paper.plugin.orzmc.core.ports.server.ServerAccess;
 import com.jokerhub.paper.plugin.orzmc.core.ports.server.ServerLogger;
 import com.jokerhub.paper.plugin.orzmc.infra.config.ConfigService;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.EasyBotConfig;
@@ -21,6 +20,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 /**
@@ -28,9 +30,6 @@ import java.util.function.Consumer;
  *
  * <p>单一适配器处理所有平台（QQ / Telegram / Discord / 飞书 / 微信），
  * EasyBot 已屏蔽各平台协议差异，业务层只需感知 {@code platform}、{@code text}、{@code sender.role}、{@code chat_id}。
- *
- * <p>与 {@link OrzQQBot}（NapCatQQ / OneBot 11）完全独立，可以同时启用，互不干扰。
- * 使用专属的 {@code easybot.yml} 配置文件。
  *
  * <p>入站：单一 WebSocket 连接接收所有平台的事件。
  * 出站：根据 {@link MessageEnvelope.TargetType} 和 {@link EasyBotConfig} 的路由规则确定目标。
@@ -42,11 +41,10 @@ import java.util.function.Consumer;
  *   <li>CHANNEL → 查 {@code channels.{key}.{platform}} 映射</li>
  * </ul>
  */
-public class OrzEasyBot implements BotAdapter {
+public class OrzEasyBot implements BotMessageService {
 
     private static final String HEALTH_KEY = "easybot";
 
-    private final ServerAccess server;
     private final ServerLogger logger;
     private final ConfigService configService;
     private final BotInboundHandler inboundHandler;
@@ -54,20 +52,21 @@ public class OrzEasyBot implements BotAdapter {
     private final ThrottledLogger throttledLogger;
     private final HealthRegistry healthRegistry;
     private final WebSocketClientFactory wsFactory;
+    private final AtomicBoolean reconnectInFlight = new AtomicBoolean(false);
+    private final AtomicInteger httpRequestsInFlight = new AtomicInteger();
+    private final AtomicReference<String> pendingHttpError = new AtomicReference<>();
 
     private WsClient webSocketClient;
 
     // ---- 构造器 -----------------------------------------------------------
 
     public OrzEasyBot(
-            ServerAccess server,
             ServerLogger logger,
             ConfigService configService,
             BotInboundHandler inboundHandler,
             MessageFormatter formatter,
             ThrottledLogger throttledLogger,
             HealthRegistry healthRegistry) {
-        this.server = server;
         this.logger = logger;
         this.configService = configService;
         this.inboundHandler = inboundHandler;
@@ -79,7 +78,6 @@ public class OrzEasyBot implements BotAdapter {
 
     /** 测试用构造器，允许注入模拟的 {@link WebSocketClientFactory}。 */
     OrzEasyBot(
-            ServerAccess server,
             ServerLogger logger,
             ConfigService configService,
             BotInboundHandler inboundHandler,
@@ -87,7 +85,6 @@ public class OrzEasyBot implements BotAdapter {
             ThrottledLogger throttledLogger,
             HealthRegistry healthRegistry,
             WebSocketClientFactory wsFactory) {
-        this.server = server;
         this.logger = logger;
         this.configService = configService;
         this.inboundHandler = inboundHandler;
@@ -97,9 +94,6 @@ public class OrzEasyBot implements BotAdapter {
         this.wsFactory = wsFactory == null ? new DefaultWebSocketClientFactory() : wsFactory;
     }
 
-    // ---- BotAdapter --------------------------------------------------------
-
-    @Override
     public boolean isEnable() {
         EasyBotConfig cfg = loadConfig();
         return cfg.enabled();
@@ -107,16 +101,35 @@ public class OrzEasyBot implements BotAdapter {
 
     @Override
     public void setup() {
-        healthRegistry.setEnabled(HEALTH_KEY, isEnable());
-        if (!isEnable()) {
+        boolean enabled = isEnable();
+        healthRegistry.setEnabled(HEALTH_KEY, enabled);
+        if (!enabled) {
             return;
         }
         setupWebSocketClient();
     }
 
     @Override
-    public void teardown() {
+    public void tearDown() {
         shutdownWebSocketClient();
+        healthRegistry.setWsConnected(HEALTH_KEY, false);
+        healthRegistry.setHttpOk(HEALTH_KEY, false);
+    }
+
+    @Override
+    public void tryReconnectIfDisconnected() {
+        if (!isEnable() || healthRegistry.getRaw(HEALTH_KEY).wsConnected) {
+            return;
+        }
+        if (!reconnectInFlight.compareAndSet(false, true)) {
+            return;
+        }
+        try {
+            healthRegistry.setLastError(HEALTH_KEY, "reconnecting...");
+            setupWebSocketClient();
+        } finally {
+            reconnectInFlight.set(false);
+        }
     }
 
     /**
@@ -176,10 +189,12 @@ public class OrzEasyBot implements BotAdapter {
 
     private void sendChannel(EasyBotConfig cfg, String channelKey, List<String> parts) {
         if (channelKey == null || channelKey.isEmpty()) {
+            throttledLogger.warning("easybot-channel", "EasyBot CHANNEL 消息缺少 channelKey，已拒绝发送");
             return;
         }
         Map<String, String> targets = cfg.channels().get(channelKey);
         if (targets == null || targets.isEmpty()) {
+            throttledLogger.warning("easybot-channel", "EasyBot 渠道未配置，已拒绝发送: " + channelKey);
             return;
         }
         for (var entry : targets.entrySet()) {
@@ -216,6 +231,9 @@ public class OrzEasyBot implements BotAdapter {
     }
 
     private void sendToTarget(EasyBotConfig cfg, String target, String message) {
+        if (httpRequestsInFlight.getAndIncrement() == 0) {
+            pendingHttpError.set(null);
+        }
         healthRegistry.setHttpOk(HEALTH_KEY, false);
         try {
             String url = cfg.apiServer() + "/api/v1/messages/send";
@@ -236,31 +254,39 @@ public class OrzEasyBot implements BotAdapter {
                             headers,
                             Duration.ofSeconds(cfg.httpConnectTimeoutSec() <= 0 ? 3 : cfg.httpConnectTimeoutSec()),
                             Duration.ofSeconds(cfg.httpRequestTimeoutSec() <= 0 ? 3 : cfg.httpRequestTimeoutSec()),
-                            cfg.httpMaxRetries() <= 0 ? 3 : cfg.httpMaxRetries())
-                    .thenAcceptAsync(response -> {
+                            Math.max(0, cfg.httpMaxRetries()))
+                    .thenAccept(response -> {
                         if (response.statusCode() == 200 || response.statusCode() == 201) {
-                            healthRegistry.setHttpOk(HEALTH_KEY, true);
-                            healthRegistry.setLastError(HEALTH_KEY, null);
+                            completeHttpRequest(null);
                         } else {
-                            healthRegistry.setHttpOk(HEALTH_KEY, false);
-                            healthRegistry.setLastError(
-                                    HEALTH_KEY, "HTTP " + response.statusCode() + ": " + response.body());
+                            String error = "HTTP " + response.statusCode() + ": " + response.body();
                             throttledLogger.error(
                                     "easybot-http",
                                     "EasyBot 发送失败, target=" + target + ", status=" + response.statusCode());
+                            completeHttpRequest(error);
                         }
                     })
                     .exceptionally(e -> {
-                        healthRegistry.setHttpOk(HEALTH_KEY, false);
-                        healthRegistry.setLastError(HEALTH_KEY, e.toString());
                         throttledLogger.error("easybot-http", "EasyBot 发送异常: " + e);
+                        completeHttpRequest(e.toString());
                         return null;
                     });
         } catch (Exception e) {
-            healthRegistry.setHttpOk(HEALTH_KEY, false);
-            healthRegistry.setLastError(HEALTH_KEY, e.toString());
+            completeHttpRequest(e.toString());
             logger.logger().info("EasyBot sendToTarget error: " + e);
         }
+    }
+
+    private void completeHttpRequest(String error) {
+        if (error != null) {
+            pendingHttpError.compareAndSet(null, error);
+        }
+        if (httpRequestsInFlight.decrementAndGet() != 0) {
+            return;
+        }
+        String aggregateError = pendingHttpError.getAndSet(null);
+        healthRegistry.setHttpOk(HEALTH_KEY, aggregateError == null);
+        healthRegistry.setLastError(HEALTH_KEY, aggregateError);
     }
 
     // ---- WebSocket 生命周期 ------------------------------------------------
@@ -291,10 +317,10 @@ public class OrzEasyBot implements BotAdapter {
                     logger,
                     wsUrl,
                     throttledLogger,
-                    wsRetries <= 0 ? 10 : wsRetries,
+                    Math.max(0, wsRetries),
                     wsBaseMs <= 0 ? 5000 : wsBaseMs,
                     wsMaxMs <= 0 ? 60000 : wsMaxMs,
-                    wsJitterPercent <= 0 ? 10 : wsJitterPercent,
+                    Math.max(0, wsJitterPercent),
                     wsStableResetMs <= 0 ? 20000 : wsStableResetMs,
                     wsMessageLogEnabled,
                     wsMessageLogThrottleMs <= 0 ? 60000 : wsMessageLogThrottleMs,
@@ -303,7 +329,7 @@ public class OrzEasyBot implements BotAdapter {
                     new WebSocketEventListener() {
                         @Override
                         public void onOpen() {
-                            healthRegistry.setWsConnected(HEALTH_KEY, true);
+                            healthRegistry.setWsConnected(HEALTH_KEY, false);
                             // EasyBot WS 认证：连接后立即发送 token 帧
                             if (authApiKey != null && !authApiKey.isEmpty()) {
                                 String authFrame = new Gson().toJson(Map.of("token", authApiKey));
@@ -363,6 +389,8 @@ public class OrzEasyBot implements BotAdapter {
 
             // ---- 系统帧处理 ----
             if ("auth_ok".equals(type)) {
+                healthRegistry.setWsConnected(HEALTH_KEY, true);
+                healthRegistry.setLastError(HEALTH_KEY, null);
                 throttledLogger.info("easybot-ws-auth", "EasyBot WebSocket 认证成功");
                 return;
             }
@@ -371,6 +399,7 @@ public class OrzEasyBot implements BotAdapter {
                 String msg = root.has("message") ? root.get("message").getAsString() : "unknown";
                 healthRegistry.setLastError(HEALTH_KEY, "WS auth failed: " + msg);
                 throttledLogger.error("easybot-ws-auth", "EasyBot WebSocket 认证失败: " + msg);
+                shutdownWebSocketClient();
                 return;
             }
             if ("lagged".equals(type)) {
@@ -401,10 +430,11 @@ public class OrzEasyBot implements BotAdapter {
             if (!data.has("platform")) {
                 return;
             }
-            String platform = data.get("platform").getAsString();
+            String platform = data.get("platform").getAsString().toLowerCase(java.util.Locale.ROOT);
+            EasyBotConfig cfg = loadConfig();
 
             // 跳过已禁用平台的消息
-            if (!isPlatformEnabled(platform)) {
+            if (!isPlatformEnabled(cfg, platform)) {
                 return;
             }
 
@@ -423,6 +453,13 @@ public class OrzEasyBot implements BotAdapter {
             if (chatId.isEmpty()) {
                 return;
             }
+            String replyTarget = normalizeTarget(platform, chatId);
+            if (!isInboundTargetAllowed(cfg, platform, replyTarget)) {
+                throttledLogger.warning(
+                        "easybot-inbound-target",
+                        "EasyBot 忽略未授权会话消息: platform=" + platform + ", target=" + replyTarget);
+                return;
+            }
 
             // sender.role: 发送者角色（EasyBot 已各平台标准化）
             boolean isAdmin = false;
@@ -435,10 +472,13 @@ public class OrzEasyBot implements BotAdapter {
             }
 
             // 关键：sink 捕获来源平台和会话，确保回复定向到正确的位置
-            String replyTarget = platform + ":" + chatId;
             Consumer<MessageEnvelope> sink = env -> {
                 if (env != null) {
-                    sendToTarget(loadConfig(), replyTarget, env.message());
+                    MessageEnvelope.Format replyFormat =
+                            env.format() == null ? MessageEnvelope.Format.DEFAULT : env.format();
+                    for (String part : formatter.format(env.message(), replyFormat)) {
+                        sendToTarget(cfg, replyTarget, part);
+                    }
                 }
             };
 
@@ -459,9 +499,26 @@ public class OrzEasyBot implements BotAdapter {
      * 检查指定平台是否已在配置中启用。
      * 未找到配置的平台（如未注册的测试平台）视为禁用。
      */
-    private boolean isPlatformEnabled(String platform) {
-        EasyBotConfig cfg = loadConfig();
+    private boolean isPlatformEnabled(EasyBotConfig cfg, String platform) {
         EasyBotConfig.PlatformEntry entry = cfg.platforms().get(platform);
         return entry != null && entry.enabled();
+    }
+
+    private boolean isInboundTargetAllowed(EasyBotConfig cfg, String platform, String target) {
+        EasyBotConfig.PlatformEntry entry = cfg.platforms().get(platform);
+        if (entry == null || !entry.enabled()) {
+            return false;
+        }
+        if (target.equals(entry.adminGroup()) || target.equals(entry.playerGroup()) || target.equals(entry.adminDm())) {
+            return true;
+        }
+        return cfg.channels().values().stream()
+                .map(targets -> targets.get(platform))
+                .anyMatch(target::equals);
+    }
+
+    private static String normalizeTarget(String platform, String chatId) {
+        String prefix = platform + ":";
+        return chatId.startsWith(prefix) ? chatId : prefix + chatId;
     }
 }

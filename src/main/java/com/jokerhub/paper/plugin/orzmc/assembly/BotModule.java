@@ -32,8 +32,6 @@ public final class BotModule implements ServiceModule, Initializable {
         // Phase C: 创建 BotMessageService（以 BotCommandService 作为 BotInboundHandler）
         this.botMessageService = BotMessageServiceProvider.create(
                 platform.serverFacade(),
-                platform.serverFacade(),
-                platform.serverFacade(),
                 platform.configService(),
                 platform.throttledLogger(),
                 botCommandService,

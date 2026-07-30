@@ -7,35 +7,46 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeUnit;
 
 public final class AsyncHttp {
     private static final Duration DEFAULT_CONNECT_TIMEOUT = Duration.ofSeconds(3);
     private static final Duration DEFAULT_REQUEST_TIMEOUT = Duration.ofSeconds(3);
     private static final int DEFAULT_MAX_RETRIES = 3;
     private static final long BASE_BACKOFF_MS = 500;
+    private static final ConcurrentMap<Duration, HttpClient> CLIENTS = new ConcurrentHashMap<>();
 
     private static HttpClient client(Duration connectTimeout) {
-        return HttpClient.newBuilder()
-                .connectTimeout(connectTimeout == null ? DEFAULT_CONNECT_TIMEOUT : connectTimeout)
-                .build();
+        Duration timeout = connectTimeout == null ? DEFAULT_CONNECT_TIMEOUT : connectTimeout;
+        return CLIENTS.computeIfAbsent(
+                timeout, value -> HttpClient.newBuilder().connectTimeout(value).build());
     }
 
     private static CompletableFuture<HttpResponse<String>> sendWithRetry(
             HttpClient c, HttpRequest request, int retries) {
+        return sendWithRetry(c, request, Math.max(0, retries), 0);
+    }
+
+    private static CompletableFuture<HttpResponse<String>> sendWithRetry(
+            HttpClient c, HttpRequest request, int retriesRemaining, int attempt) {
         return c.sendAsync(request, HttpResponse.BodyHandlers.ofString())
                 .handle((resp, ex) -> {
-                    if (ex == null) {
+                    boolean retryableStatus = resp != null && (resp.statusCode() == 429 || resp.statusCode() >= 500);
+                    if (ex == null && !retryableStatus) {
                         return CompletableFuture.completedFuture(resp);
                     }
-                    if (retries <= 0) {
-                        return CompletableFuture.<HttpResponse<String>>failedFuture(ex);
+                    if (retriesRemaining <= 0) {
+                        return ex == null
+                                ? CompletableFuture.completedFuture(resp)
+                                : CompletableFuture.<HttpResponse<String>>failedFuture(ex);
                     }
-                    int nextRetries = retries - 1;
-                    long delay = (long) (BASE_BACKOFF_MS * Math.pow(2, (DEFAULT_MAX_RETRIES - nextRetries)));
+                    long delay = BASE_BACKOFF_MS * (1L << Math.min(attempt, 10));
                     java.util.concurrent.Executor delayed =
-                            CompletableFuture.delayedExecutor(delay, java.util.concurrent.TimeUnit.MILLISECONDS);
+                            CompletableFuture.delayedExecutor(delay, TimeUnit.MILLISECONDS);
                     return CompletableFuture.supplyAsync(() -> null, delayed)
-                            .thenCompose(v -> sendWithRetry(c, request, nextRetries));
+                            .thenCompose(v -> sendWithRetry(c, request, retriesRemaining - 1, attempt + 1));
                 })
                 .thenCompose(f -> f);
     }

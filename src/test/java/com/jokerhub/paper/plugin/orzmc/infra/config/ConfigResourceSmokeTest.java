@@ -44,7 +44,7 @@ public class ConfigResourceSmokeTest {
 
     @Test
     public void testBotConfigResource() throws Exception {
-        YamlConfiguration cfg = load("bot.yml");
+        YamlConfiguration cfg = load("easybot.yml");
         Assertions.assertNotNull(BotConfig.from(cfg));
     }
 

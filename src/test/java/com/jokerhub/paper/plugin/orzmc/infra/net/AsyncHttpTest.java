@@ -99,6 +99,46 @@ public class AsyncHttpTest {
         assertEquals("{\"a\":1}", bodyText.get());
     }
 
+    @Test
+    void zeroRetriesMakesSingleAttemptOnServerError() {
+        server.createContext("/fail", exchange -> {
+            requestCount.incrementAndGet();
+            exchange.sendResponseHeaders(503, -1);
+            exchange.close();
+        });
+        server.start();
+
+        HttpResponse<String> response = AsyncHttp.get(
+                        baseUri.resolve("/fail").toString(), Map.of(), Duration.ofSeconds(1), Duration.ofSeconds(1), 0)
+                .join();
+
+        assertEquals(503, response.statusCode());
+        assertEquals(1, requestCount.get());
+    }
+
+    @Test
+    void retriesRetryableServerError() {
+        server.createContext("/eventual", exchange -> {
+            int attempt = requestCount.incrementAndGet();
+            byte[] body = (attempt == 1 ? "retry" : "ok").getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(attempt == 1 ? 503 : 200, body.length);
+            exchange.getResponseBody().write(body);
+            exchange.close();
+        });
+        server.start();
+
+        HttpResponse<String> response = AsyncHttp.get(
+                        baseUri.resolve("/eventual").toString(),
+                        Map.of(),
+                        Duration.ofSeconds(1),
+                        Duration.ofSeconds(2),
+                        1)
+                .join();
+
+        assertEquals(200, response.statusCode());
+        assertEquals(2, requestCount.get());
+    }
+
     private void capture(
             HttpExchange exchange,
             AtomicReference<String> authHeader,

@@ -141,8 +141,8 @@ notifications:
       enabled: true
       admin_only: false
     public:
-      enabled: true
-    channel_key: safety-alerts
+      enabled: false
+    channel_key: security-alert
   player_join:
     public:
       enabled: true

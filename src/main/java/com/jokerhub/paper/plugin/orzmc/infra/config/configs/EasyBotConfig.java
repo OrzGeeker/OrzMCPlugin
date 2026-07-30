@@ -8,8 +8,7 @@ import org.bukkit.configuration.ConfigurationSection;
 /**
  * EasyBot IM Gateway 类型化配置。
  *
- * <p>与现有 {@link BotConfig}（来源于 bot.yml）完全独立，使用专属 easybot.yml。
- * 支持多平台消息路由：每个平台独立配置 admin_group / player_group / admin_dm。</p>
+ * <p>支持多平台消息路由：每个平台独立配置 admin_group / player_group / admin_dm。</p>
  */
 public record EasyBotConfig(
         String apiServer,
@@ -41,9 +40,9 @@ public record EasyBotConfig(
      * 单个平台配置项。
      *
      * @param enabled     是否启用此平台（false 时不收不发）
-     * @param adminGroup  管理群 target（如 "qq:1082305302"）
+     * @param adminGroup  管理群 target（如 "qq:YOUR_GROUP_ID"）
      * @param playerGroup 玩家群 target（为空时 PUBLIC 降级到 adminGroup）
-     * @param adminDm     管理员私聊 target（如 "qq:1092760538"）
+     * @param adminDm     管理员私聊 target（如 "qq:YOUR_USER_ID"）
      */
     public record PlatformEntry(boolean enabled, String adminGroup, String playerGroup, String adminDm) {
 
@@ -52,7 +51,7 @@ public record EasyBotConfig(
                 return new PlatformEntry(false, "", "", "");
             }
             return new PlatformEntry(
-                    sec.getBoolean("enabled", true),
+                    sec.getBoolean("enabled", false),
                     sec.getString("admin_group", ""),
                     sec.getString("player_group", ""),
                     sec.getString("admin_dm", ""));
@@ -118,8 +117,8 @@ public record EasyBotConfig(
         }
 
         return new EasyBotConfig(
-                cfg.getString("api_server", "http://127.0.0.1:8020"),
-                cfg.getString("ws_server", "ws://127.0.0.1:8020"),
+                cfg.getString("api_server", "http://127.0.0.1:8080"),
+                cfg.getString("ws_server", "ws://127.0.0.1:8080"),
                 cfg.getString("api_key", ""),
                 cfg.getString("parse_mode", "markdown"),
                 platforms,

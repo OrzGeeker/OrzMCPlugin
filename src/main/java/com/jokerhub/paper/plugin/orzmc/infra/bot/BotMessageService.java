@@ -7,7 +7,7 @@ public interface BotMessageService {
 
     void send(MessageEnvelope envelope);
 
-    default void tryReconnectQqWsIfDisconnected() {}
+    default void tryReconnectIfDisconnected() {}
 
     void tearDown();
 }

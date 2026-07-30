@@ -50,13 +50,13 @@
 
 ### 2.2 完整描述（~200 字）
 
-> OrzMC 是一款面向 PaperMC 服务器的综合管理插件，深度集成 QQ、Discord、飞书三大社交平台，让管理员在群聊中即可完成白名单管理、世界备份与优化、IP 黑名单、跨服传送门等运维操作。支持 TNT 爆炸防护与 GeoIP 区域访问控制，保障服务器安全。插件采用六边形架构设计，模块化分离核心逻辑与平台适配层，配置驱动、零数据库依赖，适合个人服主与小型社区快速部署。无论你运营的是私服还是公开服务器，OrzMC 都能让你的日常管理更加高效便捷。
+> OrzMC 是一款面向 PaperMC 服务器的综合管理插件，通过 EasyBot 统一接入 QQ、Telegram、Discord、飞书和微信，让管理员在群聊中即可完成白名单管理、世界备份与优化、IP 黑名单、跨服传送门等运维操作。支持 TNT 爆炸防护与 GeoIP 区域访问控制，保障服务器安全。插件采用分层架构设计，配置驱动、零数据库依赖，适合个人服主与小型社区快速部署。
 
 ### 2.3 功能列表
 
 | 功能模块 | 说明 |
 |----------|------|
-| 🤖 **多平台机器人** | QQ（NapCatQQ/OneBot）、Discord（JDA）、飞书（Webhook）、EasyBot IM 网关 |
+| 🤖 **多平台机器人** | 通过 EasyBot IM 网关统一接入 QQ、Telegram、Discord、飞书和微信 |
 | 📋 **白名单管理** | 强制白名单，Bot 命令 `$a` / `$r` 远程增删 |
 | 💾 **世界备份与优化** | `$b` 备份、`$o` 优化、定时维护编排 |
 | 🚪 **跨服传送门** | 可配置传送门，`/portal` 命令创建/移除 |
@@ -189,7 +189,7 @@ hangarPublish {
 |------|------|
 | **项目页面** | [modrinth.com/plugin/r8ZufLjY](https://modrinth.com/plugin/r8ZufLjY) |
 | **项目 ID** | `r8ZufLjY`（`gradle.properties: modrinth_project_id`） |
-| **Gradle 插件** | `com.modrinth.minotaur:2.+` |
+| **Gradle 插件** | `com.modrinth.minotaur:2.9.0` |
 | **发布 task** | `modrinth` |
 | **触发条件** | Push `main` → `beta` / Push tag `x.y.z` → `release` |
 | **Token Secret** | `MODRINTH_TOKEN`（权限：`VERSION_CREATE` + `PROJECT_WRITE`） |

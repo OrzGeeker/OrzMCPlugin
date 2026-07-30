@@ -62,7 +62,7 @@ public class RobustWebSocketClient implements WsClient {
         this.logMessageThrottleMs = logMessageThrottleMs;
         this.httpHeaders = httpHeaders;
         this.listener = listener;
-        this.executor = Executors.newScheduledThreadPool(3);
+        this.executor = Executors.newSingleThreadScheduledExecutor();
         this.heartbeatPayload = heartbeatPayload;
         createClient();
     }
