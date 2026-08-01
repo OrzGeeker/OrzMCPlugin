@@ -19,7 +19,12 @@ public final class BotStatusService {
                 .append(Component.space())
                 .append(easybot.enabled() ? styles.success("enabled") : styles.error("disabled"))
                 .append(Component.space())
-                .append(easybot.httpOk() ? styles.success("httpOk") : styles.error("httpNotOk"))
+                .append(
+                        !easybot.enabled()
+                                ? styles.error("httpDisabled")
+                                : !easybot.httpChecked()
+                                        ? styles.warn("httpUnknown")
+                                        : easybot.httpOk() ? styles.success("httpOk") : styles.error("httpNotOk"))
                 .append(Component.space())
                 .append(easybot.wsConnected() ? styles.success("wsOk") : styles.error("wsNotOk"))
                 .append(Component.space())

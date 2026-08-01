@@ -9,5 +9,8 @@ public interface BotMessageService {
 
     default void tryReconnectIfDisconnected() {}
 
+    /** Reconcile the active connection with the current easybot.yml configuration. */
+    default void reloadConfig() {}
+
     void tearDown();
 }

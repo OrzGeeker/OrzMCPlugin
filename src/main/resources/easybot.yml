@@ -40,53 +40,53 @@ platforms:
   # ===== Discord =====
   discord:
     enabled: false
-    # 管理频道 ID
-    admin_group: 'discord:YOUR_CHANNEL_ID'
-    # 玩家频道 ID（留空则降级 admin_group）
+    # 管理会话 key（从 EasyBot 后台会话管理复制）
+    admin_group: 'discord:conv_xxxxxxxx'
+    # 玩家会话 key（留空则降级 admin_group）
     player_group: ''
-    # 管理员私聊（Discord 私信）
-    admin_dm: 'discord:YOUR_USER_ID'
+    # 管理员私聊会话 key
+    admin_dm: 'discord:conv_yyyyyyyy'
 
   # ===== Telegram =====
   telegram:
     enabled: false
-    # 管理群 ID
-    admin_group: 'telegram:YOUR_GROUP_ID'
-    # 玩家群 ID（留空则降级 admin_group）
+    # 管理会话 key（从 EasyBot 后台会话管理复制）
+    admin_group: 'telegram:conv_xxxxxxxx'
+    # 玩家会话 key（留空则降级 admin_group）
     player_group: ''
-    # 管理员私聊
-    admin_dm: 'telegram:YOUR_USER_ID'
+    # 管理员私聊会话 key
+    admin_dm: 'telegram:conv_yyyyyyyy'
 
   # ===== QQ =====
   qq:
     # 启用此平台（false 则不收不发）
     enabled: false
-    # 管理群 — 管理员专属频道
-    admin_group: 'qq:YOUR_GROUP_ID'
+    # 管理会话 key（从 EasyBot 后台会话管理复制）
+    admin_group: 'qq:conv_xxxxxxxx'
     # 玩家群 — PUBLIC 默认目标（留空则降级 admin_group）
     player_group: ''
-    # 管理员私聊
-    admin_dm: 'qq:YOUR_USER_ID'
+    # 管理员私聊会话 key
+    admin_dm: 'qq:conv_yyyyyyyy'
 
   # ===== 飞书 =====
   feishu:
     enabled: false
-    # 管理群 chat_id
-    admin_group: 'feishu:oc_xxxxxxxxxxxxx'
+    # 管理会话 key（从 EasyBot 后台会话管理复制）
+    admin_group: 'feishu:conv_xxxxxxxx'
     # 玩家群（留空则降级 admin_group）
     player_group: ''
-    # 管理员私聊 open_id
-    admin_dm: 'feishu:ou_xxxxxxxxxxxxx'
+    # 管理员私聊会话 key
+    admin_dm: 'feishu:conv_yyyyyyyy'
 
   # ===== 微信（仅支持私聊 DM） =====
   wechat:
     enabled: false
     # 微信不支持群聊，admin_group 仅作为 PUBLIC 降级目标
-    admin_group: 'wechat:wxid_xxxxxxxxxxxxxx'
+    admin_group: 'wechat:conv_xxxxxxxx'
     # 微信无群聊概念，player_group 通常不填
     player_group: ''
-    # 管理员私聊
-    admin_dm: 'wechat:wxid_xxxxxxxxxxxxxx'
+    # 管理员私聊会话 key
+    admin_dm: 'wechat:conv_yyyyyyyy'
 
 # ===========================================================================
 #  HTTP 超时与重试

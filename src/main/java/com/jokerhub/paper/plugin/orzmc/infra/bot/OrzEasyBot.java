@@ -1,6 +1,7 @@
 package com.jokerhub.paper.plugin.orzmc.infra.bot;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.jokerhub.paper.plugin.orzmc.core.bot.BotInboundHandler;
@@ -19,9 +20,11 @@ import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -43,6 +46,12 @@ import java.util.function.Consumer;
 public class OrzEasyBot implements BotMessageService {
 
     private static final String HEALTH_KEY = "easybot";
+    private static final Gson GSON = new Gson();
+    private static final int MAX_HTTP_IN_FLIGHT = 32;
+    private static final int MAX_INBOUND_PAYLOAD_CHARS = 64 * 1024;
+    private static final int MAX_INBOUND_TEXT_CHARS = 8 * 1024;
+    private static final int MAX_INBOUND_TARGET_CHARS = 512;
+    private static final int MAX_INBOUND_EVENTS_PER_SECOND = 100;
 
     private final ServerLogger logger;
     private final ConfigService configService;
@@ -51,11 +60,16 @@ public class OrzEasyBot implements BotMessageService {
     private final ThrottledLogger throttledLogger;
     private final HealthRegistry healthRegistry;
     private final WebSocketClientFactory wsFactory;
-    private final AtomicBoolean reconnectInFlight = new AtomicBoolean(false);
-    private final AtomicInteger httpRequestsInFlight = new AtomicInteger();
-    private final AtomicReference<String> pendingHttpError = new AtomicReference<>();
+    private final Object lifecycleLock = new Object();
+    private final Object httpHealthLock = new Object();
+    private final Semaphore httpPermits = new Semaphore(MAX_HTTP_IN_FLIGHT);
+    private final AtomicLong inboundWindowStart = new AtomicLong();
+    private final AtomicInteger inboundWindowCount = new AtomicInteger();
 
-    private WsClient webSocketClient;
+    private volatile WsClient webSocketClient;
+    private volatile String activeConnectionFingerprint;
+    private int httpRequestsInFlight;
+    private String pendingHttpError;
 
     // ---- 构造器 -----------------------------------------------------------
 
@@ -100,34 +114,39 @@ public class OrzEasyBot implements BotMessageService {
 
     @Override
     public void setup() {
-        boolean enabled = isEnable();
-        healthRegistry.setEnabled(HEALTH_KEY, enabled);
-        if (!enabled) {
-            return;
-        }
-        setupWebSocketClient();
+        reloadConfig();
     }
 
     @Override
     public void tearDown() {
-        shutdownWebSocketClient();
-        healthRegistry.setWsConnected(HEALTH_KEY, false);
-        healthRegistry.setHttpOk(HEALTH_KEY, false);
+        synchronized (lifecycleLock) {
+            shutdownWebSocketClientLocked();
+            healthRegistry.setEnabled(HEALTH_KEY, false);
+            healthRegistry.setWsConnected(HEALTH_KEY, false);
+            healthRegistry.setHttpChecked(HEALTH_KEY, false);
+            healthRegistry.setLastError(HEALTH_KEY, null);
+        }
     }
 
     @Override
     public void tryReconnectIfDisconnected() {
-        if (!isEnable() || healthRegistry.getRaw(HEALTH_KEY).wsConnected) {
-            return;
+        synchronized (lifecycleLock) {
+            EasyBotConfig cfg = loadConfig();
+            if (!cfg.enabled()) {
+                reconcileConfigLocked(cfg);
+                return;
+            }
+            if (webSocketClient == null) {
+                healthRegistry.setLastError(HEALTH_KEY, "reconnecting...");
+                reconcileConfigLocked(cfg);
+            }
         }
-        if (!reconnectInFlight.compareAndSet(false, true)) {
-            return;
-        }
-        try {
-            healthRegistry.setLastError(HEALTH_KEY, "reconnecting...");
-            setupWebSocketClient();
-        } finally {
-            reconnectInFlight.set(false);
+    }
+
+    @Override
+    public void reloadConfig() {
+        synchronized (lifecycleLock) {
+            reconcileConfigLocked(loadConfig());
         }
     }
 
@@ -152,6 +171,9 @@ public class OrzEasyBot implements BotMessageService {
         MessageEnvelope.Format fmt = envelope.format() == null ? MessageEnvelope.Format.DEFAULT : envelope.format();
         List<String> parts = formatter.format(envelope.message(), fmt);
 
+        if (envelope.targetType() == null) {
+            return;
+        }
         switch (envelope.targetType()) {
             case PUBLIC -> sendPublic(cfg, parts);
             case PRIVATE -> sendPrivate(cfg, parts);
@@ -205,17 +227,22 @@ public class OrzEasyBot implements BotMessageService {
     }
 
     private void sendToTarget(EasyBotConfig cfg, String target, String message) {
-        if (httpRequestsInFlight.getAndIncrement() == 0) {
-            pendingHttpError.set(null);
+        if (!httpPermits.tryAcquire()) {
+            String error = "HTTP send queue is full";
+            throttledLogger.warning("easybot-http-backpressure", "EasyBot 发送队列已满，丢弃消息: target=" + target);
+            healthRegistry.setHttpOk(HEALTH_KEY, false);
+            healthRegistry.setApiReady(HEALTH_KEY, false);
+            healthRegistry.setLastError(HEALTH_KEY, error);
+            return;
         }
-        healthRegistry.setHttpOk(HEALTH_KEY, false);
+        beginHttpRequest();
         try {
             String url = cfg.apiServer() + "/api/v1/messages/send";
             Map<String, Object> body = new HashMap<>();
             body.put("target", target);
             body.put("text", message);
             body.put("parse_mode", cfg.parseMode());
-            String json = new Gson().toJson(body);
+            String json = GSON.toJson(body);
 
             Map<String, String> headers = new HashMap<>();
             if (cfg.apiKey() != null && !cfg.apiKey().isEmpty()) {
@@ -230,10 +257,10 @@ public class OrzEasyBot implements BotMessageService {
                             Duration.ofSeconds(cfg.httpRequestTimeoutSec() <= 0 ? 3 : cfg.httpRequestTimeoutSec()),
                             Math.max(0, cfg.httpMaxRetries()))
                     .thenAccept(response -> {
-                        if (response.statusCode() == 200 || response.statusCode() == 201) {
+                        if (response.statusCode() >= 200 && response.statusCode() < 300) {
                             completeHttpRequest(null);
                         } else {
-                            String error = "HTTP " + response.statusCode() + ": " + response.body();
+                            String error = "HTTP " + response.statusCode() + ": " + limitError(response.body());
                             throttledLogger.error(
                                     "easybot-http",
                                     "EasyBot 发送失败, target=" + target + ", status=" + response.statusCode());
@@ -251,93 +278,179 @@ public class OrzEasyBot implements BotMessageService {
         }
     }
 
+    private void beginHttpRequest() {
+        synchronized (httpHealthLock) {
+            if (httpRequestsInFlight++ == 0) {
+                pendingHttpError = null;
+            }
+        }
+    }
+
     private void completeHttpRequest(String error) {
-        if (error != null) {
-            pendingHttpError.compareAndSet(null, error);
+        String aggregateError = null;
+        boolean batchComplete;
+        synchronized (httpHealthLock) {
+            if (error != null && pendingHttpError == null) {
+                pendingHttpError = limitError(error);
+            }
+            batchComplete = --httpRequestsInFlight == 0;
+            if (batchComplete) {
+                aggregateError = pendingHttpError;
+                pendingHttpError = null;
+            }
         }
-        if (httpRequestsInFlight.decrementAndGet() != 0) {
-            return;
+        httpPermits.release();
+        if (batchComplete) {
+            healthRegistry.setHttpOk(HEALTH_KEY, aggregateError == null);
+            healthRegistry.setApiReady(HEALTH_KEY, aggregateError == null);
+            healthRegistry.setLastError(HEALTH_KEY, aggregateError);
         }
-        String aggregateError = pendingHttpError.getAndSet(null);
-        healthRegistry.setHttpOk(HEALTH_KEY, aggregateError == null);
-        healthRegistry.setLastError(HEALTH_KEY, aggregateError);
+    }
+
+    private static String limitError(String value) {
+        if (value == null) {
+            return "unknown";
+        }
+        return value.length() <= 512 ? value : value.substring(0, 512) + "...";
     }
 
     // ---- WebSocket 生命周期 ------------------------------------------------
 
     void setupWebSocketClient() {
-        EasyBotConfig cfg = loadConfig();
-        if (!cfg.enabled() || cfg.wsServer() == null || cfg.wsServer().isEmpty()) {
+        synchronized (lifecycleLock) {
+            reconcileConfigLocked(loadConfig());
+        }
+    }
+
+    void shutdownWebSocketClient() {
+        synchronized (lifecycleLock) {
+            shutdownWebSocketClientLocked();
+        }
+    }
+
+    private void reconcileConfigLocked(EasyBotConfig cfg) {
+        healthRegistry.setEnabled(HEALTH_KEY, cfg.enabled());
+        if (!cfg.enabled()) {
+            shutdownWebSocketClientLocked();
+            healthRegistry.setWsConnected(HEALTH_KEY, false);
+            healthRegistry.setHttpChecked(HEALTH_KEY, false);
+            healthRegistry.setLastError(HEALTH_KEY, null);
             return;
         }
-        if (webSocketClient != null) {
-            shutdownWebSocketClient();
+        if (cfg.apiServer().isBlank()
+                || cfg.wsServer().isBlank()
+                || cfg.apiKey().isBlank()) {
+            shutdownWebSocketClientLocked();
+            healthRegistry.setWsConnected(HEALTH_KEY, false);
+            healthRegistry.setHttpChecked(HEALTH_KEY, false);
+            healthRegistry.setApiReady(HEALTH_KEY, false);
+            healthRegistry.setLastError(HEALTH_KEY, "EasyBot 连接配置不完整: api_server/ws_server/api_key");
+            return;
         }
+
+        String fingerprint = cfg.connectionFingerprint();
+        if (webSocketClient != null && fingerprint.equals(activeConnectionFingerprint)) {
+            return;
+        }
+        shutdownWebSocketClientLocked();
+        healthRegistry.setHttpChecked(HEALTH_KEY, false);
+        setupWebSocketClientLocked(cfg, fingerprint);
+    }
+
+    private void setupWebSocketClientLocked(EasyBotConfig cfg, String fingerprint) {
         try {
             String wsUrl = cfg.wsServer() + "/api/v1/ws";
-            int wsRetries = cfg.wsMaxRetries();
-            long wsBaseMs = cfg.wsBaseRetryMs();
-            long wsMaxMs = cfg.wsMaxDelayMs();
-            int wsJitterPercent = cfg.wsJitterPercent();
-            long wsStableResetMs = cfg.wsStableResetMs();
-            boolean wsMessageLogEnabled = cfg.wsMessageLogEnabled();
-            long wsMessageLogThrottleMs = cfg.wsMessageLogThrottleMs();
-
             // EasyBot 使用 WebSocket PING/PONG 检测存活，无需应用层心跳
             String heartbeatPayload = "";
-
             String authApiKey = cfg.apiKey();
-            webSocketClient = wsFactory.create(
+            AtomicReference<WsClient> clientRef = new AtomicReference<>();
+            WebSocketEventListener listener = new WebSocketEventListener() {
+                private WsClient currentClient() {
+                    return clientRef.get();
+                }
+
+                private boolean isCurrent() {
+                    WsClient current = currentClient();
+                    return current != null && webSocketClient == current;
+                }
+
+                @Override
+                public void onOpen() {
+                    if (!isCurrent()) return;
+                    healthRegistry.setWsConnected(HEALTH_KEY, false);
+                    if (!authApiKey.isBlank()) {
+                        currentClient().send(GSON.toJson(Map.of("token", authApiKey)));
+                    }
+                }
+
+                @Override
+                public void onClose(int code, String reason, boolean remote) {
+                    if (isCurrent()) {
+                        healthRegistry.setWsConnected(HEALTH_KEY, false);
+                    }
+                }
+
+                @Override
+                public void onError(Exception ex) {
+                    if (!isCurrent()) return;
+                    healthRegistry.setWsConnected(HEALTH_KEY, false);
+                    healthRegistry.setLastError(HEALTH_KEY, ex.toString());
+                    throttledLogger.error("easybot-ws", "EasyBot WebSocket 异常: " + ex);
+                    if (ex.getMessage() != null && ex.getMessage().contains("WS reconnect exhausted")) {
+                        detachCurrentClient(currentClient());
+                    }
+                }
+            };
+            WsClient client = wsFactory.create(
                     logger,
                     wsUrl,
                     throttledLogger,
-                    Math.max(0, wsRetries),
-                    wsBaseMs <= 0 ? 5000 : wsBaseMs,
-                    wsMaxMs <= 0 ? 60000 : wsMaxMs,
-                    Math.max(0, wsJitterPercent),
-                    wsStableResetMs <= 0 ? 20000 : wsStableResetMs,
-                    wsMessageLogEnabled,
-                    wsMessageLogThrottleMs <= 0 ? 60000 : wsMessageLogThrottleMs,
+                    Math.max(0, cfg.wsMaxRetries()),
+                    cfg.wsBaseRetryMs() <= 0 ? 5000 : cfg.wsBaseRetryMs(),
+                    cfg.wsMaxDelayMs() <= 0 ? 60000 : cfg.wsMaxDelayMs(),
+                    Math.max(0, cfg.wsJitterPercent()),
+                    cfg.wsStableResetMs() <= 0 ? 20000 : cfg.wsStableResetMs(),
+                    cfg.wsMessageLogEnabled(),
+                    cfg.wsMessageLogThrottleMs() <= 0 ? 60000 : cfg.wsMessageLogThrottleMs(),
                     Collections.emptyMap(),
                     heartbeatPayload,
-                    new WebSocketEventListener() {
-                        @Override
-                        public void onOpen() {
-                            healthRegistry.setWsConnected(HEALTH_KEY, false);
-                            // EasyBot WS 认证：连接后立即发送 token 帧
-                            if (authApiKey != null && !authApiKey.isEmpty()) {
-                                String authFrame = new Gson().toJson(Map.of("token", authApiKey));
-                                webSocketClient.send(authFrame);
-                            }
+                    listener,
+                    message -> {
+                        WsClient current = clientRef.get();
+                        if (current != null && webSocketClient == current) {
+                            processInboundEvent(message);
                         }
-
-                        @Override
-                        public void onClose(int code, String reason, boolean remote) {
-                            healthRegistry.setWsConnected(HEALTH_KEY, false);
-                        }
-
-                        @Override
-                        public void onError(Exception ex) {
-                            healthRegistry.setWsConnected(HEALTH_KEY, false);
-                            healthRegistry.setLastError(HEALTH_KEY, ex.toString());
-                            throttledLogger.error("easybot-ws", "EasyBot WebSocket 异常: " + ex);
-                        }
-                    },
-                    this::processInboundEvent);
-
-            webSocketClient.connect();
+                    });
+            clientRef.set(client);
+            webSocketClient = client;
+            activeConnectionFingerprint = fingerprint;
+            client.connect();
         } catch (Exception e) {
             healthRegistry.setLastError(HEALTH_KEY, e.toString());
             logger.logger().info("EasyBot WS setup failed: " + e);
         }
     }
 
-    void shutdownWebSocketClient() {
-        if (webSocketClient == null) {
-            return;
-        }
-        webSocketClient.disconnect();
+    private void shutdownWebSocketClientLocked() {
+        WsClient current = webSocketClient;
         webSocketClient = null;
+        activeConnectionFingerprint = null;
+        if (current != null) {
+            try {
+                current.disconnect();
+            } catch (Exception e) {
+                throttledLogger.warning("easybot-ws-shutdown", "EasyBot WebSocket 关闭异常: " + e);
+            }
+        }
+    }
+
+    private void detachCurrentClient(WsClient client) {
+        synchronized (lifecycleLock) {
+            if (webSocketClient == client) {
+                webSocketClient = null;
+                activeConnectionFingerprint = null;
+            }
+        }
     }
 
     // ---- 入站消息处理 -------------------------------------------------------
@@ -351,15 +464,22 @@ public class OrzEasyBot implements BotMessageService {
      * <p>系统帧（auth_ok / auth_failed / lagged）在此直接处理，不会传递到业务层。
      */
     void processInboundEvent(String jsonString) {
-        if (jsonString == null || jsonString.isEmpty()) {
+        if (jsonString == null || jsonString.isEmpty() || jsonString.length() > MAX_INBOUND_PAYLOAD_CHARS) {
+            if (jsonString != null && jsonString.length() > MAX_INBOUND_PAYLOAD_CHARS) {
+                throttledLogger.warning("easybot-inbound-size", "EasyBot 入站消息超过大小限制，已丢弃");
+            }
             return;
         }
         try {
-            JsonObject root = JsonParser.parseString(jsonString).getAsJsonObject();
-            if (!root.has("type")) {
+            JsonElement parsed = JsonParser.parseString(jsonString);
+            if (!parsed.isJsonObject()) {
                 return;
             }
-            String type = root.get("type").getAsString();
+            JsonObject root = parsed.getAsJsonObject();
+            String type = stringValue(root, "type");
+            if (type == null) {
+                return;
+            }
 
             // ---- 系统帧处理 ----
             if ("auth_ok".equals(type)) {
@@ -370,14 +490,17 @@ public class OrzEasyBot implements BotMessageService {
             }
             if ("auth_failed".equals(type)) {
                 healthRegistry.setWsConnected(HEALTH_KEY, false);
-                String msg = root.has("message") ? root.get("message").getAsString() : "unknown";
+                String msg = stringValue(root, "message");
+                if (msg == null) msg = "unknown";
                 healthRegistry.setLastError(HEALTH_KEY, "WS auth failed: " + msg);
                 throttledLogger.error("easybot-ws-auth", "EasyBot WebSocket 认证失败: " + msg);
                 shutdownWebSocketClient();
                 return;
             }
             if ("lagged".equals(type)) {
-                int dropped = root.has("dropped") ? root.get("dropped").getAsInt() : 0;
+                int dropped = root.has("dropped") && root.get("dropped").isJsonPrimitive()
+                        ? root.get("dropped").getAsInt()
+                        : 0;
                 throttledLogger.warning("easybot-ws-lag", "EasyBot WS 事件丢失: " + dropped);
                 return;
             }
@@ -389,8 +512,15 @@ public class OrzEasyBot implements BotMessageService {
             if (!root.has("event")) {
                 return;
             }
-            String eventType = root.get("event").getAsString();
+            String eventType = stringValue(root, "event");
+            if (eventType == null) {
+                return;
+            }
             if (!"message.inbound".equals(eventType)) {
+                return;
+            }
+            if (!allowInboundEvent()) {
+                throttledLogger.warning("easybot-inbound-rate", "EasyBot 入站消息超过速率限制，已丢弃");
                 return;
             }
 
@@ -404,7 +534,14 @@ public class OrzEasyBot implements BotMessageService {
             if (!data.has("platform")) {
                 return;
             }
-            String platform = data.get("platform").getAsString().toLowerCase(java.util.Locale.ROOT);
+            String platformValue = stringValue(data, "platform");
+            if (platformValue == null) {
+                return;
+            }
+            String platform = platformValue.trim().toLowerCase(Locale.ROOT);
+            if (platform.isEmpty() || platform.length() > 64) {
+                return;
+            }
             EasyBotConfig cfg = loadConfig();
 
             // 跳过已禁用平台的消息
@@ -413,18 +550,19 @@ public class OrzEasyBot implements BotMessageService {
             }
 
             // text: 消息内容
-            String text = data.has("text") && !data.get("text").isJsonNull()
-                    ? data.get("text").getAsString().trim()
-                    : "";
-            if (text.isEmpty()) {
+            String textValue = stringValue(data, "text");
+            String text = textValue == null ? "" : textValue.trim();
+            if (text.isEmpty() || text.length() > MAX_INBOUND_TEXT_CHARS) {
+                if (text.length() > MAX_INBOUND_TEXT_CHARS) {
+                    throttledLogger.warning("easybot-inbound-text-size", "EasyBot 入站文本超过大小限制，已丢弃");
+                }
                 return;
             }
 
             // chat_id: 来源会话标识
-            String chatId = data.has("chat_id") && !data.get("chat_id").isJsonNull()
-                    ? data.get("chat_id").getAsString()
-                    : "";
-            if (chatId.isEmpty()) {
+            String chatIdValue = stringValue(data, "chat_id");
+            String chatId = chatIdValue == null ? "" : chatIdValue;
+            if (chatId.isEmpty() || chatId.length() > MAX_INBOUND_TARGET_CHARS) {
                 return;
             }
             String replyTarget = normalizeTarget(platform, chatId);
@@ -439,8 +577,8 @@ public class OrzEasyBot implements BotMessageService {
             boolean isAdmin = false;
             if (data.has("sender") && data.get("sender").isJsonObject()) {
                 JsonObject sender = data.getAsJsonObject("sender");
-                if (sender.has("role") && !sender.get("role").isJsonNull()) {
-                    String role = sender.get("role").getAsString();
+                String role = stringValue(sender, "role");
+                if (role != null) {
                     isAdmin = "Owner".equalsIgnoreCase(role) || "Admin".equalsIgnoreCase(role);
                 }
             }
@@ -480,17 +618,32 @@ public class OrzEasyBot implements BotMessageService {
 
     private boolean isInboundTargetAllowed(EasyBotConfig cfg, String platform, String target) {
         EasyBotConfig.PlatformEntry entry = cfg.platforms().get(platform);
-        if (entry == null || !entry.enabled()) {
-            return false;
-        }
-        if (target.equals(entry.adminGroup()) || target.equals(entry.playerGroup()) || target.equals(entry.adminDm())) {
-            return true;
-        }
-        return false;
+        return entry != null
+                && entry.enabled()
+                && (target.equals(entry.adminGroup())
+                        || target.equals(entry.playerGroup())
+                        || target.equals(entry.adminDm()));
     }
 
     private static String normalizeTarget(String platform, String chatId) {
+        chatId = chatId.trim();
         String prefix = platform + ":";
         return chatId.startsWith(prefix) ? chatId : prefix + chatId;
+    }
+
+    private boolean allowInboundEvent() {
+        long now = System.currentTimeMillis();
+        long windowStart = inboundWindowStart.get();
+        if (windowStart == 0L || now - windowStart >= 1000L) {
+            if (inboundWindowStart.compareAndSet(windowStart, now)) {
+                inboundWindowCount.set(0);
+            }
+        }
+        return inboundWindowCount.incrementAndGet() <= MAX_INBOUND_EVENTS_PER_SECOND;
+    }
+
+    private static String stringValue(JsonObject object, String key) {
+        JsonElement value = object.get(key);
+        return value != null && value.isJsonPrimitive() && !value.isJsonNull() ? value.getAsString() : null;
     }
 }

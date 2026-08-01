@@ -14,6 +14,7 @@ public final class HealthRegistry {
     public static final class Status {
         public boolean enabled;
         public boolean httpOk;
+        public boolean httpChecked;
         public boolean wsConnected;
         public boolean apiReady;
         public String lastError;
@@ -39,6 +40,17 @@ public final class HealthRegistry {
     public void setHttpOk(String service, boolean v) {
         Status s = get(service);
         s.httpOk = v;
+        s.httpChecked = true;
+        s.lastUpdated = System.currentTimeMillis();
+    }
+
+    public void setHttpChecked(String service, boolean v) {
+        Status s = get(service);
+        s.httpChecked = v;
+        if (!v) {
+            s.httpOk = false;
+            s.apiReady = false;
+        }
         s.lastUpdated = System.currentTimeMillis();
     }
 

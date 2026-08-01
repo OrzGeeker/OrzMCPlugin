@@ -103,7 +103,8 @@ fun executeGitCommand(vararg command: String): String {
 }
 
 fun latestCommitMessage(): String {
-    return executeGitCommand("log", "-1", "--pretty=%B")
+    return runCatching { executeGitCommand("log", "-1", "--pretty=%B") }
+        .getOrElse { "OrzMC ${project.version} build" }
 }
 
 val githubRunNumber: String? = System.getenv("GITHUB_RUN_NUMBER")

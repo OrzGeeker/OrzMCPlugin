@@ -53,8 +53,8 @@ OrzMC 的机器人功能统一通过外部 EasyBot IM 网关接入。
 
 旧版的 `bot.yml` 不再加载。升级前请将其中仍需保留的 `cmd_prompt_char`、
 `discord_server_link`、`qq_group_id` 和 `log_throttle_ms` 迁移到 `easybot.yml`，
-并在 EasyBot 后台完成各平台会话配置。NapCatQQ、Discord JDA 和飞书 Webhook
-直连参数可以删除。
+并在 EasyBot 后台完成各平台会话配置。旧版 NapCatQQ、Discord JDA 和飞书 Webhook
+直连参数不再需要，可以删除。
 
 ## 更新插件
 PaperMC服务端在插件目录下提供一个名称为`update/`的目录，把需要更新的插件jar文件放到这个目录下面。下次服务端重启时，插件会被自动移到`plugins/`目录下面，完成插件升级。

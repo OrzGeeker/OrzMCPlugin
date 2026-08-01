@@ -1,7 +1,8 @@
 package com.jokerhub.paper.plugin.orzmc.infra.config.configs;
 
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import org.bukkit.configuration.ConfigurationSection;
 
@@ -27,12 +28,39 @@ public record EasyBotConfig(
         boolean wsMessageLogEnabled,
         long wsMessageLogThrottleMs) {
 
+    public EasyBotConfig {
+        apiServer = normalizeBaseUrl(apiServer);
+        wsServer = normalizeBaseUrl(wsServer);
+        apiKey = clean(apiKey);
+        parseMode = clean(parseMode).toLowerCase(Locale.ROOT);
+        platforms = immutablePlatforms(platforms);
+    }
+
     /**
      * 是否有至少一个平台已启用。
      * 替换了旧的全局 {@code enable_ez_bot} 开关，自动检测平台配置。
      */
     public boolean enabled() {
         return platforms.values().stream().anyMatch(PlatformEntry::enabled);
+    }
+
+    /** Values that require a new WebSocket client when changed by config reload. */
+    public String connectionFingerprint() {
+        return String.join(
+                "|",
+                apiServer,
+                wsServer,
+                apiKey,
+                String.valueOf(httpConnectTimeoutSec),
+                String.valueOf(httpRequestTimeoutSec),
+                String.valueOf(httpMaxRetries),
+                String.valueOf(wsMaxRetries),
+                String.valueOf(wsBaseRetryMs),
+                String.valueOf(wsMaxDelayMs),
+                String.valueOf(wsJitterPercent),
+                String.valueOf(wsStableResetMs),
+                String.valueOf(wsMessageLogEnabled),
+                String.valueOf(wsMessageLogThrottleMs));
     }
 
     /**
@@ -44,6 +72,12 @@ public record EasyBotConfig(
      * @param adminDm     管理员私聊 target（如 "qq:YOUR_USER_ID"）
      */
     public record PlatformEntry(boolean enabled, String adminGroup, String playerGroup, String adminDm) {
+
+        public PlatformEntry {
+            adminGroup = clean(adminGroup);
+            playerGroup = clean(playerGroup);
+            adminDm = clean(adminDm);
+        }
 
         public static PlatformEntry from(ConfigurationSection sec) {
             if (sec == null) {
@@ -73,9 +107,12 @@ public record EasyBotConfig(
         Map<String, PlatformEntry> platforms = Collections.emptyMap();
         ConfigurationSection platformsSec = cfg.getConfigurationSection("platforms");
         if (platformsSec != null) {
-            platforms = new HashMap<>();
+            platforms = new LinkedHashMap<>();
             for (String key : platformsSec.getKeys(false)) {
-                platforms.put(key, PlatformEntry.from(platformsSec.getConfigurationSection(key)));
+                String normalizedKey = clean(key).toLowerCase(Locale.ROOT);
+                if (!normalizedKey.isEmpty()) {
+                    platforms.put(normalizedKey, PlatformEntry.from(platformsSec.getConfigurationSection(key)));
+                }
             }
         }
 
@@ -95,5 +132,31 @@ public record EasyBotConfig(
                 cfg.getLong("ws_stable_reset_ms", 20000),
                 cfg.getBoolean("ws_message_log_enabled", false),
                 cfg.getLong("ws_message_log_throttle_ms", 60000));
+    }
+
+    private static Map<String, PlatformEntry> immutablePlatforms(Map<String, PlatformEntry> values) {
+        if (values == null || values.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<String, PlatformEntry> copy = new LinkedHashMap<>();
+        values.forEach((key, value) -> {
+            String normalizedKey = clean(key).toLowerCase(Locale.ROOT);
+            if (!normalizedKey.isEmpty()) {
+                copy.put(normalizedKey, value == null ? new PlatformEntry(false, "", "", "") : value);
+            }
+        });
+        return Collections.unmodifiableMap(copy);
+    }
+
+    private static String clean(String value) {
+        return value == null ? "" : value.trim();
+    }
+
+    private static String normalizeBaseUrl(String value) {
+        String normalized = clean(value);
+        while (normalized.endsWith("/") && normalized.length() > 1) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+        return normalized;
     }
 }

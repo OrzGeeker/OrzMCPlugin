@@ -366,7 +366,7 @@ tasks.register<ProguardTask>("obfuscate") {
 ```
 海外插件            你的 OrzMC
 ❌ 不支持 QQ        ✅ QQ 机器人集成
-❌ 不支持飞书      ✅ 飞书 Webhook
+❌ 不支持飞书      ✅ 飞书（通过 EasyBot 网关）
 ❌ 全英文          ✅ 中文开发/文档
 ❌ 无中国技术支持  ✅ 中文开发者
 ❌ 海外支付（贵）  ✅ 支付宝/微信

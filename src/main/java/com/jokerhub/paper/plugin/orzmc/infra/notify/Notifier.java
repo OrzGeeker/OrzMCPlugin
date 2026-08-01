@@ -3,6 +3,7 @@ package com.jokerhub.paper.plugin.orzmc.infra.notify;
 import com.jokerhub.paper.plugin.orzmc.core.bot.MessageEnvelope;
 import com.jokerhub.paper.plugin.orzmc.core.ports.server.ServerAccess;
 import com.jokerhub.paper.plugin.orzmc.infra.bot.BotMessageService;
+import com.jokerhub.paper.plugin.orzmc.infra.config.TemplateKeys;
 import net.kyori.adventure.text.Component;
 
 public final class Notifier {
@@ -41,15 +42,15 @@ public final class Notifier {
     }
 
     public void routeEvent(String key, MessageEnvelope envelope) {
-        if (envelope == null) {
+        if (key == null || envelope == null) {
             return;
         }
         MessageEnvelope.TargetType target =
                 switch (key) {
-                    case "exception_alert",
-                            "maintenance_backup_error",
-                            "maintenance_optimize_error",
-                            "server_maintenance_hint" -> MessageEnvelope.TargetType.PRIVATE;
+                    case TemplateKeys.EXCEPTION_ALERT,
+                            TemplateKeys.MAINTENANCE_BACKUP_ERROR,
+                            TemplateKeys.MAINTENANCE_OPTIMIZE_ERROR,
+                            TemplateKeys.SERVER_MAINTENANCE_HINT -> MessageEnvelope.TargetType.PRIVATE;
                     default -> MessageEnvelope.TargetType.PUBLIC;
                 };
         botMessageService.send(envelope.withTargetType(target));

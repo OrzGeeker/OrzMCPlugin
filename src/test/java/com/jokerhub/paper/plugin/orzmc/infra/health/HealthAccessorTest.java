@@ -23,6 +23,7 @@ class HealthAccessorTest {
         HealthRegistry.Status status = new HealthRegistry.Status();
         status.enabled = true;
         status.httpOk = true;
+        status.httpChecked = true;
         status.wsConnected = false;
         status.apiReady = true;
         status.lastError = "test error";
@@ -34,6 +35,7 @@ class HealthAccessorTest {
 
         assertTrue(entry.enabled());
         assertTrue(entry.httpOk());
+        assertTrue(entry.httpChecked());
         assertFalse(entry.wsConnected());
         assertTrue(entry.apiReady());
         assertEquals("test error", entry.lastError());
@@ -67,6 +69,7 @@ class HealthAccessorTest {
         HealthStatus.Entry entry = accessor.get("fresh");
         assertFalse(entry.enabled());
         assertFalse(entry.httpOk());
+        assertFalse(entry.httpChecked());
         assertFalse(entry.wsConnected());
         assertFalse(entry.apiReady());
         assertNull(entry.lastError());

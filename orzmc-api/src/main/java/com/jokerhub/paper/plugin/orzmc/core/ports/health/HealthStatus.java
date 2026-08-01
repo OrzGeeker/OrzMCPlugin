@@ -12,6 +12,7 @@ public interface HealthStatus {
      *
      * @param enabled     服务是否启用
      * @param httpOk      HTTP 连接是否正常
+     * @param httpChecked 是否至少完成过一次 HTTP 请求
      * @param wsConnected WebSocket 是否已连接
      * @param apiReady    API 是否就绪
      * @param lastError   最近一次错误信息（无错误时为空字符串）
@@ -20,10 +21,23 @@ public interface HealthStatus {
     record Entry(
             boolean enabled,
             boolean httpOk,
+            boolean httpChecked,
             boolean wsConnected,
             boolean apiReady,
             String lastError,
-            long lastUpdated) {}
+            long lastUpdated) {
+
+        /** Compatibility constructor for callers that do not track whether HTTP was attempted. */
+        public Entry(
+                boolean enabled,
+                boolean httpOk,
+                boolean wsConnected,
+                boolean apiReady,
+                String lastError,
+                long lastUpdated) {
+            this(enabled, httpOk, httpOk, wsConnected, apiReady, lastError, lastUpdated);
+        }
+    }
 
     /**
      * 查询指定服务的健康状态。

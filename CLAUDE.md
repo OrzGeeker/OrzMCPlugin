@@ -87,4 +87,4 @@ Tag 使用严格 SemVer，**不加 `v` 前缀**。本地构建产物为 `{versio
 - **无 DI 框架**：通过显式组合根进行构造器注入
 - **类型化配置**：所有 YAML 访问通过 `configs/` 子包中的记录类（如 `WhitelistConfig`, `TntConfig`），附带健康检查
 - **异步安全**：`SafeScheduler` 包装 Bukkit 调度器，统一异常日志
-- **健康注册表**：`HealthStatus` 接口在 orzmc-api 中，`HealthAccessor` 适配器桥接静态 `HealthRegistry`
+- **健康注册表**：`HealthStatus` 接口在 orzmc-api 中，`HealthAccessor` 适配器桥接实例化的 `HealthRegistry`

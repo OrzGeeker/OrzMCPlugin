@@ -26,14 +26,27 @@ public final class AsyncHttp {
 
     private static CompletableFuture<HttpResponse<String>> sendWithRetry(
             HttpClient c, HttpRequest request, int retries) {
-        return sendWithRetry(c, request, Math.max(0, retries), 0);
+        int normalizedRetries = Math.max(0, retries);
+        long requestTimeoutMs =
+                request.timeout().orElse(DEFAULT_REQUEST_TIMEOUT).toMillis();
+        long backoffBudget = 0L;
+        for (int i = 0; i < normalizedRetries; i++) {
+            backoffBudget = saturatingAdd(backoffBudget, BASE_BACKOFF_MS * (1L << Math.min(i, 10)));
+        }
+        long requestBudget = saturatingMultiply(requestTimeoutMs, normalizedRetries + 1L);
+        long totalBudget = saturatingAdd(requestBudget, backoffBudget);
+        return sendWithRetry(c, request, normalizedRetries, 0)
+                .orTimeout(Math.max(1L, totalBudget), TimeUnit.MILLISECONDS);
     }
 
     private static CompletableFuture<HttpResponse<String>> sendWithRetry(
             HttpClient c, HttpRequest request, int retriesRemaining, int attempt) {
         return c.sendAsync(request, HttpResponse.BodyHandlers.ofString())
                 .handle((resp, ex) -> {
-                    boolean retryableStatus = resp != null && (resp.statusCode() == 429 || resp.statusCode() >= 500);
+                    boolean retryableStatus = resp != null
+                            && (resp.statusCode() == 408
+                                    || resp.statusCode() == 429
+                                    || (resp.statusCode() >= 500 && resp.statusCode() <= 599));
                     if (ex == null && !retryableStatus) {
                         return CompletableFuture.completedFuture(resp);
                     }
@@ -42,7 +55,7 @@ public final class AsyncHttp {
                                 ? CompletableFuture.completedFuture(resp)
                                 : CompletableFuture.<HttpResponse<String>>failedFuture(ex);
                     }
-                    long delay = BASE_BACKOFF_MS * (1L << Math.min(attempt, 10));
+                    long delay = retryAfterMillis(resp).orElse(BASE_BACKOFF_MS * (1L << Math.min(attempt, 10)));
                     java.util.concurrent.Executor delayed =
                             CompletableFuture.delayedExecutor(delay, TimeUnit.MILLISECONDS);
                     return CompletableFuture.supplyAsync(() -> null, delayed)
@@ -60,7 +73,8 @@ public final class AsyncHttp {
         HttpClient c = client(connectTimeout);
         HttpRequest.Builder b = HttpRequest.newBuilder()
                 .uri(URI.create(url))
-                .timeout(requestTimeout == null ? DEFAULT_REQUEST_TIMEOUT : requestTimeout);
+                .timeout(requestTimeout == null ? DEFAULT_REQUEST_TIMEOUT : requestTimeout)
+                .header("User-Agent", "OrzMC-EasyBot/1");
         if (headers != null) headers.forEach(b::setHeader);
         HttpRequest req = b.GET().build();
         return sendWithRetry(c, req, maxRetries == null ? DEFAULT_MAX_RETRIES : maxRetries);
@@ -77,10 +91,37 @@ public final class AsyncHttp {
         HttpRequest.Builder b = HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .timeout(requestTimeout == null ? DEFAULT_REQUEST_TIMEOUT : requestTimeout)
-                .header("Content-Type", "application/json");
+                .header("Content-Type", "application/json")
+                .header("User-Agent", "OrzMC-EasyBot/1");
         if (headers != null) headers.forEach(b::setHeader);
         HttpRequest req = b.POST(HttpRequest.BodyPublishers.ofString(json == null ? "" : json))
                 .build();
         return sendWithRetry(c, req, maxRetries == null ? DEFAULT_MAX_RETRIES : maxRetries);
+    }
+
+    private static java.util.Optional<Long> retryAfterMillis(HttpResponse<String> response) {
+        if (response == null || response.statusCode() != 429) {
+            return java.util.Optional.empty();
+        }
+        return response.headers().firstValue("Retry-After").flatMap(value -> {
+            try {
+                long seconds = Long.parseLong(value.trim());
+                if (seconds < 0) return java.util.Optional.empty();
+                return java.util.Optional.of(seconds >= 60 ? 60_000L : seconds * 1000L);
+            } catch (NumberFormatException ignored) {
+                return java.util.Optional.empty();
+            }
+        });
+    }
+
+    private static long saturatingAdd(long left, long right) {
+        if (right > 0 && left > Long.MAX_VALUE - right) return Long.MAX_VALUE;
+        return left + right;
+    }
+
+    private static long saturatingMultiply(long left, long right) {
+        if (left <= 0 || right <= 0) return 0L;
+        if (left > Long.MAX_VALUE / right) return Long.MAX_VALUE;
+        return left * right;
     }
 }

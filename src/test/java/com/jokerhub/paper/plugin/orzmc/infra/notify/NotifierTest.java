@@ -56,6 +56,12 @@ class NotifierTest extends ServiceTestBase {
     }
 
     @Test
+    void routeEvent_nullKey_doesNothing() {
+        notifier.routeEvent(null, MessageEnvelope.publicMessage("ignored"));
+        verifyNoInteractions(botMessageService);
+    }
+
+    @Test
     void routeEvent_publicEventsUsePublicTarget() {
         MessageEnvelope env = MessageEnvelope.publicMessage("test");
         notifier.routeEvent("tnt_alert", env);

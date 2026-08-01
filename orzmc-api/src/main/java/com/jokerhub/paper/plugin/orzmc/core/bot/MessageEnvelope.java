@@ -3,7 +3,7 @@ package com.jokerhub.paper.plugin.orzmc.core.bot;
 /**
  * 消息信封，封装机器人消息的目标类型、内容及格式。
  *
- * <p>业务层通过此记录决定将消息发送到哪个目标（公开 / 私聊 / 频道），并以何种格式展示。</p>
+ * <p>业务层通过此记录决定将消息发送到公开目标或管理员私聊目标，并以何种格式展示。</p>
  *
  * @param targetType  目标类型
  * @param message     消息内容
@@ -15,7 +15,7 @@ public record MessageEnvelope(TargetType targetType, String message, Format form
      * 消息目标类型。
      */
     public enum TargetType {
-        /** 公开回复（在发送消息的同一频道/群聊中回复）。 */
+        /** 公开回复（发送到配置的 PUBLIC 会话）。 */
         PUBLIC,
         /** 私聊回复。 */
         PRIVATE,

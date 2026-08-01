@@ -66,7 +66,7 @@ WebSocket 向插件推送入站消息，插件通过 HTTP API 发送回复和服
 ### 2.4 Bot 健康状态
 
 - 游戏内 `/bot` 命令查看 EasyBot 连接状态
-- 字段：enabled、httpOk、wsConnected、lastError
+- 字段：enabled、httpOk/httpChecked、wsConnected、apiReady、lastError
 - 执行命令时自动尝试重连 WebSocket
 
 ### 2.5 EasyBot 网关配置指南

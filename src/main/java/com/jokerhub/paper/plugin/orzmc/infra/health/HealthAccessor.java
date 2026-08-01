@@ -18,6 +18,6 @@ public final class HealthAccessor implements HealthStatus {
     @Override
     public Entry get(String service) {
         HealthRegistry.Status s = healthRegistry.getRaw(service);
-        return new Entry(s.enabled, s.httpOk, s.wsConnected, s.apiReady, s.lastError, s.lastUpdated);
+        return new Entry(s.enabled, s.httpOk, s.httpChecked, s.wsConnected, s.apiReady, s.lastError, s.lastUpdated);
     }
 }

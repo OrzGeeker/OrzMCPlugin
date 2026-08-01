@@ -64,8 +64,8 @@ PlatformModule
 - **logging/** — 日志限流
     - ThrottledLogger
 - **health/** — 健康状态注册与查询
-    - HealthRegistry（Status: enabled/httpOk/wsConnected/apiReady/lastError/lastUpdated）
-    - HealthAccessor（桥接静态 HealthRegistry 与 HealthStatus 接口）
+    - HealthRegistry（Status: enabled/httpOk/httpChecked/wsConnected/apiReady/lastError/lastUpdated）
+    - HealthAccessor（桥接实例化 HealthRegistry 与 HealthStatus 接口）
 - **styles/** — 统一文本样式与颜色
     - OrzTextStyles（读取 templates.yml → styles 段，兼容旧 styles.yml）
 - **server/** — 服务端交互
@@ -277,9 +277,9 @@ log_throttle_ms: 5000
 platforms:
   qq:
     enabled: false
-    admin_group: 'qq:YOUR_GROUP_ID'
+    admin_group: 'qq:conv_xxxxxxxx'
     player_group: ''
-    admin_dm: 'qq:YOUR_USER_ID'
+    admin_dm: 'qq:conv_yyyyyyyy'
 ```
 
 - 支持多平台：QQ / Discord / Telegram / 飞书 / 微信

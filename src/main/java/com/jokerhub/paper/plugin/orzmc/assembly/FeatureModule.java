@@ -122,7 +122,8 @@ public final class FeatureModule implements ServiceModule {
                 new ServerLifecycleService(platform.serverFacade(), platform.configs(), botModule.notifier());
         this.menuCommandService = new MenuCommandService(platform.textStyles());
         this.portalCommandService = new PortalCommandService(portalModule.portalService(), platform.textStyles());
-        this.orzConfigCommand = new OrzConfigCommand(platform.configService(), platform.textStyles());
+        this.orzConfigCommand = new OrzConfigCommand(
+                platform.configService(), platform.textStyles(), botModule.botMessageService()::reloadConfig);
 
         // 保留模块引用（供事件/命令注册使用）
         this.platform = platform;
