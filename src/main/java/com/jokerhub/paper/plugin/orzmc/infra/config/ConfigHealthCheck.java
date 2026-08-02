@@ -210,13 +210,6 @@ public final class ConfigHealthCheck {
         }
         validateUri(apiServer, "http", "https", "easybot.api_server", issues);
         validateUri(wsServer, "ws", "wss", "easybot.ws_server", issues);
-        String parseMode = cfg.getString("parse_mode", "none");
-        if (!("none".equalsIgnoreCase(parseMode)
-                || "markdown".equalsIgnoreCase(parseMode)
-                || "html".equalsIgnoreCase(parseMode))) {
-            issues.add("非法: easybot.parse_mode 取值 none/markdown/html");
-        }
-
         // Validate HTTP timeouts
         int httpConn = cfg.getInt("http_connect_timeout_seconds", 3);
         int httpReq = cfg.getInt("http_request_timeout_seconds", 3);

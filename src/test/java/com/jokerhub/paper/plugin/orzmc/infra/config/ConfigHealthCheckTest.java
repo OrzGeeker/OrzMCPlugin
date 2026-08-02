@@ -749,7 +749,6 @@ class ConfigHealthCheckTest {
         addMinimalValidConfig_templates();
         easybot.set("api_server", "ftp://localhost");
         easybot.set("ws_server", "http://localhost");
-        easybot.set("parse_mode", "bbcode");
         easybot.set("platforms.qq.enabled", true);
         easybot.set("platforms.qq.admin_group", "discord:123");
         easybot.set("platforms.qq.player_group", "123");
@@ -760,7 +759,6 @@ class ConfigHealthCheckTest {
 
         assertTrue(issues.contains("格式: easybot.api_server 需为有效的 http/https URL"));
         assertTrue(issues.contains("格式: easybot.ws_server 需为有效的 ws/wss URL"));
-        assertTrue(issues.contains("非法: easybot.parse_mode 取值 none/markdown/html"));
         assertTrue(issues.contains("格式: easybot.platforms.qq.admin_group 平台前缀应为 'qq:'"));
         assertTrue(issues.contains("格式: easybot.platforms.qq.player_group 需为 'qq:chatId' 格式"));
         assertTrue(issues.contains("格式: easybot.platforms.qq.admin_dm 需为 'qq:chatId' 格式"));

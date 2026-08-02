@@ -15,7 +15,6 @@ public record EasyBotConfig(
         String apiServer,
         String wsServer,
         String apiKey,
-        String parseMode,
         Map<String, PlatformEntry> platforms,
         int httpConnectTimeoutSec,
         int httpRequestTimeoutSec,
@@ -32,7 +31,6 @@ public record EasyBotConfig(
         apiServer = normalizeBaseUrl(apiServer);
         wsServer = normalizeBaseUrl(wsServer);
         apiKey = clean(apiKey);
-        parseMode = clean(parseMode).toLowerCase(Locale.ROOT);
         platforms = immutablePlatforms(platforms);
     }
 
@@ -100,7 +98,7 @@ public record EasyBotConfig(
     public static EasyBotConfig from(ConfigurationSection cfg) {
         if (cfg == null) {
             return new EasyBotConfig(
-                    "", "", "", "markdown", Collections.emptyMap(), 3, 3, 3, 10, 5000, 60000, 10, 20000, false, 60000);
+                    "", "", "", Collections.emptyMap(), 3, 3, 3, 10, 5000, 60000, 10, 20000, false, 60000);
         }
 
         // 解析 platforms 段
@@ -120,7 +118,6 @@ public record EasyBotConfig(
                 cfg.getString("api_server", "http://127.0.0.1:8080"),
                 cfg.getString("ws_server", "ws://127.0.0.1:8080"),
                 cfg.getString("api_key", ""),
-                cfg.getString("parse_mode", "markdown"),
                 platforms,
                 cfg.getInt("http_connect_timeout_seconds", 3),
                 cfg.getInt("http_request_timeout_seconds", 3),

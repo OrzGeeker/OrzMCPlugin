@@ -139,7 +139,7 @@ class OrzEasyBotTest {
         HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
         List<String> bodies = new ArrayList<>();
         CountDownLatch requests = new CountDownLatch(2);
-        server.createContext("/api/v1/messages/send", exchange -> {
+        server.createContext("/api/v1/messages/batch-send", exchange -> {
             try (InputStream input = exchange.getRequestBody()) {
                 bodies.add(new String(input.readAllBytes(), StandardCharsets.UTF_8));
             }
@@ -169,8 +169,14 @@ class OrzEasyBotTest {
             outboundBot.send(MessageEnvelope.privateMessage("private"));
 
             assertTrue(requests.await(5, TimeUnit.SECONDS));
-            assertTrue(bodies.stream().anyMatch(body -> body.contains("qq:player-chat") && body.contains("public")));
-            assertTrue(bodies.stream().anyMatch(body -> body.contains("qq:admin-dm") && body.contains("private")));
+            assertTrue(
+                    bodies.stream().anyMatch(body -> body.contains("\"targets\"")
+                            && body.contains("qq:player-chat")
+                            && body.contains("public")));
+            assertTrue(
+                    bodies.stream().anyMatch(body -> body.contains("\"targets\"")
+                            && body.contains("qq:admin-dm")
+                            && body.contains("private")));
             for (int i = 0; i < 50 && !health.getRaw("easybot").httpChecked; i++) {
                 Thread.sleep(20);
             }

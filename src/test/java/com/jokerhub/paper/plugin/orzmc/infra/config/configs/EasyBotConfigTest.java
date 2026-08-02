@@ -35,7 +35,6 @@ class EasyBotConfigTest {
         config.set("api_server", " http://gateway/ ");
         config.set("ws_server", " ws://gateway/ ");
         config.set("api_key", " secret ");
-        config.set("parse_mode", " HTML ");
         config.set("platforms.QQ.enabled", true);
         config.set("platforms.QQ.player_group", " qq:players ");
 
@@ -44,7 +43,6 @@ class EasyBotConfigTest {
         assertEquals("http://gateway", easyBot.apiServer());
         assertEquals("ws://gateway", easyBot.wsServer());
         assertEquals("secret", easyBot.apiKey());
-        assertEquals("html", easyBot.parseMode());
         assertTrue(easyBot.platforms().get("qq").enabled());
         assertEquals("qq:players", easyBot.platforms().get("qq").playerGroup());
         assertThrows(
@@ -57,7 +55,6 @@ class EasyBotConfigTest {
                 "http://gateway/",
                 "ws://gateway/",
                 "secret",
-                "markdown",
                 Map.of(),
                 3,
                 3,
@@ -73,7 +70,6 @@ class EasyBotConfigTest {
                 "http://gateway",
                 "ws://gateway",
                 "secret",
-                "markdown",
                 Map.of(),
                 3,
                 3,
@@ -89,7 +85,6 @@ class EasyBotConfigTest {
                 "http://gateway",
                 "ws://gateway",
                 "new-secret",
-                "markdown",
                 Map.of(),
                 3,
                 3,

@@ -16,12 +16,15 @@ import com.jokerhub.paper.plugin.orzmc.infra.ws.DefaultWebSocketClientFactory;
 import com.jokerhub.paper.plugin.orzmc.infra.ws.WebSocketClientFactory;
 import com.jokerhub.paper.plugin.orzmc.infra.ws.WebSocketEventListener;
 import com.jokerhub.paper.plugin.orzmc.infra.ws.WsClient;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -183,26 +186,34 @@ public class OrzEasyBot implements BotMessageService {
     // ---- 出站路由 ----------------------------------------------------------
 
     private void sendPublic(EasyBotConfig cfg, List<String> parts) {
+        List<String> targets = new ArrayList<>();
         for (var entry : cfg.platforms().entrySet()) {
             if (!entry.getValue().enabled()) {
                 continue;
             }
             String target = resolvePublicTarget(entry.getValue());
             if (target != null && !target.isEmpty()) {
-                sendParts(cfg, target, parts);
+                targets.add(target);
             }
+        }
+        if (!targets.isEmpty()) {
+            sendBatch(cfg, targets, parts);
         }
     }
 
     private void sendPrivate(EasyBotConfig cfg, List<String> parts) {
+        List<String> targets = new ArrayList<>();
         for (var entry : cfg.platforms().entrySet()) {
             if (!entry.getValue().enabled()) {
                 continue;
             }
             String target = entry.getValue().adminDm();
             if (target != null && !target.isEmpty()) {
-                sendParts(cfg, target, parts);
+                targets.add(target);
             }
+        }
+        if (!targets.isEmpty()) {
+            sendBatch(cfg, targets, parts);
         }
     }
 
@@ -220,12 +231,6 @@ public class OrzEasyBot implements BotMessageService {
 
     // ---- HTTP 发送 ---------------------------------------------------------
 
-    private void sendParts(EasyBotConfig cfg, String target, List<String> parts) {
-        for (String part : parts) {
-            sendToTarget(cfg, target, part);
-        }
-    }
-
     private void sendToTarget(EasyBotConfig cfg, String target, String message) {
         if (!httpPermits.tryAcquire()) {
             String error = "HTTP send queue is full";
@@ -241,13 +246,13 @@ public class OrzEasyBot implements BotMessageService {
             Map<String, Object> body = new HashMap<>();
             body.put("target", target);
             body.put("text", message);
-            body.put("parse_mode", cfg.parseMode());
             String json = GSON.toJson(body);
 
             Map<String, String> headers = new HashMap<>();
             if (cfg.apiKey() != null && !cfg.apiKey().isEmpty()) {
                 headers.put("Authorization", "Bearer " + cfg.apiKey());
             }
+            headers.put("Idempotency-Key", idempotencyKey(target + "|" + message));
 
             AsyncHttp.postJson(
                             url,
@@ -276,6 +281,77 @@ public class OrzEasyBot implements BotMessageService {
             completeHttpRequest(e.toString());
             logger.logger().info("EasyBot sendToTarget error: " + e);
         }
+    }
+
+    /**
+     * 批量发送同一消息到多个 target，单次 HTTP 请求完成多平台广播。
+     *
+     * <p>使用 EasyBot {@code POST /api/v1/messages/batch-send} 端点（最多 100 个 target）。
+     */
+    private void sendBatch(EasyBotConfig cfg, List<String> targets, List<String> parts) {
+        for (String part : parts) {
+            if (!httpPermits.tryAcquire()) {
+                String error = "HTTP send queue is full";
+                throttledLogger.warning(
+                        "easybot-http-backpressure", "EasyBot 批量发送队列已满，丢弃消息: targets=" + targets.size());
+                healthRegistry.setHttpOk(HEALTH_KEY, false);
+                healthRegistry.setApiReady(HEALTH_KEY, false);
+                healthRegistry.setLastError(HEALTH_KEY, error);
+                return;
+            }
+            beginHttpRequest();
+            try {
+                String url = cfg.apiServer() + "/api/v1/messages/batch-send";
+                Map<String, Object> body = new HashMap<>();
+                body.put("targets", targets);
+                body.put("text", part);
+                String json = GSON.toJson(body);
+
+                Map<String, String> headers = new HashMap<>();
+                if (cfg.apiKey() != null && !cfg.apiKey().isEmpty()) {
+                    headers.put("Authorization", "Bearer " + cfg.apiKey());
+                }
+                headers.put("Idempotency-Key", idempotencyKey(String.join(",", targets) + "|" + part));
+
+                AsyncHttp.postJson(
+                                url,
+                                json,
+                                headers,
+                                Duration.ofSeconds(
+                                        cfg.httpConnectTimeoutSec() <= 0 ? 3 : cfg.httpConnectTimeoutSec()),
+                                Duration.ofSeconds(
+                                        cfg.httpRequestTimeoutSec() <= 0 ? 3 : cfg.httpRequestTimeoutSec()),
+                                Math.max(0, cfg.httpMaxRetries()))
+                        .thenAccept(response -> {
+                            if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                                completeHttpRequest(null);
+                            } else {
+                                String error =
+                                        "HTTP " + response.statusCode() + ": " + limitError(response.body());
+                                throttledLogger.error(
+                                        "easybot-http",
+                                        "EasyBot 批量发送失败, targets="
+                                                + targets.size() + ", status=" + response.statusCode());
+                                completeHttpRequest(error);
+                            }
+                        })
+                        .exceptionally(e -> {
+                            throttledLogger.error("easybot-http", "EasyBot 批量发送异常: " + e);
+                            completeHttpRequest(e.toString());
+                            return null;
+                        });
+            } catch (Exception e) {
+                completeHttpRequest(e.toString());
+                logger.logger().info("EasyBot sendBatch error: " + e);
+            }
+        }
+    }
+
+    /** 生成幂等键，基于种子内容的 SHA-256 哈希前缀，确保重试不重复投递。 */
+    private static String idempotencyKey(String seed) {
+        long nanos = System.nanoTime();
+        String raw = seed + "|" + nanos;
+        return UUID.nameUUIDFromBytes(raw.getBytes(StandardCharsets.UTF_8)).toString();
     }
 
     private void beginHttpRequest() {
@@ -502,6 +578,13 @@ public class OrzEasyBot implements BotMessageService {
                         ? root.get("dropped").getAsInt()
                         : 0;
                 throttledLogger.warning("easybot-ws-lag", "EasyBot WS 事件丢失: " + dropped);
+                return;
+            }
+            if ("ping".equals(type)) {
+                WsClient current = webSocketClient;
+                if (current != null) {
+                    current.send("{\"type\":\"pong\"}");
+                }
                 return;
             }
 
