@@ -317,21 +317,18 @@ public class OrzEasyBot implements BotMessageService {
                                 url,
                                 json,
                                 headers,
-                                Duration.ofSeconds(
-                                        cfg.httpConnectTimeoutSec() <= 0 ? 3 : cfg.httpConnectTimeoutSec()),
-                                Duration.ofSeconds(
-                                        cfg.httpRequestTimeoutSec() <= 0 ? 3 : cfg.httpRequestTimeoutSec()),
+                                Duration.ofSeconds(cfg.httpConnectTimeoutSec() <= 0 ? 3 : cfg.httpConnectTimeoutSec()),
+                                Duration.ofSeconds(cfg.httpRequestTimeoutSec() <= 0 ? 3 : cfg.httpRequestTimeoutSec()),
                                 Math.max(0, cfg.httpMaxRetries()))
                         .thenAccept(response -> {
                             if (response.statusCode() >= 200 && response.statusCode() < 300) {
                                 completeHttpRequest(null);
                             } else {
-                                String error =
-                                        "HTTP " + response.statusCode() + ": " + limitError(response.body());
+                                String error = "HTTP " + response.statusCode() + ": " + limitError(response.body());
                                 throttledLogger.error(
                                         "easybot-http",
-                                        "EasyBot 批量发送失败, targets="
-                                                + targets.size() + ", status=" + response.statusCode());
+                                        "EasyBot 批量发送失败, targets=" + targets.size() + ", status="
+                                                + response.statusCode());
                                 completeHttpRequest(error);
                             }
                         })

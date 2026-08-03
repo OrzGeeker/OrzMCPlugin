@@ -169,14 +169,13 @@ class OrzEasyBotTest {
             outboundBot.send(MessageEnvelope.privateMessage("private"));
 
             assertTrue(requests.await(5, TimeUnit.SECONDS));
-            assertTrue(
-                    bodies.stream().anyMatch(body -> body.contains("\"targets\"")
+            assertTrue(bodies.stream()
+                    .anyMatch(body -> body.contains("\"targets\"")
                             && body.contains("qq:player-chat")
                             && body.contains("public")));
-            assertTrue(
-                    bodies.stream().anyMatch(body -> body.contains("\"targets\"")
-                            && body.contains("qq:admin-dm")
-                            && body.contains("private")));
+            assertTrue(bodies.stream()
+                    .anyMatch(body ->
+                            body.contains("\"targets\"") && body.contains("qq:admin-dm") && body.contains("private")));
             for (int i = 0; i < 50 && !health.getRaw("easybot").httpChecked; i++) {
                 Thread.sleep(20);
             }
