@@ -49,6 +49,9 @@ jobs:
       - name: integration tests
         run: ./gradlew integrationTest --stacktrace
 
+      - name: coverage verification
+        run: ./gradlew jacocoTestReport jacocoTestCoverageVerification --stacktrace
+
       - name: build shadowJar
         run: ./gradlew shadowJar --stacktrace
 
