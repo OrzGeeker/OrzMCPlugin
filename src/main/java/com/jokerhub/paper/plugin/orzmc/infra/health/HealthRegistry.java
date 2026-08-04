@@ -1,5 +1,6 @@
 package com.jokerhub.paper.plugin.orzmc.infra.health;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -12,13 +13,16 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class HealthRegistry {
 
     public static final class Status {
-        public boolean enabled;
-        public boolean httpOk;
-        public boolean httpChecked;
-        public boolean wsConnected;
-        public boolean apiReady;
-        public String lastError;
-        public long lastUpdated;
+        public volatile boolean enabled;
+        public volatile boolean httpOk;
+        public volatile boolean httpChecked;
+        public volatile boolean wsConnected;
+        public volatile boolean apiReady;
+        public volatile String lastError;
+        public volatile int deliveryFailed;
+        public volatile int deliveryTotal;
+        public volatile List<String> deliveryTargets;
+        public volatile long lastUpdated;
     }
 
     private final Map<String, Status> map = new ConcurrentHashMap<>();
@@ -69,6 +73,14 @@ public final class HealthRegistry {
     public void setLastError(String service, String msg) {
         Status s = get(service);
         s.lastError = msg;
+        s.lastUpdated = System.currentTimeMillis();
+    }
+
+    public void setDelivery(String service, int failed, int total, List<String> targets) {
+        Status s = get(service);
+        s.deliveryFailed = failed;
+        s.deliveryTotal = total;
+        s.deliveryTargets = targets == null ? List.of() : List.copyOf(targets);
         s.lastUpdated = System.currentTimeMillis();
     }
 }

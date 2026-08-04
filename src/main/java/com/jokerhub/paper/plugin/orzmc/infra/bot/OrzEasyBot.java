@@ -128,6 +128,7 @@ public class OrzEasyBot implements BotMessageService {
             healthRegistry.setWsConnected(HEALTH_KEY, false);
             healthRegistry.setHttpChecked(HEALTH_KEY, false);
             healthRegistry.setLastError(HEALTH_KEY, null);
+            healthRegistry.setDelivery(HEALTH_KEY, 0, 0, List.of());
         }
     }
 
@@ -238,6 +239,7 @@ public class OrzEasyBot implements BotMessageService {
             healthRegistry.setHttpOk(HEALTH_KEY, false);
             healthRegistry.setApiReady(HEALTH_KEY, false);
             healthRegistry.setLastError(HEALTH_KEY, error);
+            healthRegistry.setDelivery(HEALTH_KEY, 0, 0, null);
             return;
         }
         beginHttpRequest();
@@ -263,6 +265,8 @@ public class OrzEasyBot implements BotMessageService {
                             Math.max(0, cfg.httpMaxRetries()))
                     .thenAccept(response -> {
                         if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                            // 单发成功：清除上一次批量投递的失败状态，避免 /bot 展示陈旧失败
+                            healthRegistry.setDelivery(HEALTH_KEY, 0, 0, List.of());
                             completeHttpRequest(null);
                         } else {
                             String error = "HTTP " + response.statusCode() + ": " + limitError(response.body());
@@ -297,6 +301,7 @@ public class OrzEasyBot implements BotMessageService {
                 healthRegistry.setHttpOk(HEALTH_KEY, false);
                 healthRegistry.setApiReady(HEALTH_KEY, false);
                 healthRegistry.setLastError(HEALTH_KEY, error);
+                healthRegistry.setDelivery(HEALTH_KEY, 0, 0, null);
                 return;
             }
             beginHttpRequest();
@@ -322,6 +327,7 @@ public class OrzEasyBot implements BotMessageService {
                                 Math.max(0, cfg.httpMaxRetries()))
                         .thenAccept(response -> {
                             if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                                recordBatchResultFailures(response.body());
                                 completeHttpRequest(null);
                             } else {
                                 String error = "HTTP " + response.statusCode() + ": " + limitError(response.body());
@@ -342,6 +348,96 @@ public class OrzEasyBot implements BotMessageService {
                 logger.logger().info("EasyBot sendBatch error: " + e);
             }
         }
+    }
+
+    /**
+     * 解析 batch-send 的 2xx 响应体 {@code {total, results: {target: {status,...}}}}，
+     * 把失败/结果不确定的目标记录到日志，并结构化更新健康状态的投递字段。
+     *
+     * <ul>
+     *   <li>全部成功：清除投递失败字段，健康保持绿</li>
+     *   <li>部分失败：记 warning 日志（完整明细），设置投递字段 {@code (failed, total, target)}，{@code httpOk} 保持 true（渲染为黄色）</li>
+     *   <li>全部目标失败：记 error 日志（完整明细），设置投递字段（渲染为红色）；不改变 {@code httpOk}</li>
+     * </ul>
+     *
+     * 完整失败明细只进 {@link ThrottledLogger}，健康状态只保留结构化投递字段
+     * （失败数 / 总数 / 首个失败目标），由渲染层组成简短展示。
+     * 响应体非 JSON（如纯文本 "accepted"）或缺少 {@code results} 时静默忽略。
+     */
+    private void recordBatchResultFailures(String responseBody) {
+        if (responseBody == null || responseBody.isBlank()) {
+            return;
+        }
+        JsonObject root;
+        try {
+            root = JsonParser.parseString(responseBody).getAsJsonObject();
+        } catch (Exception e) {
+            // 网关可能返回纯文本或非 JSON，忽略
+            return;
+        }
+        if (!root.has("results") || !root.get("results").isJsonObject()) {
+            return;
+        }
+        try {
+            JsonObject results = root.getAsJsonObject("results");
+            int total = root.has("total") && root.get("total").isJsonPrimitive()
+                    ? root.get("total").getAsInt()
+                    : -1;
+            // 未知 total（置 0）时渲染层不判定为「全部失败」，按部分失败（黄色警告）处理
+            int deliveryTotal = total > 0 ? total : 0;
+            List<String> failures = new ArrayList<>();
+            List<String> failedTargets = new ArrayList<>();
+            for (var entry : results.entrySet()) {
+                JsonObject item = entry.getValue().getAsJsonObject();
+                String status = item.has("status") && item.get("status").isJsonPrimitive()
+                        ? item.get("status").getAsString()
+                        : null;
+                if ("sent".equals(status)) {
+                    continue;
+                }
+                failedTargets.add(entry.getKey());
+                failures.add(
+                        entry.getKey() + " -> " + (status == null ? "unknown" : status) + batchFailureReason(item));
+            }
+            if (failures.isEmpty()) {
+                // 全部成功：清除上一次的投递失败状态
+                healthRegistry.setDelivery(HEALTH_KEY, 0, 0, List.of());
+                return;
+            }
+            // 结构化记录投递失败：失败数 / 总数 / 失败目标列表
+            healthRegistry.setDelivery(HEALTH_KEY, failures.size(), deliveryTotal, failedTargets);
+            String detail = buildBatchDetail(total, failures);
+            if (total > 0 && failures.size() >= total) {
+                throttledLogger.error("easybot-batch-fail", detail);
+            } else {
+                throttledLogger.warning("easybot-batch-partial", detail);
+            }
+        } catch (Exception e) {
+            // 畸形 results（目标值非对象、status 为 null 等）不当作失败上报，避免误标健康
+            logger.logger().info("EasyBot 批量结果解析异常: " + e);
+        }
+    }
+
+    /** 生成投递失败的完整明细日志（含每个失败目标及原因），供排障。 */
+    private static String buildBatchDetail(int total, List<String> failures) {
+        return "EasyBot 批量发送存在失败目标"
+                + (total >= 0 ? " (" + failures.size() + "/" + total + ")" : "")
+                + ": " + String.join("; ", failures);
+    }
+
+    /** 从单个目标的 results 条目中提取失败原因（error / errorCode），无则返回空串。 */
+    private static String batchFailureReason(JsonObject item) {
+        if (item.has("error")
+                && item.get("error").isJsonPrimitive()
+                && !item.get("error").getAsString().isEmpty()) {
+            return ": " + item.get("error").getAsString();
+        }
+        if (item.has("errorCode")
+                && item.get("errorCode").isJsonPrimitive()
+                && !item.get("errorCode").getAsString().isEmpty()) {
+            return ": code=" + item.get("errorCode").getAsString();
+        }
+        return "";
     }
 
     /** 生成幂等键，基于种子内容的 SHA-256 哈希前缀，确保重试不重复投递。 */
@@ -377,6 +473,10 @@ public class OrzEasyBot implements BotMessageService {
             healthRegistry.setHttpOk(HEALTH_KEY, aggregateError == null);
             healthRegistry.setApiReady(HEALTH_KEY, aggregateError == null);
             healthRegistry.setLastError(HEALTH_KEY, aggregateError);
+        }
+        if (error != null) {
+            // 非投递类错误（HTTP 状态码 / 异常）发生时清除上次投递结果，避免展示陈旧状态
+            healthRegistry.setDelivery(HEALTH_KEY, 0, 0, null);
         }
     }
 
