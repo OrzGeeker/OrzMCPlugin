@@ -129,10 +129,10 @@ public final class FeatureModule implements ServiceModule {
                 platform.configService(), platform.textStyles(), botModule.botMessageService()::reloadConfig);
         // 权限晋升（Rank）模块：时长统计 + 自动晋升 + /apply 申请
         var rankStore = new com.jokerhub.paper.plugin.orzmc.features.rank.RankYamlStore(platform.configService());
-        var rankPromoter =
-                new com.jokerhub.paper.plugin.orzmc.features.rank.LuckPermsPromoter(platform.serverFacade(), player -> {
-                    var p = org.bukkit.Bukkit.getPlayer(player);
-                    return p != null ? p.getName() : null;
+        var rankPromoter = new com.jokerhub.paper.plugin.orzmc.features.rank.LuckPermsPromoter(
+                platform.serverFacade(), playerId -> {
+                    // 离线服：UUID→名字，玩家可能不在线（审核时申请者已退出），用 OfflinePlayer 查缓存
+                    return org.bukkit.Bukkit.getOfflinePlayer(playerId).getName();
                 });
         this.rankService = new com.jokerhub.paper.plugin.orzmc.features.rank.RankService(rankStore, rankPromoter);
         this.rankCommandService = new com.jokerhub.paper.plugin.orzmc.features.rank.RankCommandService(
