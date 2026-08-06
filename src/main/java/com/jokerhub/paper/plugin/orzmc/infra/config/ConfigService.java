@@ -24,6 +24,10 @@ public final class ConfigService {
         configManager.registerConfig("ip_blacklist", "ip_blacklist.yml");
         configManager.markAlwaysSave("ip_blacklist");
 
+        // 玩家晋升状态（时长/申请），markAlwaysSave 保证频繁写不丢
+        configManager.registerConfig("ranks", "ranks.yml");
+        configManager.markAlwaysSave("ranks");
+
         // Register the unified bot gateway config.
         configManager.registerConfig("easybot", "easybot.yml");
 
