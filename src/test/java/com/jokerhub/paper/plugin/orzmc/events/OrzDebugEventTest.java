@@ -59,7 +59,7 @@ class OrzDebugEventTest extends ServiceTestBase {
 
     @Test
     void cmdDebugHandler_debugCommand_setsFlagAndDispatchesAsync() {
-        when(event.getCommand()).thenReturn("debug hello $a");
+        when(event.getCommand()).thenReturn("orzdebug hello $a");
         when(plugin.getServer()).thenReturn(server);
         when(server.getScheduler()).thenReturn(scheduler);
 
@@ -74,7 +74,7 @@ class OrzDebugEventTest extends ServiceTestBase {
 
     @Test
     void cmdDebugHandler_debugCommandEmptyBody_dispatchesEmpty() {
-        when(event.getCommand()).thenReturn("debug   ");
+        when(event.getCommand()).thenReturn("orzdebug   ");
         when(plugin.getServer()).thenReturn(server);
         when(server.getScheduler()).thenReturn(scheduler);
 
