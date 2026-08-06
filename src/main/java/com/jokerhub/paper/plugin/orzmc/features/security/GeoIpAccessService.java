@@ -6,6 +6,14 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 public final class GeoIpAccessService {
+    /**
+     * 单次登录时 GeoIP 查询的阻塞等待上限（毫秒）。
+     *
+     * <p>阻塞发生在异步的 AsyncPlayerPreLoginEvent 处理器线程（netty 线程），不会阻塞主线程。
+     * 超时未拿到结果则 fail-open 放行，并告警到日志与群。</p>
+     */
+    public static final long DECISION_TIMEOUT_MS = 3_000L;
+
     public record Decision(boolean allowed, String countryCode, List<String> allowList, String rawJson) {}
 
     private final GeoIpClient client;
