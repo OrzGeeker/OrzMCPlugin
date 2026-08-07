@@ -1,0 +1,109 @@
+# 权限系统二期 · 验收报告（2026-08-07）
+
+> 关联：[permission-system-v2.md](permission-system-v2.md)（方案 v8 定稿）｜分支：`feat/rank-promotion`（PR #160）｜构建：`OrzMC-1.0.16-dev.jar`
+
+## 一、验收范围
+
+| 验收层 | 内容 | 结论 |
+|:--|:--|:--|
+| 静态门禁 | `./gradlew clean check`（spotless + 单测 + MockBukkit 集成 + JaCoCo 覆盖率） | ✅ PASS |
+| 自动化单元测试 | ReviewServiceTest / PermissionStoreTest / RankServiceTest / ConfigHealthCheckTest 等 | ✅ PASS |
+| 本地服启动冒烟 | Paper 26.2 真实启动、模板键完整、无缺失告警 | ✅ PASS |
+| 数据迁移 | 旧 ranks.yml → permission.yml（promoted 标记 + pending 申请） | ✅ PASS |
+| E2E 自动化（bot 玩家） | 提交→预检→列表→通过→拒绝→撤回→查询 全链路 | ✅ PASS |
+| **真实玩家场景** | 申请→下线→离线审核→重新上线→LP 权限实测 | ✅ PASS |
+
+## 二、自动化测试（单元 + 集成）
+
+### 2.1 新增/更新测试
+
+| 测试 | 覆盖点 |
+|:--|:--|
+| `ReviewServiceTest`（新增 234 行） | submit 预检+防重复+通知、cancelForApplicant、review approve/reject（跑 handler+notifier）、reviewByApplicantName 单/多 pending、hasPending/pendingFor |
+| `PermissionStoreTest`（新增 183 行） | 三段式存取（config/ranks/reviews）、迁移幂等 |
+| `RankServiceTest`（更新） | 阈值读 config 节、完整视图 |
+| `ConfigHealthCheckTest`（更新） | requiredCmds 补 5 新模板键 |
+
+### 2.2 门禁结果
+
+```
+./gradlew clean check --no-build-cache
+> Task :orzmc-api:jacocoTestCoverageVerification   PASS
+> Task :jacocoTestCoverageVerification             PASS
+BUILD SUCCESSFUL in 1m 4s
+```
+
+## 三、E2E 自动化测试（bot 玩家，本地 Paper 26.2）
+
+脚本：`~/minecraft-bot/review-e2e.js`（主链路）+ `review-e2e-2.js`（补测）
+通道：Mineflayer bot 玩家（TestNewbie member / TestMember default）+ RCON `orzdebug $v`（模拟群管理员，isAdmin=true）
+
+### 3.1 主链路结果
+
+| # | 环节 | 结果 | 证据 |
+|:--|:--|:--|:--|
+| 1 | `/apply builder 理由` 提交 | ✅ | 「申请已提交，等待管理员审核。」 |
+| 2 | 重复提交拦截 | ✅ | 「你已提交过「晋升建造者」申请，请等待管理员审核。」 |
+| 3 | `$v l` 待审列表 | ✅ | `[晋升建造者] TestNewbie（当前组：member）：申请晋升 builder：…（刚刚 提交）` |
+| 4 | `$v y TestNewbie` 通过 | ✅ | 玩家游戏内「你的「晋升建造者」申请已通过！」 |
+| 5 | LP 授权 | ✅ | 日志 `[LP] testnewbie 現在從環境 global 中繼承 builder 的權限` |
+| 6 | `/apply status` | ✅ | `✅ 已通过（群管理员）` |
+| 7 | `/rank` 组联动 | ✅ | `当前权限组：建造者（builder）` |
+
+### 3.2 补测结果（拒绝/撤回/预检路径）
+
+| # | 场景 | 结果 | 证据 |
+|:--|:--|:--|:--|
+| ① | 资格预检拒绝（TestMember 本地 default） | ✅ | 「你不满足「晋升建造者」的申请条件。」 |
+| ② | `$v n` 拒绝 | ✅ | 玩家「申请被拒绝。」+ status `❌ 已拒绝（群管理员）` |
+| ③ | 拒绝后可重新申请 | ✅ | 「申请已提交…」+ `$v l` 显示新申请 |
+| ④ | `/apply cancel builder` 撤回 | ✅ | 「已撤回「晋升建造者」申请。」+ `$v l` → 「当前没有待审核的申请。」 |
+| ④b | 历史记录完整 | ✅ | status 同时显示 `❌ 已拒绝` 与 `↩️ 已撤回` 两条 |
+
+## 四、真实玩家场景测试（关键验收）
+
+**场景设计**：真实玩家行为链 —— 进服确认起点 → 提交申请 → **下线**（不在线等审核）→ 管理员离线审核 → **重新上线**验证结果与权限。
+
+| 阶段 | 动作 | 结果 | 证据 |
+|:--|:--|:--|:--|
+| 1-1 | 进服 `/rank` 确认起点 | ✅ | `当前权限组：会员（member）` + 时长 604/600 ✅达标 |
+| 1-2 | `/apply builder 想用WorldEdit建造一个村庄` | ✅ | 「申请已提交，等待管理员审核。」 |
+| 1-3 | 玩家下线 | ✅ | 真实场景：不等待审核 |
+| 2-1 | 管理员 `$v l` | ✅ | `[晋升建造者] TestNewbie（当前组：member）：…想用WorldEdit建造一个村庄（刚刚 提交）` |
+| 2-2 | `$v y TestNewbie` **离线通过** | ✅ | 「已通过 TestNewbie 的「晋升建造者」申请。」 |
+| 2-3 | **LP 离线授权** | ✅ | `[LP] testnewbie 已經從環境 global 中繼承了 builder.`（OfflinePlayer 解析生效） |
+| 3-1 | 重新上线 `/apply status` | ✅ | `✅ 已通过（群管理员）` |
+| 3-2 | `/rank` | ✅ | `当前权限组：建造者（builder）` |
+| 3-3 | `//wand` **LP 权限实测** | ✅ | WorldEdit 木斧激活提示（builder 组专属权限，真实生效） |
+
+**本场景独有验证点**：
+1. **离线审核**：申请者不在线时审核，`OfflinePlayer` 名字解析 + LP 命令执行正常
+2. **LP 授权端到端**：不止日志/状态推断，用 WE 命令实测权限生效
+3. **状态持久化**：跨多次服务器重启数据正确
+
+## 五、测试过程中发现并修复的问题
+
+| # | 问题 | 根因 | 修复 | 验证 |
+|:--|:--|:--|:--|:--|
+| 1 | RCON `orzdebug` 不触发 Bot 模拟 | `OrzDebugEvent` 只监听 `ServerCommandEvent`（stdin），Paper 26 RCON 走 `RemoteServerCommandEvent` | 双事件监听 + 兼容前导斜杠 | RCON 驱动 `$v l` 成功 |
+| 2 | `$v y` 抛 `IllegalStateException: Asynchronous Command Dispatched Async` | 群指令/orzdebug 异步线程 dispatch LP 命令，Paper 要求主线程 | `LuckPermsPromoter` 注入 `ServerScheduler`，非主线程 `runSync` 回主线程 | 离线审核 LP 授权成功 |
+| 3 | 自动化脚本 RCON 连不上 | ① shell 展开 `$v`；② node RCON length 字段少算 8 字节头部 | 原生 net 实现 + 正确 length 语义（id+type+payload+2null 总长） | 脚本稳定运行 |
+
+## 六、验收结论
+
+**✅ 验收通过**。12 个自动化场景 + 10 步真实玩家场景全部通过；`./gradlew clean check` 全绿；LP 授权端到端实测生效；数据迁移与持久化验证通过。
+
+**遗留说明**：
+- `$v n` 拒绝、`/apply cancel` 撤回已测（补测 ②④）；`$v y` 通过已测（主链路 + 真实场景）
+- 群通知真实投递（EasyBot 网关 → 飞书测试群）链路已通（模板键 + 适配器冒烟），未做真实群消息端到端（避免打扰生产群；测试群无管理员身份的机器人会话）
+- 代码已在 `feat/rank-promotion` 分支（commit `3358e5a`），PR #160 OPEN 待合并
+
+## 七、测试脚本沉淀
+
+| 脚本 | 用途 |
+|:--|:--|
+| `~/minecraft-bot/review-e2e.js` | 主链路：提交→列表→通过→status→rank |
+| `~/minecraft-bot/review-e2e-2.js` | 补测：预检拒绝 / `$v n` 拒绝 / 重申请 / 撤回 |
+| `~/minecraft-bot/review-real.js` | 真实玩家场景：提交→下线→离线审核→上线验证→WE 权限实测 |
+
+三脚本内嵌 **node 原生 RCON 实现**（不经 shell，`$` 安全），可复用于后续所有 Bot 命令自动化测试。

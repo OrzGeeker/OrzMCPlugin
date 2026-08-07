@@ -1,6 +1,6 @@
 # 权限系统二期 · 通用审核框架方案（v8 定稿）
 
-> 状态：已确认（2026-08-07）｜分支：`feat/rank-promotion`｜关联：[features.md](features.md)、[test-cases.md](test-cases.md)
+> 状态：✅ 已交付（2026-08-07）｜分支：`feat/rank-promotion`（PR #160）｜关联：[features.md](features.md)、[test-cases.md](test-cases.md)、[permission-system-v2-acceptance.md](permission-system-v2-acceptance.md)
 
 ## 一、背景与目标
 
@@ -232,12 +232,71 @@ ranks.yml 遗留 players.<uuid>.promoted=true
 
 | # | 任务 | 涉及 | 状态 |
 |:--|:--|:--|:--|
-| 1 | review 包：ReviewRequest / ReviewType / ReviewHandler / ReviewStore / ReviewService | features/review/ | ⬜ |
-| 2 | PermissionStore（permission.yml 三段：config/ranks/reviews，markAlwaysSave） | infra/config/ + 存储 | ⬜ |
-| 3 | rank 模块：阈值读取 + 完整视图查询（组+进度+可申请）+ handler 注入注册 | features/rank/ | ⬜ |
-| 4 | `/apply` 四子命令 + `/review` + `/rank` 增强（Brigadier 注册） | 命令注册 + ReviewCommandService | ⬜ |
-| 5 | `$v` 群指令（OrzUserCmd + handler + needAdminPermission） | features/botcommands/ | ⬜ |
-| 6 | 5 个模板键（review_* ×4 + rank_status）+ templates.yml | TemplateKeys + 模板文件 | ⬜ |
-| 7 | 数据迁移（启动时，遗留 pending → reviews 节） | OrzServices 装配 | ⬜ |
-| 8 | 单元测试 + MockBukkit 集成测试（含通知捕获 CapturingSink） | 各模块 test | ⬜ |
-| 9 | `./gradlew check` 全绿 + 本地服冒烟 | — | ⬜ |
+| 1 | review 包：ReviewRequest / ReviewType / ReviewHandler / ReviewStore / ReviewService | features/review/ | ✅ |
+| 2 | PermissionStore（permission.yml 三段：config/ranks/reviews，markAlwaysSave） | infra/config/ + 存储 | ✅ |
+| 3 | rank 模块：阈值读取 + 完整视图查询（组+进度+可申请）+ handler 注入注册 | features/rank/ | ✅ |
+| 4 | `/apply` 四子命令 + `/review` + `/rank` 增强（Brigadier 注册） | 命令注册 + ReviewCommandService | ✅ |
+| 5 | `$v` 群指令（OrzUserCmd + handler + needAdminPermission） | features/botcommands/ | ✅ |
+| 6 | 5 个模板键（review_* ×4 + rank_status）+ templates.yml | TemplateKeys + 模板文件 | ✅ |
+| 7 | 数据迁移（启动时，遗留 pending → reviews 节） | OrzServices 装配 | ✅ |
+| 8 | 单元测试 + MockBukkit 集成测试（含通知捕获 CapturingSink） | 各模块 test | ✅ |
+| 9 | `./gradlew check` 全绿 + 本地服冒烟 | — | ✅ |
+
+---
+
+## 八、落地实现（代码映射）
+
+### 8.1 文件清单
+
+| 文件 | 角色 | 说明 |
+|:--|:--|:--|
+| `features/review/ReviewRequest.java` | 值对象 | id/typeId/applicantId/data/status/createdAt/reviewedAt/reviewerName |
+| `features/review/ReviewType.java` | 注册表项 | id/命令键/参数解析/预检/摘要/handler（BUILDER_PROMOTION 等） |
+| `features/review/ReviewHandler.java` | 端口 | 审核通过/拒绝回调（LP 授权等副作用） |
+| `features/review/ReviewStore.java` | 端口 | 持久化接口（save/find/listPending/pendingFor） |
+| `features/review/ReviewNotifier.java` | 端口 | 4 环节通知接口 |
+| `features/review/PlayerLookup.java` | 端口 | 玩家名↔UUID 解析 |
+| `features/review/ReviewService.java` | 核心编排 | 提交/撤回/审核/查询，统一预检 + 防重复 + 通知 |
+| `features/review/ReviewCommandService.java` | 游戏内命令 | `/review approve\|reject <玩家>` |
+| `features/rank/PermissionStore.java` | 存储实现 | 同时实现 ReviewStore+RankStore，permission.yml 三段式（config/ranks/reviews），markAlwaysSave + 启动迁移 |
+| `features/rank/RankStore.java` | 查询接口 | currentGroup/时长视图（移除 pending_application） |
+| `features/rank/RankService.java` | 业务 | 阈值读 config 节 + 完整视图（组+进度+可申请） |
+| `features/rank/RankCommandService.java` | 游戏内命令 | `/rank` 纯查询 + 注册表反向生成 |
+| `features/rank/LuckPermsPromoter.java` | handler 实现 | LP 授权（主线程派发，见 8.3） |
+| `features/botcommands/OrzUserCmd.java` | 群指令枚举 | 新增 `REVIEW("v", "查看/处理审核申请", true)` |
+| `features/botcommands/BotCommandService.java` | 群指令分发 | `$v l/y/n` handler（setReviewService setter 注入） |
+| `infra/notify/ReviewNotifierAdapter.java` | 通知适配 | 按配置键 renderTemplate + fallback（见 8.4） |
+| `infra/player/BukkitPlayerLookup.java` | 玩家解析适配 | OfflinePlayer 离线解析 |
+| `infra/config/TemplateKeys.java` | 模板键 | review_submitted/cancelled/approved/rejected + rank_status |
+| `assembly/FeatureModule.java` | 装配 | PermissionStore/ReviewService/handler 注册/命令注册/setter 注入 |
+| `infra/config/ConfigService.java` | 配置注册 | `registerConfig("permission","permission.yml")` |
+| `events/OrzDebugEvent.java` | 测试通道 | 兼容 RemoteServerCommandEvent（RCON 触发） |
+| `resources/permission.yml` | 默认资源 | 三段式模板 |
+| `resources/templates.yml` | 模板 | 5 新键（format 段：review_* PLAIN / rank_status CODE_BLOCK） |
+
+### 8.2 命令一览
+
+| 命令 | 权限 | 说明 |
+|:--|:--|:--|
+| `/apply` | 玩家 | 列出可申请项（注册表驱动） |
+| `/apply builder [理由]` | 玩家 | 提交晋升申请（预检：member 资格） |
+| `/apply status` | 玩家 | 查询我的申请状态 |
+| `/apply cancel <type>` | 玩家 | 撤回待审申请 |
+| `/review approve\|reject <玩家>` | 管理员 | 游戏内审核 |
+| `/rank` | 玩家 | 当前组 + 时长进度 + 下一步可申请 |
+| `/rank <玩家>` | 管理员 | 查询他人 |
+| `$v l` | 群管理员 | 待审列表（分页，含当前组/摘要/时间） |
+| `$v y\|n <玩家>` | 群管理员 | 通过/拒绝 |
+
+### 8.3 关键实现决策（实战验证）
+
+1. **LP 命令必须主线程派发**：Paper 异步线程 `dispatchCommand` 抛 `IllegalStateException: Asynchronous Command Dispatched Async`（群指令/orzdebug 走异步链路）。`LuckPermsPromoter` 注入 `ServerScheduler`，非主线程时 `runSync` 回主线程。
+2. **通知渲染用 `renderTemplate` 而非 `renderEvent`**：实测 `renderEvent` 只认白名单事件键，未知键渲染为空 → 适配器按配置键直读 + fallback switch。
+3. **`$v` 群指令 setter 注入**：`BotCommandService` 创建早于 `FeatureModule`，无法构造注入 → 仿 maintenance/blacklist 的 `setReviewService`，注入点在 `setupEventListeners`。
+4. **资格预检统一在 `ReviewService.submit()`**：任何入口（游戏内/未来其他）都过同一校验。
+5. **迁移幂等**：以「permission.yml 已存在该 uuid 记录」为判据，重复执行安全；启动时自动执行，无需人工干预。
+
+### 8.4 测试通道修复（自动化测试前置）
+
+- `OrzDebugEvent` 原本只监听 `ServerCommandEvent`（stdin 控制台），Paper 26 的 RCON 触发的是 `RemoteServerCommandEvent`（子类）且命令可能带前导斜杠 → 双事件监听 + 剥斜杠，RCON 才能驱动 `orzdebug` 模拟群消息。
+- 测试脚本 `~/minecraft-bot/review-e2e.js`（主链路）+ `review-e2e-2.js`（补测）+ `review-real.js`（真实玩家场景），内嵌 node 原生 RCON 实现（length = id+type+payload+2null 总长，`$` 不经 shell 展开）。
