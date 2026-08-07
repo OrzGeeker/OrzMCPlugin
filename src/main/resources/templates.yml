@@ -101,22 +101,8 @@ templates:
     world: 主世界
     world_nether: 下界
     world_the_end: 末地
-  role_alias:
-    admin: 管理员
-    member: 玩家
-  # 权限组名称别称：用于通知中通过 {role_alias} 展示
-  role_groups:
-    orzmc.admin: 管理员
-    default: 玩家
   locale: zh-CN
   i18n:
-    role_alias:
-      zh-CN:
-        admin: 管理员
-        member: 玩家
-      en-US:
-        admin: Admin
-        member: Member
     command:
       en-US:
         command_output: "{message}"

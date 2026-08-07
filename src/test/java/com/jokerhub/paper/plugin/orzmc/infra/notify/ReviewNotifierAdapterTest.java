@@ -44,7 +44,7 @@ class ReviewNotifierAdapterTest {
 
     @Test
     void groupEvent_rankDemoted_rendersRealCopyNotPlaceholder() {
-        adapter.groupEvent("rank_demoted", Map.of("player", "Alice", "group", "会员"));
+        adapter.groupEvent("rank_demoted", Map.of("player", "Alice", "group", "成员"));
 
         verify(configs).renderTemplate(eq("rank_demoted"), anyMap(), contains("⬇️"));
     }

@@ -103,7 +103,6 @@ class ConfigHealthCheckTest {
 
     private void addFullValidConfig_templates() {
         addMinimalValidConfig_templates();
-        templates.set("templates.role_groups", "dummy");
     }
 
     private void addMinimalValidConfig_templates() {
@@ -119,8 +118,6 @@ class ConfigHealthCheckTest {
         templates.set("templates.world_alias.world", "主世界");
         templates.set("templates.world_alias.world_nether", "下界");
         templates.set("templates.world_alias.world_the_end", "末地");
-        templates.set("templates.role_alias.admin", "管理员");
-        templates.set("templates.role_alias.member", "成员");
 
         // Required command templates
         String[] requiredCmds = {
@@ -837,11 +834,9 @@ class ConfigHealthCheckTest {
         // 用 createSection 逐级构造嵌套结构避免路径问题
         ConfigurationSection ps = portals.createSection("portals");
         ConfigurationSection ts = ps.createSection("example_com");
-        ts.set("world:0:64:0", "Z");
+        ts.set("world:not-an-int:64:0", "Z"); // 坐标非整数 → 触发非法提示
         List<String> issues = runValidate();
-        assertTrue(
-                issues.stream().anyMatch(i -> i.startsWith("建议: templates.role_groups")),
-                "仅有 role_groups 建议，实际: " + issues);
+        assertTrue(issues.stream().anyMatch(i -> i.startsWith("非法: portals")), "应有 portals 非法提示，实际: " + issues);
     }
 
     @Test

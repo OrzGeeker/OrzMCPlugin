@@ -169,12 +169,17 @@ public final class RankService {
         return promoter.resolvePlayerId(playerName);
     }
 
-    /** 当前权限组展示名。 */
+    /**
+     * 当前权限组展示名（权限组 → 中文名的<b>唯一事实源</b>）。
+     *
+     * <p>新增/修改组名只改这里；$l 在线列表、上下线广播、rank 通知、
+     * /rank、$p 反馈全部走本方法。未知组一律回退「访客」。</p>
+     */
     public static String groupDisplayName(String group) {
         return switch (group) {
             case "admin" -> "管理员";
             case "builder" -> "建造者";
-            case "member" -> "会员";
+            case "member" -> "成员";
             default -> "访客";
         };
     }

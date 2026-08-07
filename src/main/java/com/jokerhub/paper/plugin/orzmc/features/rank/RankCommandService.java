@@ -47,7 +47,7 @@ public final class RankCommandService {
         String next = nextApplications(playerId);
 
         Component message = styles.info("你的当前权限组：" + RankService.groupDisplayName(group) + "（" + group + "）\n"
-                + "已在线时长：" + minutes + " 分钟 / 晋升会员阈值 " + threshold + " 分钟（" + progress + "）\n"
+                + "已在线时长：" + minutes + " 分钟 / 晋升成员阈值 " + threshold + " 分钟（" + progress + "）\n"
                 + "下一步可申请：" + next);
         return new Result.Success(message);
     }
