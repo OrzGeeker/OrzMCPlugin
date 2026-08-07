@@ -44,6 +44,8 @@ public final class ReviewNotifierAdapter implements ReviewNotifier {
                     case "review_cancelled" -> "↩️ {player} 撤回了申请：{summary}";
                     case "review_approved" -> "✅ {player} 的申请已通过（审核人：{reviewer}）：{summary}";
                     case "review_rejected" -> "❌ {player} 的申请被拒（审核人：{reviewer}）：{summary}";
+                    case "rank_promoted" -> "🎉 {player} 权限已升级为「{group}」";
+                    case "rank_demoted" -> "⬇️ {player} 权限已被降级为「{group}」";
                     default -> "{message}";
                 };
         MessageEnvelope env = configs.renderTemplate(templateKey, vars, fallback);
