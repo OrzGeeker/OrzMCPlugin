@@ -52,7 +52,7 @@ class ReviewServiceTest {
                 },
                 id -> true,
                 data -> "申请晋升 builder" + (data.get("reason") == null ? "" : "：" + data.get("reason")),
-                id -> {});
+                id -> true);
         service.register(builderType);
         when(lookup.name(applicant)).thenReturn(Optional.of("TestMember"));
         when(lookup.name(other)).thenReturn(Optional.of("OtherPlayer"));
@@ -91,8 +91,8 @@ class ReviewServiceTest {
 
     @Test
     void submit_notEligible_rejected() {
-        ReviewType restricted =
-                new ReviewType("builder-promotion", "晋升建造者", "builder", a -> Map.of(), id -> false, d -> "x", id -> {});
+        ReviewType restricted = new ReviewType(
+                "builder-promotion", "晋升建造者", "builder", a -> Map.of(), id -> false, d -> "x", id -> false);
         service.register(restricted);
 
         var result = service.submit(restricted, applicant, Map.of());
@@ -154,8 +154,11 @@ class ReviewServiceTest {
         when(store.findById("r1")).thenReturn(Optional.of(pendingRequest("r1")));
         // handler 有副作用验证：用一个可观察 handler
         final int[] calls = {0};
-        ReviewType observable = new ReviewType(
-                "builder-promotion", "晋升建造者", "builder", a -> Map.of(), id -> true, d -> "x", id -> calls[0]++);
+        ReviewType observable =
+                new ReviewType("builder-promotion", "晋升建造者", "builder", a -> Map.of(), id -> true, d -> "x", id -> {
+                    calls[0]++;
+                    return true;
+                });
         service.register(observable);
 
         var result = service.review("r1", true, "admin");
@@ -254,5 +257,36 @@ class ReviewServiceTest {
         // 未保存 APPROVED 状态
         verify(store, never()).save(argThat(r -> r.status() == ReviewRequest.Status.APPROVED));
         verify(notifier, never()).groupEvent(eq("review_approved"), anyMap());
+    }
+
+    @Test
+    void review_handlerReturnsFalse_keepsPendingAndFails() {
+        // handler 静默失败（返回 false，如 promote 返回 null）：同样保持 PENDING，不落 APPROVED
+        when(store.findById("r1")).thenReturn(Optional.of(pendingRequest("r1")));
+        ReviewType failing = new ReviewType(
+                "builder-promotion", "晋升建造者", "builder", a -> Map.of(), id -> true, d -> "x", id -> false); // 授权处理返回失败
+        service.register(failing);
+
+        var result = service.review("r1", true, "admin");
+
+        assertFalse(result.success());
+        assertTrue(result.message().contains("授权处理失败"));
+        verify(store, never()).save(argThat(r -> r.status() == ReviewRequest.Status.APPROVED));
+        verify(notifier, never()).groupEvent(eq("review_approved"), anyMap());
+    }
+
+    @Test
+    void review_handlerReturnsTrue_approvesAndNotifies() {
+        when(store.findById("r1")).thenReturn(Optional.of(pendingRequest("r1")));
+        ReviewType okType = new ReviewType(
+                "builder-promotion", "晋升建造者", "builder", a -> Map.of(), id -> true, d -> "x", id -> true); // 授权成功
+        service.register(okType);
+        when(lookup.name(applicant)).thenReturn(Optional.of("TestMember"));
+
+        var result = service.review("r1", true, "admin");
+
+        assertTrue(result.success());
+        verify(store).save(argThat(r -> r.status() == ReviewRequest.Status.APPROVED));
+        verify(notifier).groupEvent(eq("review_approved"), anyMap());
     }
 }

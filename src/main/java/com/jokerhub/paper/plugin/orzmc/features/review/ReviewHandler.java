@@ -10,6 +10,11 @@ import java.util.UUID;
 @FunctionalInterface
 public interface ReviewHandler {
 
-    /** 执行审核通过后的处理（如授予权限组）。 */
-    void onApproved(UUID applicantId);
+    /**
+     * 执行审核通过后的处理（如授予权限组）。
+     *
+     * @return true=授权成功；false=授权失败（如目标已在链顶/LP 异常）——调用方应保持
+     *     PENDING 状态并提示，避免「已通过但未生效」的不一致
+     */
+    boolean onApproved(UUID applicantId);
 }

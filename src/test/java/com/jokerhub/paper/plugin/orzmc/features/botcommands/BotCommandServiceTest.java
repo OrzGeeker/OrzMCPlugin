@@ -243,6 +243,19 @@ class BotCommandServiceTest {
     }
 
     @Test
+    void parse_reviewApprove_withSenderName_passesSenderAsReviewer() {
+        var reviewService = mock(com.jokerhub.paper.plugin.orzmc.features.review.ReviewService.class);
+        service.setReviewService(reviewService);
+        when(reviewService.reviewByApplicantName(eq("TestMember"), eq(true), anyString()))
+                .thenReturn(com.jokerhub.paper.plugin.orzmc.features.review.ReviewService.Result.ok("已通过", "r1"));
+
+        // 网关透传发送者身份 → 审核人记真实昵称（非硬编码「群管理员」）
+        service.parse("$v y TestMember", true, "老板", callback);
+        verify(reviewService).reviewByApplicantName("TestMember", true, "老板");
+        verify(callback, atLeastOnce()).accept(any(MessageEnvelope.class));
+    }
+
+    @Test
     void parse_reviewReject_byPlayerName_callsReviewByApplicantName() {
         var reviewService = mock(com.jokerhub.paper.plugin.orzmc.features.review.ReviewService.class);
         service.setReviewService(reviewService);

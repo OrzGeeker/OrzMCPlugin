@@ -36,7 +36,14 @@ public final class BotCommandService implements BotInboundHandler {
 
     @FunctionalInterface
     private interface CmdHandler {
-        void handle(OrzUserCmd cmd, boolean isAdmin, Consumer<MessageEnvelope> callback, String rawArgs);
+        /** 5 参入口：cmd/admin/发送者身份/回调/原始参数。 */
+        void handle(
+                OrzUserCmd cmd, boolean isAdmin, String senderName, Consumer<MessageEnvelope> callback, String rawArgs);
+
+        /** 4 参便捷入口（senderName=null），兼容测试与无身份调用。 */
+        default void handle(OrzUserCmd cmd, boolean isAdmin, Consumer<MessageEnvelope> callback, String rawArgs) {
+            handle(cmd, isAdmin, null, callback, rawArgs);
+        }
     }
 
     public BotCommandService(ServerFacade server, TypedConfigProvider configs) {
@@ -44,17 +51,21 @@ public final class BotCommandService implements BotInboundHandler {
         this.configs = configs;
         this.listFeedbackService = new BotCommandListFeedbackService(server, configs);
         this.handlers = Map.ofEntries(
-                Map.entry(OrzUserCmd.SHOW_PLAYERS, this::handleShowPlayers),
-                Map.entry(OrzUserCmd.SHOW_WHITELIST, this::handleShowWhitelist),
-                Map.entry(OrzUserCmd.SHOW_HELP, this::handleShowHelp),
-                Map.entry(OrzUserCmd.ADD_PLAYER_TO_WHITELIST, this::handleAddWhitelist),
-                Map.entry(OrzUserCmd.REMOVE_PLAYER_FROM_WHITELIST, this::handleRemoveWhitelist),
-                Map.entry(OrzUserCmd.BACKUP, this::handleBackup),
-                Map.entry(OrzUserCmd.OPTIMIZE_WORLD, this::handleOptimize),
-                Map.entry(OrzUserCmd.BLACKLIST, this::handleBlacklist),
-                Map.entry(OrzUserCmd.REVIEW, this::handleReview),
-                Map.entry(OrzUserCmd.PERMISSION, this::handlePermission),
-                Map.entry(OrzUserCmd.EXECUTE_CONSOLE_COMMAND, this::handleExecuteConsoleCommand));
+                Map.entry(OrzUserCmd.SHOW_PLAYERS, (c, a, s, cb, r) -> handleShowPlayers(c, a, cb, r)),
+                Map.entry(OrzUserCmd.SHOW_WHITELIST, (c, a, s, cb, r) -> handleShowWhitelist(c, a, cb, r)),
+                Map.entry(OrzUserCmd.SHOW_HELP, (c, a, s, cb, r) -> handleShowHelp(c, a, cb, r)),
+                Map.entry(OrzUserCmd.ADD_PLAYER_TO_WHITELIST, (c, a, s, cb, r) -> handleAddWhitelist(c, a, cb, r)),
+                Map.entry(
+                        OrzUserCmd.REMOVE_PLAYER_FROM_WHITELIST,
+                        (c, a, s, cb, r) -> handleRemoveWhitelist(c, a, cb, r)),
+                Map.entry(OrzUserCmd.BACKUP, (c, a, s, cb, r) -> handleBackup(c, a, cb, r)),
+                Map.entry(OrzUserCmd.OPTIMIZE_WORLD, (c, a, s, cb, r) -> handleOptimize(c, a, cb, r)),
+                Map.entry(OrzUserCmd.BLACKLIST, (c, a, s, cb, r) -> handleBlacklist(c, a, cb, r)),
+                Map.entry(OrzUserCmd.REVIEW, (c, a, s, cb, r) -> handleReview(c, a, s, cb, r)),
+                Map.entry(OrzUserCmd.PERMISSION, (c, a, s, cb, r) -> handlePermission(c, a, cb, r)),
+                Map.entry(
+                        OrzUserCmd.EXECUTE_CONSOLE_COMMAND,
+                        (c, a, s, cb, r) -> handleExecuteConsoleCommand(c, a, cb, r)));
     }
 
     public void setMaintenanceService(WorldMaintenanceService maintenanceService) {
@@ -80,10 +91,19 @@ public final class BotCommandService implements BotInboundHandler {
 
     @Override
     public void handleMessage(String message, boolean isAdmin, Consumer<MessageEnvelope> callback) {
-        parse(message, isAdmin, callback);
+        parse(message, isAdmin, null, callback);
+    }
+
+    @Override
+    public void handleMessage(String message, boolean isAdmin, String senderName, Consumer<MessageEnvelope> callback) {
+        parse(message, isAdmin, senderName, callback);
     }
 
     public void parse(String message, Boolean isAdmin, Consumer<MessageEnvelope> callback) {
+        parse(message, isAdmin, null, callback);
+    }
+
+    public void parse(String message, Boolean isAdmin, String senderName, Consumer<MessageEnvelope> callback) {
         BotConfig botConfig = botConfig();
         String promptChar = botConfig.cmdPromptChar();
         if (!message.startsWith(promptChar)) return;
@@ -105,7 +125,7 @@ public final class BotCommandService implements BotInboundHandler {
 
                 CmdHandler handler = handlers.get(userCmd);
                 if (handler != null) {
-                    handler.handle(userCmd, isAdmin, callback, rawArgs);
+                    handler.handle(userCmd, isAdmin, senderName, callback, rawArgs);
                 } else {
                     emitHelp(callback);
                 }
@@ -377,6 +397,11 @@ public final class BotCommandService implements BotInboundHandler {
     // ---- Review command ($v l|y|n) ----
 
     private void handleReview(OrzUserCmd cmd, boolean isAdmin, Consumer<MessageEnvelope> callback, String rawArgs) {
+        handleReview(cmd, isAdmin, null, callback, rawArgs);
+    }
+
+    private void handleReview(
+            OrzUserCmd cmd, boolean isAdmin, String senderName, Consumer<MessageEnvelope> callback, String rawArgs) {
         if (!guardAdminCommand(cmd, isAdmin, callback)) return;
         if (reviewService == null) {
             emit(callback, "command_review_error", Map.of("message", "审核服务不可用"), "审核服务不可用");
@@ -391,8 +416,8 @@ public final class BotCommandService implements BotInboundHandler {
         String rest = parts.length > 1 ? parts[1].trim() : "";
         switch (sub) {
             case "l" -> handleReviewList(callback, rest);
-            case "y", "yes" -> handleReviewDecision(callback, rest, true);
-            case "n", "no" -> handleReviewDecision(callback, rest, false);
+            case "y", "yes" -> handleReviewDecision(callback, rest, true, senderName);
+            case "n", "no" -> handleReviewDecision(callback, rest, false, senderName);
             default -> emitReviewUsage(callback);
         }
     }
@@ -426,11 +451,14 @@ public final class BotCommandService implements BotInboundHandler {
                 page);
     }
 
-    private void handleReviewDecision(Consumer<MessageEnvelope> callback, String rest, boolean approved) {
+    private void handleReviewDecision(
+            Consumer<MessageEnvelope> callback, String rest, boolean approved, String senderName) {
         if (rest.isBlank()) {
             emitReviewUsage(callback);
             return;
         }
+        // 审核人：优先群发送者身份（网关透传昵称）；未透传时兜底「群管理员」
+        String reviewer = (senderName == null || senderName.isBlank()) ? "群管理员" : senderName;
         // 支持：$v y <玩家>  或  $v y <typeId> <玩家>
         String[] parts = rest.split("\\s+", 2);
         String first = parts[0];
@@ -451,10 +479,10 @@ public final class BotCommandService implements BotInboundHandler {
                     if (request.isEmpty()) {
                         done.complete(ReviewService.Result.fail("找不到待审申请: " + rest));
                     } else {
-                        done.complete(reviewService.review(request.get().id(), approved, "群管理员"));
+                        done.complete(reviewService.review(request.get().id(), approved, reviewer));
                     }
                 } else {
-                    done.complete(reviewService.reviewByApplicantName(playerOrType, approved, "群管理员"));
+                    done.complete(reviewService.reviewByApplicantName(playerOrType, approved, reviewer));
                 }
             } catch (Throwable t) {
                 done.completeExceptionally(t);

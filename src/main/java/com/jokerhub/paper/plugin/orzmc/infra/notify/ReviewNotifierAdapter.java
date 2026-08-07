@@ -3,6 +3,7 @@ package com.jokerhub.paper.plugin.orzmc.infra.notify;
 import com.jokerhub.paper.plugin.orzmc.core.bot.MessageEnvelope;
 import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
 import com.jokerhub.paper.plugin.orzmc.features.review.ReviewNotifier;
+import com.jokerhub.paper.plugin.orzmc.infra.config.TemplateKeys;
 import java.util.Map;
 import java.util.UUID;
 import net.kyori.adventure.text.Component;
@@ -40,12 +41,12 @@ public final class ReviewNotifierAdapter implements ReviewNotifier {
         // 用 renderTemplate（按配置键直接读取），不走 renderEvent 白名单事件路由
         String fallback =
                 switch (templateKey) {
-                    case "review_submitted" -> "📋 [新申请] {player}：{summary}（$v l 查看）";
-                    case "review_cancelled" -> "↩️ {player} 撤回了申请：{summary}";
-                    case "review_approved" -> "✅ {player} 的申请已通过（审核人：{reviewer}）：{summary}";
-                    case "review_rejected" -> "❌ {player} 的申请被拒（审核人：{reviewer}）：{summary}";
-                    case "rank_promoted" -> "🎉 {player} 权限已升级为「{group}」";
-                    case "rank_demoted" -> "⬇️ {player} 权限已被降级为「{group}」";
+                    case TemplateKeys.REVIEW_SUBMITTED -> "📋 [新申请] {player}：{summary}（$v l 查看）";
+                    case TemplateKeys.REVIEW_CANCELLED -> "↩️ {player} 撤回了申请：{summary}";
+                    case TemplateKeys.REVIEW_APPROVED -> "✅ {player} 的申请已通过（审核人：{reviewer}）：{summary}";
+                    case TemplateKeys.REVIEW_REJECTED -> "❌ {player} 的申请被拒（审核人：{reviewer}）：{summary}";
+                    case TemplateKeys.RANK_PROMOTED -> "🎉 {player} 权限已升级为「{group}」";
+                    case TemplateKeys.RANK_DEMOTED -> "⬇️ {player} 权限已被降级为「{group}」";
                     default -> "{message}";
                 };
         MessageEnvelope env = configs.renderTemplate(templateKey, vars, fallback);

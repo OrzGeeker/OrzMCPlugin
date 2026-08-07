@@ -166,7 +166,9 @@ public final class FeatureModule implements ServiceModule {
                 playerId -> rankService.currentGroup(playerId).equals("member"),
                 data -> "申请晋升 builder"
                         + (data.get("reason") == null || data.get("reason").isBlank() ? "" : "：" + data.get("reason")),
-                rankService::promote)); // 审核通过 = track 升一级（member→builder），LP 钳位
+                // 审核通过 = track 升一级（member→builder）；返回 null（链顶/LP 异常）视为授权失败，
+                // 保持 PENDING 不落 APPROVED（避免「已通过但未生效」）
+                playerId -> rankService.promote(playerId) != null));
         this.rankCommandService = new com.jokerhub.paper.plugin.orzmc.features.rank.RankCommandService(
                 rankService, reviewService, platform.textStyles());
         this.reviewCommandService = new com.jokerhub.paper.plugin.orzmc.features.review.ReviewCommandService(
@@ -286,7 +288,7 @@ public final class FeatureModule implements ServiceModule {
                                         var inbound = botModule.botInboundHandler();
                                         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
                                             try {
-                                                inbound.handleMessage(cmd, true, env -> {
+                                                inbound.handleMessage(cmd, true, "控制台", env -> {
                                                     if (env != null) {
                                                         plugin.getLogger().info("cmd debug: \n" + env.message());
                                                     }

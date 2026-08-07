@@ -100,12 +100,14 @@ public final class LuckPermsPromoter implements RankPromoter {
         return ctx.orElseGet(ImmutableContextSet::empty);
     }
 
-    /** 持久化用户变更（LP API 的 promote/demote 只改内存，须显式保存）。 */
-    private void saveUser(User user) {
+    /** 持久化用户变更（LP API 的 promote/demote 只改内存，须显式保存）。@return true=落库成功。 */
+    private boolean saveUser(User user) {
         try {
             api().getUserManager().saveUser(user).get(LOAD_USER_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+            return true;
         } catch (Exception e) {
             LOG.warning("saveUser 失败: " + e);
+            return false;
         }
     }
 
@@ -139,10 +141,15 @@ public final class LuckPermsPromoter implements RankPromoter {
         if (user == null || trk == null) {
             return null;
         }
+        // 一次加载用户继承组集合，避免对每个 track 组重复 loadUser（N+1，离线玩家每次 3s 超时 × N）
+        var inherited = user.getInheritedGroups(user.getQueryOptions()).stream()
+                .map(g -> g.getName())
+                .collect(java.util.stream.Collectors.toCollection(
+                        () -> new java.util.TreeSet<>(String.CASE_INSENSITIVE_ORDER)));
         // track 顺序：default→member→builder→admin；取玩家在 track 中位置最高的组
         String found = null;
         for (String group : trk.getGroups()) {
-            if (isInGroup(playerId, group)) {
+            if (inherited.contains(group)) {
                 found = group;
             }
         }
@@ -169,7 +176,10 @@ public final class LuckPermsPromoter implements RankPromoter {
         if (!success) {
             return null; // END_OF_TRACK / AMBIGUOUS_CALL 等
         }
-        saveUser(user); // LP API 修改是内存态，须显式落库
+        if (!saveUser(user)) {
+            LOG.warning("promote(" + playerId + ") 落库失败，视为失败"); // 内存已改但未持久化，不能报成功
+            return null;
+        }
         return result.getGroupTo().orElse(null);
     }
 
@@ -192,7 +202,10 @@ public final class LuckPermsPromoter implements RankPromoter {
         if (!success) {
             return null; // REMOVED_FROM_FIRST_GROUP / NOT_ON_TRACK / AMBIGUOUS_CALL
         }
-        saveUser(user); // LP API 修改是内存态，须显式落库
+        if (!saveUser(user)) {
+            LOG.warning("demote(" + playerId + ") 落库失败，视为失败"); // 内存已改但未持久化，不能报成功
+            return null;
+        }
         return result.getGroupTo().orElse(null);
     }
 

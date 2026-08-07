@@ -22,6 +22,15 @@ public final class OrzRankEvent extends OrzBaseListener {
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
-        service.checkPromotion(event.getPlayer().getUniqueId());
+        // 异步执行晋升检查：LP loadUser（离线 3s 超时）与 stats 读取都可能较慢，
+        // 不能阻塞主线程（PlayerJoinEvent 是主线程事件）。
+        // 晋升/降级本身经 LuckPermsPromoter 的 scheduler 回主线程执行 LP 变更，线程安全。
+        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+            try {
+                service.checkPromotion(event.getPlayer().getUniqueId());
+            } catch (Exception e) {
+                plugin.getLogger().log(java.util.logging.Level.WARNING, "晋升检查异常", e);
+            }
+        });
     }
 }

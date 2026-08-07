@@ -61,6 +61,8 @@ public final class TemplateKeys {
     public static final String REVIEW_CANCELLED = "review_cancelled";
     public static final String REVIEW_APPROVED = "review_approved";
     public static final String REVIEW_REJECTED = "review_rejected";
+    public static final String RANK_PROMOTED = "rank_promoted";
+    public static final String RANK_DEMOTED = "rank_demoted";
     public static final String COMMAND_RANK_STATUS = "rank_status";
     public static final String COMMAND_REVIEW_LIST = "command_review_list";
     public static final String COMMAND_REVIEW_LIST_EMPTY = "command_review_list_empty";
@@ -115,6 +117,8 @@ public final class TemplateKeys {
         REVIEW_CANCELLED,
         REVIEW_APPROVED,
         REVIEW_REJECTED,
+        RANK_PROMOTED,
+        RANK_DEMOTED,
         COMMAND_RANK_STATUS,
         COMMAND_REVIEW_LIST,
         COMMAND_REVIEW_LIST_EMPTY,

@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 通用审核服务：申请→审核→处理→通知 全流程编排。
@@ -36,12 +35,28 @@ public final class ReviewService {
     private final ReviewStore store;
     private final ReviewNotifier notifier;
     private final PlayerLookup lookup;
-    private final Map<String, ReviewType> registry = new ConcurrentHashMap<>();
+    // LinkedHashMap 保持注册顺序（/apply 帮助列表稳定），synchronizedMap 保证并发安全
+    private final Map<String, ReviewType> registry =
+            java.util.Collections.synchronizedMap(new java.util.LinkedHashMap<>());
 
     public ReviewService(ReviewStore store, ReviewNotifier notifier, PlayerLookup lookup) {
         this.store = store;
         this.notifier = notifier;
         this.lookup = lookup;
+    }
+
+    /** 玩家在线则发游戏内消息；通知端口未注入或玩家离线时静默。 */
+    private void gameMessage(UUID playerId, String message) {
+        if (notifier != null) {
+            notifier.gameMessage(playerId, message);
+        }
+    }
+
+    /** 群广播事件；通知端口未注入时静默。 */
+    private void groupEvent(String templateKey, Map<String, String> vars) {
+        if (notifier != null) {
+            notifier.groupEvent(templateKey, vars);
+        }
     }
 
     /** 注册审核类型（消费者模块装配时调用）。 */
@@ -56,7 +71,9 @@ public final class ReviewService {
 
     /** 已注册的全部审核类型（按注册顺序，/apply 帮助用）。 */
     public List<ReviewType> registeredTypes() {
-        return List.copyOf(registry.values());
+        synchronized (registry) {
+            return List.copyOf(registry.values());
+        }
     }
 
     // ---- 玩家侧：提交 / 撤回 ----
@@ -88,8 +105,8 @@ public final class ReviewService {
                 null);
         store.save(request);
 
-        notifier.gameMessage(applicantId, "申请已提交，管理员审核通过后将自动生效。");
-        notifier.groupEvent(
+        gameMessage(applicantId, "申请已提交，管理员审核通过后将自动生效。");
+        groupEvent(
                 "review_submitted",
                 Map.of(
                         "player", lookup.name(applicantId).orElse("?"),
@@ -122,8 +139,8 @@ public final class ReviewService {
 
         String typeName =
                 typeById(request.typeId()).map(ReviewType::displayName).orElse(request.typeId());
-        notifier.gameMessage(applicantId, "已撤回「" + typeName + "」申请。");
-        notifier.groupEvent(
+        gameMessage(applicantId, "已撤回「" + typeName + "」申请。");
+        groupEvent(
                 "review_cancelled",
                 Map.of(
                         "player", lookup.name(applicantId).orElse("?"),
@@ -161,11 +178,16 @@ public final class ReviewService {
         // 先执行 handler（授权等副作用），成功后再落状态；
         // 失败则状态保持 PENDING，避免「已通过但授权未生效」的不一致
         if (approved && type.handler() != null) {
+            boolean handled;
             try {
-                type.handler().onApproved(request.applicantId());
+                handled = type.handler().onApproved(request.applicantId());
             } catch (Exception e) {
-                LOGGER.warning("审核通过但授权处理失败，申请保持待审: " + request.id() + " - " + e.getMessage());
+                LOGGER.warning("审核通过但授权处理异常，申请保持待审: " + request.id() + " - " + e.getMessage());
                 return Result.fail("授权处理失败（" + e.getMessage() + "），请重试或联系管理员。");
+            }
+            if (!handled) {
+                LOGGER.warning("审核通过但授权处理返回失败（如链顶/LP 异常），申请保持待审: " + request.id());
+                return Result.fail("授权处理失败（目标可能已在最高等级或 LuckPerms 异常），请重试或联系管理员。");
             }
         }
 
@@ -183,8 +205,8 @@ public final class ReviewService {
                 type.summarize(request.data()),
                 "reviewer",
                 reviewerName == null ? "?" : reviewerName);
-        notifier.groupEvent(templateKey, vars);
-        notifier.gameMessage(
+        groupEvent(templateKey, vars);
+        gameMessage(
                 request.applicantId(),
                 approved ? "你的「" + type.displayName() + "」申请已通过！" : "你的「" + type.displayName() + "」申请被拒绝。");
         return Result.ok(
