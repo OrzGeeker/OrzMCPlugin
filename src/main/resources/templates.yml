@@ -39,6 +39,8 @@ templates:
     review_cancelled: PLAIN
     review_approved: PLAIN
     review_rejected: PLAIN
+    rank_promoted: PLAIN
+    rank_demoted: PLAIN
     rank_status: CODE_BLOCK
     command_review_list: CODE_BLOCK
     command_review_list_empty: PLAIN

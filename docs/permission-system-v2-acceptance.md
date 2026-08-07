@@ -22,7 +22,7 @@
 | `ReviewServiceTest`（新增 234 行） | submit 预检+防重复+通知、cancelForApplicant、review approve/reject（跑 handler+notifier）、reviewByApplicantName 单/多 pending、hasPending/pendingFor |
 | `PermissionStoreTest`（新增 183 行） | 两段式存取（config/reviews）、时长读取、坏数据容错 |
 | `RankServiceTest`（更新） | 阈值读 config 节、完整视图 |
-| `ConfigHealthCheckTest`（更新） | requiredCmds 补 5 新模板键 |
+| `ConfigHealthCheckTest`（更新） | requiredCmds 补 11 新模板键（review_* ×4 + rank_promoted/rank_demoted + rank_status + command_review_* ×4） |
 
 ### 2.2 门禁结果
 
@@ -85,7 +85,7 @@ BUILD SUCCESSFUL in 1m 4s
 
 | # | 问题 | 根因 | 修复 | 验证 |
 |:--|:--|:--|:--|:--|
-| 1 | RCON `orzdebug` 不触发 Bot 模拟 | `OrzDebugEvent` 只监听 `ServerCommandEvent`（stdin），Paper 26 RCON 走 `RemoteServerCommandEvent` | 双事件监听 + 兼容前导斜杠 | RCON 驱动 `$v l` 成功 |
+| 1 | RCON `orzdebug` 不触发 Bot 模拟 | `OrzDebugEvent` 只监听 `ServerCommandEvent`（stdin），Paper 26 RCON 走 `RemoteServerCommandEvent` | 改监听 `RemoteServerCommandEvent`（RCON 专用通道）+ 兼容前导斜杠；Brigadier 命令走 executes 直调，不双监听 | RCON 驱动 `$v l` 成功 |
 | 2 | `$v y` 抛 `IllegalStateException: Asynchronous Command Dispatched Async` | 群指令/orzdebug 异步线程 dispatch LP 命令，Paper 要求主线程 | `LuckPermsPromoter` 注入 `ServerScheduler`，非主线程 `runSync` 回主线程 | 离线审核 LP 授权成功 |
 | 3 | 自动化脚本 RCON 连不上 | ① shell 展开 `$v`；② node RCON length 字段少算 8 字节头部 | 原生 net 实现 + 正确 length 语义（id+type+payload+2null 总长） | 脚本稳定运行 |
 
@@ -96,7 +96,8 @@ BUILD SUCCESSFUL in 1m 4s
 **遗留说明**：
 - `$v n` 拒绝、`/apply cancel` 撤回已测（补测 ②④）；`$v y` 通过已测（主链路 + 真实场景）
 - 群通知真实投递（EasyBot 网关 → 飞书测试群）链路已通（模板键 + 适配器冒烟），未做真实群消息端到端（避免打扰生产群；测试群无管理员身份的机器人会话）
-- 代码已在 `feat/rank-promotion` 分支（commit `3358e5a`），PR #160 OPEN 待合并
+- 代码已在 `feat/rank-promotion` 分支（commit `e1c18c1`，含 review 修复 + Alerts 清理），PR #160 OPEN 待合并
+- 审核人记录：验收时 RCON/orzdebug 通道显示「群管理员」；后续 S2 修复后审核人=消息发送者昵称透传（BotInboundHandler 4 参），null 兜底「群管理员」——`permission.yml` 落库为真实昵称/ID（如「控制台」「RCON」）
 
 ## 七、测试脚本沉淀
 

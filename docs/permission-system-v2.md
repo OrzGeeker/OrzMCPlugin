@@ -92,15 +92,16 @@ String submit(ReviewType type, UUID applicantId, Map<String,String> data);
 boolean cancel(String requestId, UUID applicantId);
     // 仅 PENDING 可撤回 → CANCELLED → 游戏内「已撤回」 → 群 review_cancelled
 boolean review(String requestId, boolean approved, String reviewerName);
-    // PENDING → 置状态 → approved 时调 handler()
-    // → 群 review_approved|rejected → 游戏内通知申请人（在线即发）
+    // 先执行 handler（approved 时，LP 授权等副作用），成功后才落状态；
+    // handler 返回 false 或抛异常 → 保持 PENDING + 提示（避免「已通过但未生效」）
+    // → 落 APPROVED|REJECTED → 群 review_approved|rejected → 游戏内通知申请人（在线即发）
 List<ReviewRequest> listPending();
 boolean hasPending(ReviewType type, UUID applicantId);
 Optional<ReviewRequest> pendingFor(ReviewType type, String playerName);
 ```
 
 **ReviewStore**——持久化端口接口（实现 = PermissionStore 的 reviews 节）。
-**ReviewHandler**——函数式接口 `void onApproved(UUID applicantId)`。
+**ReviewHandler**——函数式接口 `boolean onApproved(UUID applicantId)`（true=授权成功；false=链顶/LP 异常，调用方保持 PENDING）。
 **ReviewCommandService**——游戏内 `/review approve|reject <name>` 薄封装。
 
 ### 3.2 配置（单一独立文件，不混 config.yml）
@@ -143,13 +144,14 @@ permission.yml
 `/rank` 返回示例：
 
 ```
-你的当前权限组：member
-已在线时长：12.5h / 晋升阈值 10h（✅ 已达标）
+你的当前权限组：成员（member）
+已在线时长：602 分钟 / 晋升成员阈值 600 分钟（✅ 已达标）
 下一步可申请：builder（/apply builder [理由]）
 ```
 
 - 「下一步可申请」由 ReviewType 注册表**反向生成**（资格预检通过的项）——与审核类型天然同步
 - `/rank approve/reject` 移除，迁移至 `/review`
+- 组名用 `RankService.groupDisplayName` 中文展示（admin=管理员/builder=建造者/member=成员/default=访客，全局唯一事实源）
 
 ### 3.5 通知矩阵（4 环节全覆盖）
 
@@ -162,14 +164,17 @@ permission.yml
 
 | 模板键 | 内容示例 |
 |:--|:--|
-| `review_submitted` | `📋 [新申请] TestMember 申请晋升builder：理由（$v l 查看）` |
-| `review_cancelled` | `↩️ TestMember 撤回了晋升builder申请` |
-| `review_approved` | `✅ TestMember 的晋升builder申请已通过（审核人：admin）` |
-| `review_rejected` | `❌ TestMember 的晋升builder申请被拒（审核人：admin）` |
-| `rank_status` | `/rank` 返回文案 |
+| `review_submitted` | `📋 [新申请] TestMember：申请晋升builder（$v l 查看）` |
+| `review_cancelled` | `↩️ TestMember 撤回了申请：申请晋升builder` |
+| `review_approved` | `✅ TestMember 的申请已通过（审核人：管理员）：申请晋升builder` |
+| `review_rejected` | `❌ TestMember 的申请被拒（审核人：管理员）：申请晋升builder` |
+| `rank_promoted` | `🎉 TestMember 权限已升级为「建造者」` |
+| `rank_demoted` | `⬇️ TestMember 权限已被降级为「成员」` |
+| `rank_status` | 保留键（`{message}` 透传；当前 `/rank` 文案由 RankCommandService 直生成，未走模板） |
 
 - 机制复用现有 `TypedConfigProvider.renderEvent(key, vars)` + `Notifier.event(key, env)`（与 whitelist_block 同款）
-- 模板键注册进 `TemplateKeys.ALL` + `templates.yml`，文案可配不写死
+- 模板键注册进 `TemplateKeys.ALL` + `templates.yml`（内容段 + format 段），文案可配不写死
+- 群通知走 `ReviewNotifierAdapter.groupEvent`：按配置键 `renderTemplate` 直读 + fallback switch 双保险（存量部署无新键时也能出文案）
 - **玩家结果三层兜底**：游戏内消息（在线即发）→ 群通知（离线可见）→ `/apply status`（随时自查）
 
 ### 3.6 数据迁移（一期 → 二期）
@@ -236,7 +241,7 @@ permission.yml
 | 3 | rank 模块：阈值读取 + 完整视图查询（组+进度+可申请）+ handler 注入注册 | features/rank/ | ✅ |
 | 4 | `/apply` 四子命令 + `/review` + `/rank` 增强（Brigadier 注册） | 命令注册 + ReviewCommandService | ✅ |
 | 5 | `$v` 群指令（OrzUserCmd + handler + needAdminPermission） | features/botcommands/ | ✅ |
-| 6 | 5 个模板键（review_* ×4 + rank_status）+ templates.yml | TemplateKeys + 模板文件 | ✅ |
+| 6 | 11 个模板键（review_* ×4 + rank_promoted/rank_demoted + rank_status + command_review_* ×4）+ templates.yml（内容段 + format 段） | TemplateKeys + 模板文件 | ✅ |
 | 7 | 数据迁移（启动时，遗留 pending → reviews 节） | OrzServices 装配 | ❌ 已取消（见 3.6：LP 接管权限状态，不做迁移） |
 | 8 | 单元测试 + MockBukkit 集成测试（含通知捕获 CapturingSink） | 各模块 test | ✅ |
 | 9 | `./gradlew check` 全绿 + 本地服冒烟 | — | ✅ |
@@ -251,7 +256,7 @@ permission.yml
 |:--|:--|:--|
 | `features/review/ReviewRequest.java` | 值对象 | id/typeId/applicantId/data/status/createdAt/reviewedAt/reviewerName |
 | `features/review/ReviewType.java` | 注册表项 | id/命令键/参数解析/预检/摘要/handler（BUILDER_PROMOTION 等） |
-| `features/review/ReviewHandler.java` | 端口 | 审核通过/拒绝回调（LP 授权等副作用） |
+| `features/review/ReviewHandler.java` | 端口 | 审核通过处理回调 `boolean onApproved(UUID)`（LP 授权等副作用；false=授权失败保持待审） |
 | `features/review/ReviewStore.java` | 端口 | 持久化接口（save/find/listPending/pendingFor） |
 | `features/review/ReviewNotifier.java` | 端口 | 4 环节通知接口 |
 | `features/review/PlayerLookup.java` | 端口 | 玩家名↔UUID 解析 |
@@ -262,16 +267,16 @@ permission.yml
 | `features/rank/RankService.java` | 业务 | 阈值读 config 节 + 完整视图（组+进度+可申请） |
 | `features/rank/RankCommandService.java` | 游戏内命令 | `/rank` 纯查询 + 注册表反向生成 |
 | `features/rank/LuckPermsPromoter.java` | handler 实现 | LP 授权（主线程派发，见 8.3） |
-| `features/botcommands/OrzUserCmd.java` | 群指令枚举 | 新增 `REVIEW("v", "查看/处理审核申请", true)` |
-| `features/botcommands/BotCommandService.java` | 群指令分发 | `$v l/y/n` handler（setReviewService setter 注入） |
+| `features/botcommands/OrzUserCmd.java` | 群指令枚举 | 新增 `REVIEW("v", "查看/处理审核申请", true)` + `PERMISSION("p", "权限升降级", true)` |
+| `features/botcommands/BotCommandService.java` | 群指令分发 | `$v l/y/n` + `$p u/d` handler（setReviewService setter 注入；$v 审核人=消息发送者昵称透传） |
 | `infra/notify/ReviewNotifierAdapter.java` | 通知适配 | 按配置键 renderTemplate + fallback（见 8.4） |
 | `infra/player/BukkitPlayerLookup.java` | 玩家解析适配 | OfflinePlayer 离线解析 |
-| `infra/config/TemplateKeys.java` | 模板键 | review_submitted/cancelled/approved/rejected + rank_status |
+| `infra/config/TemplateKeys.java` | 模板键 | review_* ×4 + rank_promoted/rank_demoted + rank_status + command_review_* ×4 |
 | `assembly/FeatureModule.java` | 装配 | PermissionStore/ReviewService/handler 注册/命令注册/setter 注入 |
 | `infra/config/ConfigService.java` | 配置注册 | `registerConfig("permission","permission.yml")` |
-| `events/OrzDebugEvent.java` | 测试通道 | 兼容 RemoteServerCommandEvent（RCON 触发） |
+| `events/OrzDebugEvent.java` | 测试通道 | 仅监听 RemoteServerCommandEvent（RCON 触发；Brigadier 走 executes 直调） |
 | `resources/permission.yml` | 默认资源 | 两段式模板（config + reviews） |
-| `resources/templates.yml` | 模板 | 5 新键（format 段：review_* PLAIN / rank_status CODE_BLOCK） |
+| `resources/templates.yml` | 模板 | 11 新键（内容段 + format 段：review_*/rank_* PLAIN、rank_status/command_review_list CODE_BLOCK） |
 
 ### 8.2 命令一览
 
@@ -297,5 +302,5 @@ permission.yml
 
 ### 8.4 测试通道修复（自动化测试前置）
 
-- `OrzDebugEvent` 原本只监听 `ServerCommandEvent`（stdin 控制台），Paper 26 的 RCON 触发的是 `RemoteServerCommandEvent`（子类）且命令可能带前导斜杠 → 双事件监听 + 剥斜杠，RCON 才能驱动 `orzdebug` 模拟群消息。
+- `OrzDebugEvent` 只监听 `RemoteServerCommandEvent`（RCON 专用通道，命令可能带前导斜杠 → 剥斜杠）。Paper 26 中 Brigadier 命令（游戏内/控制台）走 executes 直调，**不再监听 `ServerCommandEvent`**（前代实现双监听会构成双通道，潜在双重处理）。
 - 测试脚本 `~/minecraft-bot/review-e2e.js`（主链路）+ `review-e2e-2.js`（补测）+ `review-real.js`（真实玩家场景），内嵌 node 原生 RCON 实现（length = id+type+payload+2null 总长，`$` 不经 shell 展开）。
