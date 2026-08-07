@@ -91,4 +91,17 @@ public final class RankYamlStore implements RankStore {
         cfg.set("players." + playerId + ".pending_application", pending);
         configService.saveConfig(FILE);
     }
+
+    @Override
+    public boolean hasPromoted(UUID playerId) {
+        FileConfiguration cfg = configService.getConfig(FILE);
+        return cfg.getBoolean("players." + playerId + ".promoted", false);
+    }
+
+    @Override
+    public void markPromoted(UUID playerId) {
+        FileConfiguration cfg = configService.getConfig(FILE);
+        cfg.set("players." + playerId + ".promoted", true);
+        configService.saveConfig(FILE);
+    }
 }

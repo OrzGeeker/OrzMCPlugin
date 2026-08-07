@@ -18,4 +18,10 @@ public interface RankStore {
 
     /** 设置申请状态。 */
     void setPendingApplication(UUID playerId, boolean pending);
+
+    /** 是否已完成自动晋升（default→member 已触发过）。 */
+    boolean hasPromoted(UUID playerId);
+
+    /** 标记已自动晋升。 */
+    void markPromoted(UUID playerId);
 }

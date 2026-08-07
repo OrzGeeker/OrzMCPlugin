@@ -106,4 +106,19 @@ class RankYamlStoreTest {
         store.setPendingApplication(id, false);
         assertFalse(store.hasPendingApplication(id));
     }
+
+    // ---- 晋升标记 ----
+
+    @Test
+    void promoted_defaultFalse() {
+        UUID id = UUID.randomUUID();
+        assertFalse(store.hasPromoted(id));
+    }
+
+    @Test
+    void promoted_markThenRead() {
+        UUID id = UUID.randomUUID();
+        store.markPromoted(id);
+        assertTrue(store.hasPromoted(id));
+    }
 }

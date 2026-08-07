@@ -30,15 +30,16 @@ public final class RankService {
     /** 检查玩家是否达到自动晋升条件（default→member）。
      *
      * <p>时长从服务器原生 stats 读取（玩家离线也有数据），因此可在任意时刻调用，
-     * 不需要玩家在线。LP promote 幂等（玩家已在更高级别时无副作用）。</p>
+     * 不需要玩家在线。已晋升玩家（ranks.yml promoted 标记）不重复处理。</p>
      */
     public void checkPromotion(UUID playerId) {
-        if (!promoter.isInGroup(playerId, "default")) {
-            return; // 已晋升（member 及以上）不重复处理
+        if (store.hasPromoted(playerId)) {
+            return; // 已晋升过（member 及以上）不重复处理
         }
         long playtime = store.getPlaytimeMinutes(playerId);
         if (playtime >= memberThresholdMinutes) {
             promoter.promoteToNext(playerId);
+            store.markPromoted(playerId);
         }
     }
 

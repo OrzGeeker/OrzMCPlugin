@@ -36,40 +36,43 @@ class RankServiceTest {
     void checkPromotion_belowThreshold_doesNotPromote() {
         UUID id = UUID.randomUUID();
         when(store.getPlaytimeMinutes(id)).thenReturn(30L); // 0.5h < 10h
-        when(promoter.isInGroup(id, "default")).thenReturn(true);
+        when(store.hasPromoted(id)).thenReturn(false);
 
         service.checkPromotion(id);
 
         verify(promoter, never()).promoteToNext(id);
+        verify(store, never()).markPromoted(id);
     }
 
     @Test
     void checkPromotion_atThreshold_promotesDefaultToMember() {
         UUID id = UUID.randomUUID();
         when(store.getPlaytimeMinutes(id)).thenReturn(600L); // 10h
-        when(promoter.isInGroup(id, "default")).thenReturn(true);
+        when(store.hasPromoted(id)).thenReturn(false);
 
         service.checkPromotion(id);
 
         verify(promoter).promoteToNext(id);
+        verify(store).markPromoted(id);
     }
 
     @Test
     void checkPromotion_aboveThreshold_promotesDefaultToMember() {
         UUID id = UUID.randomUUID();
         when(store.getPlaytimeMinutes(id)).thenReturn(720L); // 12h
-        when(promoter.isInGroup(id, "default")).thenReturn(true);
+        when(store.hasPromoted(id)).thenReturn(false);
 
         service.checkPromotion(id);
 
         verify(promoter).promoteToNext(id);
+        verify(store).markPromoted(id);
     }
 
     @Test
-    void checkPromotion_alreadyMember_doesNotPromote() {
+    void checkPromotion_alreadyPromoted_doesNotPromoteAgain() {
         UUID id = UUID.randomUUID();
         when(store.getPlaytimeMinutes(id)).thenReturn(600L);
-        when(promoter.isInGroup(id, "default")).thenReturn(false);
+        when(store.hasPromoted(id)).thenReturn(true);
 
         service.checkPromotion(id);
 
@@ -81,11 +84,12 @@ class RankServiceTest {
         // 时长来自 stats（离线可读），玩家不在线也能判断
         UUID id = UUID.randomUUID();
         when(store.getPlaytimeMinutes(id)).thenReturn(600L);
-        when(promoter.isInGroup(id, "default")).thenReturn(true);
+        when(store.hasPromoted(id)).thenReturn(false);
 
         service.checkPromotion(id);
 
         verify(promoter).promoteToNext(id);
+        verify(store).markPromoted(id);
     }
 
     // ---- 申请流程（member→builder）----
@@ -127,10 +131,11 @@ class RankServiceTest {
 
         UUID id = UUID.randomUUID();
         when(store.getPlaytimeMinutes(id)).thenReturn(300L); // 5h
-        when(promoter.isInGroup(id, "default")).thenReturn(true);
+        when(store.hasPromoted(id)).thenReturn(false);
 
         service.checkPromotion(id);
 
         verify(promoter).promoteToNext(id);
+        verify(store).markPromoted(id);
     }
 }

@@ -134,6 +134,9 @@ public final class FeatureModule implements ServiceModule {
                     // 离线服：UUID→名字，玩家可能不在线（审核时申请者已退出），用 OfflinePlayer 查缓存
                     return org.bukkit.Bukkit.getOfflinePlayer(playerId).getName();
                 });
+        if (!rankPromoter.isLuckPermsEnabled()) {
+            org.bukkit.Bukkit.getLogger().warning("[OrzMC] 未检测到 LuckPerms，Rank 晋升功能禁用（时长查询/申请记录仍可用）");
+        }
         this.rankService = new com.jokerhub.paper.plugin.orzmc.features.rank.RankService(rankStore, rankPromoter);
         this.rankCommandService = new com.jokerhub.paper.plugin.orzmc.features.rank.RankCommandService(
                 rankService, platform.textStyles());
