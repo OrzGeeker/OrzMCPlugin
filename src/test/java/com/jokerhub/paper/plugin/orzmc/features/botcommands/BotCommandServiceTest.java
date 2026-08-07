@@ -226,4 +226,84 @@ class BotCommandServiceTest {
             throw new RuntimeException(e);
         }
     }
+
+    // ---- $v review command (admin) ----
+
+    @Test
+    void parse_reviewApprove_byPlayerName_callsReviewByApplicantName() {
+        var reviewService = mock(com.jokerhub.paper.plugin.orzmc.features.review.ReviewService.class);
+        service.setReviewService(reviewService);
+        when(reviewService.reviewByApplicantName(eq("TestMember"), eq(true), anyString()))
+                .thenReturn(com.jokerhub.paper.plugin.orzmc.features.review.ReviewService.Result.ok("已通过", "r1"));
+
+        service.parse("$v y TestMember", true, callback);
+        verify(reviewService).reviewByApplicantName("TestMember", true, "群管理员");
+        verify(callback, atLeastOnce()).accept(any(MessageEnvelope.class));
+    }
+
+    @Test
+    void parse_reviewReject_byPlayerName_callsReviewByApplicantName() {
+        var reviewService = mock(com.jokerhub.paper.plugin.orzmc.features.review.ReviewService.class);
+        service.setReviewService(reviewService);
+        when(reviewService.reviewByApplicantName(eq("TestMember"), eq(false), anyString()))
+                .thenReturn(com.jokerhub.paper.plugin.orzmc.features.review.ReviewService.Result.ok("已拒绝", "r1"));
+
+        service.parse("$v n TestMember", true, callback);
+        verify(reviewService).reviewByApplicantName("TestMember", false, "群管理员");
+        verify(callback, atLeastOnce()).accept(any(MessageEnvelope.class));
+    }
+
+    @Test
+    void parse_reviewApprove_nonAdmin_doesNotCallReview() {
+        var reviewService = mock(com.jokerhub.paper.plugin.orzmc.features.review.ReviewService.class);
+        service.setReviewService(reviewService);
+
+        service.parse("$v y TestMember", false, callback);
+        verify(reviewService, never()).reviewByApplicantName(anyString(), anyBoolean(), anyString());
+        verify(callback, atLeastOnce()).accept(any(MessageEnvelope.class));
+    }
+
+    @Test
+    void parse_reviewList_callsListPending() {
+        var reviewService = mock(com.jokerhub.paper.plugin.orzmc.features.review.ReviewService.class);
+        service.setReviewService(reviewService);
+        when(reviewService.listPending()).thenReturn(java.util.List.of());
+
+        service.parse("$v l", true, callback);
+        verify(reviewService).listPending();
+        verify(callback, atLeastOnce()).accept(any(MessageEnvelope.class));
+    }
+
+    @Test
+    void parse_reviewUnknownSubcommand_emitsUsage() {
+        var reviewService = mock(com.jokerhub.paper.plugin.orzmc.features.review.ReviewService.class);
+        service.setReviewService(reviewService);
+
+        service.parse("$v x", true, callback);
+        verify(reviewService, never()).reviewByApplicantName(anyString(), anyBoolean(), anyString());
+        verify(callback, atLeastOnce()).accept(any(MessageEnvelope.class));
+    }
+
+    @Test
+    void parse_reviewNoService_emitsError() {
+        service.parse("$v l", true, callback);
+        verify(callback, atLeastOnce()).accept(any(MessageEnvelope.class));
+    }
+
+    @Test
+    void parse_reviewApprove_byTypeAndPlayer_callsReviewById() {
+        var reviewService = mock(com.jokerhub.paper.plugin.orzmc.features.review.ReviewService.class);
+        service.setReviewService(reviewService);
+        var type = mock(com.jokerhub.paper.plugin.orzmc.features.review.ReviewType.class);
+        when(reviewService.typeById("builder-promotion")).thenReturn(java.util.Optional.of(type));
+        var request = mock(com.jokerhub.paper.plugin.orzmc.features.review.ReviewRequest.class);
+        when(request.id()).thenReturn("req-1");
+        when(reviewService.pendingFor("builder-promotion", "TestMember")).thenReturn(java.util.Optional.of(request));
+        when(reviewService.review(eq("req-1"), eq(true), anyString()))
+                .thenReturn(com.jokerhub.paper.plugin.orzmc.features.review.ReviewService.Result.ok("已通过", "r1"));
+
+        service.parse("$v y builder-promotion TestMember", true, callback);
+        verify(reviewService).review(anyString(), eq(true), eq("群管理员"));
+        verify(callback, atLeastOnce()).accept(any(MessageEnvelope.class));
+    }
 }

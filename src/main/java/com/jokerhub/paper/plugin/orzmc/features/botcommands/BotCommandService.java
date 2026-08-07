@@ -4,6 +4,7 @@ import com.jokerhub.paper.plugin.orzmc.core.bot.BotInboundHandler;
 import com.jokerhub.paper.plugin.orzmc.core.bot.MessageEnvelope;
 import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
 import com.jokerhub.paper.plugin.orzmc.features.maintenance.WorldMaintenanceService;
+import com.jokerhub.paper.plugin.orzmc.features.review.ReviewService;
 import com.jokerhub.paper.plugin.orzmc.features.security.BlacklistService;
 import com.jokerhub.paper.plugin.orzmc.features.whitelist.WhitelistService;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.BotConfig;
@@ -344,18 +345,31 @@ public final class BotCommandService implements BotInboundHandler {
         String first = parts[0];
         String second = parts.length > 1 ? parts[1].trim() : "";
 
-        // 若首个 token 是类型 id，按类型 + 玩家定位；否则按玩家名定位唯一待审
-        var request = reviewService.typeById(first).isPresent() && !second.isBlank()
-                ? reviewService.pendingFor(first, second)
-                : reviewService.listPending().stream()
-                        .filter(r -> playerNameOf(r).equalsIgnoreCase(first))
-                        .filter(r -> reviewService.typeById(r.typeId()).isPresent())
-                        .findFirst();
-        if (request.isEmpty()) {
-            emit(callback, "command_review_error", Map.of("message", "找不到待审申请: " + rest), "找不到待审申请: " + rest);
-            return;
-        }
-        var result = reviewService.review(request.get().id(), approved, "群管理员");
+        // 群指令走异步线程（WebSocket/orzdebug），审核执行 + 状态落盘必须回主线程，
+        // 否则 Bukkit 配置保存可能不生效
+        final ReviewService.Result reviewResult;
+        final boolean byType = reviewService.typeById(first).isPresent() && !second.isBlank();
+        final String playerOrType = first;
+        final String playerName = second;
+        var done = new java.util.concurrent.CompletableFuture<
+                com.jokerhub.paper.plugin.orzmc.features.review.ReviewService.Result>();
+        server.runSync(() -> {
+            try {
+                if (byType) {
+                    var request = reviewService.pendingFor(playerOrType, playerName);
+                    if (request.isEmpty()) {
+                        done.complete(ReviewService.Result.fail("找不到待审申请: " + rest));
+                    } else {
+                        done.complete(reviewService.review(request.get().id(), approved, "群管理员"));
+                    }
+                } else {
+                    done.complete(reviewService.reviewByApplicantName(playerOrType, approved, "群管理员"));
+                }
+            } catch (Throwable t) {
+                done.completeExceptionally(t);
+            }
+        });
+        var result = done.join();
         emit(
                 callback,
                 result.success() ? "command_review_result" : "command_review_error",

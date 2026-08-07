@@ -278,14 +278,28 @@ public final class FeatureModule implements ServiceModule {
             registerConfig(commands, cp);
 
             // ---- Debug: /orzdebug <bot-command> 模拟群里用户发 Bot 命令 ----
-            // 注：不能叫 /debug（Paper 1.20+ 原版 debug 命令抢占且未注册命令不触发 ServerCommandEvent），
-            // 必须注册本命令后由 ServerCommandEvent 捕获（见 OrzDebugEvent）。
+            // 注：Paper 26 中 Brigadier 命令不触发 ServerCommandEvent，OrzDebugEvent
+            // 监听器收不到事件，因此直接在此处调用 BotInboundHandler 完成模拟。
             commands.register(
                     literal("orzdebug")
                             .requires(src -> true)
                             .then(argument("cmd", StringArgumentType.greedyString())
                                     .executes(ctx -> {
+                                        String cmd = ctx.getArgument("cmd", String.class);
                                         ctx.getSource().getSender().sendMessage("debug 已受理（模拟 Bot 入站命令）");
+                                        var inbound = botModule.botInboundHandler();
+                                        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+                                            try {
+                                                inbound.handleMessage(cmd, true, env -> {
+                                                    if (env != null) {
+                                                        plugin.getLogger().info("cmd debug: \n" + env.message());
+                                                    }
+                                                });
+                                            } catch (Exception e) {
+                                                plugin.getLogger()
+                                                        .log(java.util.logging.Level.SEVERE, "debug 命令异步执行异常", e);
+                                            }
+                                        });
                                         return 1;
                                     }))
                             .executes(ctx -> {
