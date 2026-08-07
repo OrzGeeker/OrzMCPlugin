@@ -70,6 +70,10 @@ public final class FeatureModule implements ServiceModule {
     private final GeoIpAccessService geoIpAccessService;
     private final BlacklistService blacklistService;
     private final GuideService guideService;
+    /** 在线玩家列表格式化（$l 命令与上下线广播共用，rankService 创建后注入）。 */
+    private final com.jokerhub.paper.plugin.orzmc.infra.player.OnlineListFormatter listFormatter =
+            new com.jokerhub.paper.plugin.orzmc.infra.player.OnlineListFormatter();
+
     private final PlayerEventService playerEventService;
     private final TntEventService tntEventService;
     private final WhitelistEventService whitelistEventService;
@@ -108,7 +112,8 @@ public final class FeatureModule implements ServiceModule {
                 platform.configs(),
                 platform.textStyles(),
                 botModule.notifier(),
-                platform.throttledNotifier());
+                platform.throttledNotifier(),
+                this.listFormatter);
         this.tntEventService = new TntEventService(
                 platform.configs(), platform.textStyles(), botModule.notifier(), platform.throttledNotifier());
         this.whitelistEventService =
@@ -141,8 +146,8 @@ public final class FeatureModule implements ServiceModule {
         var playerLookup = new com.jokerhub.paper.plugin.orzmc.infra.player.BukkitPlayerLookup();
         this.rankService = new com.jokerhub.paper.plugin.orzmc.features.rank.RankService(
                 permissionStore, permissionStore, rankPromoter, permissionStore.memberThresholdHours(), reviewNotifier);
-        // 上下线广播的在线列表显示权限组（rankService 已就绪后注入）
-        this.playerEventService.setRankService(this.rankService);
+        // 在线列表格式化注入权限组解析（$l 命令与上下线广播共用，一次注入两处生效）
+        this.listFormatter.setRankService(this.rankService);
         this.reviewService = new com.jokerhub.paper.plugin.orzmc.features.review.ReviewService(
                 permissionStore, reviewNotifier, playerLookup);
         // 注册审核类型 BUILDER_PROMOTION：handler 由 rank 模块注入（LP 授权），框架零 LP 依赖

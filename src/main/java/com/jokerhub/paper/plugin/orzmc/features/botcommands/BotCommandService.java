@@ -72,7 +72,10 @@ public final class BotCommandService implements BotInboundHandler {
     public void setRankService(com.jokerhub.paper.plugin.orzmc.features.rank.RankService rankService) {
         this.rankService = rankService;
         // 重建列表反馈服务以注入 rankService（在线列表显示权限组）
-        this.listFeedbackService = new BotCommandListFeedbackService(server, configs, rankService);
+        com.jokerhub.paper.plugin.orzmc.infra.player.OnlineListFormatter formatter =
+                new com.jokerhub.paper.plugin.orzmc.infra.player.OnlineListFormatter();
+        formatter.setRankService(rankService);
+        this.listFeedbackService = new BotCommandListFeedbackService(server, configs, formatter);
     }
 
     @Override

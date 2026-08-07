@@ -11,6 +11,7 @@ import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
 import com.jokerhub.paper.plugin.orzmc.features.security.GeoIpAccessService;
 import com.jokerhub.paper.plugin.orzmc.infra.notify.Notifier;
 import com.jokerhub.paper.plugin.orzmc.infra.notify.ThrottledNotifier;
+import com.jokerhub.paper.plugin.orzmc.infra.player.OnlineListFormatter;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
 import com.jokerhub.paper.plugin.orzmc.testutil.ServiceTestBase;
@@ -50,7 +51,8 @@ class PlayerEventServiceTest extends ServiceTestBase {
 
     @BeforeEach
     void setUp() {
-        service = new PlayerEventService(server, configs, styles, notifier, throttledNotifier);
+        service =
+                new PlayerEventService(server, configs, styles, notifier, throttledNotifier, new OnlineListFormatter());
     }
 
     @Test
@@ -170,7 +172,10 @@ class PlayerEventServiceTest extends ServiceTestBase {
     void notifyPlayerState_join_withRankService_includesGroupInList() {
         com.jokerhub.paper.plugin.orzmc.features.rank.RankService rankService =
                 mock(com.jokerhub.paper.plugin.orzmc.features.rank.RankService.class);
-        service.setRankService(rankService);
+        com.jokerhub.paper.plugin.orzmc.infra.player.OnlineListFormatter formatter =
+                new com.jokerhub.paper.plugin.orzmc.infra.player.OnlineListFormatter();
+        formatter.setRankService(rankService);
+        service = new PlayerEventService(server, configs, styles, notifier, throttledNotifier, formatter);
 
         org.bukkit.entity.Player p1 = mock(org.bukkit.entity.Player.class);
         org.bukkit.entity.Player p2 = mock(org.bukkit.entity.Player.class);
