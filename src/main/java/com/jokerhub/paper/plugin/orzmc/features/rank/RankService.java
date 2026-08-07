@@ -1,13 +1,12 @@
 package com.jokerhub.paper.plugin.orzmc.features.rank;
 
-import java.time.Duration;
 import java.util.UUID;
 
 /**
  * 玩家权限晋升服务。
  *
- * <p>自动晋升：default→member（累计在线时长达阈值）；member→builder 走申请审核；
- * builder→admin 纯手动。晋升执行通过 {@link RankPromoter} 委托给 LuckPerms。</p>
+ * <p>自动晋升：default→member（累计在线时长读服务器原生 stats，达阈值）；member→builder
+ * 走申请审核；builder→admin 纯手动。晋升执行通过 {@link RankPromoter} 委托给 LuckPerms。</p>
  */
 public final class RankService {
 
@@ -28,18 +27,10 @@ public final class RankService {
         this.memberThresholdMinutes = memberThresholdHours * 60L;
     }
 
-    /** 记录玩家在线时长（分钟累计）。 */
-    public void recordPlaytime(UUID playerId, Duration duration) {
-        long minutes = Math.max(1, duration.toMinutes());
-        long current = store.getPlaytimeMinutes(playerId);
-        store.setPlaytimeMinutes(playerId, current + minutes);
-    }
-
     /** 检查玩家是否达到自动晋升条件（default→member）。
      *
-     * <p>实现说明：LP promote 幂等（玩家已在更高级别时无副作用），
-     * 因此不依赖 isInGroup 判断，直接按时长触发。isInGroup 由 LuckPermsPromoter
-     * 用 LP 查询实现（供测试 mock 断言）。</p>
+     * <p>时长从服务器原生 stats 读取（玩家离线也有数据），因此可在任意时刻调用，
+     * 不需要玩家在线。LP promote 幂等（玩家已在更高级别时无副作用）。</p>
      */
     public void checkPromotion(UUID playerId) {
         if (!promoter.isInGroup(playerId, "default")) {
@@ -61,7 +52,7 @@ public final class RankService {
         return store.hasPendingApplication(playerId);
     }
 
-    /** 玩家累计在线时长（分钟）。 */
+    /** 玩家累计在线时长（分钟）——读服务器原生 stats。 */
     public long playtimeMinutes(UUID playerId) {
         return store.getPlaytimeMinutes(playerId);
     }

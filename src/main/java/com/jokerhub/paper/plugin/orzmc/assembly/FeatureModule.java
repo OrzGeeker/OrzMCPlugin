@@ -127,7 +127,7 @@ public final class FeatureModule implements ServiceModule {
         this.portalCommandService = new PortalCommandService(portalModule.portalService(), platform.textStyles());
         this.orzConfigCommand = new OrzConfigCommand(
                 platform.configService(), platform.textStyles(), botModule.botMessageService()::reloadConfig);
-        // 权限晋升（Rank）模块：时长统计 + 自动晋升 + /apply 申请
+        // 权限晋升（Rank）模块：时长（读服务器原生 stats 文件）+ 自动晋升 + /apply 申请
         var rankStore = new com.jokerhub.paper.plugin.orzmc.features.rank.RankYamlStore(platform.configService());
         var rankPromoter = new com.jokerhub.paper.plugin.orzmc.features.rank.LuckPermsPromoter(
                 platform.serverFacade(), playerId -> {

@@ -3,17 +3,16 @@ package com.jokerhub.paper.plugin.orzmc.features.rank;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-import java.time.Duration;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * RankService 测试：时长累计、自动晋升判定、申请流程。
+ * RankService 测试：自动晋升判定（读服务器原生 stats 时长）、申请流程。
  *
- * <p>设计（2026-08-06）：
+ * <p>设计（2026-08-07）：
  * <ul>
- *   <li>default→member：累计在线时长达阈值自动晋升（promote rank track）</li>
+ *   <li>default→member：累计在线时长（服务器 stats 数据源）达阈值自动晋升</li>
  *   <li>member→builder：/apply 申请，管理员审核（本服务只记录申请状态）</li>
  *   <li>builder→admin：手动（不自动）</li>
  * </ul>
@@ -29,28 +28,6 @@ class RankServiceTest {
         store = mock(RankStore.class);
         promoter = mock(RankPromoter.class);
         service = new RankService(store, promoter);
-    }
-
-    // ---- 时长累计 ----
-
-    @Test
-    void recordPlaytime_addsToExistingMinutes() {
-        UUID id = UUID.randomUUID();
-        when(store.getPlaytimeMinutes(id)).thenReturn(30L);
-
-        service.recordPlaytime(id, Duration.ofMinutes(15));
-
-        verify(store).setPlaytimeMinutes(id, 45L);
-    }
-
-    @Test
-    void recordPlaytime_initializesToZeroWhenAbsent() {
-        UUID id = UUID.randomUUID();
-        when(store.getPlaytimeMinutes(id)).thenReturn(0L);
-
-        service.recordPlaytime(id, Duration.ofMinutes(5));
-
-        verify(store).setPlaytimeMinutes(id, 5L);
     }
 
     // ---- 自动晋升（default→member）----
@@ -97,6 +74,18 @@ class RankServiceTest {
         service.checkPromotion(id);
 
         verify(promoter, never()).promoteToNext(id);
+    }
+
+    @Test
+    void checkPromotion_offlinePlayer_usesServerStats() {
+        // 时长来自 stats（离线可读），玩家不在线也能判断
+        UUID id = UUID.randomUUID();
+        when(store.getPlaytimeMinutes(id)).thenReturn(600L);
+        when(promoter.isInGroup(id, "default")).thenReturn(true);
+
+        service.checkPromotion(id);
+
+        verify(promoter).promoteToNext(id);
     }
 
     // ---- 申请流程（member→builder）----
