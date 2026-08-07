@@ -192,9 +192,8 @@ class PlayerEventServiceTest extends ServiceTestBase {
 
         org.bukkit.Server bukkitServer = mock(org.bukkit.Server.class);
         when(server.server()).thenReturn(bukkitServer);
-        @SuppressWarnings({"unchecked", "rawtypes"})
-        java.util.Collection online = java.util.List.of(p1, p2);
-        when(bukkitServer.getOnlinePlayers()).thenReturn(online);
+        java.util.Collection<? extends org.bukkit.entity.Player> online = java.util.List.of(p1, p2);
+        doReturn(online).when(bukkitServer).getOnlinePlayers();
         when(bukkitServer.getMaxPlayers()).thenReturn(20);
 
         // p1 是 admin 组、p2 是 builder 组（LP 真实组 → 显示名）
@@ -239,9 +238,8 @@ class PlayerEventServiceTest extends ServiceTestBase {
 
         org.bukkit.Server bukkitServer = mock(org.bukkit.Server.class);
         when(server.server()).thenReturn(bukkitServer);
-        @SuppressWarnings({"unchecked", "rawtypes"})
-        java.util.Collection online = java.util.List.of(p1);
-        when(bukkitServer.getOnlinePlayers()).thenReturn(online);
+        java.util.Collection<? extends org.bukkit.entity.Player> online = java.util.List.of(p1);
+        doReturn(online).when(bukkitServer).getOnlinePlayers();
         when(bukkitServer.getMaxPlayers()).thenReturn(20);
 
         org.bukkit.Location loc = mock(org.bukkit.Location.class);
