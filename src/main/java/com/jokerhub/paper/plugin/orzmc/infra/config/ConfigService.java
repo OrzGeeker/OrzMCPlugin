@@ -79,6 +79,11 @@ public final class ConfigService {
         return configManager.loadFile(fileName);
     }
 
+    /** 插件数据目录（定位遗留文件用）。 */
+    public java.io.File dataFolder() {
+        return configManager.dataFolder();
+    }
+
     /**
      * Read a ConfigurationSection from the merged config, with fallback to old individual file.
      * Returns null if neither path has data.

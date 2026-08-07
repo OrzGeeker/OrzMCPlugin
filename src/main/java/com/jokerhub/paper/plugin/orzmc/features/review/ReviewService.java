@@ -114,7 +114,8 @@ public final class ReviewService {
         if (request.status() != ReviewRequest.Status.PENDING) {
             return Result.fail("该申请已处理，无法撤回。");
         }
-        ReviewRequest cancelled = request.reviewed(ReviewRequest.Status.CANCELLED, applicantId.toString());
+        // CANCELLED 无审核人，reviewer 置 null（撤回由申请人本人发起，非审核行为）
+        ReviewRequest cancelled = request.reviewed(ReviewRequest.Status.CANCELLED, null);
         store.save(cancelled);
 
         String typeName =

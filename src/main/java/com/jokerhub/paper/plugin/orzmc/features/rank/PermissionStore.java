@@ -83,17 +83,7 @@ public final class PermissionStore implements RankStore, ReviewStore {
     @Override
     public void save(ReviewRequest request) {
         FileConfiguration cfg = configService.getConfig(FILE);
-        String path = REVIEWS_SECTION + "." + request.id();
-        cfg.set(path + ".type", request.typeId());
-        cfg.set(path + ".applicant", request.applicantId().toString());
-        if (request.data() != null && !request.data().isEmpty()) {
-            ConfigurationSection dataSection = cfg.createSection(path + ".data");
-            request.data().forEach(dataSection::set);
-        }
-        cfg.set(path + ".status", request.status().name());
-        cfg.set(path + ".created-at", request.createdAt());
-        cfg.set(path + ".reviewed-at", request.reviewedAt());
-        cfg.set(path + ".reviewer", request.reviewerName());
+        writeRequest(cfg, request);
         configService.saveConfig(FILE);
     }
 
@@ -194,14 +184,35 @@ public final class PermissionStore implements RankStore, ReviewStore {
                             System.currentTimeMillis(),
                             0L,
                             null);
-                    save(migrated);
+                    // 攒批：直接写 cfg，统一在迁移末尾一次落盘
+                    writeRequest(cfg, migrated);
                     changed = true;
                 }
             }
         }
         if (changed) {
             configService.saveConfig(FILE);
+            // 迁移成功：旧文件改名 .bak，避免残留误导（幂等：已迁移的玩家跳过）
+            java.io.File legacyFile = new java.io.File(configService.dataFolder(), "ranks.yml");
+            if (legacyFile.exists()) {
+                legacyFile.renameTo(new java.io.File(legacyFile.getParentFile(), "ranks.yml.bak"));
+            }
         }
+    }
+
+    /** 写一条审核记录到 cfg（不落盘，调用方负责 saveConfig）。 */
+    private void writeRequest(FileConfiguration cfg, ReviewRequest request) {
+        String path = REVIEWS_SECTION + "." + request.id();
+        cfg.set(path + ".type", request.typeId());
+        cfg.set(path + ".applicant", request.applicantId().toString());
+        if (request.data() != null && !request.data().isEmpty()) {
+            ConfigurationSection dataSection = cfg.createSection(path + ".data");
+            request.data().forEach(dataSection::set);
+        }
+        cfg.set(path + ".status", request.status().name());
+        cfg.set(path + ".created-at", request.createdAt());
+        cfg.set(path + ".reviewed-at", request.reviewedAt());
+        cfg.set(path + ".reviewer", request.reviewerName());
     }
 
     private static String newRequestId() {
