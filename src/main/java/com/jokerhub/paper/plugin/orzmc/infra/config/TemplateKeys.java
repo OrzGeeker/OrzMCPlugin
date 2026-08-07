@@ -56,6 +56,17 @@ public final class TemplateKeys {
     public static final String MAINTENANCE_OPTIMIZE_DONE = "maintenance_optimize_done";
     public static final String MAINTENANCE_OPTIMIZE_ERROR = "maintenance_optimize_error";
 
+    // ---- 权限审核事件（通用审核框架）----
+    public static final String REVIEW_SUBMITTED = "review_submitted";
+    public static final String REVIEW_CANCELLED = "review_cancelled";
+    public static final String REVIEW_APPROVED = "review_approved";
+    public static final String REVIEW_REJECTED = "review_rejected";
+    public static final String COMMAND_RANK_STATUS = "rank_status";
+    public static final String COMMAND_REVIEW_LIST = "command_review_list";
+    public static final String COMMAND_REVIEW_LIST_EMPTY = "command_review_list_empty";
+    public static final String COMMAND_REVIEW_RESULT = "command_review_result";
+    public static final String COMMAND_REVIEW_ERROR = "command_review_error";
+
     // ---- 异常事件 ----
     public static final String EXCEPTION_ALERT = "exception_alert";
 
@@ -100,6 +111,15 @@ public final class TemplateKeys {
         MAINTENANCE_OPTIMIZE_STAGE,
         MAINTENANCE_OPTIMIZE_DONE,
         MAINTENANCE_OPTIMIZE_ERROR,
+        REVIEW_SUBMITTED,
+        REVIEW_CANCELLED,
+        REVIEW_APPROVED,
+        REVIEW_REJECTED,
+        COMMAND_RANK_STATUS,
+        COMMAND_REVIEW_LIST,
+        COMMAND_REVIEW_LIST_EMPTY,
+        COMMAND_REVIEW_RESULT,
+        COMMAND_REVIEW_ERROR,
         EXCEPTION_ALERT,
     };
 

@@ -35,6 +35,15 @@ templates:
     maintenance_optimize_stage: CODE_BLOCK
     maintenance_optimize_done: CODE_BLOCK
     maintenance_optimize_error: CODE_BLOCK
+    review_submitted: PLAIN
+    review_cancelled: PLAIN
+    review_approved: PLAIN
+    review_rejected: PLAIN
+    rank_status: CODE_BLOCK
+    command_review_list: CODE_BLOCK
+    command_review_list_empty: PLAIN
+    command_review_result: PLAIN
+    command_review_error: PLAIN
   command_output: "{message}"
   command_help: "{help}"
   command_players: "------当前在线({online_count}/{max_count})------\n{online_list}"
@@ -52,6 +61,15 @@ templates:
   command_backup: "{message}"
   command_optimize: "{message}"
   command_optimize_disabled: "{message}"
+  review_submitted: "{message}"
+  review_cancelled: "{message}"
+  review_approved: "{message}"
+  review_rejected: "{message}"
+  rank_status: "{message}"
+  command_review_list: "{message}"
+  command_review_list_empty: "当前没有待审核的申请。"
+  command_review_result: "{message}"
+  command_review_error: "{message}"
   server_load: "{message}"
   server_stop: "{message}"
   server_maintenance_hint: "服务器当前无玩家，可进行服务器维护"

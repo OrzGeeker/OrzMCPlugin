@@ -48,6 +48,7 @@ import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import net.kyori.adventure.text.Component;
@@ -84,6 +85,8 @@ public final class FeatureModule implements ServiceModule {
     private final OrzConfigCommand orzConfigCommand;
     private final com.jokerhub.paper.plugin.orzmc.features.rank.RankService rankService;
     private final com.jokerhub.paper.plugin.orzmc.features.rank.RankCommandService rankCommandService;
+    private final com.jokerhub.paper.plugin.orzmc.features.review.ReviewService reviewService;
+    private final com.jokerhub.paper.plugin.orzmc.features.review.ReviewCommandService reviewCommandService;
     private com.jokerhub.paper.plugin.orzmc.events.OrzRankEvent rankEventService; // setupEventListeners 中创建
 
     // 模块引用（供事件/命令注册使用）
@@ -127,19 +130,51 @@ public final class FeatureModule implements ServiceModule {
         this.portalCommandService = new PortalCommandService(portalModule.portalService(), platform.textStyles());
         this.orzConfigCommand = new OrzConfigCommand(
                 platform.configService(), platform.textStyles(), botModule.botMessageService()::reloadConfig);
-        // 权限晋升（Rank）模块：时长（读服务器原生 stats 文件）+ 自动晋升 + /apply 申请
-        var rankStore = new com.jokerhub.paper.plugin.orzmc.features.rank.RankYamlStore(platform.configService());
+        // 权限晋升（Rank）模块：时长（读服务器原生 stats 文件）+ 自动晋升 + 通用审核框架
+        // permission.yml 三段式统一存储（config 阈值 / ranks 晋升状态 / reviews 审核记录）
+        var permissionStore =
+                new com.jokerhub.paper.plugin.orzmc.features.rank.PermissionStore(platform.configService());
         var rankPromoter = new com.jokerhub.paper.plugin.orzmc.features.rank.LuckPermsPromoter(
-                platform.serverFacade(), playerId -> {
+                platform.serverFacade(),
+                playerId -> {
                     // 离线服：UUID→名字，玩家可能不在线（审核时申请者已退出），用 OfflinePlayer 查缓存
                     return org.bukkit.Bukkit.getOfflinePlayer(playerId).getName();
-                });
+                },
+                platform.serverFacade()); // 异步链路（$v 群指令）回主线程派发 LP 命令
         if (!rankPromoter.isLuckPermsEnabled()) {
             org.bukkit.Bukkit.getLogger().warning("[OrzMC] 未检测到 LuckPerms，Rank 晋升功能禁用（时长查询/申请记录仍可用）");
         }
-        this.rankService = new com.jokerhub.paper.plugin.orzmc.features.rank.RankService(rankStore, rankPromoter);
+        // 通用审核框架：通知端口适配现有 Notifier + 模板；玩家解析端口适配 OfflinePlayer
+        var reviewNotifier = new com.jokerhub.paper.plugin.orzmc.infra.notify.ReviewNotifierAdapter(
+                platform.configs(), botModule.notifier());
+        var playerLookup = new com.jokerhub.paper.plugin.orzmc.infra.player.BukkitPlayerLookup();
+        this.rankService = new com.jokerhub.paper.plugin.orzmc.features.rank.RankService(
+                permissionStore, permissionStore, rankPromoter, permissionStore.memberThresholdHours());
+        // 数据迁移：一期 ranks.yml 遗留（promoted 标记 / pending_application）→ permission.yml
+        permissionStore.migrateLegacyRanks();
+        this.reviewService = new com.jokerhub.paper.plugin.orzmc.features.review.ReviewService(
+                permissionStore, reviewNotifier, playerLookup);
+        // 注册审核类型 BUILDER_PROMOTION：handler 由 rank 模块注入（LP 授权），框架零 LP 依赖
+        this.reviewService.register(new com.jokerhub.paper.plugin.orzmc.features.review.ReviewType(
+                "builder-promotion",
+                "晋升建造者",
+                "builder",
+                rawArgs -> {
+                    var data = new java.util.LinkedHashMap<String, String>();
+                    data.put("target-group", "builder");
+                    if (rawArgs != null && !rawArgs.isBlank()) {
+                        data.put("reason", rawArgs);
+                    }
+                    return data;
+                },
+                playerId -> rankService.currentGroup(playerId).equals("member"),
+                data -> "申请晋升 builder"
+                        + (data.get("reason") == null || data.get("reason").isBlank() ? "" : "：" + data.get("reason")),
+                rankPromoter::promoteToBuilder));
         this.rankCommandService = new com.jokerhub.paper.plugin.orzmc.features.rank.RankCommandService(
-                rankService, platform.textStyles());
+                rankService, reviewService, platform.textStyles());
+        this.reviewCommandService = new com.jokerhub.paper.plugin.orzmc.features.review.ReviewCommandService(
+                reviewService, platform.textStyles());
         this.rankEventService = null; // setupEventListeners 中创建
 
         // 保留模块引用（供事件/命令注册使用）
@@ -156,6 +191,9 @@ public final class FeatureModule implements ServiceModule {
     // --- Event Listener Registration ---
 
     public void setupEventListeners(OrzMC plugin) {
+        // $v 群指令依赖的审核/权限服务（BotCommandService 早于 FeatureModule 创建，这里补注入）
+        botModule.botCommandService().setReviewService(reviewService);
+        botModule.botCommandService().setRankService(rankService);
         Listener[] eventListeners = new Listener[] {
             new OrzBowShootEvent(plugin, teleportBowEventService),
             new OrzPlayerEvent(
@@ -440,115 +478,174 @@ public final class FeatureModule implements ServiceModule {
                 List.of("bl"));
     }
 
+    /**
+     * 通用审核命令注册：
+     * <ul>
+     *   <li>/apply — 列出可申请类型（注册表驱动）</li>
+     *   <li>/apply &lt;type&gt; [理由] — 提交申请</li>
+     *   <li>/apply status — 查看自己的申请及状态</li>
+     *   <li>/apply cancel &lt;type&gt; — 撤回待审申请</li>
+     *   <li>/review approve|reject &lt;name&gt; — 管理员审核（替代 /rank approve|reject）</li>
+     *   <li>/rank — 查自己（当前组 + 时长/进度 + 下一步可申请）</li>
+     *   <li>/rank &lt;玩家&gt; — admin 查指定玩家</li>
+     * </ul>
+     */
     private void registerRank(Commands commands, CommandPolicies cp) {
         OrzTextStyles styles = platform.textStyles();
 
-        // /apply — 玩家申请晋升 builder（member 组可用；adminOnly=false）
+        // ---- /apply 通用申请命令 ----
         List<CommandInterceptor> applyInterceptors = commandInterceptors("apply", cp, false);
         commands.register(
                 literal("apply")
                         .requires(requirement(applyInterceptors))
+                        // /apply — 列出可申请类型
                         .executes(guardedExec("apply", applyInterceptors, ctx -> {
                             var sender = ctx.getSource().getSender();
                             if (!(sender instanceof org.bukkit.entity.Player player)) {
                                 sender.sendMessage(styles.error("仅玩家可用"));
                                 return 1;
                             }
-                            var result = rankCommandService.apply(player);
-                            if (result
-                                    instanceof
-                                    com.jokerhub.paper.plugin.orzmc.features.rank.RankCommandService.Result.Failure f) {
-                                sender.sendMessage(f.message());
-                            } else if (result
-                                    instanceof
-                                    com.jokerhub.paper.plugin.orzmc.features.rank.RankCommandService.Result.Success s) {
-                                sender.sendMessage(s.message());
-                            }
+                            renderReviewResult(sender, reviewCommandService.listTypes(player));
                             return 1;
                         }))
+                        // /apply status — 查看自己的申请
+                        .then(literal("status").executes(guardedExec("apply", applyInterceptors, ctx -> {
+                            var sender = ctx.getSource().getSender();
+                            if (!(sender instanceof org.bukkit.entity.Player player)) {
+                                sender.sendMessage(styles.error("仅玩家可用"));
+                                return 1;
+                            }
+                            renderReviewResult(sender, reviewCommandService.status(player));
+                            return 1;
+                        })))
+                        // /apply cancel <type> — 撤回待审申请
+                        .then(literal("cancel")
+                                .then(argument("type", StringArgumentType.word())
+                                        .executes(guardedExec("apply", applyInterceptors, ctx -> {
+                                            var sender = ctx.getSource().getSender();
+                                            if (!(sender instanceof org.bukkit.entity.Player player)) {
+                                                sender.sendMessage(styles.error("仅玩家可用"));
+                                                return 1;
+                                            }
+                                            String type = ctx.getArgument("type", String.class);
+                                            renderReviewResult(sender, reviewCommandService.cancel(player, type));
+                                            return 1;
+                                        }))))
+                        // /apply <type> [理由] — 提交申请
+                        .then(argument("type", StringArgumentType.word())
+                                .executes(guardedExec("apply", applyInterceptors, ctx -> {
+                                    var sender = ctx.getSource().getSender();
+                                    if (!(sender instanceof org.bukkit.entity.Player player)) {
+                                        sender.sendMessage(styles.error("仅玩家可用"));
+                                        return 1;
+                                    }
+                                    String type = ctx.getArgument("type", String.class);
+                                    renderReviewResult(sender, reviewCommandService.apply(player, type, ""));
+                                    return 1;
+                                }))
+                                .then(argument("reason", StringArgumentType.greedyString())
+                                        .executes(guardedExec("apply", applyInterceptors, ctx -> {
+                                            var sender = ctx.getSource().getSender();
+                                            if (!(sender instanceof org.bukkit.entity.Player player)) {
+                                                sender.sendMessage(styles.error("仅玩家可用"));
+                                                return 1;
+                                            }
+                                            String type = ctx.getArgument("type", String.class);
+                                            String reason = ctx.getArgument("reason", String.class);
+                                            renderReviewResult(
+                                                    sender, reviewCommandService.apply(player, type, reason));
+                                            return 1;
+                                        }))))
                         .build(),
-                "申请晋升为建造者（需要在线时长）",
-                List.of());
+                "提交/查询/撤回审核申请（如 /apply builder [理由]）",
+                List.of("apply"));
 
-        // /rank — 查询晋升进度（玩家），/rank approve|reject <name>（管理）
+        // ---- /review approve|reject <name> — 管理员审核（替代 /rank approve|reject）----
+        List<CommandInterceptor> adminReviewInterceptors = adminInterceptors("review");
+        commands.register(
+                literal("review")
+                        .requires(requirement(adminReviewInterceptors))
+                        .then(literal("approve")
+                                .then(argument("name", StringArgumentType.greedyString())
+                                        .executes(guardedExec("review", adminReviewInterceptors, ctx -> {
+                                            var sender = ctx.getSource().getSender();
+                                            if (!(sender instanceof org.bukkit.entity.Player admin)) {
+                                                sender.sendMessage(styles.error("仅玩家可用"));
+                                                return 1;
+                                            }
+                                            String name = ctx.getArgument("name", String.class);
+                                            renderReviewResult(sender, reviewCommandService.review(admin, name, true));
+                                            return 1;
+                                        }))))
+                        .then(literal("reject")
+                                .then(argument("name", StringArgumentType.greedyString())
+                                        .executes(guardedExec("review", adminReviewInterceptors, ctx -> {
+                                            var sender = ctx.getSource().getSender();
+                                            if (!(sender instanceof org.bukkit.entity.Player admin)) {
+                                                sender.sendMessage(styles.error("仅玩家可用"));
+                                                return 1;
+                                            }
+                                            String name = ctx.getArgument("name", String.class);
+                                            renderReviewResult(sender, reviewCommandService.review(admin, name, false));
+                                            return 1;
+                                        }))))
+                        .build(),
+                "管理员审核申请（/review approve|reject <玩家>）",
+                List.of("review"));
+
+        // ---- /rank — 查询自己 / /rank <玩家> — admin 查指定玩家 ----
         List<CommandInterceptor> rankInterceptors = commandInterceptors("rank", cp, false);
         List<CommandInterceptor> adminRankInterceptors = adminInterceptors("rank");
         commands.register(
                 literal("rank")
                         .requires(requirement(rankInterceptors))
-                        .then(literal("approve")
+                        // /rank <玩家> — admin 查指定玩家
+                        .then(argument("player", StringArgumentType.greedyString())
                                 .requires(requirement(adminRankInterceptors))
-                                .then(argument("name", StringArgumentType.greedyString())
-                                        .executes(guardedExec("rank", adminRankInterceptors, ctx -> {
-                                            var sender = ctx.getSource().getSender();
-                                            String name = ctx.getArgument("name", String.class);
-                                            if (!(sender instanceof org.bukkit.entity.Player admin)) {
-                                                sender.sendMessage(styles.error("仅玩家可用"));
-                                                return 1;
-                                            }
-                                            var result = rankCommandService.approve(admin, name);
-                                            if (result
-                                                    instanceof
-                                                    com.jokerhub.paper.plugin.orzmc.features.rank.RankCommandService
-                                                                    .Result.Failure
-                                                            f) {
-                                                sender.sendMessage(f.message());
-                                            } else if (result
-                                                    instanceof
-                                                    com.jokerhub.paper.plugin.orzmc.features.rank.RankCommandService
-                                                                    .Result.Success
-                                                            s) {
-                                                sender.sendMessage(s.message());
-                                            }
-                                            return 1;
-                                        }))))
-                        .then(literal("reject")
-                                .requires(requirement(adminRankInterceptors))
-                                .then(argument("name", StringArgumentType.greedyString())
-                                        .executes(guardedExec("rank", adminRankInterceptors, ctx -> {
-                                            var sender = ctx.getSource().getSender();
-                                            String name = ctx.getArgument("name", String.class);
-                                            if (!(sender instanceof org.bukkit.entity.Player admin)) {
-                                                sender.sendMessage(styles.error("仅玩家可用"));
-                                                return 1;
-                                            }
-                                            var result = rankCommandService.reject(admin, name);
-                                            if (result
-                                                    instanceof
-                                                    com.jokerhub.paper.plugin.orzmc.features.rank.RankCommandService
-                                                                    .Result.Failure
-                                                            f) {
-                                                sender.sendMessage(f.message());
-                                            } else if (result
-                                                    instanceof
-                                                    com.jokerhub.paper.plugin.orzmc.features.rank.RankCommandService
-                                                                    .Result.Success
-                                                            s) {
-                                                sender.sendMessage(s.message());
-                                            }
-                                            return 1;
-                                        }))))
+                                .executes(guardedExec("rank", adminRankInterceptors, ctx -> {
+                                    var sender = ctx.getSource().getSender();
+                                    String playerName = ctx.getArgument("player", String.class);
+                                    UUID id = rankService.resolvePlayerId(playerName);
+                                    if (id == null) {
+                                        sender.sendMessage(styles.error("找不到玩家: " + playerName));
+                                        return 1;
+                                    }
+                                    renderRankResult(sender, rankCommandService.statusOf(id));
+                                    return 1;
+                                })))
+                        // /rank — 玩家查自己
                         .executes(guardedExec("rank", rankInterceptors, ctx -> {
                             var sender = ctx.getSource().getSender();
                             if (!(sender instanceof org.bukkit.entity.Player player)) {
                                 sender.sendMessage(styles.error("仅玩家可用"));
                                 return 1;
                             }
-                            var result = rankCommandService.status(player);
-                            if (result
-                                    instanceof
-                                    com.jokerhub.paper.plugin.orzmc.features.rank.RankCommandService.Result.Failure f) {
-                                sender.sendMessage(f.message());
-                            } else if (result
-                                    instanceof
-                                    com.jokerhub.paper.plugin.orzmc.features.rank.RankCommandService.Result.Success s) {
-                                sender.sendMessage(s.message());
-                            }
+                            renderRankResult(sender, rankCommandService.status(player));
                             return 1;
                         }))
                         .build(),
-                "查询晋升进度 / 审核申请",
-                List.of());
+                "查询权限组与晋升进度",
+                List.of("rank"));
+    }
+
+    private void renderReviewResult(
+            CommandSender sender, com.jokerhub.paper.plugin.orzmc.features.review.ReviewCommandService.Result result) {
+        if (result instanceof com.jokerhub.paper.plugin.orzmc.features.review.ReviewCommandService.Result.Failure f) {
+            sender.sendMessage(f.message());
+        } else if (result
+                instanceof com.jokerhub.paper.plugin.orzmc.features.review.ReviewCommandService.Result.Success s) {
+            sender.sendMessage(s.message());
+        }
+    }
+
+    private void renderRankResult(
+            CommandSender sender, com.jokerhub.paper.plugin.orzmc.features.rank.RankCommandService.Result result) {
+        if (result instanceof com.jokerhub.paper.plugin.orzmc.features.rank.RankCommandService.Result.Failure f) {
+            sender.sendMessage(f.message());
+        } else if (result
+                instanceof com.jokerhub.paper.plugin.orzmc.features.rank.RankCommandService.Result.Success s) {
+            sender.sendMessage(s.message());
+        }
     }
 
     private static void listBlacklist(CommandSender sender, BlacklistService svc, OrzTextStyles styles) {

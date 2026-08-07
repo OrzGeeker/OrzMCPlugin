@@ -154,7 +154,16 @@ class ConfigHealthCheckTest {
             "maintenance_optimize_stage",
             "maintenance_optimize_done",
             "maintenance_optimize_error",
-            "server_maintenance_hint"
+            "server_maintenance_hint",
+            "review_submitted",
+            "review_cancelled",
+            "review_approved",
+            "review_rejected",
+            "rank_status",
+            "command_review_list",
+            "command_review_list_empty",
+            "command_review_result",
+            "command_review_error"
         };
         for (String cmd : requiredCmds) {
             templates.set("templates." + cmd, "x");
@@ -914,7 +923,16 @@ class ConfigHealthCheckTest {
             "maintenance_optimize_stage",
             "maintenance_optimize_done",
             "maintenance_optimize_error",
-            "server_maintenance_hint"
+            "server_maintenance_hint",
+            "review_submitted",
+            "review_cancelled",
+            "review_approved",
+            "review_rejected",
+            "rank_status",
+            "command_review_list",
+            "command_review_list_empty",
+            "command_review_result",
+            "command_review_error"
         };
         for (String cmd : requiredCmds) {
             templates.set("templates." + cmd, "x");

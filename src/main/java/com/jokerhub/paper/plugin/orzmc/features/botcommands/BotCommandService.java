@@ -29,6 +29,8 @@ public final class BotCommandService implements BotInboundHandler {
     private final Map<OrzUserCmd, CmdHandler> handlers;
     private WorldMaintenanceService maintenanceService;
     private BlacklistService blacklistService;
+    private com.jokerhub.paper.plugin.orzmc.features.review.ReviewService reviewService;
+    private com.jokerhub.paper.plugin.orzmc.features.rank.RankService rankService;
 
     @FunctionalInterface
     private interface CmdHandler {
@@ -48,6 +50,7 @@ public final class BotCommandService implements BotInboundHandler {
                 OrzUserCmd.BACKUP, this::handleBackup,
                 OrzUserCmd.OPTIMIZE_WORLD, this::handleOptimize,
                 OrzUserCmd.BLACKLIST, this::handleBlacklist,
+                OrzUserCmd.REVIEW, this::handleReview,
                 OrzUserCmd.EXECUTE_CONSOLE_COMMAND, this::handleExecuteConsoleCommand);
     }
 
@@ -57,6 +60,14 @@ public final class BotCommandService implements BotInboundHandler {
 
     public void setBlacklistService(BlacklistService blacklistService) {
         this.blacklistService = blacklistService;
+    }
+
+    public void setReviewService(com.jokerhub.paper.plugin.orzmc.features.review.ReviewService reviewService) {
+        this.reviewService = reviewService;
+    }
+
+    public void setRankService(com.jokerhub.paper.plugin.orzmc.features.rank.RankService rankService) {
+        this.rankService = rankService;
     }
 
     @Override
@@ -269,6 +280,111 @@ public final class BotCommandService implements BotInboundHandler {
             blacklistService.add(rawArgs);
             emit(callback, "command_blacklist_add", Map.of("message", "已添加: " + rawArgs), "已添加: " + rawArgs);
         }
+    }
+
+    // ---- Review command ($v l|y|n) ----
+
+    private void handleReview(OrzUserCmd cmd, boolean isAdmin, Consumer<MessageEnvelope> callback, String rawArgs) {
+        if (!guardAdminCommand(cmd, isAdmin, callback)) return;
+        if (reviewService == null) {
+            emit(callback, "command_review_error", Map.of("message", "审核服务不可用"), "审核服务不可用");
+            return;
+        }
+        if (rawArgs.isBlank()) {
+            emitReviewUsage(callback);
+            return;
+        }
+        String[] parts = rawArgs.split("\\s+", 2);
+        String sub = parts[0].toLowerCase();
+        String rest = parts.length > 1 ? parts[1].trim() : "";
+        switch (sub) {
+            case "l" -> handleReviewList(callback, rest);
+            case "y", "yes" -> handleReviewDecision(callback, rest, true);
+            case "n", "no" -> handleReviewDecision(callback, rest, false);
+            default -> emitReviewUsage(callback);
+        }
+    }
+
+    private void handleReviewList(Consumer<MessageEnvelope> callback, String pageArg) {
+        var pending = reviewService.listPending();
+        if (pending.isEmpty()) {
+            emit(callback, "command_review_list_empty", Map.of(), "当前没有待审核的申请。");
+            return;
+        }
+        Integer page = parsePageArg(pageArg);
+        List<String> lines = new ArrayList<>();
+        for (var r : pending) {
+            String typeName =
+                    reviewService.typeById(r.typeId()).map(t -> t.displayName()).orElse(r.typeId());
+            String playerName = playerNameOf(r);
+            String group = rankService == null ? "" : "（当前组：" + rankService.currentGroup(r.applicantId()) + "）";
+            String summary = reviewService
+                    .typeById(r.typeId())
+                    .map(t -> t.summarize(r.data()))
+                    .orElse("");
+            lines.add(
+                    "[%s] %s%s：%s（%s 提交）".formatted(typeName, playerName, group, summary, relativeTime(r.createdAt())));
+        }
+        Paginator.paginate(
+                server,
+                text -> emit(callback, "command_review_list", Map.of("message", text), text),
+                "------待审核申请------",
+                lines,
+                5,
+                page);
+    }
+
+    private void handleReviewDecision(Consumer<MessageEnvelope> callback, String rest, boolean approved) {
+        if (rest.isBlank()) {
+            emitReviewUsage(callback);
+            return;
+        }
+        // 支持：$v y <玩家>  或  $v y <typeId> <玩家>
+        String[] parts = rest.split("\\s+", 2);
+        String first = parts[0];
+        String second = parts.length > 1 ? parts[1].trim() : "";
+
+        // 若首个 token 是类型 id，按类型 + 玩家定位；否则按玩家名定位唯一待审
+        var request = reviewService.typeById(first).isPresent() && !second.isBlank()
+                ? reviewService.pendingFor(first, second)
+                : reviewService.listPending().stream()
+                        .filter(r -> playerNameOf(r).equalsIgnoreCase(first))
+                        .filter(r -> reviewService.typeById(r.typeId()).isPresent())
+                        .findFirst();
+        if (request.isEmpty()) {
+            emit(callback, "command_review_error", Map.of("message", "找不到待审申请: " + rest), "找不到待审申请: " + rest);
+            return;
+        }
+        var result = reviewService.review(request.get().id(), approved, "群管理员");
+        emit(
+                callback,
+                result.success() ? "command_review_result" : "command_review_error",
+                Map.of("message", result.message()),
+                result.message());
+    }
+
+    private String playerNameOf(com.jokerhub.paper.plugin.orzmc.features.review.ReviewRequest r) {
+        // 通过 reviewService 的玩家解析端口获取名字（不可用则回退短 UUID）
+        try {
+            var name = org.bukkit.Bukkit.getOfflinePlayer(r.applicantId()).getName();
+            return name == null ? r.applicantId().toString().substring(0, 8) : name;
+        } catch (Exception e) {
+            return r.applicantId().toString().substring(0, 8);
+        }
+    }
+
+    private static String relativeTime(long epochMillis) {
+        long diff = System.currentTimeMillis() - epochMillis;
+        long minutes = diff / 60000L;
+        if (minutes < 1) return "刚刚";
+        if (minutes < 60) return minutes + "分钟前";
+        long hours = minutes / 60;
+        return hours < 24 ? hours + "小时前" : (hours / 24) + "天前";
+    }
+
+    private void emitReviewUsage(Consumer<MessageEnvelope> callback) {
+        String tip = "用法：\n" + "$v l — 待审列表\n" + "$v l 2 — 第 2 页\n" + "$v y <玩家> — 通过\n" + "$v n <玩家> — 拒绝";
+        emit(callback, "command_review_error", Map.of("message", tip), tip);
     }
 
     // ---- Helper ----
