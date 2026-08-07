@@ -3,21 +3,24 @@ package com.jokerhub.paper.plugin.orzmc.features.rank;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import com.jokerhub.paper.plugin.orzmc.features.review.ReviewNotifier;
 import com.jokerhub.paper.plugin.orzmc.features.review.ReviewRequest;
 import com.jokerhub.paper.plugin.orzmc.features.review.ReviewStore;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * RankService 测试：自动晋升判定（读服务器原生 stats 时长）、当前权限组查询。
+ * RankService 测试（LP API 版，2026-08-07 重构）：
  *
- * <p>设计（2026-08-07）：
  * <ul>
- *   <li>default→member：累计在线时长（服务器 stats 数据源）达阈值自动晋升</li>
- *   <li>member→builder：走通用审核框架（ReviewService），本服务不直接受理申请</li>
- *   <li>当前组推断：builder（有 APPROVED 审核记录）&gt; member（promoted 标记）&gt; default</li>
+ *   <li>权限链：default→member→builder→admin（LP track 唯一事实源）</li>
+ *   <li>currentGroup：LP 真实组优先，无 LP 回退 reviews 推断</li>
+ *   <li>promote/demote：翻译 LP 结果状态（SUCCESS / END_OF_TRACK / REMOVED_FROM_FIRST_GROUP）</li>
+ *   <li>自动晋升：时长达标且当前组 default 才触发（幂等由 LP 保证）</li>
  * </ul>
  */
 class RankServiceTest {
@@ -25,6 +28,7 @@ class RankServiceTest {
     private RankStore store;
     private ReviewStore reviewStore;
     private RankPromoter promoter;
+    private ReviewNotifier notifier;
     private RankService service;
 
     @BeforeEach
@@ -32,7 +36,8 @@ class RankServiceTest {
         store = mock(RankStore.class);
         reviewStore = mock(ReviewStore.class);
         promoter = mock(RankPromoter.class);
-        service = new RankService(store, reviewStore, promoter);
+        notifier = mock(ReviewNotifier.class);
+        service = new RankService(store, reviewStore, promoter, 10, notifier);
     }
 
     // ---- 自动晋升（default→member）----
@@ -40,91 +45,70 @@ class RankServiceTest {
     @Test
     void checkPromotion_belowThreshold_doesNotPromote() {
         UUID id = UUID.randomUUID();
+        when(promoter.isAvailable()).thenReturn(true);
         when(store.getPlaytimeMinutes(id)).thenReturn(30L); // 0.5h < 10h
-        when(store.hasPromoted(id)).thenReturn(false);
 
         service.checkPromotion(id);
 
-        verify(promoter, never()).promoteToNext(id);
-        verify(store, never()).markPromoted(id);
+        verify(promoter, never()).promote(any());
     }
 
     @Test
-    void checkPromotion_atThreshold_promotesDefaultToMember() {
+    void checkPromotion_atThreshold_defaultGroup_promotes() {
         UUID id = UUID.randomUUID();
+        when(promoter.isAvailable()).thenReturn(true);
         when(store.getPlaytimeMinutes(id)).thenReturn(600L); // 10h
-        when(store.hasPromoted(id)).thenReturn(false);
+        when(promoter.currentTrackGroup(id)).thenReturn("default");
+        when(promoter.promote(id)).thenReturn("member");
 
         service.checkPromotion(id);
 
-        verify(promoter).promoteToNext(id);
-        verify(store).markPromoted(id);
+        verify(promoter).promote(id);
     }
 
     @Test
-    void checkPromotion_aboveThreshold_promotesDefaultToMember() {
+    void checkPromotion_atThreshold_alreadyMember_doesNotPromote() {
         UUID id = UUID.randomUUID();
-        when(store.getPlaytimeMinutes(id)).thenReturn(720L); // 12h
-        when(store.hasPromoted(id)).thenReturn(false);
-
-        service.checkPromotion(id);
-
-        verify(promoter).promoteToNext(id);
-        verify(store).markPromoted(id);
-    }
-
-    @Test
-    void checkPromotion_alreadyPromoted_doesNotPromoteAgain() {
-        UUID id = UUID.randomUUID();
+        when(promoter.isAvailable()).thenReturn(true);
         when(store.getPlaytimeMinutes(id)).thenReturn(600L);
-        when(store.hasPromoted(id)).thenReturn(true);
+        when(promoter.currentTrackGroup(id)).thenReturn("member"); // 已在 member，幂等
 
         service.checkPromotion(id);
 
-        verify(promoter, never()).promoteToNext(id);
+        verify(promoter, never()).promote(any());
     }
 
     @Test
-    void checkPromotion_offlinePlayer_usesServerStats() {
-        // 时长来自 stats（离线可读），玩家不在线也能判断
+    void checkPromotion_noLuckPerms_skips() {
         UUID id = UUID.randomUUID();
-        when(store.getPlaytimeMinutes(id)).thenReturn(600L);
-        when(store.hasPromoted(id)).thenReturn(false);
+        when(promoter.isAvailable()).thenReturn(false);
+        when(store.getPlaytimeMinutes(id)).thenReturn(9999L);
 
         service.checkPromotion(id);
 
-        verify(promoter).promoteToNext(id);
-        verify(store).markPromoted(id);
+        verify(promoter, never()).promote(any());
     }
 
-    // ---- 当前权限组推断 ----
+    // ---- 当前权限组（LP 优先，无 LP 回退）----
 
     @Test
-    void currentGroup_noPromotion_returnsDefault() {
+    void currentGroup_lpTrackGroup_wins() {
         UUID id = UUID.randomUUID();
-        when(store.hasPromoted(id)).thenReturn(false);
-        when(reviewStore.listByApplicant(id)).thenReturn(List.of());
+        when(promoter.isAvailable()).thenReturn(true);
+        when(promoter.currentTrackGroup(id)).thenReturn("admin");
 
-        assertEquals("default", service.currentGroup(id));
-    }
-
-    @Test
-    void currentGroup_promoted_returnsMember() {
-        UUID id = UUID.randomUUID();
-        when(store.hasPromoted(id)).thenReturn(true);
-        when(reviewStore.listByApplicant(id)).thenReturn(List.of());
-
-        assertEquals("member", service.currentGroup(id));
+        assertEquals("admin", service.currentGroup(id));
     }
 
     @Test
-    void currentGroup_approvedBuilderReview_returnsBuilder() {
+    void currentGroup_noLp_approvedBuilderReview_returnsBuilder() {
         UUID id = UUID.randomUUID();
+        when(promoter.isAvailable()).thenReturn(false);
         ReviewRequest approved = new ReviewRequest(
                 "r1",
                 "builder-promotion",
                 id,
-                java.util.Map.of("target-group", "builder"),
+                Map.of("target-group", "builder"),
                 ReviewRequest.Status.APPROVED,
                 0L,
                 1L,
@@ -135,36 +119,109 @@ class RankServiceTest {
     }
 
     @Test
-    void currentGroup_rejectedBuilderReview_returnsMember() {
+    void currentGroup_noLp_noReview_returnsDefault() {
         UUID id = UUID.randomUUID();
-        ReviewRequest rejected = new ReviewRequest(
-                "r1",
-                "builder-promotion",
-                id,
-                java.util.Map.of("target-group", "builder"),
-                ReviewRequest.Status.REJECTED,
-                0L,
-                1L,
-                "admin");
-        when(reviewStore.listByApplicant(id)).thenReturn(List.of(rejected));
-        when(store.hasPromoted(id)).thenReturn(true);
+        when(promoter.isAvailable()).thenReturn(false);
+        when(reviewStore.listByApplicant(id)).thenReturn(List.of());
 
-        assertEquals("member", service.currentGroup(id));
+        assertEquals("default", service.currentGroup(id));
+    }
+
+    // ---- 升级（LP track 钳位）----
+
+    @Test
+    void promote_success_returnsTargetGroupAndNotifies() {
+        UUID id = UUID.randomUUID();
+        when(promoter.isAvailable()).thenReturn(true);
+        when(promoter.promote(id)).thenReturn("builder");
+        when(promoter.playerName(id)).thenReturn(Optional.of("TestMember"));
+
+        String target = service.promote(id);
+
+        assertEquals("builder", target);
+        verify(notifier).gameMessage(eq(id), contains("升级"));
+        verify(notifier).groupEvent(eq("rank_promoted"), anyMap());
+    }
+
+    @Test
+    void promote_atTop_endOfTrack_returnsNull() {
+        UUID id = UUID.randomUUID();
+        when(promoter.isAvailable()).thenReturn(true);
+        when(promoter.promote(id)).thenReturn(null); // END_OF_TRACK
+
+        String target = service.promote(id);
+
+        assertNull(target);
+        verify(notifier, never()).gameMessage(any(), anyString());
+        verify(notifier, never()).groupEvent(anyString(), anyMap());
+    }
+
+    @Test
+    void promote_noLuckPerms_returnsNull() {
+        UUID id = UUID.randomUUID();
+        when(promoter.isAvailable()).thenReturn(false);
+
+        String target = service.promote(id);
+
+        assertNull(target);
+        verify(promoter, never()).promote(any());
+    }
+
+    // ---- 降级（LP track 钳位）----
+
+    @Test
+    void demote_success_returnsTargetGroupAndNotifies() {
+        UUID id = UUID.randomUUID();
+        when(promoter.isAvailable()).thenReturn(true);
+        when(promoter.demote(id)).thenReturn("member");
+        when(promoter.playerName(id)).thenReturn(Optional.of("TestMember"));
+
+        String target = service.demote(id);
+
+        assertEquals("member", target);
+        verify(notifier).gameMessage(eq(id), contains("降级"));
+        verify(notifier).groupEvent(eq("rank_demoted"), anyMap());
+    }
+
+    @Test
+    void demote_atBottom_removedFromFirstGroup_returnsNull() {
+        UUID id = UUID.randomUUID();
+        when(promoter.isAvailable()).thenReturn(true);
+        when(promoter.demote(id)).thenReturn(null); // REMOVED_FROM_FIRST_GROUP / NOT_ON_TRACK
+
+        String target = service.demote(id);
+
+        assertNull(target);
+        verify(notifier, never()).gameMessage(any(), anyString());
+        verify(notifier, never()).groupEvent(anyString(), anyMap());
+    }
+
+    @Test
+    void demote_noLuckPerms_returnsNull() {
+        UUID id = UUID.randomUUID();
+        when(promoter.isAvailable()).thenReturn(false);
+
+        String target = service.demote(id);
+
+        assertNull(target);
+        verify(promoter, never()).demote(any());
     }
 
     // ---- 阈值配置 ----
 
     @Test
-    void memberThresholdHours_configuredValue() {
+    void memberThresholdMinutes_configuredValue() {
         service = new RankService(store, reviewStore, promoter, 5); // 5h 阈值
+        assertEquals(300L, service.memberThresholdMinutes());
+    }
 
-        UUID id = UUID.randomUUID();
-        when(store.getPlaytimeMinutes(id)).thenReturn(300L); // 5h
-        when(store.hasPromoted(id)).thenReturn(false);
+    // ---- 展示名 ----
 
-        service.checkPromotion(id);
-
-        verify(promoter).promoteToNext(id);
-        verify(store).markPromoted(id);
+    @Test
+    void groupDisplayName_coversAllTiers() {
+        assertEquals("管理员", RankService.groupDisplayName("admin"));
+        assertEquals("建造者", RankService.groupDisplayName("builder"));
+        assertEquals("会员", RankService.groupDisplayName("member"));
+        assertEquals("访客", RankService.groupDisplayName("default"));
     }
 }

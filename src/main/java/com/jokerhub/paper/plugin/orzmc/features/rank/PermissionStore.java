@@ -38,7 +38,6 @@ public final class PermissionStore implements RankStore, ReviewStore {
 
     private static final String FILE = "permission";
     private static final String CONFIG_SECTION = "config";
-    private static final String RANKS_SECTION = "ranks.players";
     private static final String REVIEWS_SECTION = "reviews.requests";
     private static final String PLAY_TIME_KEY = "minecraft:play_time";
     private static final int DEFAULT_MEMBER_THRESHOLD_HOURS = 10;
@@ -57,20 +56,7 @@ public final class PermissionStore implements RankStore, ReviewStore {
         return cfg.getInt(CONFIG_SECTION + ".member-threshold-hours", DEFAULT_MEMBER_THRESHOLD_HOURS);
     }
 
-    // ---- RankStore：ranks 节 + stats 时长 ----
-
-    @Override
-    public boolean hasPromoted(UUID playerId) {
-        FileConfiguration cfg = configService.getConfig(FILE);
-        return cfg.getBoolean(RANKS_SECTION + "." + playerId + ".promoted", false);
-    }
-
-    @Override
-    public void markPromoted(UUID playerId) {
-        FileConfiguration cfg = configService.getConfig(FILE);
-        cfg.set(RANKS_SECTION + "." + playerId + ".promoted", true);
-        configService.saveConfig(FILE);
-    }
+    // ---- RankStore：stats 时长（权限状态由 LP track 持有，本地不存）----
 
     @Override
     public long getPlaytimeMinutes(UUID playerId) {
@@ -159,66 +145,6 @@ public final class PermissionStore implements RankStore, ReviewStore {
     @Override
     public boolean hasPending(String typeId, UUID applicantId) {
         return pendingFor(typeId, applicantId).isPresent();
-    }
-
-    // ---- 数据迁移（一期 ranks.yml → permission.yml）----
-
-    /**
-     * 启动时迁移一期 ranks.yml 遗留数据到 permission.yml（幂等，可重复执行）：
-     * <ul>
-     *   <li>{@code players.<uuid>.promoted} → ranks 节</li>
-     *   <li>{@code players.<uuid>.pending_application=true} → reviews 节（BUILDER_PROMOTION, PENDING）</li>
-     * </ul>
-     * 已迁移的玩家（permission.yml 已有 promoted 标记或待审记录）跳过，避免重复。
-     */
-    public void migrateLegacyRanks() {
-        FileConfiguration legacy = configService.loadFile("ranks.yml");
-        if (legacy == null) {
-            return;
-        }
-        ConfigurationSection players = legacy.getConfigurationSection("players");
-        if (players == null || players.getKeys(false).isEmpty()) {
-            return;
-        }
-        FileConfiguration cfg = configService.getConfig(FILE);
-        boolean changed = false;
-        for (String uuidStr : players.getKeys(false)) {
-            String rankPath = RANKS_SECTION + "." + uuidStr;
-            if (legacy.getBoolean("players." + uuidStr + ".promoted", false) && !cfg.contains(rankPath + ".promoted")) {
-                cfg.set(rankPath + ".promoted", true);
-                changed = true;
-            }
-            if (legacy.getBoolean("players." + uuidStr + ".pending_application", false)) {
-                try {
-                    UUID applicant = UUID.fromString(uuidStr);
-                    if (!hasPending("builder-promotion", applicant)) {
-                        ReviewRequest migrated = new ReviewRequest(
-                                newRequestId(),
-                                "builder-promotion",
-                                applicant,
-                                java.util.Map.of("target-group", "builder"),
-                                ReviewRequest.Status.PENDING,
-                                System.currentTimeMillis(),
-                                0L,
-                                null);
-                        // 攒批：直接写 cfg，统一在迁移末尾一次落盘
-                        writeRequest(cfg, migrated);
-                        changed = true;
-                    }
-                } catch (IllegalArgumentException e) {
-                    // 旧文件脏 key（非 UUID）跳过，不中断迁移
-                    java.util.logging.Logger.getLogger("OrzMC.PermissionStore").warning("迁移跳过非法玩家 key: " + uuidStr);
-                }
-            }
-        }
-        if (changed) {
-            configService.saveConfig(FILE);
-            // 迁移成功：旧文件改名 .bak，避免残留误导（幂等：已迁移的玩家跳过）
-            java.io.File legacyFile = new java.io.File(configService.dataFolder(), "ranks.yml");
-            if (legacyFile.exists()) {
-                legacyFile.renameTo(new java.io.File(legacyFile.getParentFile(), "ranks.yml.bak"));
-            }
-        }
     }
 
     /** 写一条审核记录到 cfg（不落盘，调用方负责 saveConfig）。 */

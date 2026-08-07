@@ -8,6 +8,7 @@ import com.jokerhub.paper.plugin.orzmc.core.bot.MessageEnvelope;
 import com.jokerhub.paper.plugin.orzmc.core.bot.MessageEnvelope.Format;
 import com.jokerhub.paper.plugin.orzmc.core.bot.MessageEnvelope.TargetType;
 import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
+import com.jokerhub.paper.plugin.orzmc.features.rank.RankService;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.BotConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.WhitelistConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
@@ -304,6 +305,66 @@ class BotCommandServiceTest {
 
         service.parse("$v y builder-promotion TestMember", true, callback);
         verify(reviewService).review(anyString(), eq(true), eq("群管理员"));
+        verify(callback, atLeastOnce()).accept(any(MessageEnvelope.class));
+    }
+
+    @Test
+    void parse_permissionDemote_playerName_callsDemote() {
+        var rankService = mock(RankService.class);
+        service.setRankService(rankService);
+        when(rankService.isLuckPermsAvailable()).thenReturn(true);
+        when(rankService.resolvePlayerId("TestMember")).thenReturn(java.util.UUID.randomUUID());
+        when(rankService.demote(any(java.util.UUID.class))).thenReturn("member");
+
+        service.parse("$p d TestMember", true, callback);
+        verify(rankService).demote(any(java.util.UUID.class));
+        verify(callback, atLeastOnce()).accept(any(MessageEnvelope.class));
+    }
+
+    @Test
+    void parse_permissionUpgrade_playerName_callsPromote() {
+        var rankService = mock(RankService.class);
+        service.setRankService(rankService);
+        when(rankService.isLuckPermsAvailable()).thenReturn(true);
+        when(rankService.resolvePlayerId("TestMember")).thenReturn(java.util.UUID.randomUUID());
+        when(rankService.promote(any(java.util.UUID.class))).thenReturn("builder");
+
+        service.parse("$p u TestMember", true, callback);
+        verify(rankService).promote(any(java.util.UUID.class));
+        verify(callback, atLeastOnce()).accept(any(MessageEnvelope.class));
+    }
+
+    @Test
+    void parse_permissionDemote_atBottom_emitsError() {
+        var rankService = mock(RankService.class);
+        service.setRankService(rankService);
+        when(rankService.isLuckPermsAvailable()).thenReturn(true);
+        when(rankService.resolvePlayerId("TestPlayer")).thenReturn(java.util.UUID.randomUUID());
+        when(rankService.demote(any(java.util.UUID.class))).thenReturn(null); // 链底 no-op
+
+        service.parse("$p d TestPlayer", true, callback);
+        verify(rankService).demote(any(java.util.UUID.class));
+        verify(callback, atLeastOnce()).accept(any(MessageEnvelope.class));
+    }
+
+    @Test
+    void parse_permissionDemote_unknownPlayer_emitsError() {
+        var rankService = mock(RankService.class);
+        service.setRankService(rankService);
+        when(rankService.resolvePlayerId("Nobody")).thenReturn(null);
+
+        service.parse("$p d Nobody", true, callback);
+        verify(rankService, never()).demote(any(java.util.UUID.class));
+        verify(callback, atLeastOnce()).accept(any(MessageEnvelope.class));
+    }
+
+    @Test
+    void parse_permissionDemote_nonAdmin_doesNotCallDemote() {
+        var rankService = mock(RankService.class);
+        service.setRankService(rankService);
+
+        service.parse("$p d TestMember", false, callback);
+        verify(rankService, never()).demote(any(java.util.UUID.class));
         verify(callback, atLeastOnce()).accept(any(MessageEnvelope.class));
     }
 }

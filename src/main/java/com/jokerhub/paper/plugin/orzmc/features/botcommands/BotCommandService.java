@@ -4,6 +4,7 @@ import com.jokerhub.paper.plugin.orzmc.core.bot.BotInboundHandler;
 import com.jokerhub.paper.plugin.orzmc.core.bot.MessageEnvelope;
 import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
 import com.jokerhub.paper.plugin.orzmc.features.maintenance.WorldMaintenanceService;
+import com.jokerhub.paper.plugin.orzmc.features.rank.RankService;
 import com.jokerhub.paper.plugin.orzmc.features.review.ReviewService;
 import com.jokerhub.paper.plugin.orzmc.features.security.BlacklistService;
 import com.jokerhub.paper.plugin.orzmc.features.whitelist.WhitelistService;
@@ -24,7 +25,7 @@ import org.bukkit.entity.Player;
 
 public final class BotCommandService implements BotInboundHandler {
     private final BotCommandFeedbackService feedbackService = new BotCommandFeedbackService();
-    private final BotCommandListFeedbackService listFeedbackService;
+    private BotCommandListFeedbackService listFeedbackService;
     private final ServerFacade server;
     private final TypedConfigProvider configs;
     private final Map<OrzUserCmd, CmdHandler> handlers;
@@ -42,17 +43,18 @@ public final class BotCommandService implements BotInboundHandler {
         this.server = server;
         this.configs = configs;
         this.listFeedbackService = new BotCommandListFeedbackService(server, configs);
-        this.handlers = Map.of(
-                OrzUserCmd.SHOW_PLAYERS, this::handleShowPlayers,
-                OrzUserCmd.SHOW_WHITELIST, this::handleShowWhitelist,
-                OrzUserCmd.SHOW_HELP, this::handleShowHelp,
-                OrzUserCmd.ADD_PLAYER_TO_WHITELIST, this::handleAddWhitelist,
-                OrzUserCmd.REMOVE_PLAYER_FROM_WHITELIST, this::handleRemoveWhitelist,
-                OrzUserCmd.BACKUP, this::handleBackup,
-                OrzUserCmd.OPTIMIZE_WORLD, this::handleOptimize,
-                OrzUserCmd.BLACKLIST, this::handleBlacklist,
-                OrzUserCmd.REVIEW, this::handleReview,
-                OrzUserCmd.EXECUTE_CONSOLE_COMMAND, this::handleExecuteConsoleCommand);
+        this.handlers = Map.ofEntries(
+                Map.entry(OrzUserCmd.SHOW_PLAYERS, this::handleShowPlayers),
+                Map.entry(OrzUserCmd.SHOW_WHITELIST, this::handleShowWhitelist),
+                Map.entry(OrzUserCmd.SHOW_HELP, this::handleShowHelp),
+                Map.entry(OrzUserCmd.ADD_PLAYER_TO_WHITELIST, this::handleAddWhitelist),
+                Map.entry(OrzUserCmd.REMOVE_PLAYER_FROM_WHITELIST, this::handleRemoveWhitelist),
+                Map.entry(OrzUserCmd.BACKUP, this::handleBackup),
+                Map.entry(OrzUserCmd.OPTIMIZE_WORLD, this::handleOptimize),
+                Map.entry(OrzUserCmd.BLACKLIST, this::handleBlacklist),
+                Map.entry(OrzUserCmd.REVIEW, this::handleReview),
+                Map.entry(OrzUserCmd.PERMISSION, this::handlePermission),
+                Map.entry(OrzUserCmd.EXECUTE_CONSOLE_COMMAND, this::handleExecuteConsoleCommand));
     }
 
     public void setMaintenanceService(WorldMaintenanceService maintenanceService) {
@@ -69,6 +71,8 @@ public final class BotCommandService implements BotInboundHandler {
 
     public void setRankService(com.jokerhub.paper.plugin.orzmc.features.rank.RankService rankService) {
         this.rankService = rankService;
+        // 重建列表反馈服务以注入 rankService（在线列表显示权限组）
+        this.listFeedbackService = new BotCommandListFeedbackService(server, configs, rankService);
     }
 
     @Override
@@ -280,6 +284,90 @@ public final class BotCommandService implements BotInboundHandler {
         } else {
             blacklistService.add(rawArgs);
             emit(callback, "command_blacklist_add", Map.of("message", "已添加: " + rawArgs), "已添加: " + rawArgs);
+        }
+    }
+
+    // ---- Permission command ($p u|d) ----
+
+    /** $p u <玩家> / $p d <玩家> — 权限升级/降级一级（钳位：default→member→builder→admin）。 */
+    private void handlePermission(OrzUserCmd cmd, boolean isAdmin, Consumer<MessageEnvelope> callback, String rawArgs) {
+        java.util.logging.Logger.getLogger("OrzMC.BotCmd")
+                .info("handlePermission: args=[" + rawArgs + "] isAdmin=" + isAdmin);
+        if (!guardAdminCommand(cmd, isAdmin, callback)) return;
+        if (rankService == null) {
+            emit(callback, "command_review_error", Map.of("message", "权限服务不可用"), "权限服务不可用");
+            return;
+        }
+        if (!rankService.isLuckPermsAvailable()) {
+            emit(
+                    callback,
+                    "command_review_error",
+                    Map.of("message", "未检测到 LuckPerms，权限管理功能不可用"),
+                    "未检测到 LuckPerms，权限管理功能不可用");
+            return;
+        }
+        if (rawArgs.isBlank()) {
+            emit(
+                    callback,
+                    "command_review_error",
+                    Map.of("message", "用法: $p u <玩家> 升级 / $p d <玩家> 降级"),
+                    "用法: $p u <玩家> 升级 / $p d <玩家> 降级");
+            return;
+        }
+        String[] parts = rawArgs.split("\\s+", 2);
+        String sub = parts[0].toLowerCase();
+        String playerName = parts.length > 1 ? parts[1].trim() : "";
+        if (playerName.isBlank()) {
+            emit(
+                    callback,
+                    "command_review_error",
+                    Map.of("message", "用法: $p " + sub + " <玩家>"),
+                    "用法: $p " + sub + " <玩家>");
+            return;
+        }
+        boolean upgrade;
+        switch (sub) {
+            case "u", "up" -> upgrade = true;
+            case "d", "down" -> upgrade = false;
+            default -> {
+                emit(
+                        callback,
+                        "command_review_error",
+                        Map.of("message", "用法: $p u <玩家> 升级 / $p d <玩家> 降级"),
+                        "用法: $p u <玩家> 升级 / $p d <玩家> 降级");
+                return;
+            }
+        }
+        var playerId = rankService.resolvePlayerId(playerName);
+        if (playerId == null) {
+            emit(callback, "command_review_error", Map.of("message", "找不到玩家: " + playerName), "找不到玩家: " + playerName);
+            return;
+        }
+        final var id = playerId;
+        var done = new java.util.concurrent.CompletableFuture<String>();
+        server.runSync(() -> {
+            try {
+                done.complete(upgrade ? rankService.promote(id) : rankService.demote(id));
+            } catch (Throwable t) {
+                done.completeExceptionally(t);
+            }
+        });
+        String target = done.join();
+        if (target == null) {
+            emit(
+                    callback,
+                    "command_review_error",
+                    Map.of("message", playerName + (upgrade ? " 已在最高等级，无法再升级。" : " 已在最低等级，无法再降级。")),
+                    playerName + (upgrade ? " 已在最高等级，无法再升级。" : " 已在最低等级，无法再降级。"));
+        } else {
+            emit(
+                    callback,
+                    "command_review_result",
+                    Map.of(
+                            "message",
+                            "已将 " + playerName + (upgrade ? " 升级为" : " 降级为") + RankService.groupDisplayName(target)
+                                    + "。"),
+                    "已将 " + playerName + (upgrade ? " 升级为" : " 降级为") + RankService.groupDisplayName(target) + "。");
         }
     }
 

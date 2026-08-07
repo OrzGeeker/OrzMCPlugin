@@ -134,24 +134,13 @@ public final class FeatureModule implements ServiceModule {
         // permission.yml 三段式统一存储（config 阈值 / ranks 晋升状态 / reviews 审核记录）
         var permissionStore =
                 new com.jokerhub.paper.plugin.orzmc.features.rank.PermissionStore(platform.configService());
-        var rankPromoter = new com.jokerhub.paper.plugin.orzmc.features.rank.LuckPermsPromoter(
-                platform.serverFacade(),
-                playerId -> {
-                    // 离线服：UUID→名字，玩家可能不在线（审核时申请者已退出），用 OfflinePlayer 查缓存
-                    return org.bukkit.Bukkit.getOfflinePlayer(playerId).getName();
-                },
-                platform.serverFacade()); // 异步链路（$v 群指令）回主线程派发 LP 命令
-        if (!rankPromoter.isLuckPermsEnabled()) {
-            org.bukkit.Bukkit.getLogger().warning("[OrzMC] 未检测到 LuckPerms，Rank 晋升功能禁用（时长查询/申请记录仍可用）");
-        }
+        var rankPromoter = createRankPromoter(platform);
         // 通用审核框架：通知端口适配现有 Notifier + 模板；玩家解析端口适配 OfflinePlayer
         var reviewNotifier = new com.jokerhub.paper.plugin.orzmc.infra.notify.ReviewNotifierAdapter(
                 platform.configs(), botModule.notifier());
         var playerLookup = new com.jokerhub.paper.plugin.orzmc.infra.player.BukkitPlayerLookup();
         this.rankService = new com.jokerhub.paper.plugin.orzmc.features.rank.RankService(
-                permissionStore, permissionStore, rankPromoter, permissionStore.memberThresholdHours());
-        // 数据迁移：一期 ranks.yml 遗留（promoted 标记 / pending_application）→ permission.yml
-        permissionStore.migrateLegacyRanks();
+                permissionStore, permissionStore, rankPromoter, permissionStore.memberThresholdHours(), reviewNotifier);
         this.reviewService = new com.jokerhub.paper.plugin.orzmc.features.review.ReviewService(
                 permissionStore, reviewNotifier, playerLookup);
         // 注册审核类型 BUILDER_PROMOTION：handler 由 rank 模块注入（LP 授权），框架零 LP 依赖
@@ -170,7 +159,7 @@ public final class FeatureModule implements ServiceModule {
                 playerId -> rankService.currentGroup(playerId).equals("member"),
                 data -> "申请晋升 builder"
                         + (data.get("reason") == null || data.get("reason").isBlank() ? "" : "：" + data.get("reason")),
-                rankPromoter::promoteToBuilder));
+                rankService::promote)); // 审核通过 = track 升一级（member→builder），LP 钳位
         this.rankCommandService = new com.jokerhub.paper.plugin.orzmc.features.rank.RankCommandService(
                 rankService, reviewService, platform.textStyles());
         this.reviewCommandService = new com.jokerhub.paper.plugin.orzmc.features.review.ReviewCommandService(
@@ -613,6 +602,26 @@ public final class FeatureModule implements ServiceModule {
         commands.register(
                 literal("rank")
                         .requires(requirement(rankInterceptors))
+                        // /rank demote <玩家> — admin 降级一级（钳位）
+                        .then(literal("demote")
+                                .requires(requirement(adminRankInterceptors))
+                                .then(argument("player", StringArgumentType.greedyString())
+                                        .requires(requirement(adminRankInterceptors))
+                                        .executes(guardedExec("rank", adminRankInterceptors, ctx -> {
+                                            var sender = ctx.getSource().getSender();
+                                            String playerName = ctx.getArgument("player", String.class);
+                                            UUID id = rankService.resolvePlayerId(playerName);
+                                            if (id == null) {
+                                                sender.sendMessage(styles.error("找不到玩家: " + playerName));
+                                                return 1;
+                                            }
+                                            renderRankResult(sender, rankCommandService.demote(id));
+                                            return 1;
+                                        })))
+                                .executes(guardedExec("rank", adminRankInterceptors, ctx -> {
+                                    ctx.getSource().getSender().sendMessage(styles.error("用法: /rank demote <玩家>"));
+                                    return 1;
+                                })))
                         // /rank <玩家> — admin 查指定玩家
                         .then(argument("player", StringArgumentType.greedyString())
                                 .requires(requirement(adminRankInterceptors))
@@ -840,5 +849,27 @@ public final class FeatureModule implements ServiceModule {
 
     public void notifyServerStop() {
         serverLifecycleService.notifyServerStop();
+    }
+
+    /**
+     * 创建权限执行器（软依赖条件实例化）。
+     *
+     * <p>LP 已启用 → 实例化 {@code LuckPermsPromoter}（直接引用 LP API 类型，此时
+     * LP 插件提供 API 类，类加载安全）；LP 未启用 → 改用 {@code NoopRankPromoter}
+     * 降级。关键：LP 未启用时<b>永不执行</b> {@code new LuckPermsPromoter}，
+     * JVM 不会加载该类，因此不会因缺失 LP API 类而 NoClassDefFoundError。</p>
+     */
+    private com.jokerhub.paper.plugin.orzmc.features.rank.RankPromoter createRankPromoter(
+            com.jokerhub.paper.plugin.orzmc.assembly.PlatformModule platform) {
+        com.jokerhub.paper.plugin.orzmc.features.rank.PlayerNameResolver resolver = playerId -> {
+            // 离线服：UUID→名字，玩家可能不在线（审核时申请者已退出），用 OfflinePlayer 查缓存
+            return org.bukkit.Bukkit.getOfflinePlayer(playerId).getName();
+        };
+        if (org.bukkit.Bukkit.getPluginManager().isPluginEnabled("LuckPerms")) {
+            return new com.jokerhub.paper.plugin.orzmc.features.rank.LuckPermsPromoter(
+                    resolver, platform.serverFacade()::runSync); // 异步链路回主线程执行 LP 变更
+        }
+        org.bukkit.Bukkit.getLogger().warning("[OrzMC] 未检测到 LuckPerms，权限管理功能不可用（时长查询/申请记录仍可用）");
+        return new com.jokerhub.paper.plugin.orzmc.features.rank.NoopRankPromoter();
     }
 }

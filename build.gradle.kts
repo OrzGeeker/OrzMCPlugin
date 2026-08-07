@@ -36,6 +36,10 @@ dependencies {
     implementation(project(":orzmc-api"))
 
     compileOnly("io.papermc.paper:paper-api:${property("paper_api_version") as String}")
+    // LuckPerms API（软依赖：LP 插件在运行时提供 API 类——compileOnly 不打进 jar，
+    // shadowJar 排除 net/luckperms 避免类加载器冲突；paper-plugin.yml softdepend 保证加载顺序）
+    compileOnly("net.luckperms:api:5.4")
+    testImplementation("net.luckperms:api:5.4")
     // WebSocket client used by the EasyBot event stream.
     implementation("org.java-websocket:Java-WebSocket:1.6.0")
     // Minecraft World Backup Lib
@@ -228,6 +232,8 @@ tasks {
         duplicatesStrategy = DuplicatesStrategy.INCLUDE
         archiveClassifier.set(null as String?)
         archiveVersion.set(shadowJarVersion)
+        // LuckPerms API 由 LP 插件运行时提供，不打进 jar（避免类加载器冲突）
+        exclude("net/luckperms/**")
     }
     build {
         dependsOn("shadowJar")

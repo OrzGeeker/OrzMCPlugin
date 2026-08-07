@@ -92,21 +92,6 @@ class PermissionStoreTest {
         assertEquals(24, store.memberThresholdHours());
     }
 
-    // ---- 晋升标记（ranks 节）----
-
-    @Test
-    void promoted_defaultFalse() {
-        UUID id = UUID.randomUUID();
-        assertFalse(store.hasPromoted(id));
-    }
-
-    @Test
-    void promoted_markThenRead() {
-        UUID id = UUID.randomUUID();
-        store.markPromoted(id);
-        assertTrue(store.hasPromoted(id));
-    }
-
     // ---- 审核记录（reviews 节）----
 
     private ReviewRequest sampleRequest(String id, ReviewRequest.Status status) {

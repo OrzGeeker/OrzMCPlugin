@@ -1,6 +1,7 @@
 package com.jokerhub.paper.plugin.orzmc.features.botcommands;
 
 import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
+import com.jokerhub.paper.plugin.orzmc.features.rank.RankService;
 import com.jokerhub.paper.plugin.orzmc.infra.player.PlayerDisplayNames;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import com.jokerhub.paper.plugin.orzmc.infra.templates.TemplateRenderer;
@@ -11,10 +12,16 @@ import org.bukkit.entity.Player;
 public final class BotCommandListFeedbackService {
     private final ServerFacade server;
     private final TypedConfigProvider configs;
+    private final RankService rankService;
 
     public BotCommandListFeedbackService(ServerFacade server, TypedConfigProvider configs) {
+        this(server, configs, null);
+    }
+
+    public BotCommandListFeedbackService(ServerFacade server, TypedConfigProvider configs, RankService rankService) {
         this.server = server;
         this.configs = configs;
+        this.rankService = rankService;
     }
 
     public record OnlineList(String list, String fallback, String header, String onlineCount, String maxCount) {}
@@ -29,7 +36,10 @@ public final class BotCommandListFeedbackService {
         String header = String.format("------当前在线(%d/%d)------", onlinePlayers.size(), maxPlayers);
         StringBuilder listBuilder = new StringBuilder();
         for (Player p : onlinePlayers) {
-            String name = PlayerDisplayNames.format(p);
+            String group = rankService == null
+                    ? null
+                    : RankService.groupDisplayName(rankService.currentGroup(p.getUniqueId()));
+            String name = PlayerDisplayNames.format(p, group);
             listBuilder.append("\n").append(name);
         }
         String list = listBuilder.toString().trim();
