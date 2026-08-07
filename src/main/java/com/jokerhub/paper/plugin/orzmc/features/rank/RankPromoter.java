@@ -10,7 +10,8 @@ import java.util.UUID;
  * 全部操作走 LP track 原生钳位语义，插件侧不维护任何本地权限状态。</p>
  *
  * <p><b>本接口及实现不得引用任何 {@code net.luckperms.api} 类型</b>——LuckPerms 是软依赖，
- * LP 未安装时类加载必须零依赖（实现内部用反射访问 LP API）。
+ * LP 未安装时类加载必须零依赖（实现为直接 LP API 版 {@link LuckPermsPromoter} +
+ * 无反射条件实例化，见 FeatureModule.createRankPromoter）。
  * {@link #isAvailable()} 返回 false 时调用方<b>不得</b>执行升降级，
  * 回退本地推断（reviews 记录）用于展示。</p>
  */

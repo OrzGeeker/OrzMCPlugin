@@ -108,14 +108,13 @@ Optional<ReviewRequest> pendingFor(ReviewType type, String playerName);
 ```
 permission.yml
 ├── config:      member-threshold-hours: 10      # 静态配置节
-├── ranks:       players.<uuid>.promoted: true   # 晋升状态节（运行时）
 └── reviews:     requests.<id>: {type, applicant,# 审核记录节（运行时）
                  data, status, ...}
 ```
 
-- 一个文件、一个统一 `PermissionStore` 类管理（load/save 整个文件），config 节静态，ranks/reviews 节 markAlwaysSave
+- 一个文件、一个统一 `PermissionStore` 类管理（load/save 整个文件），config 节静态，reviews 节 markAlwaysSave
 - 命名 `permission.yml`（功能主体是权限，审核是其中流程）；将来拆审核插件时 reviews 节连同 review 框架整体切出
-- **迁移**：启动时 `ranks.yml` 遗留 `pending_application=true` → 写入 reviews 节（BUILDER_PROMOTION）→ 清旧字段；`promoted` 标记搬入 ranks 节
+- **权限组状态不在本地存储**：LP track 为唯一事实源，升降级/当前组全走 LP API（一期 promoted/demoted 本地标记已删除）；一期 ranks.yml 晋升状态随 LP 接管失去意义，不做数据迁移（ranks.yml 资源已删除）
 
 ### 3.3 群指令（新增 1 条 `$v`）
 
@@ -173,14 +172,12 @@ permission.yml
 - 模板键注册进 `TemplateKeys.ALL` + `templates.yml`，文案可配不写死
 - **玩家结果三层兜底**：游戏内消息（在线即发）→ 群通知（离线可见）→ `/apply status`（随时自查）
 
-### 3.6 数据迁移（启动时）
+### 3.6 数据迁移（一期 → 二期）
 
-```
-ranks.yml 遗留 players.<uuid>.pending_application=true
-    → 写入 permission.yml 的 reviews 节（BUILDER_PROMOTION）→ 清旧字段
-ranks.yml 遗留 players.<uuid>.promoted=true
-    → 写入 permission.yml 的 ranks 节 → 清旧字段（或保留兼容读）
-```
+**定案：不做迁移。** 一期 ranks.yml 的 `pending_application`/`promoted` 标记在二期被取代：
+- `pending_application=true` → 二期通用审核框架（reviews 节）——一期仅支持 builder 一种申请，二期上线时存量待审申请极少，直接重新提交即可
+- `promoted=true` → 权限状态由 LP track 接管（唯一事实源），本地标记无意义
+- ranks.yml 资源文件已删除，无迁移代码（早期实现过 migrateLegacyRanks，随配置最小化重构移除）
 
 ---
 
@@ -219,11 +216,13 @@ ranks.yml 遗留 players.<uuid>.promoted=true
 | 项 | 状态 |
 |:--|:--|
 | 通用审核框架（review 包，端口注入） | ✅ 本次 |
-| 单一配置 permission.yml（三段式 + PermissionStore） | ✅ 本次 |
-| 群指令 `$v`（l/y/n + Paginator） | ✅ 本次 |
+| 单一配置 permission.yml（两段式 + PermissionStore） | ✅ 本次 |
+| 群指令 `$v`（l/y/n + Paginator）+ `$p`（u/d 升降级） | ✅ 本次 |
 | 游戏内 `/apply` 通用化 + `/review` + `/rank` 增强 | ✅ 本次 |
-| 4 环节群通知 + 玩家结果三层兜底 | ✅ 本次 |
-| 数据迁移（遗留 pending → reviews 节） | ✅ 本次 |
+| 4 环节群通知 + rank 双通道通知 + 玩家结果三层兜底 | ✅ 本次 |
+| LP track 全链升降级（default→member→builder→admin，无反射软依赖） | ✅ 本次 |
+| 在线列表格式化收敛（OnlineListFormatter 单一事实源） | ✅ 本次 |
+| 数据迁移（遗留 pending → reviews 节） | ❌ 已取消（LP 接管权限状态，存量标记无意义，见 3.6） |
 | builder→admin 申请、领地/白名单审核项 | ⏸ 暂缓（框架已预留） |
 
 ---
@@ -233,12 +232,12 @@ ranks.yml 遗留 players.<uuid>.promoted=true
 | # | 任务 | 涉及 | 状态 |
 |:--|:--|:--|:--|
 | 1 | review 包：ReviewRequest / ReviewType / ReviewHandler / ReviewStore / ReviewService | features/review/ | ✅ |
-| 2 | PermissionStore（permission.yml 三段：config/ranks/reviews，markAlwaysSave） | infra/config/ + 存储 | ✅ |
+| 2 | PermissionStore（permission.yml 两段：config/reviews，markAlwaysSave） | infra/config/ + 存储 | ✅ |
 | 3 | rank 模块：阈值读取 + 完整视图查询（组+进度+可申请）+ handler 注入注册 | features/rank/ | ✅ |
 | 4 | `/apply` 四子命令 + `/review` + `/rank` 增强（Brigadier 注册） | 命令注册 + ReviewCommandService | ✅ |
 | 5 | `$v` 群指令（OrzUserCmd + handler + needAdminPermission） | features/botcommands/ | ✅ |
 | 6 | 5 个模板键（review_* ×4 + rank_status）+ templates.yml | TemplateKeys + 模板文件 | ✅ |
-| 7 | 数据迁移（启动时，遗留 pending → reviews 节） | OrzServices 装配 | ✅ |
+| 7 | 数据迁移（启动时，遗留 pending → reviews 节） | OrzServices 装配 | ❌ 已取消（见 3.6：LP 接管权限状态，不做迁移） |
 | 8 | 单元测试 + MockBukkit 集成测试（含通知捕获 CapturingSink） | 各模块 test | ✅ |
 | 9 | `./gradlew check` 全绿 + 本地服冒烟 | — | ✅ |
 
@@ -258,7 +257,7 @@ ranks.yml 遗留 players.<uuid>.promoted=true
 | `features/review/PlayerLookup.java` | 端口 | 玩家名↔UUID 解析 |
 | `features/review/ReviewService.java` | 核心编排 | 提交/撤回/审核/查询，统一预检 + 防重复 + 通知 |
 | `features/review/ReviewCommandService.java` | 游戏内命令 | `/review approve\|reject <玩家>` |
-| `features/rank/PermissionStore.java` | 存储实现 | 同时实现 ReviewStore+RankStore，permission.yml 三段式（config/ranks/reviews），markAlwaysSave + 启动迁移 |
+| `features/rank/PermissionStore.java` | 存储实现 | 同时实现 ReviewStore+RankStore（stats 时长），permission.yml 两段式（config/reviews），markAlwaysSave；权限状态由 LP track 持有 |
 | `features/rank/RankStore.java` | 查询接口 | currentGroup/时长视图（移除 pending_application） |
 | `features/rank/RankService.java` | 业务 | 阈值读 config 节 + 完整视图（组+进度+可申请） |
 | `features/rank/RankCommandService.java` | 游戏内命令 | `/rank` 纯查询 + 注册表反向生成 |
@@ -271,7 +270,7 @@ ranks.yml 遗留 players.<uuid>.promoted=true
 | `assembly/FeatureModule.java` | 装配 | PermissionStore/ReviewService/handler 注册/命令注册/setter 注入 |
 | `infra/config/ConfigService.java` | 配置注册 | `registerConfig("permission","permission.yml")` |
 | `events/OrzDebugEvent.java` | 测试通道 | 兼容 RemoteServerCommandEvent（RCON 触发） |
-| `resources/permission.yml` | 默认资源 | 三段式模板 |
+| `resources/permission.yml` | 默认资源 | 两段式模板（config + reviews） |
 | `resources/templates.yml` | 模板 | 5 新键（format 段：review_* PLAIN / rank_status CODE_BLOCK） |
 
 ### 8.2 命令一览
@@ -294,7 +293,7 @@ ranks.yml 遗留 players.<uuid>.promoted=true
 2. **通知渲染用 `renderTemplate` 而非 `renderEvent`**：实测 `renderEvent` 只认白名单事件键，未知键渲染为空 → 适配器按配置键直读 + fallback switch。
 3. **`$v` 群指令 setter 注入**：`BotCommandService` 创建早于 `FeatureModule`，无法构造注入 → 仿 maintenance/blacklist 的 `setReviewService`，注入点在 `setupEventListeners`。
 4. **资格预检统一在 `ReviewService.submit()`**：任何入口（游戏内/未来其他）都过同一校验。
-5. **迁移幂等**：以「permission.yml 已存在该 uuid 记录」为判据，重复执行安全；启动时自动执行，无需人工干预。
+5. **无数据迁移**：一期 ranks.yml 的 promoted/pending 标记随 LP track 接管失去意义（见 3.6），不做迁移；避免「迁移了已过时的状态」引入双写漂移。
 
 ### 8.4 测试通道修复（自动化测试前置）
 

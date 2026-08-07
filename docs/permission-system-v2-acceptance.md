@@ -9,7 +9,7 @@
 | 静态门禁 | `./gradlew clean check`（spotless + 单测 + MockBukkit 集成 + JaCoCo 覆盖率） | ✅ PASS |
 | 自动化单元测试 | ReviewServiceTest / PermissionStoreTest / RankServiceTest / ConfigHealthCheckTest 等 | ✅ PASS |
 | 本地服启动冒烟 | Paper 26.2 真实启动、模板键完整、无缺失告警 | ✅ PASS |
-| 数据迁移 | 旧 ranks.yml → permission.yml（promoted 标记 + pending 申请） | ✅ PASS |
+| 配置结构 | permission.yml 两段式（config/reviews），权限状态由 LP track 持有（无本地迁移） | ✅ PASS |
 | E2E 自动化（bot 玩家） | 提交→预检→列表→通过→拒绝→撤回→查询 全链路 | ✅ PASS |
 | **真实玩家场景** | 申请→下线→离线审核→重新上线→LP 权限实测 | ✅ PASS |
 
@@ -20,7 +20,7 @@
 | 测试 | 覆盖点 |
 |:--|:--|
 | `ReviewServiceTest`（新增 234 行） | submit 预检+防重复+通知、cancelForApplicant、review approve/reject（跑 handler+notifier）、reviewByApplicantName 单/多 pending、hasPending/pendingFor |
-| `PermissionStoreTest`（新增 183 行） | 三段式存取（config/ranks/reviews）、迁移幂等 |
+| `PermissionStoreTest`（新增 183 行） | 两段式存取（config/reviews）、时长读取、坏数据容错 |
 | `RankServiceTest`（更新） | 阈值读 config 节、完整视图 |
 | `ConfigHealthCheckTest`（更新） | requiredCmds 补 5 新模板键 |
 
@@ -91,7 +91,7 @@ BUILD SUCCESSFUL in 1m 4s
 
 ## 六、验收结论
 
-**✅ 验收通过**。12 个自动化场景 + 10 步真实玩家场景全部通过；`./gradlew clean check` 全绿；LP 授权端到端实测生效；数据迁移与持久化验证通过。
+**✅ 验收通过**。12 个自动化场景 + 10 步真实玩家场景全部通过；`./gradlew clean check` 全绿；LP 授权端到端实测生效；配置持久化验证通过（权限状态以 LP 真实组为准，本地无状态快照）。
 
 **遗留说明**：
 - `$v n` 拒绝、`/apply cancel` 撤回已测（补测 ②④）；`$v y` 通过已测（主链路 + 真实场景）

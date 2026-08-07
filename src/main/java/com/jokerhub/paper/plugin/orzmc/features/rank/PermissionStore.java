@@ -17,18 +17,18 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 
 /**
- * 权限模块统一存储（permission.yml，三段式）。
+ * 权限模块统一存储（permission.yml，两段式）。
  *
  * <pre>
  * permission.yml
  * ├── config:  member-threshold-hours: 10    # 静态配置节
- * ├── ranks:   players.&lt;uuid&gt;.promoted      # 晋升状态节（运行时）
  * └── reviews: requests.&lt;id&gt;: {...}         # 审核记录节（运行时）
  * </pre>
  *
- * <p>同时实现 {@link RankStore}（ranks 节 + stats 时长）与 {@link ReviewStore}
+ * <p>同时实现 {@link RankStore}（stats 时长读取）与 {@link ReviewStore}
  * （reviews 节），一个文件统一管理，替代原 ranks.yml 单文件存储。
- * config 节静态读取，ranks/reviews 节 markAlwaysSave 保证频繁写不丢。</p>
+ * config 节静态读取，reviews 节 markAlwaysSave 保证频繁写不丢。
+ * <b>权限组状态不在本地存储</b>——LP track 为唯一事实源（见 {@code RankPromoter}）。</p>
  *
  * <p>时长数据直接读 Minecraft 服务器原生统计文件
  * {@code <主世界>/players/stats/<uuid>.json} 的 {@code minecraft:play_time}（tick），

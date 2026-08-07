@@ -24,8 +24,8 @@ public final class ConfigService {
         configManager.registerConfig("ip_blacklist", "ip_blacklist.yml");
         configManager.markAlwaysSave("ip_blacklist");
 
-        // 权限模块统一配置（三段式：config 阈值 / ranks 晋升状态 / reviews 审核记录），
-        // markAlwaysSave 保证频繁写不丢；替代原 ranks.yml 单文件存储
+        // 权限模块统一配置（两段式：config 阈值 / reviews 审核记录），
+        // markAlwaysSave 保证频繁写不丢；替代原 ranks.yml 单文件存储（权限状态由 LP track 持有）
         configManager.registerConfig("permission", "permission.yml");
         configManager.markAlwaysSave("permission");
 
