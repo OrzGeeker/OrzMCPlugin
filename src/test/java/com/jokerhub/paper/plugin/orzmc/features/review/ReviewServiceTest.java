@@ -236,4 +236,23 @@ class ReviewServiceTest {
         assertFalse(result.success());
         assertTrue(result.message().contains("多条待审"));
     }
+
+    @Test
+    void review_handlerThrows_keepsPendingAndFails() {
+        // handler 失败（如 LP 授权异常）：状态保持 PENDING，不落 APPROVED，返回失败
+        when(store.findById("r1")).thenReturn(Optional.of(pendingRequest("r1")));
+        ReviewType failing =
+                new ReviewType("builder-promotion", "晋升建造者", "builder", a -> Map.of(), id -> true, d -> "x", id -> {
+                    throw new RuntimeException("LP 命令执行失败");
+                });
+        service.register(failing);
+
+        var result = service.review("r1", true, "admin");
+
+        assertFalse(result.success());
+        assertTrue(result.message().contains("授权处理失败"));
+        // 未保存 APPROVED 状态
+        verify(store, never()).save(argThat(r -> r.status() == ReviewRequest.Status.APPROVED));
+        verify(notifier, never()).groupEvent(eq("review_approved"), anyMap());
+    }
 }

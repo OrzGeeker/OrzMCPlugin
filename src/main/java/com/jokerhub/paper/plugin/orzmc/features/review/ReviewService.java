@@ -20,6 +20,8 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class ReviewService {
 
+    private static final java.util.logging.Logger LOGGER = java.util.logging.Logger.getLogger("OrzMC.ReviewService");
+
     /** 申请结果。 */
     public record Result(boolean success, String message, String requestId) {
         public static Result ok(String message, String requestId) {
@@ -156,12 +158,19 @@ public final class ReviewService {
             return Result.fail("未知审核类型: " + request.typeId());
         }
 
+        // 先执行 handler（授权等副作用），成功后再落状态；
+        // 失败则状态保持 PENDING，避免「已通过但授权未生效」的不一致
+        if (approved && type.handler() != null) {
+            try {
+                type.handler().onApproved(request.applicantId());
+            } catch (Exception e) {
+                LOGGER.warning("审核通过但授权处理失败，申请保持待审: " + request.id() + " - " + e.getMessage());
+                return Result.fail("授权处理失败（" + e.getMessage() + "），请重试或联系管理员。");
+            }
+        }
+
         ReviewRequest.Status newStatus = approved ? ReviewRequest.Status.APPROVED : ReviewRequest.Status.REJECTED;
         store.save(request.reviewed(newStatus, reviewerName));
-
-        if (approved && type.handler() != null) {
-            type.handler().onApproved(request.applicantId());
-        }
 
         String playerName = lookup.name(request.applicantId()).orElse("?");
         String templateKey = approved ? "review_approved" : "review_rejected";
@@ -252,7 +261,8 @@ public final class ReviewService {
     }
 
     private static String newRequestId() {
+        // 毫秒时间戳 + UUID 前 8 位，避免 hashCode 负数/同毫秒碰撞
         return Long.toHexString(System.currentTimeMillis()) + "-"
-                + Integer.toHexString(UUID.randomUUID().hashCode());
+                + UUID.randomUUID().toString().substring(0, 8);
     }
 }

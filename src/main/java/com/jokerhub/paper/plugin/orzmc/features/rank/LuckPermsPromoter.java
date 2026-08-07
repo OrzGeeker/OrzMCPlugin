@@ -89,7 +89,17 @@ public final class LuckPermsPromoter implements RankPromoter {
             server.dispatchCommand(Bukkit.getConsoleSender(), command);
             return;
         }
-        // 异步上下文（群指令 $v / orzdebug / 异步审核链路）→ 回主线程派发
-        scheduler.runSync(() -> server.dispatchCommand(Bukkit.getConsoleSender(), command));
+        // 异步上下文（群指令 $v / orzdebug / 异步审核链路）→ 回主线程派发并等待结果，
+        // 失败异常传播给调用方（ReviewService 据此回滚审核状态）
+        java.util.concurrent.CompletableFuture<Void> done = new java.util.concurrent.CompletableFuture<>();
+        scheduler.runSync(() -> {
+            try {
+                server.dispatchCommand(Bukkit.getConsoleSender(), command);
+                done.complete(null);
+            } catch (Throwable t) {
+                done.completeExceptionally(t);
+            }
+        });
+        done.join();
     }
 }

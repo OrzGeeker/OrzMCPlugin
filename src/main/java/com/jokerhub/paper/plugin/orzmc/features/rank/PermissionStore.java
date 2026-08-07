@@ -94,7 +94,7 @@ public final class PermissionStore implements RankStore, ReviewStore {
         if (!cfg.contains(path + ".type")) {
             return Optional.empty();
         }
-        return Optional.of(readRequest(cfg, path));
+        return readRequest(cfg, path);
     }
 
     @Override
@@ -106,10 +106,11 @@ public final class PermissionStore implements RankStore, ReviewStore {
         }
         List<ReviewRequest> pending = new ArrayList<>();
         for (String id : section.getKeys(false)) {
-            ReviewRequest request = readRequest(cfg, REVIEWS_SECTION + "." + id);
-            if (request.status() == ReviewRequest.Status.PENDING) {
-                pending.add(request);
-            }
+            readRequest(cfg, REVIEWS_SECTION + "." + id).ifPresent(request -> {
+                if (request.status() == ReviewRequest.Status.PENDING) {
+                    pending.add(request);
+                }
+            });
         }
         pending.sort(Comparator.comparingLong(ReviewRequest::createdAt));
         return pending;
@@ -124,10 +125,11 @@ public final class PermissionStore implements RankStore, ReviewStore {
         }
         List<ReviewRequest> found = new ArrayList<>();
         for (String id : section.getKeys(false)) {
-            ReviewRequest request = readRequest(cfg, REVIEWS_SECTION + "." + id);
-            if (request.applicantId().equals(applicantId)) {
-                found.add(request);
-            }
+            readRequest(cfg, REVIEWS_SECTION + "." + id).ifPresent(request -> {
+                if (request.applicantId().equals(applicantId)) {
+                    found.add(request);
+                }
+            });
         }
         found.sort(Comparator.comparingLong(ReviewRequest::createdAt));
         return found;
@@ -135,9 +137,23 @@ public final class PermissionStore implements RankStore, ReviewStore {
 
     @Override
     public Optional<ReviewRequest> pendingFor(String typeId, UUID applicantId) {
-        return listPending().stream()
-                .filter(r -> r.typeId().equals(typeId) && r.applicantId().equals(applicantId))
-                .findFirst();
+        FileConfiguration cfg = configService.getConfig(FILE);
+        ConfigurationSection section = cfg.getConfigurationSection(REVIEWS_SECTION);
+        if (section == null) {
+            return Optional.empty();
+        }
+        for (String id : section.getKeys(false)) {
+            Optional<ReviewRequest> maybe = readRequest(cfg, REVIEWS_SECTION + "." + id);
+            if (maybe.isPresent()) {
+                ReviewRequest request = maybe.get();
+                if (request.status() == ReviewRequest.Status.PENDING
+                        && request.typeId().equals(typeId)
+                        && request.applicantId().equals(applicantId)) {
+                    return Optional.of(request);
+                }
+            }
+        }
+        return Optional.empty();
     }
 
     @Override
@@ -173,20 +189,25 @@ public final class PermissionStore implements RankStore, ReviewStore {
                 changed = true;
             }
             if (legacy.getBoolean("players." + uuidStr + ".pending_application", false)) {
-                UUID applicant = UUID.fromString(uuidStr);
-                if (!hasPending("builder-promotion", applicant)) {
-                    ReviewRequest migrated = new ReviewRequest(
-                            newRequestId(),
-                            "builder-promotion",
-                            applicant,
-                            java.util.Map.of("target-group", "builder"),
-                            ReviewRequest.Status.PENDING,
-                            System.currentTimeMillis(),
-                            0L,
-                            null);
-                    // 攒批：直接写 cfg，统一在迁移末尾一次落盘
-                    writeRequest(cfg, migrated);
-                    changed = true;
+                try {
+                    UUID applicant = UUID.fromString(uuidStr);
+                    if (!hasPending("builder-promotion", applicant)) {
+                        ReviewRequest migrated = new ReviewRequest(
+                                newRequestId(),
+                                "builder-promotion",
+                                applicant,
+                                java.util.Map.of("target-group", "builder"),
+                                ReviewRequest.Status.PENDING,
+                                System.currentTimeMillis(),
+                                0L,
+                                null);
+                        // 攒批：直接写 cfg，统一在迁移末尾一次落盘
+                        writeRequest(cfg, migrated);
+                        changed = true;
+                    }
+                } catch (IllegalArgumentException e) {
+                    // 旧文件脏 key（非 UUID）跳过，不中断迁移
+                    java.util.logging.Logger.getLogger("OrzMC.PermissionStore").warning("迁移跳过非法玩家 key: " + uuidStr);
                 }
             }
         }
@@ -216,32 +237,47 @@ public final class PermissionStore implements RankStore, ReviewStore {
     }
 
     private static String newRequestId() {
+        // 毫秒时间戳 + UUID 前 8 位，避免 hashCode 负数/同毫秒碰撞
         return Long.toHexString(System.currentTimeMillis()) + "-"
-                + Integer.toHexString(UUID.randomUUID().hashCode());
+                + UUID.randomUUID().toString().substring(0, 8);
     }
 
-    private ReviewRequest readRequest(FileConfiguration cfg, String path) {
-        String typeId = cfg.getString(path + ".type", "");
-        UUID applicant = UUID.fromString(cfg.getString(
-                path + ".applicant", UUID.nameUUIDFromBytes(new byte[0]).toString()));
-        Map<String, String> data = new HashMap<>();
-        ConfigurationSection dataSection = cfg.getConfigurationSection(path + ".data");
-        if (dataSection != null) {
-            dataSection.getKeys(false).forEach(k -> data.put(k, dataSection.getString(k)));
+    /** 读取单条审核记录；UUID/状态字段损坏时返回 empty（跳过坏记录，不拖垮全表）。 */
+    private Optional<ReviewRequest> readRequest(FileConfiguration cfg, String path) {
+        try {
+            String typeId = cfg.getString(path + ".type", "");
+            if (typeId.isEmpty()) {
+                return Optional.empty();
+            }
+            String applicantStr = cfg.getString(path + ".applicant", "");
+            if (applicantStr.isEmpty()) {
+                return Optional.empty();
+            }
+            UUID applicant = UUID.fromString(applicantStr);
+            Map<String, String> data = new HashMap<>();
+            ConfigurationSection dataSection = cfg.getConfigurationSection(path + ".data");
+            if (dataSection != null) {
+                dataSection.getKeys(false).forEach(k -> data.put(k, dataSection.getString(k)));
+            }
+            ReviewRequest.Status status = ReviewRequest.Status.valueOf(cfg.getString(path + ".status", "PENDING"));
+            long createdAt = cfg.getLong(path + ".created-at", 0L);
+            long reviewedAt = cfg.getLong(path + ".reviewed-at", 0L);
+            String reviewer = cfg.getString(path + ".reviewer");
+            return Optional.of(new ReviewRequest(
+                    path.substring(path.lastIndexOf('.') + 1),
+                    typeId,
+                    applicant,
+                    data,
+                    status,
+                    createdAt,
+                    reviewedAt,
+                    reviewer));
+        } catch (Exception e) {
+            // 坏记录（UUID/状态非法、字段缺失）跳过，避免单条损坏拖垮全部审核功能
+            java.util.logging.Logger.getLogger("OrzMC.PermissionStore")
+                    .warning("跳过损坏的审核记录: " + path + " - " + e.getMessage());
+            return Optional.empty();
         }
-        ReviewRequest.Status status = ReviewRequest.Status.valueOf(cfg.getString(path + ".status", "PENDING"));
-        long createdAt = cfg.getLong(path + ".created-at", 0L);
-        long reviewedAt = cfg.getLong(path + ".reviewed-at", 0L);
-        String reviewer = cfg.getString(path + ".reviewer");
-        return new ReviewRequest(
-                path.substring(path.lastIndexOf('.') + 1),
-                typeId,
-                applicant,
-                data,
-                status,
-                createdAt,
-                reviewedAt,
-                reviewer);
     }
 
     // ---- stats 时长读取（与一期同源逻辑） ----
