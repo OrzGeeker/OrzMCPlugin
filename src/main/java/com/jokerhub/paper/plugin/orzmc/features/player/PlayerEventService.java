@@ -2,6 +2,7 @@ package com.jokerhub.paper.plugin.orzmc.features.player;
 
 import com.jokerhub.paper.plugin.orzmc.core.bot.MessageEnvelope;
 import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
+import com.jokerhub.paper.plugin.orzmc.features.rank.RankService;
 import com.jokerhub.paper.plugin.orzmc.features.security.GeoIpAccessService;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.TemplateOptions;
 import com.jokerhub.paper.plugin.orzmc.infra.notify.Notifier;
@@ -24,6 +25,8 @@ public final class PlayerEventService {
     private final OrzTextStyles styles;
     private final Notifier notifier;
     private final ThrottledNotifier throttledNotifier;
+    /** 权限组查询（$l 列表/上下线广播显示权限组用）；装配层 setter 注入，null 时省略权限组。 */
+    private RankService rankService;
 
     public PlayerEventService(
             ServerFacade server,
@@ -36,6 +39,18 @@ public final class PlayerEventService {
         this.styles = styles;
         this.notifier = notifier;
         this.throttledNotifier = throttledNotifier;
+    }
+
+    /** 注入权限组查询服务（FeatureModule 在 rankService 创建后调用；null 兼容测试/早期场景）。 */
+    public void setRankService(RankService rankService) {
+        this.rankService = rankService;
+    }
+
+    /** 玩家显示名（含权限组；rankService 未注入时省略权限组）。 */
+    private String displayNameWithGroup(Player p) {
+        String group =
+                rankService == null ? null : RankService.groupDisplayName(rankService.currentGroup(p.getUniqueId()));
+        return PlayerDisplayNames.format(p, group);
     }
 
     public enum PlayerState {
@@ -141,13 +156,13 @@ public final class PlayerEventService {
         }
         int onlinePlayerCount = onlinePlayers.size();
         int maxPlayerCount = server.server().getMaxPlayers();
-        String playerName = PlayerDisplayNames.format(player);
+        String playerName = displayNameWithGroup(player);
         boolean minusCurrent = (state == PlayerState.QUIT || state == PlayerState.KICK);
         int displayOnlineCount = onlinePlayerCount - (minusCurrent ? 1 : 0);
         StringBuilder listBuilder = new StringBuilder();
         for (Player p : onlinePlayers) {
             if (minusCurrent && p.getUniqueId().equals(player.getUniqueId())) continue;
-            listBuilder.append(PlayerDisplayNames.format(p)).append("\n");
+            listBuilder.append(displayNameWithGroup(p)).append("\n");
         }
         org.bukkit.Location loc = player.getLocation();
         String world = loc.getWorld() != null ? loc.getWorld().getName() : "unknown";

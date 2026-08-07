@@ -141,6 +141,8 @@ public final class FeatureModule implements ServiceModule {
         var playerLookup = new com.jokerhub.paper.plugin.orzmc.infra.player.BukkitPlayerLookup();
         this.rankService = new com.jokerhub.paper.plugin.orzmc.features.rank.RankService(
                 permissionStore, permissionStore, rankPromoter, permissionStore.memberThresholdHours(), reviewNotifier);
+        // 上下线广播的在线列表显示权限组（rankService 已就绪后注入）
+        this.playerEventService.setRankService(this.rankService);
         this.reviewService = new com.jokerhub.paper.plugin.orzmc.features.review.ReviewService(
                 permissionStore, reviewNotifier, playerLookup);
         // 注册审核类型 BUILDER_PROMOTION：handler 由 rank 模块注入（LP 授权），框架零 LP 依赖
