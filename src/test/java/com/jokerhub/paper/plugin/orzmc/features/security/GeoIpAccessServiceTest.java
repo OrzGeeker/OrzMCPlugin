@@ -130,4 +130,63 @@ class GeoIpAccessServiceTest {
 
         assertTrue(d.allowed(), "查询异常应 fail-open 放行");
     }
+
+    // ---- 结果缓存（TTL）----
+
+    @Test
+    void decide_successfulLookup_cachesResult() {
+        when(configs.ipWhitelist()).thenReturn(new IpWhitelist(List.of("CN")));
+        GeoIpClient.GeoIpResult res = new GeoIpClient.GeoIpResult("CN", "{}");
+        when(client.lookup("1.2.3.4")).thenReturn(CompletableFuture.completedFuture(res));
+
+        GeoIpAccessService.Decision d1 = service.decide("1.2.3.4").join();
+        GeoIpAccessService.Decision d2 = service.decide("1.2.3.4").join();
+
+        assertTrue(d1.allowed());
+        assertTrue(d2.allowed());
+        verify(client, times(1)).lookup("1.2.3.4");
+    }
+
+    @Test
+    void decide_cacheExpired_triggersNewLookup() throws Exception {
+        when(configs.ipWhitelist()).thenReturn(new IpWhitelist(List.of("CN")));
+        GeoIpClient.GeoIpResult res = new GeoIpClient.GeoIpResult("CN", "{}");
+        when(client.lookup("1.2.3.4")).thenReturn(CompletableFuture.completedFuture(res));
+        // TTL 5ms：第一次成功后缓存立即过期，第二次应重新查询
+        GeoIpAccessService shortTtlService = new GeoIpAccessService(client, configs, 5L);
+
+        shortTtlService.decide("1.2.3.4").join();
+        Thread.sleep(50);
+        shortTtlService.decide("1.2.3.4").join();
+
+        verify(client, times(2)).lookup("1.2.3.4");
+    }
+
+    @Test
+    void decide_queryFailure_notCached() {
+        when(configs.ipWhitelist()).thenReturn(new IpWhitelist(List.of("CN")));
+        CompletableFuture<GeoIpClient.GeoIpResult> failed = new CompletableFuture<>();
+        failed.completeExceptionally(new RuntimeException("timeout"));
+        when(client.lookup("1.2.3.4")).thenReturn(failed);
+
+        GeoIpAccessService.Decision d1 = service.decide("1.2.3.4").join();
+        GeoIpAccessService.Decision d2 = service.decide("1.2.3.4").join();
+
+        assertTrue(d1.allowed());
+        assertTrue(d2.allowed());
+        verify(client, times(2)).lookup("1.2.3.4");
+    }
+
+    @Test
+    void decide_emptyCountryCode_notCached() {
+        when(configs.ipWhitelist()).thenReturn(new IpWhitelist(List.of("CN")));
+        GeoIpClient.GeoIpResult res = new GeoIpClient.GeoIpResult("", "{}");
+        when(client.lookup("1.2.3.4")).thenReturn(CompletableFuture.completedFuture(res));
+
+        GeoIpAccessService.Decision d = service.decide("1.2.3.4").join();
+
+        assertFalse(d.allowed(), "空国家码不在白名单应拦截");
+        service.decide("1.2.3.4").join();
+        verify(client, times(2)).lookup("1.2.3.4");
+    }
 }

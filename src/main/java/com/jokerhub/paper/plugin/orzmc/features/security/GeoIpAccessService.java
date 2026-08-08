@@ -2,8 +2,11 @@ package com.jokerhub.paper.plugin.orzmc.features.security;
 
 import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
 import com.jokerhub.paper.plugin.orzmc.infra.net.GeoIpClient;
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 public final class GeoIpAccessService {
     /**
@@ -14,18 +17,33 @@ public final class GeoIpAccessService {
      */
     public static final long DECISION_TIMEOUT_MS = 3_000L;
 
+    /** 单条 IP 的国家码缓存时长。国家码基本不变，12h 足够，同时大幅减少对 geojs.io 的重复查询。 */
+    private static final long CACHE_TTL_MS = Duration.ofHours(12).toMillis();
+
+    /** 缓存条目上限；超过时触发一次过期清理，避免长期运行的条目无限增长。 */
+    private static final int MAX_CACHE_ENTRIES = 4096;
+
+    private record CacheEntry(GeoIpClient.GeoIpResult result, long expiresAtMillis) {}
+
     public record Decision(boolean allowed, String countryCode, List<String> allowList, String rawJson) {}
 
     private final GeoIpClient client;
     private final TypedConfigProvider configs;
+    private final long cacheTtlMillis;
+    private final ConcurrentMap<String, CacheEntry> cache = new ConcurrentHashMap<>();
 
     public GeoIpAccessService(TypedConfigProvider configs) {
-        this(new GeoIpClient(), configs);
+        this(new GeoIpClient(), configs, CACHE_TTL_MS);
     }
 
     GeoIpAccessService(GeoIpClient client, TypedConfigProvider configs) {
+        this(client, configs, CACHE_TTL_MS);
+    }
+
+    GeoIpAccessService(GeoIpClient client, TypedConfigProvider configs, long cacheTtlMillis) {
         this.client = client;
         this.configs = configs;
+        this.cacheTtlMillis = cacheTtlMillis;
     }
 
     public CompletableFuture<Decision> decide(String ipAddress) {
@@ -38,14 +56,52 @@ public final class GeoIpAccessService {
             // 会返回未知国家码导致白名单误拦截内网用户，2026-08-06 MCSM 线上问题）
             return CompletableFuture.completedFuture(new Decision(true, "", allow, ""));
         }
+        GeoIpClient.GeoIpResult cached = cacheGet(ipAddress);
+        if (cached != null) {
+            return CompletableFuture.completedFuture(toDecision(cached, allow));
+        }
         return client.lookup(ipAddress).handle((res, ex) -> {
             if (ex != null || res == null) {
+                // 查询失败 fail-open 放行（可用性优先），不缓存，避免把临时故障误固定
                 return new Decision(true, "", allow, "");
             }
             String cc = res.countryCode() == null ? "" : res.countryCode();
-            boolean ok = allow.contains(cc);
-            return new Decision(ok, cc, allow, res.rawJson());
+            // 仅缓存成功且拿到国家码的结果；空国家码可能是上游瞬时异常，不缓存避免误锁 12h
+            if (!cc.isEmpty()) {
+                cachePut(ipAddress, res);
+            }
+            return toDecision(res, allow);
         });
+    }
+
+    private Decision toDecision(GeoIpClient.GeoIpResult res, List<String> allow) {
+        String cc = res.countryCode() == null ? "" : res.countryCode();
+        boolean ok = allow.contains(cc);
+        return new Decision(ok, cc, allow, res.rawJson());
+    }
+
+    private GeoIpClient.GeoIpResult cacheGet(String ip) {
+        CacheEntry entry = cache.get(ip);
+        if (entry == null) {
+            return null;
+        }
+        if (System.currentTimeMillis() > entry.expiresAtMillis()) {
+            cache.remove(ip, entry);
+            return null;
+        }
+        return entry.result();
+    }
+
+    private void cachePut(String ip, GeoIpClient.GeoIpResult result) {
+        cache.put(ip, new CacheEntry(result, System.currentTimeMillis() + cacheTtlMillis));
+        if (cache.size() > MAX_CACHE_ENTRIES) {
+            evictExpired();
+        }
+    }
+
+    private void evictExpired() {
+        long now = System.currentTimeMillis();
+        cache.entrySet().removeIf(e -> now > e.getValue().expiresAtMillis());
     }
 
     /** 判断是否为内网/私有/特殊用途 IPv4 地址（RFC1918 + 环回 + CGNAT + 链路本地）。 */
