@@ -7,8 +7,9 @@ import java.util.UUID;
  * LuckPerms 缺失时的降级实现（软依赖）。
  *
  * <p>LP 未安装时装配层使用本实现：所有升降级/组查询返回 null/false，
- * 调用方（RankService/命令层）据此给出"权限管理不可用"提示，并回退
- * 本地推断（reviews 记录）用于展示。类加载零 LP 依赖。</p>
+ * 调用方（RankService/命令层）据此给出"权限管理不可用"提示；
+ * 当前权限组一律回退 default（访客）——无本地推断，避免虚假展示。
+ * 类加载零 LP 依赖。</p>
  */
 public final class NoopRankPromoter implements RankPromoter {
 

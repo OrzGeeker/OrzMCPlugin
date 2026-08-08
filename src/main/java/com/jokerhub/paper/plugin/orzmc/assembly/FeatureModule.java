@@ -136,7 +136,7 @@ public final class FeatureModule implements ServiceModule {
         this.orzConfigCommand = new OrzConfigCommand(
                 platform.configService(), platform.textStyles(), botModule.botMessageService()::reloadConfig);
         // 权限晋升（Rank）模块：时长（读服务器原生 stats 文件）+ 自动晋升 + 通用审核框架
-        // permission.yml 三段式统一存储（config 阈值 / ranks 晋升状态 / reviews 审核记录）
+        // permission.yml 两段式统一存储（config 阈值 / reviews 审核记录；权限组状态由 LP track 持有）
         var permissionStore =
                 new com.jokerhub.paper.plugin.orzmc.features.rank.PermissionStore(platform.configService());
         var rankPromoter = createRankPromoter(platform);
@@ -145,7 +145,7 @@ public final class FeatureModule implements ServiceModule {
                 platform.configs(), botModule.notifier());
         var playerLookup = new com.jokerhub.paper.plugin.orzmc.infra.player.BukkitPlayerLookup();
         this.rankService = new com.jokerhub.paper.plugin.orzmc.features.rank.RankService(
-                permissionStore, permissionStore, rankPromoter, permissionStore.memberThresholdHours(), reviewNotifier);
+                permissionStore, rankPromoter, permissionStore.memberThresholdHours(), reviewNotifier);
         // 在线列表格式化注入权限组解析（$l 命令与上下线广播共用，一次注入两处生效）
         this.listFormatter.setRankService(this.rankService);
         this.reviewService = new com.jokerhub.paper.plugin.orzmc.features.review.ReviewService(
@@ -269,7 +269,7 @@ public final class FeatureModule implements ServiceModule {
             // ---- Blacklist: /blacklist list|add|remove <pattern> ----
             registerBlacklist(commands, cp);
 
-            // ---- Rank: /apply（申请 builder）、/rank [approve|reject <name>] ----
+            // ---- Rank: /apply（申请）/ /review（审核）/ /rank（查询）----
             registerRank(commands, cp);
 
             // ---- Config: /config list|get|set|reset|dump|reload ----
@@ -611,26 +611,6 @@ public final class FeatureModule implements ServiceModule {
         commands.register(
                 literal("rank")
                         .requires(requirement(rankInterceptors))
-                        // /rank demote <玩家> — admin 降级一级（钳位）
-                        .then(literal("demote")
-                                .requires(requirement(adminRankInterceptors))
-                                .then(argument("player", StringArgumentType.greedyString())
-                                        .requires(requirement(adminRankInterceptors))
-                                        .executes(guardedExec("rank", adminRankInterceptors, ctx -> {
-                                            var sender = ctx.getSource().getSender();
-                                            String playerName = ctx.getArgument("player", String.class);
-                                            UUID id = rankService.resolvePlayerId(playerName);
-                                            if (id == null) {
-                                                sender.sendMessage(styles.error("找不到玩家: " + playerName));
-                                                return 1;
-                                            }
-                                            renderRankResult(sender, rankCommandService.demote(id));
-                                            return 1;
-                                        })))
-                                .executes(guardedExec("rank", adminRankInterceptors, ctx -> {
-                                    ctx.getSource().getSender().sendMessage(styles.error("用法: /rank demote <玩家>"));
-                                    return 1;
-                                })))
                         // /rank <玩家> — admin 查指定玩家
                         .then(argument("player", StringArgumentType.greedyString())
                                 .requires(requirement(adminRankInterceptors))

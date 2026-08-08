@@ -1,8 +1,6 @@
 package com.jokerhub.paper.plugin.orzmc.features.rank;
 
 import com.jokerhub.paper.plugin.orzmc.features.review.ReviewNotifier;
-import com.jokerhub.paper.plugin.orzmc.features.review.ReviewRequest;
-import com.jokerhub.paper.plugin.orzmc.features.review.ReviewStore;
 import java.util.Map;
 import java.util.UUID;
 
@@ -18,37 +16,28 @@ import java.util.UUID;
  * 升降级委托 {@link RankPromoter}（LP track API），结果状态翻译为业务提示。</p>
  *
  * <p>当前权限组（{@link #currentGroup}）以 LP 真实组为准（在线缓存/离线加载）；
- * 无 LuckPerms 时回退本地推断：存在 APPROVED 的 builder-promotion 审核记录 → builder，否则 default。</p>
+ * 无 LuckPerms 时一律回退 default（访客）——权限状态无本地推断，杜绝虚假展示。</p>
  */
 public final class RankService {
 
     /** 默认晋升阈值（小时）。 */
     public static final int DEFAULT_MEMBER_THRESHOLD_HOURS = 10;
 
-    private static final String BUILDER_PROMOTION_TYPE = "builder-promotion";
-
     private final RankStore store;
-    private final ReviewStore reviewStore;
     private final RankPromoter promoter;
     private final int memberThresholdHours;
     private final ReviewNotifier notifier;
 
-    public RankService(RankStore store, ReviewStore reviewStore, RankPromoter promoter) {
-        this(store, reviewStore, promoter, DEFAULT_MEMBER_THRESHOLD_HOURS, null);
+    public RankService(RankStore store, RankPromoter promoter) {
+        this(store, promoter, DEFAULT_MEMBER_THRESHOLD_HOURS, null);
     }
 
-    public RankService(RankStore store, ReviewStore reviewStore, RankPromoter promoter, int memberThresholdHours) {
-        this(store, reviewStore, promoter, memberThresholdHours, null);
+    public RankService(RankStore store, RankPromoter promoter, int memberThresholdHours) {
+        this(store, promoter, memberThresholdHours, null);
     }
 
-    public RankService(
-            RankStore store,
-            ReviewStore reviewStore,
-            RankPromoter promoter,
-            int memberThresholdHours,
-            ReviewNotifier notifier) {
+    public RankService(RankStore store, RankPromoter promoter, int memberThresholdHours, ReviewNotifier notifier) {
         this.store = store;
-        this.reviewStore = reviewStore;
         this.promoter = promoter;
         this.memberThresholdHours = memberThresholdHours;
         this.notifier = notifier;
@@ -97,7 +86,7 @@ public final class RankService {
         return memberThresholdHours * 60L;
     }
 
-    /** 玩家当前权限组：LP 真实组优先，无 LP/查询失败回退本地推断。 */
+    /** 玩家当前权限组：LP 为唯一事实源；无 LP 时一律回退 default（访客，诚实展示，不做本地推断）。 */
     public String currentGroup(UUID playerId) {
         if (promoter.isAvailable()) {
             String trackGroup = promoter.currentTrackGroup(playerId);
@@ -105,14 +94,7 @@ public final class RankService {
                 return trackGroup;
             }
         }
-        return hasApprovedBuilder(playerId) ? "builder" : "default";
-    }
-
-    /** 是否拥有 APPROVED 的 builder 晋升记录。 */
-    private boolean hasApprovedBuilder(UUID playerId) {
-        return reviewStore.listByApplicant(playerId).stream()
-                .anyMatch(
-                        r -> BUILDER_PROMOTION_TYPE.equals(r.typeId()) && r.status() == ReviewRequest.Status.APPROVED);
+        return "default";
     }
 
     /**

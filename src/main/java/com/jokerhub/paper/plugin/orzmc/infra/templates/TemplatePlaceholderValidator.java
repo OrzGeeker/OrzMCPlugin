@@ -109,7 +109,6 @@ public final class TemplatePlaceholderValidator {
                 "z_unit",
                 "coord_unit",
                 "role",
-                "role_alias",
                 "online_count",
                 "max_count",
                 "online_list");

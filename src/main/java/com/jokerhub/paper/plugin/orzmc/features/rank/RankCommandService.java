@@ -61,15 +61,6 @@ public final class RankCommandService {
         return available.isEmpty() ? "无（当前无可申请项）" : String.join("；", available);
     }
 
-    /** /rank demote <玩家> — admin 降级一级（钳位：builder→member→default，链底 no-op）。 */
-    public Result demote(UUID playerId) {
-        String target = service.demote(playerId);
-        if (target == null) {
-            return new Result.Failure(styles.error("该玩家已在最低等级（访客），无法再降级。"));
-        }
-        return new Result.Success(styles.success("已降级为" + RankService.groupDisplayName(target) + "（" + target + "）。"));
-    }
-
     private String formatAvailableType(ReviewType type) {
         return type.displayName() + "（/apply " + type.commandKey() + "）";
     }

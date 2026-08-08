@@ -25,13 +25,13 @@ public record Templates(
         String base = "templates";
         String join = cfg.getString(
                 base + ".player_join",
-                "{name} 上线\n世界:{world_alias} 坐标:{x_unit},{y_unit},{z_unit}({coord_unit})\n角色:{role_alias}\n------当前在线({online_count}/{max_count})------\n{online_list}");
+                "{name} 上线\n世界:{world_alias} 坐标:{x_unit},{y_unit},{z_unit}({coord_unit})\n------当前在线({online_count}/{max_count})------\n{online_list}");
         String quit = cfg.getString(
                 base + ".player_quit",
-                "{name} 下线\n世界:{world_alias} 坐标:{x_unit},{y_unit},{z_unit}({coord_unit})\n角色:{role_alias}\n------当前在线({online_count}/{max_count})------\n{online_list}");
+                "{name} 下线\n世界:{world_alias} 坐标:{x_unit},{y_unit},{z_unit}({coord_unit})\n------当前在线({online_count}/{max_count})------\n{online_list}");
         String kick = cfg.getString(
                 base + ".player_kick",
-                "{name} 被踢\n世界:{world_alias} 坐标:{x_unit},{y_unit},{z_unit}({coord_unit})\n角色:{role_alias}\n------当前在线({online_count}/{max_count})------\n{online_list}");
+                "{name} 被踢\n世界:{world_alias} 坐标:{x_unit},{y_unit},{z_unit}({coord_unit})\n------当前在线({online_count}/{max_count})------\n{online_list}");
         String exceptionAlert = cfg.getString(base + ".exception_alert", "异常: {message}\n摘要: {stack_summary}");
         String geoipBlock = cfg.getString(
                 base + ".geoip_block", "{name}({ip}) 地区:{country_code} 不在允许列表({allow_list})\n{address_info}");

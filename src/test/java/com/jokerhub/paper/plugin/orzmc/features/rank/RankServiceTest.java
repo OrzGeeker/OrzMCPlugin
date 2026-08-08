@@ -4,10 +4,6 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import com.jokerhub.paper.plugin.orzmc.features.review.ReviewNotifier;
-import com.jokerhub.paper.plugin.orzmc.features.review.ReviewRequest;
-import com.jokerhub.paper.plugin.orzmc.features.review.ReviewStore;
-import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,7 +14,7 @@ import org.junit.jupiter.api.Test;
  *
  * <ul>
  *   <li>权限链：default→member→builder→admin（LP track 唯一事实源）</li>
- *   <li>currentGroup：LP 真实组优先，无 LP 回退 reviews 推断</li>
+ *   <li>currentGroup：LP 真实组优先，无 LP 一律回退 default（不本地推断）</li>
  *   <li>promote/demote：翻译 LP 结果状态（SUCCESS / END_OF_TRACK / REMOVED_FROM_FIRST_GROUP）</li>
  *   <li>自动晋升：时长达标且当前组 default 才触发（幂等由 LP 保证）</li>
  * </ul>
@@ -26,7 +22,6 @@ import org.junit.jupiter.api.Test;
 class RankServiceTest {
 
     private RankStore store;
-    private ReviewStore reviewStore;
     private RankPromoter promoter;
     private ReviewNotifier notifier;
     private RankService service;
@@ -34,10 +29,9 @@ class RankServiceTest {
     @BeforeEach
     void setUp() {
         store = mock(RankStore.class);
-        reviewStore = mock(ReviewStore.class);
         promoter = mock(RankPromoter.class);
         notifier = mock(ReviewNotifier.class);
-        service = new RankService(store, reviewStore, promoter, 10, notifier);
+        service = new RankService(store, promoter, 10, notifier);
     }
 
     // ---- 自动晋升（default→member）----
@@ -101,28 +95,19 @@ class RankServiceTest {
     }
 
     @Test
-    void currentGroup_noLp_approvedBuilderReview_returnsBuilder() {
+    void currentGroup_noLp_returnsDefault() {
+        // 无 LP：一律回退 default（访客），不做本地推断（如审核记录）——杜绝虚假展示
         UUID id = UUID.randomUUID();
         when(promoter.isAvailable()).thenReturn(false);
-        ReviewRequest approved = new ReviewRequest(
-                "r1",
-                "builder-promotion",
-                id,
-                Map.of("target-group", "builder"),
-                ReviewRequest.Status.APPROVED,
-                0L,
-                1L,
-                "admin");
-        when(reviewStore.listByApplicant(id)).thenReturn(List.of(approved));
 
-        assertEquals("builder", service.currentGroup(id));
+        assertEquals("default", service.currentGroup(id));
     }
 
     @Test
-    void currentGroup_noLp_noReview_returnsDefault() {
+    void currentGroup_lpUnavailableAfterApprovedReview_returnsDefault() {
+        // 即使存在 APPROVED 审核记录，无 LP 时也回退 default（权限状态只认 LP）
         UUID id = UUID.randomUUID();
         when(promoter.isAvailable()).thenReturn(false);
-        when(reviewStore.listByApplicant(id)).thenReturn(List.of());
 
         assertEquals("default", service.currentGroup(id));
     }
@@ -211,7 +196,7 @@ class RankServiceTest {
 
     @Test
     void memberThresholdMinutes_configuredValue() {
-        service = new RankService(store, reviewStore, promoter, 5); // 5h 阈值
+        service = new RankService(store, promoter, 5); // 5h 阈值
         assertEquals(300L, service.memberThresholdMinutes());
     }
 
