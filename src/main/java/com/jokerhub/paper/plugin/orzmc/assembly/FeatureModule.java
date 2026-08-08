@@ -872,6 +872,10 @@ public final class FeatureModule implements ServiceModule {
             return org.bukkit.Bukkit.getOfflinePlayer(playerId).getName();
         };
         if (org.bukkit.Bukkit.getPluginManager().isPluginEnabled("LuckPerms")) {
+            // 装即用：启动自动补齐 track「rank」+ 四级组骨架（幂等，已有不覆盖）
+            new com.jokerhub.paper.plugin.orzmc.features.rank.LuckPermsBootstrap(
+                            net.luckperms.api.LuckPermsProvider.get(), org.bukkit.Bukkit.getLogger())
+                    .initialize();
             return new com.jokerhub.paper.plugin.orzmc.features.rank.LuckPermsPromoter(
                     resolver, platform.serverFacade()::runSync); // 异步链路回主线程执行 LP 变更
         }
