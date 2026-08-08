@@ -11,6 +11,7 @@ import net.luckperms.api.LuckPermsProvider;
 import net.luckperms.api.context.ImmutableContextSet;
 import net.luckperms.api.model.user.User;
 import net.luckperms.api.model.user.UserManager;
+import net.luckperms.api.query.QueryOptions;
 import net.luckperms.api.track.DemotionResult;
 import net.luckperms.api.track.PromotionResult;
 import net.luckperms.api.track.Track;
@@ -94,10 +95,16 @@ public final class LuckPermsPromoter implements RankPromoter {
         }
     }
 
-    /** 用户上下文（无上下文时用空集 = global）。 */
-    private ImmutableContextSet contextsFor(User user) {
-        Optional<ImmutableContextSet> ctx = api().getContextManager().getContext(user);
-        return ctx.orElseGet(ImmutableContextSet::empty);
+    /**
+     * OrzMC 权限操作统一上下文：global（空上下文）。
+     *
+     * <p>LP track 节点必须创建/查询在 global 上下文，否则玩家在线时（world/gamemode
+     * 等上下文）$p 升降级会把节点写到带上下文的场景下，与离线操作（global）的节点
+     * 混存 → track 节点重叠、currentTrackGroup 误判、promote/demote 报
+     * AMBIGUOUS_CALL（实测 joker/TestMember 均踩中）。统一 global 后所有场景一致。</p>
+     */
+    private static ImmutableContextSet globalContext() {
+        return ImmutableContextSet.empty();
     }
 
     /** 持久化用户变更（LP API 的 promote/demote 只改内存，须显式保存）。@return true=落库成功。 */
@@ -130,8 +137,15 @@ public final class LuckPermsPromoter implements RankPromoter {
         if (user == null) {
             return false;
         }
-        return user.getInheritedGroups(user.getQueryOptions()).stream()
+        return user.getInheritedGroups(queryOptionsGlobal()).stream()
                 .anyMatch(g -> g.getName().equalsIgnoreCase(groupName));
+    }
+
+    /** global 上下文的查询选项（track 判定/组查询统一用，见 GLOBAL 说明）。 */
+    private static QueryOptions queryOptionsGlobal() {
+        return QueryOptions.builder(net.luckperms.api.query.QueryMode.CONTEXTUAL)
+                .context(globalContext())
+                .build();
     }
 
     @Override
@@ -141,11 +155,11 @@ public final class LuckPermsPromoter implements RankPromoter {
         if (user == null || trk == null) {
             return null;
         }
-        // 一次加载用户继承组集合，避免对每个 track 组重复 loadUser（N+1，离线玩家每次 3s 超时 × N）
+        // 一次加载用户继承组集合（global 上下文），避免对每个 track 组重复 loadUser（N+1，离线玩家每次 3s 超时 × N）
         // 注：LP API 无 TrackNode 概念，track 组即普通继承节点——本方法按「继承组 ∩ track 组列表」
-        // 取最高位。玩家若手动叠加了与 track 组同名的组（体系外数据），会干扰判定，
-        // 须保持 OrzMC 规范：权限组只经 track 升降级管理，禁止 parent add 叠加（见清理脚本）
-        var inherited = user.getInheritedGroups(user.getQueryOptions()).stream()
+        // 取最高位。只认 global 上下文节点（统一见 GLOBAL 说明），带世界/游戏模式上下文的同名组
+        // 不参与判定（它们是一期在玩家上下文下操作产生的脏数据，应清理）。
+        var inherited = user.getInheritedGroups(queryOptionsGlobal()).stream()
                 .map(g -> g.getName())
                 .collect(java.util.stream.Collectors.toCollection(
                         () -> new java.util.TreeSet<>(String.CASE_INSENSITIVE_ORDER)));
@@ -167,7 +181,7 @@ public final class LuckPermsPromoter implements RankPromoter {
             LOG.warning("promote 跳过: user=" + (user != null) + " track=" + (trk != null));
             return null;
         }
-        PromotionResult result = runSync(() -> trk.promote(user, contextsFor(user)));
+        PromotionResult result = runSync(() -> trk.promote(user, globalContext()));
         if (result == null) {
             LOG.warning("promote(" + playerId + ") 结果为 null");
             return null;
@@ -176,14 +190,32 @@ public final class LuckPermsPromoter implements RankPromoter {
         boolean success = result.getStatus() == PromotionResult.Status.SUCCESS
                 || result.getStatus() == PromotionResult.Status.ADDED_TO_FIRST_GROUP;
         LOG.info("promote(" + playerId + ") -> " + status);
+        if (result.getStatus() == PromotionResult.Status.AMBIGUOUS_CALL) {
+            LOG.warning("promote(" + playerId + ") track 节点歧义（存在多个 track 组节点），"
+                    + "请用 lp user <name> parent info 检查并清理重叠/带上下文的 track 组");
+        }
         if (!success) {
             return null; // END_OF_TRACK / AMBIGUOUS_CALL 等
+        }
+        String groupTo = result.getGroupTo().orElse(null);
+        if (result.getStatus() == PromotionResult.Status.ADDED_TO_FIRST_GROUP
+                && groupTo != null
+                && !trk.getGroups().isEmpty()
+                && groupTo.equalsIgnoreCase(trk.getGroups().get(0))) {
+            // 用户此前不在 track：被加到链首（default），继续 promote 到下一级（member），
+            // 避免「升级为访客」的误导（升级至少到 member）
+            PromotionResult second = runSync(() -> trk.promote(user, globalContext()));
+            if (second != null && second.getStatus() == PromotionResult.Status.SUCCESS) {
+                groupTo = second.getGroupTo().orElse(groupTo);
+                LOG.info("promote(" + playerId + ") 首入链（链首）→ 连续 promote -> "
+                        + second.getStatus().name());
+            }
         }
         if (!saveUser(user)) {
             LOG.warning("promote(" + playerId + ") 落库失败，视为失败"); // 内存已改但未持久化，不能报成功
             return null;
         }
-        return result.getGroupTo().orElse(null);
+        return groupTo;
     }
 
     @Override
@@ -194,7 +226,7 @@ public final class LuckPermsPromoter implements RankPromoter {
             LOG.warning("demote 跳过: user=" + (user != null) + " track=" + (trk != null));
             return null;
         }
-        DemotionResult result = runSync(() -> trk.demote(user, contextsFor(user)));
+        DemotionResult result = runSync(() -> trk.demote(user, globalContext()));
         if (result == null) {
             LOG.warning("demote(" + playerId + ") 结果为 null");
             return null;
@@ -202,6 +234,10 @@ public final class LuckPermsPromoter implements RankPromoter {
         String status = result.getStatus().name();
         boolean success = result.getStatus() == DemotionResult.Status.SUCCESS;
         LOG.info("demote(" + playerId + ") -> " + status);
+        if (result.getStatus() == DemotionResult.Status.AMBIGUOUS_CALL) {
+            LOG.warning("demote(" + playerId + ") track 节点歧义（存在多个 track 组节点），"
+                    + "请用 lp user <name> parent info 检查并清理重叠/带上下文的 track 组");
+        }
         if (!success) {
             return null; // REMOVED_FROM_FIRST_GROUP / NOT_ON_TRACK / AMBIGUOUS_CALL
         }

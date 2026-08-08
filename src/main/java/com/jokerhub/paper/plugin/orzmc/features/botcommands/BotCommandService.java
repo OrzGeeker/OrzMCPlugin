@@ -380,8 +380,10 @@ public final class BotCommandService implements BotInboundHandler {
             emit(
                     callback,
                     "command_review_error",
-                    Map.of("message", playerName + (upgrade ? " 已在最高等级，无法再升级。" : " 已在最低等级，无法再降级。")),
-                    playerName + (upgrade ? " 已在最高等级，无法再升级。" : " 已在最低等级，无法再降级。"));
+                    Map.of(
+                            "message",
+                            playerName + (upgrade ? " 无法升级：已达最高等级或权限数据异常（详见服务器日志）。" : " 无法降级：已达最低等级或权限数据异常（详见服务器日志）。")),
+                    playerName + (upgrade ? " 无法升级：已达最高等级或权限数据异常（详见服务器日志）。" : " 无法降级：已达最低等级或权限数据异常（详见服务器日志）。"));
         } else {
             emit(
                     callback,

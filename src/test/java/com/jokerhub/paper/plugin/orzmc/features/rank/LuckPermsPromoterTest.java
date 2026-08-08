@@ -1,6 +1,7 @@
 package com.jokerhub.paper.plugin.orzmc.features.rank;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
 
 import java.util.Optional;
@@ -63,6 +64,8 @@ class LuckPermsPromoterTest {
 
         providerMock = mockStatic(LuckPermsProvider.class);
         providerMock.when(LuckPermsProvider::get).thenReturn(api);
+        // QueryOptions.builder 内部依赖 ContextManager（queryOptionsGlobal 使用），统一 mock
+        mockEmptyContext();
     }
 
     @AfterEach
@@ -75,9 +78,19 @@ class LuckPermsPromoterTest {
         net.luckperms.api.context.ContextManager cm = mock(net.luckperms.api.context.ContextManager.class);
         // ContextSetFactory 供 ImmutableContextSet.empty() 内部调用（真实静态方法依赖它）
         net.luckperms.api.context.ContextSetFactory factory = mock(net.luckperms.api.context.ContextSetFactory.class);
-        when(factory.immutableEmpty()).thenReturn(mock(net.luckperms.api.context.ImmutableContextSet.class));
+        net.luckperms.api.context.ImmutableContextSet emptyCtx =
+                mock(net.luckperms.api.context.ImmutableContextSet.class);
+        when(emptyCtx.isEmpty()).thenReturn(true);
+        when(factory.immutableEmpty()).thenReturn(emptyCtx);
         when(cm.getContextSetFactory()).thenReturn(factory);
         when(cm.getContext(user)).thenReturn(Optional.empty());
+        // QueryOptions.builder 内部经 ContextManager.queryOptionsBuilder(mode) 创建
+        net.luckperms.api.query.QueryOptions.Builder qob = mock(net.luckperms.api.query.QueryOptions.Builder.class);
+        when(cm.queryOptionsBuilder(any())).thenReturn(qob);
+        when(qob.context(any())).thenReturn(qob);
+        net.luckperms.api.query.QueryOptions qo = mock(net.luckperms.api.query.QueryOptions.class);
+        when(qo.context()).thenReturn(emptyCtx);
+        when(qob.build()).thenReturn(qo);
         when(api.getContextManager()).thenReturn(cm);
     }
 
@@ -108,6 +121,7 @@ class LuckPermsPromoterTest {
     @Test
     void promote_addedToFirstGroup_isSuccess() {
         mockEmptyContext();
+        when(track.getGroups()).thenReturn(java.util.List.of("default", "member", "builder", "admin"));
         PromotionResult result = mock(PromotionResult.class);
         when(result.getStatus()).thenReturn(PromotionResult.Status.ADDED_TO_FIRST_GROUP);
         when(result.getGroupTo()).thenReturn(Optional.of("member"));
@@ -115,6 +129,40 @@ class LuckPermsPromoterTest {
         when(userManager.saveUser(user)).thenReturn(java.util.concurrent.CompletableFuture.completedFuture(null));
 
         assertEquals("member", promoter.promote(id));
+    }
+
+    @Test
+    void promote_addedToFirstGroup_atChainStart_continuesToNextLevel() {
+        // 回归：用户不在 track 时 LP 先加到链首（default），须连续 promote 到下一级（member），
+        // 避免「升级为访客」的误导（$p u 新玩家应至少到 member）
+        mockEmptyContext();
+        when(track.getGroups()).thenReturn(java.util.List.of("default", "member", "builder", "admin"));
+        PromotionResult first = mock(PromotionResult.class);
+        when(first.getStatus()).thenReturn(PromotionResult.Status.ADDED_TO_FIRST_GROUP);
+        when(first.getGroupTo()).thenReturn(Optional.of("default"));
+        PromotionResult second = mock(PromotionResult.class);
+        when(second.getStatus()).thenReturn(PromotionResult.Status.SUCCESS);
+        when(second.getGroupTo()).thenReturn(Optional.of("member"));
+        when(track.promote(any(), any())).thenReturn(first, second);
+        when(userManager.saveUser(user)).thenReturn(java.util.concurrent.CompletableFuture.completedFuture(null));
+
+        assertEquals("member", promoter.promote(id));
+        verify(track, times(2)).promote(any(), any());
+        verify(userManager).saveUser(user);
+    }
+
+    @Test
+    void currentTrackGroup_usesGlobalQueryOptions() {
+        // 回归：track 判定必须用 global 上下文查询——玩家在线时（world/gamemode 上下文）
+        // 的叠加组不得参与判定（joker/TestMember 曾因此 /rank 误判 + AMBIGUOUS_CALL）
+        mockEmptyContext();
+        when(track.getGroups()).thenReturn(java.util.List.of("default", "member", "builder", "admin"));
+
+        promoter.currentTrackGroup(id);
+
+        verify(user)
+                .getInheritedGroups(
+                        argThat(qo -> qo.context() != null && qo.context().isEmpty()));
     }
 
     @Test
