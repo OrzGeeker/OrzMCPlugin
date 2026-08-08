@@ -89,7 +89,8 @@ BUILD SUCCESSFUL in 1m 4s
 | 2 | `$v y` 抛 `IllegalStateException: Asynchronous Command Dispatched Async` | 群指令/orzdebug 异步线程 dispatch LP 命令，Paper 要求主线程 | `LuckPermsPromoter` 注入 `ServerScheduler`，非主线程 `runSync` 回主线程 | 离线审核 LP 授权成功 |
 | 3 | 自动化脚本 RCON 连不上 | ① shell 展开 `$v`；② node RCON length 字段少算 8 字节头部 | 原生 net 实现 + 正确 length 语义（id+type+payload+2null 总长） | 脚本稳定运行 |
 | 4 | `$h` 帮助缺 `$v`/`$p`；`$v ?`/`$p ?` 无用法 | `BotCommandFeedbackService.helpInfo` 硬编码拼接遗漏新指令；`usageTip` 的 REVIEW/PERMISSION 走 default 返回空（`$cmd ?` 降级为直接执行） | helpInfo 补 $v/$p；usageTip 补 REVIEW（l/y/n）与 PERMISSION（u/d + 权限链） | 实测 `$h` 输出含两指令；`$v ?`/`$p ?` 输出完整用法 |
-| 5 | `$p d joker` 降级后 `/rank` 仍显示「建造者」 | **joker 有手动叠加的 builder 组**（`lp user joker parent info` 实锤：parents 含无 track 标注的 `builder`）；`currentTrackGroup` 按「继承组 ∩ track 组」取最高位，叠加组干扰判定；LP API 无 TrackNode，代码无法区分来源 | 数据清理：`lp user joker parent remove builder`（parents 恢复为仅 default）；沉淀规范：权限组只经 `$p` 管理、禁止 `parent add` 叠加 | 清理后 joker 的 `/rank`/`$l` 与 track 同步（待真实玩家复验） |
+| 5 | `$p d joker` 降级后 `/rank` 仍显示「建造者」 | joker 存在**体系外叠加组/上下文脏节点**（`lp user joker parent info` 实锤：无上下文 `builder` + world/gamemode 上下文 `builder`/`member`）；`currentTrackGroup` 按「继承组 ∩ track 组」取最高位，脏节点干扰判定；LP API 无 TrackNode，代码无法区分来源 | ① 数据清理：移除 joker 无上下文叠加组；② **根因修复（63dc5ef）**：`$p` 升降级/组查询统一 global 上下文——一期用玩家实时上下文操作导致节点带上下文快照落库（见方案 8.3 决策 8） | 清理后 + 新代码下 `$p d joker` 恢复 REMOVED_FROM_FIRST_GROUP（不再 AMBIGUOUS_CALL），`/rank` 与 track 同步 |
+| 6 | `$p d joker` 提示「无法再降级」但实际是数据歧义 | track 节点上下文混存（global + world 上下文并存）→ LP demote 报 `AMBIGUOUS_CALL`，旧代码一律按「已在最低等级」提示，误导 | ① 统一 global 上下文（同上）；② `AMBIGUOUS_CALL` 输出 WARNING 日志 + 检查指引；③ `$p` 失败提示合并「已达边界或权限数据异常（详见服务器日志）」；④ `$p u` 新玩家（不在 track）连续 promote 直达 member，不再出现「升级为访客」 | 实测 `$p u joker`：ADDED_TO_FIRST_GROUP → 连续 promote SUCCESS → 「已将 joker 升级为成员。」 |
 
 ## 六、验收结论
 
@@ -98,11 +99,11 @@ BUILD SUCCESSFUL in 1m 4s
 **遗留说明**：
 - `$v n` 拒绝、`/apply cancel` 撤回已测（补测 ②④）；`$v y` 通过已测（主链路 + 真实场景）
 - 群通知真实投递（EasyBot 网关 → 飞书测试群）链路已通（模板键 + 适配器冒烟），未做真实群消息端到端（避免打扰生产群；测试群无管理员身份的机器人会话）
-- 代码已在 `feat/rank-promotion` 分支（commit `63ee984`，含 review 修复 + Alerts 清理 + 一期残留清理 + 状态动态化 + admin 申请通道），PR #160 OPEN 待合并
+- 代码已在 `feat/rank-promotion` 分支（commit `63dc5ef`，含 review 修复 + Alerts 清理 + 一期残留清理 + 状态动态化 + admin 申请通道 + global 上下文修复），PR #160 OPEN 待合并
 - 审核人记录：验收时 RCON/orzdebug 通道显示「群管理员」；后续 S2 修复后审核人=消息发送者昵称透传（BotInboundHandler 4 参），null 兜底「群管理员」——`permission.yml` 落库为真实昵称/ID（如「控制台」「RCON」）
 - **一期残留清理（34a198c）**：/rank demote 移除（升降级统一 `$p`）、无 LP 本地推断删除（hasApprovedBuilder）、模板死占位符 role_alias 清理——权限状态全面收敛为 LP 单一事实源，无行为变化（LP 在线路径不受影响）
 - **状态展示动态化（63ee984）**：/rank 与 /apply 按当前权限组展示（实测四级流转：default→成员→建造者→管理员 各分支文案正确）；新增 ADMIN_PROMOTION（/apply admin）打通 builder→admin；TestMember 实测全链路：/apply admin → $v l 列表（当前组：builder）→ $v y → LP promote SUCCESS → /rank 管理员（已达最高等级）
-- **数据发现（63ee984 同期）**：TestMember 曾出现 track 节点重叠（builder+member 并存）导致 `$p d` AMBIGUOUS_CALL——清理多余节点后恢复；运维提示：AMBIGUOUS_CALL 时用 `lp user X parent info` 检查，移除重叠 track 组
+- **global 上下文修复（63dc5ef）**：$p 升降级/组查询统一 global 上下文——根治 track 节点上下文混存（joker world 上下文脏节点不再影响判定；AMBIGUOUS_CALL 消失）；$p u 新玩家连续 promote 直达 member；失败提示合并边界/数据异常（详见五、问题 5/6）
 
 ## 七、测试脚本沉淀
 
@@ -111,5 +112,8 @@ BUILD SUCCESSFUL in 1m 4s
 | `~/minecraft-bot/review-e2e.js` | 主链路：提交→列表→通过→status→rank |
 | `~/minecraft-bot/review-e2e-2.js` | 补测：预检拒绝 / `$v n` 拒绝 / 重申请 / 撤回 |
 | `~/minecraft-bot/review-real.js` | 真实玩家场景：提交→下线→离线审核→上线验证→WE 权限实测 |
+| `~/minecraft-bot/p-test.js` | RCON 驱动 `orzdebug` 模拟群消息（`$p`/`$v`/`$h` 等） |
+| `~/minecraft-bot/rank-single.js` / `cmd-one.js` | bot 玩家登录执行游戏内命令（`/rank`/`/apply`，自动 /login） |
+| `~/minecraft-bot/lp-joker-check.js` / `rcon-*.js` | LP 数据查询/RCON 调试辅助 |
 
-三脚本内嵌 **node 原生 RCON 实现**（不经 shell，`$` 安全），可复用于后续所有 Bot 命令自动化测试。
+脚本内嵌 **node 原生 RCON 实现**（不经 shell，`$` 安全），可复用于后续所有 Bot 命令自动化测试。

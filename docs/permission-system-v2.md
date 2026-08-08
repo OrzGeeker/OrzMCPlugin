@@ -15,7 +15,7 @@
 **目标**：
 
 1. **通用审核框架**——「申请→审核→处理→通知」全流程，本次落地晋升，未来扩展零框架改动
-2. **1 条群指令 `$v`** 承载审核，维护负担最低
+2. **2 条群指令 `$v`（审核）+ `$p`（升降级）** 承载权限管理，维护负担最低
 3. 权限模块**单一独立配置文件**（`permission.yml`），阈值可调，不混 `config.yml`
 4. 审核请求**携带结构化内容**（data），「审核什么」明确表达
 5. **全链路通知**：提交/撤回/通过/拒绝 4 环节全部同步群，结果必达玩家
@@ -39,7 +39,7 @@
    │  Scheduler(异步)             │  SafeScheduler 适配
    └──────────────────────────────┴────────────────────
    features/rank/（消费者）
-     ├ 注册 ReviewType 枚举项（BUILDER_PROMOTION 元数据）
+     ├ 注册 ReviewType 项（BUILDER_PROMOTION / ADMIN_PROMOTION 元数据）
      └ 注入 handler：LuckPermsPromoter（LP 授权）
 ```
 
@@ -293,12 +293,13 @@ permission.yml
 
 | 命令 | 权限 | 说明 |
 |:--|:--|:--|
-| `/apply` | 玩家 | 列出可申请项（注册表驱动） |
-| `/apply builder [理由]` | 玩家 | 提交晋升申请（预检：member 资格） |
+| `/apply` | 玩家 | 列出可申请项（注册表驱动 + 按资格过滤） |
+| `/apply builder [理由]` | 玩家 | 提交晋升建造者申请（预检：member 资格） |
+| `/apply admin [理由]` | 玩家 | 提交晋升管理员申请（预检：builder 资格） |
 | `/apply status` | 玩家 | 查询我的申请状态 |
 | `/apply cancel <type>` | 玩家 | 撤回待审申请 |
 | `/review approve\|reject <玩家>` | 管理员 | 游戏内审核 |
-| `/rank` | 玩家 | 当前组 + 时长进度 + 下一步可申请 |
+| `/rank` | 玩家 | 当前组 + 状态描述 + 下一步可申请（按组动态） |
 | `/rank <玩家>` | 管理员 | 查询他人 |
 | `$v l` | 群管理员 | 待审列表（分页，含当前组/摘要/时间） |
 | `$v y\|n <玩家>` | 群管理员 | 通过/拒绝 |
@@ -311,7 +312,8 @@ permission.yml
 4. **资格预检统一在 `ReviewService.submit()`**：任何入口（游戏内/未来其他）都过同一校验。
 5. **无数据迁移**：一期 ranks.yml 的 promoted/pending 标记随 LP track 接管失去意义（见 3.6），不做迁移；避免「迁移了已过时的状态」引入双写漂移。
 6. **权限状态无本地推断**：`currentGroup` 无 LP 时一律回退 default（访客）——无 LP 时权限体系整体不可用，按审核记录推断组会造成虚假展示（一期 hasApprovedBuilder 已删）。
-7. **叠加组是体系外数据，禁止 `parent add`**：LP API 无 TrackNode 概念，track 组即普通继承节点，代码**无法**区分「track 给的组」与「手动叠加的同名组」；叠加组会干扰 `currentTrackGroup` 判定（实测：`$p d` 降级后 /rank 仍显示叠加的 builder 组）。运维规范：权限组只经 `$p u/d` 升降，存量叠加组用 `lp user <X> parent remove <组>` 清理。
+7. **叠加组/上下文脏节点是体系外数据**：LP API 无 TrackNode 概念，track 组即普通继承节点，代码**无法**区分「track 给的组」与「同名叠加组」；叠加组会干扰 `currentTrackGroup` 判定。运维规范：权限组只经 `$p u/d` 升降，禁止 `parent add` 叠加；存量脏数据用 `lp user <X> parent info` 检查后清理。
+8. **LP 操作统一 global 上下文（根因修复）**：一期 `$p` 升降级用**玩家实时上下文**（在线时 world/gamemode/essentials 等）调 LP API，节点带完整上下文快照落库 → 与离线操作（global）的节点混存 → track 节点重叠、`/rank` 误判、promote/demote 报 `AMBIGUOUS_CALL`（joker/TestMember 实测复现）。修复：promote/demote/currentTrackGroup/isInGroup 全部固定 global 上下文；`$p u` 新玩家（不在 track）ADDED_TO_FIRST_GROUP 连续 promote 直达 member；AMBIGUOUS_CALL 输出 WARNING 日志 + 检查指引。
 
 ### 8.4 测试通道修复（自动化测试前置）
 
