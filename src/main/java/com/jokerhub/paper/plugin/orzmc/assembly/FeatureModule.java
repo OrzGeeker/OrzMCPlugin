@@ -169,6 +169,23 @@ public final class FeatureModule implements ServiceModule {
                 // 审核通过 = track 升一级（member→builder）；返回 null（链顶/LP 异常）视为授权失败，
                 // 保持 PENDING 不落 APPROVED（避免「已通过但未生效」）
                 playerId -> rankService.promote(playerId) != null));
+        // ADMIN_PROMOTION：builder→admin（四级流转最后一环；审核通过 = track 升一级）
+        this.reviewService.register(new com.jokerhub.paper.plugin.orzmc.features.review.ReviewType(
+                "admin-promotion",
+                "晋升管理员",
+                "admin",
+                rawArgs -> {
+                    var data = new java.util.LinkedHashMap<String, String>();
+                    data.put("target-group", "admin");
+                    if (rawArgs != null && !rawArgs.isBlank()) {
+                        data.put("reason", rawArgs);
+                    }
+                    return data;
+                },
+                playerId -> rankService.currentGroup(playerId).equals("builder"),
+                data -> "申请晋升 admin"
+                        + (data.get("reason") == null || data.get("reason").isBlank() ? "" : "：" + data.get("reason")),
+                playerId -> rankService.promote(playerId) != null));
         this.rankCommandService = new com.jokerhub.paper.plugin.orzmc.features.rank.RankCommandService(
                 rankService, reviewService, platform.textStyles());
         this.reviewCommandService = new com.jokerhub.paper.plugin.orzmc.features.review.ReviewCommandService(

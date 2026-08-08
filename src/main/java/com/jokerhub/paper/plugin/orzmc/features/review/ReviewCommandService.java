@@ -29,9 +29,10 @@ public final class ReviewCommandService {
         record Failure(Component message) implements Result {}
     }
 
-    /** /apply — 列出可申请类型（注册表驱动，自动生成帮助）。 */
+    /** /apply — 列出可申请类型（注册表驱动 + 按当前玩家资格过滤，自动生成帮助）。 */
     public Result listTypes(Player player) {
         List<String> lines = reviewService.registeredTypes().stream()
+                .filter(t -> t.isEligible(player.getUniqueId()))
                 .map(t -> "· " + t.displayName() + " — /apply " + t.commandKey() + " [理由]")
                 .collect(Collectors.toList());
         if (lines.isEmpty()) {

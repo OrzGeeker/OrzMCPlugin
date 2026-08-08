@@ -42,13 +42,39 @@ public final class RankCommandService {
     public Result statusOf(UUID playerId) {
         String group = service.currentGroup(playerId);
         long minutes = service.playtimeMinutes(playerId);
-        long threshold = service.memberThresholdMinutes();
-        String progress = minutes >= threshold ? "✅ 已达标" : "还需 " + (threshold - minutes) + " 分钟";
-        String next = nextApplications(playerId);
+        String displayName = RankService.groupDisplayName(group);
 
-        Component message = styles.info("你的当前权限组：" + RankService.groupDisplayName(group) + "（" + group + "）\n"
-                + "已在线时长：" + minutes + " 分钟 / 晋升成员阈值 " + threshold + " 分钟（" + progress + "）\n"
-                + "下一步可申请：" + next);
+        // 状态描述按当前权限组动态化：时长/阈值行只在尚未完成自动晋升的组展示，
+        // 「下一步」按组给对应引导（自动晋升 / 申请 / 无更高项 / 链顶）
+        String timeLine;
+        String nextLine;
+        switch (group) {
+            case "default" -> {
+                long threshold = service.memberThresholdMinutes();
+                String progress = minutes >= threshold ? "✅ 已达标（下次上线将自动晋升为成员）" : "还需 " + (threshold - minutes) + " 分钟";
+                timeLine = "已在线时长：" + minutes + " 分钟 / 晋升成员阈值 " + threshold + " 分钟（" + progress + "）";
+                nextLine = "下一步：在线时长达标后自动晋升为成员";
+            }
+            case "member" -> {
+                long threshold = service.memberThresholdMinutes();
+                timeLine = "已在线时长：" + minutes + " 分钟 / 晋升成员阈值 " + threshold + " 分钟（✅ 已达标）";
+                nextLine = "下一步可申请：" + nextApplications(playerId);
+            }
+            case "builder" -> {
+                timeLine = "已在线时长：" + minutes + " 分钟";
+                nextLine = "下一步可申请：" + nextApplications(playerId);
+            }
+            case "admin" -> {
+                timeLine = "已在线时长：" + minutes + " 分钟";
+                nextLine = "已达最高等级（管理员）";
+            }
+            default -> {
+                timeLine = "已在线时长：" + minutes + " 分钟";
+                nextLine = "当前权限组未知，请联系管理员";
+            }
+        }
+
+        Component message = styles.info("你的当前权限组：" + displayName + "（" + group + "）\n" + timeLine + "\n" + nextLine);
         return new Result.Success(message);
     }
 
