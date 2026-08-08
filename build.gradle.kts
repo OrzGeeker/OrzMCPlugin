@@ -44,8 +44,8 @@ dependencies {
     implementation("org.java-websocket:Java-WebSocket:1.6.0")
     // Minecraft World Backup Lib
     implementation("io.github.wangzhizhou:backup-core:0.1.6")
-    testImplementation("org.junit.jupiter:junit-jupiter:6.1.2")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:6.1.2")
+    testImplementation("org.junit.jupiter:junit-jupiter:6.1.3")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:6.1.3")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:6.1.2")
     testImplementation("io.papermc.paper:paper-api:${property("paper_api_version") as String}")
     testImplementation("com.squareup.okhttp3:mockwebserver:5.4.0")
@@ -71,7 +71,7 @@ configurations.getByName("integrationTestRuntimeOnly").extendsFrom(
 )
 
 dependencies {
-    add("integrationTestImplementation", "org.mockbukkit.mockbukkit:mockbukkit-v26.1.2:4.114.0")
+    add("integrationTestImplementation", "org.mockbukkit.mockbukkit:mockbukkit-v26.1.2:4.115.0")
 }
 
 // 项目编译时插件添加
