@@ -24,6 +24,7 @@ class TntPolicyTest {
                 true,
                 10,
                 2000L,
+                4000L,
                 List.of(Map.of("minX", 0, "maxX", 10, "minY", 0, "maxY", 255, "minZ", 0, "maxZ", 10, "world", "world")),
                 List.of("ARMOR_STAND", "ITEM_FRAME"));
         policy = new TntPolicy(cfg);
@@ -47,6 +48,11 @@ class TntPolicyTest {
     @Test
     void getNotifyThrottleMs() {
         assertEquals(2000L, policy.getNotifyThrottleMs());
+    }
+
+    @Test
+    void getNotifyAggregateMs() {
+        assertEquals(4000L, policy.getNotifyAggregateMs());
     }
 
     @Test
