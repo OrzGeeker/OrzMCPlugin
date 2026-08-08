@@ -26,7 +26,6 @@ import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
-import org.bukkit.util.Vector;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -168,9 +167,6 @@ class TeleportBowServiceTest extends ServiceTestBase {
         PersistentDataContainer bowPdc = mock(PersistentDataContainer.class);
         Arrow arrow = mock(Arrow.class);
         PersistentDataContainer arrowPdc = mock(PersistentDataContainer.class);
-        Player player = mock(Player.class);
-        Location eye = mock(Location.class);
-        World world = mock(World.class);
 
         when(event.getBow()).thenReturn(bow);
         when(bow.getItemMeta()).thenReturn(bowMeta);
@@ -178,22 +174,10 @@ class TeleportBowServiceTest extends ServiceTestBase {
         when(bowPdc.has(tpBowKey, PersistentDataType.BYTE)).thenReturn(true);
         when(event.getProjectile()).thenReturn(arrow);
         when(arrow.getPersistentDataContainer()).thenReturn(arrowPdc);
-        when(event.getEntity()).thenReturn(player);
-        when(player.getEyeLocation()).thenReturn(eye);
-        when(eye.getWorld()).thenReturn(world);
-        when(eye.getDirection()).thenReturn(new Vector(1, 0, 0));
-        when(world.rayTraceBlocks(any(), any(), anyDouble(), any())).thenReturn(null);
-        // retryWithChunkLoad 链路 mock（射线 null → 异步加载路径区块重试）
-        when(eye.clone()).thenReturn(eye);
-        when(eye.add(any(Vector.class))).thenReturn(eye);
-        when(eye.multiply(anyDouble())).thenReturn(eye);
-        when(eye.getBlockX()).thenReturn(0);
-        when(eye.getBlockZ()).thenReturn(0);
 
         service.markArrow(event);
 
-        // 方案 B（射线传送）：射箭即按视线射线传送，移除箭标记避免落地重复传送
-        verify(arrowPdc).remove(tpBowKey);
+        verify(arrowPdc).set(tpBowKey, PersistentDataType.BYTE, (byte) 1);
     }
 
     @Test

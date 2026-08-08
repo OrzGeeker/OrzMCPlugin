@@ -62,98 +62,10 @@ public final class TeleportBowService {
         if (meta != null
                 && meta.getPersistentDataContainer().has(keyTpBow, org.bukkit.persistence.PersistentDataType.BYTE)) {
             if (event.getProjectile() instanceof org.bukkit.entity.Arrow arrow) {
-                // 射线传送：射箭瞬间按玩家视线传送，不依赖箭落地（修复未加载区块问题）
-                teleportByRay((org.bukkit.entity.Player) event.getEntity(), arrow);
-                // 玩家已传送，移除箭标记避免落地时重复传送
-                arrow.getPersistentDataContainer().remove(keyTpBow);
+                arrow.getPersistentDataContainer()
+                        .set(keyTpBow, org.bukkit.persistence.PersistentDataType.BYTE, (byte) 1);
             }
         }
-    }
-
-    /**
-     * 射线传送：射箭瞬间按玩家视线方向射线检测落点并传送。
-     *
-     * <p>实测根因（2026-08-08）：原实现依赖箭落地触发 {@code ProjectileHitEvent}，但箭
-     * 飞入未加载区块（超出 view-distance）时实体被卸载，hit 事件永不触发，传送弓失效。
-     * 预加载方案无效（Paper 会立即卸载视距外区块）。改为发射瞬间按视线射线计算落点，
-     * 玩家传送会强制加载目标区块（原版机制），彻底绕开箭事件依赖。
-     *
-     * <p>射线穿过未加载区块时 {@code rayTraceBlocks} 返回 null，此时沿视线方向逐个
-     * 异步加载路径区块并在加载完成回调内重试射线（回调时区块已加载未卸载），
-     * 覆盖远距离（出加载区）场景。</p>
-     */
-    private static final int TRAJECTORY_CHUNKS = 8;
-
-    void teleportByRay(org.bukkit.entity.Player player, org.bukkit.entity.Arrow arrow) {
-        org.bukkit.Location eye = player.getEyeLocation();
-        org.bukkit.World world = eye.getWorld();
-        if (world == null) {
-            return;
-        }
-        org.bukkit.util.Vector dir = eye.getDirection();
-        if (dir == null || dir.lengthSquared() < 1.0e-6) {
-            return;
-        }
-        org.bukkit.util.RayTraceResult result =
-                world.rayTraceBlocks(eye, dir, 120.0, org.bukkit.FluidCollisionMode.ALWAYS);
-        if (result == null || result.getHitBlock() == null) {
-            retryWithChunkLoad(player, world, eye, dir, 0);
-            return;
-        }
-        handleRayResult(player, dir, result);
-    }
-
-    private void retryWithChunkLoad(
-            org.bukkit.entity.Player player,
-            org.bukkit.World world,
-            org.bukkit.Location eye,
-            org.bukkit.util.Vector dir,
-            int chunkIndex) {
-        if (chunkIndex >= TRAJECTORY_CHUNKS) {
-            player.sendMessage(texts.logText("瞄准位置无效，请对准地面!").color(styles.colorError()));
-            return;
-        }
-        org.bukkit.Location step = eye.clone().add(dir.clone().multiply((chunkIndex + 1) * 16.0));
-        int cx = step.getBlockX() >> 4;
-        int cz = step.getBlockZ() >> 4;
-        world.getChunkAtAsync(cx, cz, false, chunk -> {
-            // 回调在主线程且区块刚加载（未卸载），立即重试射线
-            org.bukkit.util.RayTraceResult result =
-                    world.rayTraceBlocks(eye, dir, 120.0, org.bukkit.FluidCollisionMode.ALWAYS);
-            if (result == null || result.getHitBlock() == null) {
-                retryWithChunkLoad(player, world, eye, dir, chunkIndex + 1);
-            } else {
-                handleRayResult(player, dir, result);
-            }
-        });
-    }
-
-    private void handleRayResult(
-            org.bukkit.entity.Player player, org.bukkit.util.Vector dir, org.bukkit.util.RayTraceResult result) {
-        org.bukkit.block.Block hit = result.getHitBlock();
-        org.bukkit.Material hitType = hit.getType();
-        if (hitType == org.bukkit.Material.WATER) {
-            player.sendMessage(texts.logText("箭射进了水里!").color(styles.colorError()));
-            return;
-        }
-        if (hitType == org.bukkit.Material.LAVA) {
-            player.sendMessage(texts.logText("箭射进了岩浆里!").color(styles.colorError()));
-            return;
-        }
-        org.bukkit.Location landing = hit.getLocation().add(0.5, 1.0, 0.5).setDirection(dir);
-        if (!withinWorldBounds(landing)) {
-            player.sendMessage(texts.logText("目标高度不合法!").color(styles.colorError()));
-            return;
-        }
-        org.bukkit.Location safe = findNearestSafe(landing, dir);
-        if (safe == null) {
-            player.sendMessage(texts.logText("目标位置不可站立!").color(styles.colorError()));
-            return;
-        }
-        player.teleportAsync(safe).thenRun(() -> {
-            player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_CAT_PURR, 1.0F, 1.0F);
-            player.sendMessage(texts.logText("传送完成!").color(styles.colorSuccess()));
-        });
     }
 
     private static final java.util.EnumSet<org.bukkit.Material> DANGEROUS = java.util.EnumSet.of(
