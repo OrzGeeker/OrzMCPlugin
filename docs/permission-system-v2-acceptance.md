@@ -98,9 +98,11 @@ BUILD SUCCESSFUL in 1m 4s
 **遗留说明**：
 - `$v n` 拒绝、`/apply cancel` 撤回已测（补测 ②④）；`$v y` 通过已测（主链路 + 真实场景）
 - 群通知真实投递（EasyBot 网关 → 飞书测试群）链路已通（模板键 + 适配器冒烟），未做真实群消息端到端（避免打扰生产群；测试群无管理员身份的机器人会话）
-- 代码已在 `feat/rank-promotion` 分支（commit `34a198c`，含 review 修复 + Alerts 清理 + 一期残留清理），PR #160 OPEN 待合并
+- 代码已在 `feat/rank-promotion` 分支（commit `63ee984`，含 review 修复 + Alerts 清理 + 一期残留清理 + 状态动态化 + admin 申请通道），PR #160 OPEN 待合并
 - 审核人记录：验收时 RCON/orzdebug 通道显示「群管理员」；后续 S2 修复后审核人=消息发送者昵称透传（BotInboundHandler 4 参），null 兜底「群管理员」——`permission.yml` 落库为真实昵称/ID（如「控制台」「RCON」）
 - **一期残留清理（34a198c）**：/rank demote 移除（升降级统一 `$p`）、无 LP 本地推断删除（hasApprovedBuilder）、模板死占位符 role_alias 清理——权限状态全面收敛为 LP 单一事实源，无行为变化（LP 在线路径不受影响）
+- **状态展示动态化（63ee984）**：/rank 与 /apply 按当前权限组展示（实测四级流转：default→成员→建造者→管理员 各分支文案正确）；新增 ADMIN_PROMOTION（/apply admin）打通 builder→admin；TestMember 实测全链路：/apply admin → $v l 列表（当前组：builder）→ $v y → LP promote SUCCESS → /rank 管理员（已达最高等级）
+- **数据发现（63ee984 同期）**：TestMember 曾出现 track 节点重叠（builder+member 并存）导致 `$p d` AMBIGUOUS_CALL——清理多余节点后恢复；运维提示：AMBIGUOUS_CALL 时用 `lp user X parent info` 检查，移除重叠 track 组
 
 ## 七、测试脚本沉淀
 

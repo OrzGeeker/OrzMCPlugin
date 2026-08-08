@@ -83,6 +83,10 @@ BUILDER_PROMOTION(
 reviewRegistry.register(BUILDER_PROMOTION, id -> promoter.promoteToBuilder(id));
 ```
 
+> 本次注册两种审核类型：`builder-promotion`（member→builder，`/apply builder`）与
+> `admin-promotion`（builder→admin，`/apply admin`）——四级流转 default→member→builder→admin
+> 的晋升通道全部闭环（default→member 为自动晋升，其余两级走申请审核）。
+
 **ReviewService（核心）**——通知逻辑收在 service 层，任何入口触发都自动通知：
 
 ```java
@@ -136,22 +140,24 @@ permission.yml
 
 | 命令 | 功能 |
 |:--|:--|
-| `/apply` | 列出可申请类型（自动生成帮助） |
-| `/apply builder [理由]` | 提交晋升建造者申请 |
+| `/apply` | 列出可申请类型（自动生成帮助，**按当前玩家资格过滤**） |
+| `/apply builder [理由]` | 提交晋升建造者申请（member 可申请） |
+| `/apply admin [理由]` | 提交晋升管理员申请（builder 可申请） |
 | `/apply whitelist [理由]` | 提交白名单申请（未来） |
 | `/apply status` | 查看自己的申请及状态 |
 | `/apply cancel <type>` | 撤回自己的待审申请 |
 | `/review approve\|reject <name>` | （admin）替代 /rank approve/reject |
-| `/rank` | 查自己：当前组 + 时长/进度 + 下一步可申请项 |
+| `/rank` | 查自己：当前组 + 状态描述 + 下一步可申请项（**按当前组动态**） |
 | `/rank <玩家>` | （admin）查指定玩家，审核前核对 |
 
-`/rank` 返回示例：
+`/rank` 返回**按当前权限组动态**（四级流转各组的展示）：
 
-```
-你的当前权限组：成员（member）
-已在线时长：602 分钟 / 晋升成员阈值 600 分钟（✅ 已达标）
-下一步可申请：builder（/apply builder [理由]）
-```
+| 当前组 | /rank 内容 | /apply 可申请 |
+|:--|:--|:--|
+| default（访客） | 时长 + 晋升成员阈值进度（还需 X / ✅ 已达标）+ 「下一步：在线时长达标后自动晋升为成员」 | 无 |
+| member（成员） | 时长 + 阈值（✅ 已达标）+ 「下一步可申请：晋升建造者（/apply builder）」 | 晋升建造者 |
+| builder（建造者） | 时长（**不再展示已完成的 member 阈值**）+ 「下一步可申请：晋升管理员（/apply admin）」 | 晋升管理员 |
+| admin（管理员） | 时长 + 「已达最高等级（管理员）」 | 无 |
 
 - 「下一步可申请」由 ReviewType 注册表**反向生成**（资格预检通过的项）——与审核类型天然同步
 - `/rank approve/reject` 与 `/rank demote` 已移除：审核迁移至 `/review`，升降级统一 `$p`（群侧）——`/rank` 纯查询
@@ -232,7 +238,8 @@ permission.yml
 | LP track 全链升降级（default→member→builder→admin，无反射软依赖） | ✅ 本次 |
 | 在线列表格式化收敛（OnlineListFormatter 单一事实源） | ✅ 本次 |
 | 数据迁移（遗留 pending → reviews 节） | ❌ 已取消（LP 接管权限状态，存量标记无意义，见 3.6） |
-| builder→admin 申请、领地/白名单审核项 | ⏸ 暂缓（框架已预留） |
+| builder→admin 申请 | ✅ 本次（ADMIN_PROMOTION：/apply admin） |
+| 领地/白名单审核项 | ⏸ 暂缓（框架已预留） |
 
 ---
 
