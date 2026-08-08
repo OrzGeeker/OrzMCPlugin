@@ -12,8 +12,6 @@ import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
 import com.jokerhub.paper.plugin.orzmc.infra.templates.CoordFormatter;
 import com.jokerhub.paper.plugin.orzmc.infra.templates.ExceptionFormatter;
 import java.util.ArrayList;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.AsyncPlayerPreLoginEvent;
 
@@ -171,11 +169,5 @@ public final class PlayerEventService {
         MessageEnvelope envelope = configs.renderEvent(eventKey, vars);
         notifier.event(eventKey, envelope);
         server.logger().info(envelope.message());
-        if (displayOnlineCount == 0) {
-            Component motd = server.server().motd();
-            String motdText = PlainTextComponentSerializer.plainText().serialize(motd);
-            MessageEnvelope hint = configs.renderEvent("server_maintenance_hint", java.util.Map.of("motd", motdText));
-            notifier.event("server_maintenance_hint", hint);
-        }
     }
 }

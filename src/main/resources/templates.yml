@@ -26,7 +26,6 @@ templates:
     command_optimize_disabled: PLAIN
     server_load: PLAIN
     server_stop: PLAIN
-    server_maintenance_hint: PLAIN
     whitelist_block: PLAIN
     whitelist_toggle_alert: PLAIN
     maintenance_backup_stage: CODE_BLOCK
@@ -76,7 +75,6 @@ templates:
   command_review_error: "{message}"
   server_load: "{message}"
   server_stop: "{message}"
-  server_maintenance_hint: "服务器当前无玩家，可进行服务器维护"
   whitelist_block: "{message}"
   whitelist_toggle_alert: "{message}"
   player_join: "{name} 上线\n------当前在线({online_count}/{max_count})------\n{online_list}"

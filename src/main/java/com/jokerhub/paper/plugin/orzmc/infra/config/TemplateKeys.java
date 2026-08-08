@@ -46,7 +46,6 @@ public final class TemplateKeys {
     // ---- 服务端事件 ----
     public static final String SERVER_LOAD = "server_load";
     public static final String SERVER_STOP = "server_stop";
-    public static final String SERVER_MAINTENANCE_HINT = "server_maintenance_hint";
 
     // ---- 维护事件 ----
     public static final String MAINTENANCE_BACKUP_STAGE = "maintenance_backup_stage";
@@ -106,7 +105,6 @@ public final class TemplateKeys {
         TNT_ALERT,
         SERVER_LOAD,
         SERVER_STOP,
-        SERVER_MAINTENANCE_HINT,
         MAINTENANCE_BACKUP_STAGE,
         MAINTENANCE_BACKUP_DONE,
         MAINTENANCE_BACKUP_ERROR,

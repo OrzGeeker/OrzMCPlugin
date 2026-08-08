@@ -15,7 +15,6 @@ public record Templates(
         String maintenanceOptimizeStage,
         String maintenanceOptimizeDone,
         String maintenanceOptimizeError,
-        String serverMaintenanceHint,
         String serverLoad,
         String serverStop,
         String whitelistBlock,
@@ -48,7 +47,6 @@ public record Templates(
                 "地图{label} 阶段:{stage}({stage_name}/{stage_i18n}) 进度:{percent}% {current}/{total} 速率:{rate_per}{rate_unit} 预计剩余:{eta_value}{eta_unit}");
         String moDone = cfg.getString(base + ".maintenance_optimize_done", "地图{label} 完成 用时:{duration_ms}ms");
         String moErr = cfg.getString(base + ".maintenance_optimize_error", "地图{label} 失败 用时:{duration_ms}ms");
-        String maintHint = cfg.getString(base + ".server_maintenance_hint", "服务器当前无玩家，可进行服务器维护");
         String serverLoad = cfg.getString(base + ".server_load", "{message}");
         String serverStop = cfg.getString(base + ".server_stop", "{message}");
         String whitelistBlock = cfg.getString(base + ".whitelist_block", "{message}");
@@ -66,7 +64,6 @@ public record Templates(
                 moStage,
                 moDone,
                 moErr,
-                maintHint,
                 serverLoad,
                 serverStop,
                 whitelistBlock,
