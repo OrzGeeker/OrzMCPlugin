@@ -119,3 +119,29 @@ BUILD SUCCESSFUL in 1m 4s
 | `~/minecraft-bot/lp-joker-check.js` / `rcon-*.js` | LP 数据查询/RCON 调试辅助 |
 
 脚本内嵌 **node 原生 RCON 实现**（不经 shell，`$` 安全），可复用于后续所有 Bot 命令自动化测试。
+
+---
+
+## 六、Exaroton 线上服验收（2026-08-08）
+
+**验收目标**：权限系统在 Exaroton 云端测试服（与线上 MCSM 同插件基线）正常工作。
+
+### 部署与环境
+- 部署 OrzMC **1.0.16-dev**（本地编译产物）→ 启动自动初始化 track「rank」（default→member→builder→admin）+ member 组（`lp track rank info` / `lp group member info` 日志实证）
+- 同步权限组配置表（85 条 LP 命令，`perm_commands.txt` 蓝本 → Exaroton API command 批量执行，全部成功）
+- TestMember 配 admin 组（控制台 LP 命令），作为验收管理员
+
+### 验收用例（全链路实测）
+| 步骤 | 操作 | 结果 |
+|:--|:--|:--|
+| 1 | TestNewbie `/rank` | 访客（default）✅ |
+| 2 | TestMember `/orzdebug $p u TestNewbie` | ✅ TestNewbie → 成员（member） |
+| 3 | TestNewbie `/apply builder 验收测试` | ✅ 申请已提交，等待管理员审核（访客申请被拒「不满足条件」= 条件校验正常） |
+| 4 | TestMember `/orzdebug $v y TestNewbie` | ✅ 审核通过，自动生效 |
+| 5 | TestNewbie `/rank` | ✅ **建造者（builder）** |
+| 6 | TestMember `lp user TestMember permission check minecraft.command.op` | ✅ **false**（admin 不可自封 op） |
+| 7 | TestMember `lp user TestMember permission check luckperms.user` | ✅ **undefined**（admin 不可改 LP） |
+| 8 | `$p u HermesBot`（未注册玩家） | 无 LP 用户记录——$p 对新玩家正常建组路径（未影响） |
+
+### 结论
+权限系统在 Exaroton 线上服**全部功能正常**：四级链显示、手动升降级（$p）、申请条件校验（/apply）、审核晋升（$v）、高危隔离（无 op / 无 luckperms）。**部署流程**：新 jar 上传 → 重启 → 同步权限组配置表 → 可用。权限组配置表（docs/permission-groups.md）为唯一权威源，三端（本地/Exaroton/MCSM）保持一致。
