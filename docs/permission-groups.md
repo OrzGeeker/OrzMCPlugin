@@ -11,7 +11,7 @@
 |:--|:--|
 | `ls.bypass` | 登录豁免（未注册者限权） |
 | `essentials.afk` `essentials.back` `essentials.msg` `essentials.reply` | 基础社交 |
-| `essentials.balance` `essentials.baltop` `essentials.pay` | 经济基础 |
+| `essentials.balance` `essentials.baltop` `essentials.pay` `essentials.spawn` | 经济基础 + 回城（2026-08-08 评估补：访客/新玩家回出生点） |
 | `getmehome.user` | 家命令基础 |
 | `bod.back` | 死亡回档 |
 | `deathchest.command.report` | 死亡箱查询 |
@@ -39,13 +39,22 @@
 | `worldedit.tool.*` | 工具 |
 | `worldedit.utility.*` | 实用命令 |
 | `worldedit.help` | 帮助 |
+| `worldedit.schematic.*` | 建筑保存/导入（2026-08-08 评估补：builder 核心需求，纯方块数据无权限风险） |
+| `worldedit.navigation.*` | 导航（unstuck/jumpto/ascend——卡墙脱出） |
+| `worldedit.analysis.*` | 方块统计（count/distr——建造用量分析） |
 | `worldguard.region.claim` `worldguard.region.claim.own` | 圈地 |
 | `worldguard.region.define` `worldguard.region.remove` | 区域创建/删除 |
 | `worldguard.region.addmember` `worldguard.region.removemember` `worldguard.region.setparent` | 区域成员管理 |
 | `worldguard.region.flag.*` | 区域旗标 |
 | `worldguard.region.list` `worldguard.region.info` `worldguard.region.teleport` | 区域查询 |
+| `essentials.gamemode.creative` `essentials.gamemode.survival` | 自切创造/生存（2026-08-08 评估补：建造标配；**无 `.others`**） |
+| `essentials.fly` | 飞行（高空/大型建筑作业） |
+| `essentials.heal` | 自我治疗（无 heal.others） |
+| `essentials.workbench` `essentials.craft` | 随身工作台/合成台 |
+| `essentials.top` | 传送到地表 |
 
-> 裁剪说明：不给 `worldedit.reload`、`worldedit.schematic.*`（上传/下载）、`worldguard.region.bypass` 等管理侧节点。
+> 裁剪说明：不给 `worldedit.reload`、`worldguard.region.bypass` 等管理侧节点。
+> **fly/gamemode 等建造便利归属 builder 组（增量原则）——admin 经继承自动获得，不重复添加**。
 
 ## L3 admin（管理员）— 管理命令（**无 `*`、无 luckperms.\*、无 op**）
 
