@@ -228,8 +228,31 @@
 | L3 | TestMember | `orzmc.admin` / `minecraft.command.kick` | ✅ true |
 | L3 | TestMember | `minecraft.command.op` / `luckperms.user` | ✅ **false（不可自封 op/改权限）** |
 
+## 多父组残留案例（2026-08-08 joker）
+
+### 现象
+joker 出现 **5 个父组节点**：world 上下文 `builder`/`member`（带 `world=world;gamemode=creative;essentials:afk=false;...` 7 键）+ global `default`/`member`/`builder` → **`$p d joker` 报 AMBIGUOUS_CALL**（track 节点歧义）无法降级。
+
+### 根因
+1. **游戏内 LP 命令落脏上下文**：LP 5.5 命令在**玩家**执行时，组节点写入**玩家当前完整上下文**（world/gamemode/Essentials 状态键）；**控制台 / RCON / bot `$e` 才是 global**
+2. **`parent set` 非替换**：`lp user <X> parent set <组>` 是**添加**非清理，多次设置/升降级历史累积
+3. **OrzMC `$p` 命令固定 globalContext**（代码已确认），不会产生脏上下文——脏数据全部来自游戏内手动 LP 命令
+
+### 清理方法
+```
+lp user <X> parent clear
+lp user <X> parent set <目标组>
+```
+（clear 清除全部上下文节点，set 重建 global 目标组——一次性根治）
+
+### 预防（线上同步必读）
+- **组操作统一走控制台 / RCON / bot（`$e` 或 `$p`）**——不要在游戏内执行 `lp user ... parent set/remove`
+- **升降级一律用 `$p u / $p d`**（LP track 原生钳位，自动清理旧组）——避免手动 parent set 累积
+- **存量玩家体检**：同步前 `lp user <X> parent info`——发现带 `world=` 等上下文的组节点即按上法清理（MCSM/Exaroton 玩家可能有同源残留）
+- 游戏内确需 LP 管理时：先 `lp --context global ...` 或观察输出上下文
+
 ## 注意事项
 
-- **joker 残留脏数据**（本地测试历史）：world 上下文快照的 builder/member 组无法用普通 LP 命令移除（完整上下文匹配），已确认**不影响 global 判定**，线上部署前用 `lp user <X> parent info` 逐个检查存量玩家，带上下文的组按 `lp user <X> parent remove <组> --context ...` 清理
+- **joker 脏数据已清理**（2026-08-08）：`parent clear + set builder` 根治（见上文案例），`$p d/u` 已恢复正常；线上部署前仍需逐个检查存量玩家（`lp user <X> parent info`）
 - 配置以命令清单形式同步：`perm_commands.txt`（本地测试服执行记录）可作为线上同步脚本蓝本，**线上执行前先 `lp export` 备份**
 - **Essentials spawn 命令缺失**：Paper 26.2（实验版）不被 EssentialsX 2.22.0 支持，/spawn 命令未注册（权限节点 essentials.spawn 已配好，命令恢复后即生效）
