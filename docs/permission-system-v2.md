@@ -117,16 +117,20 @@ permission.yml
 - 命名 `permission.yml`（功能主体是权限，审核是其中流程）；将来拆审核插件时 reviews 节连同 review 框架整体切出
 - **权限组状态不在本地存储**：LP track 为唯一事实源，升降级/当前组全走 LP API（一期 promoted/demoted 本地标记已删除）；一期 ranks.yml 晋升状态随 LP 接管失去意义，不做数据迁移（ranks.yml 资源已删除）
 
-### 3.3 群指令（新增 1 条 `$v`）
+### 3.3 群指令（新增 `$v` 审核 + `$p` 升降级）
 
 | 群指令 | 权限 | 功能 | 返回 |
 |:--|:--|:--|:--|
 | `$v l` | admin | 待审列表（多页 `$v l 2`，复用 Paginator） | `[晋升建造者] TestMember（当前组：member）：申请晋升builder（10分钟前）` |
-| `$v y <玩家>` | admin | 通过 | `已通过 TestMember 的晋升建造者申请` |
-| `$v n <玩家>` | admin | 拒绝 | `已拒绝 TestMember 的申请` |
+| `$v y <玩家>` | admin | 通过 | `已通过 TestMember 的「晋升建造者」申请。` |
+| `$v n <玩家>` | admin | 拒绝 | `已拒绝 TestMember 的申请。` |
+| `$p u <玩家>` | admin | 权限升级（default→member→builder→admin，每次一级） | `已将 joker 升级为建造者。` |
+| `$p d <玩家>` | admin | 权限降级（admin→builder→member→default，每次一级） | `已将 joker 降级为访客。` |
 
 - 复用 `OrzUserCmd` 枚举 + `BotCommandService` handler + `needAdminPermission=true`
 - 列表带申请人**当前组**；按玩家名定位唯一待审，`$v y <id>` 预留精确操作
+- 审核人=消息发送者昵称透传（senderName 4 参），null 兜底「群管理员」
+- **`$h` 帮助**：打印全部指令（管理员 + 通用，含 $v/$p）；**`$cmd ?`（如 `$v ?`/`$p ?`）**：打印该指令用法（未定义时降级为正常执行）——均由 BotCommandFeedbackService 提供
 
 ### 3.4 游戏内命令（注册表驱动）
 
@@ -150,7 +154,7 @@ permission.yml
 ```
 
 - 「下一步可申请」由 ReviewType 注册表**反向生成**（资格预检通过的项）——与审核类型天然同步
-- `/rank approve/reject` 移除，迁移至 `/review`
+- `/rank approve/reject` 与 `/rank demote` 已移除：审核迁移至 `/review`，升降级统一 `$p`（群侧）——`/rank` 纯查询
 - 组名用 `RankService.groupDisplayName` 中文展示（admin=管理员/builder=建造者/member=成员/default=访客，全局唯一事实源）
 
 ### 3.5 通知矩阵（4 环节全覆盖）
@@ -264,7 +268,7 @@ permission.yml
 | `features/review/ReviewCommandService.java` | 游戏内命令 | `/review approve\|reject <玩家>` |
 | `features/rank/PermissionStore.java` | 存储实现 | 同时实现 ReviewStore+RankStore（stats 时长），permission.yml 两段式（config/reviews），markAlwaysSave；权限状态由 LP track 持有 |
 | `features/rank/RankStore.java` | 查询接口 | currentGroup/时长视图（移除 pending_application） |
-| `features/rank/RankService.java` | 业务 | 阈值读 config 节 + 完整视图（组+进度+可申请） |
+| `features/rank/RankService.java` | 业务 | 自动晋升 + 手动升降级 + currentGroup（LP 唯一事实源，无 LP 回退 default）；阈值读 config 节 |
 | `features/rank/RankCommandService.java` | 游戏内命令 | `/rank` 纯查询 + 注册表反向生成 |
 | `features/rank/LuckPermsPromoter.java` | handler 实现 | LP 授权（主线程派发，见 8.3） |
 | `features/botcommands/OrzUserCmd.java` | 群指令枚举 | 新增 `REVIEW("v", "查看/处理审核申请", true)` + `PERMISSION("p", "权限升降级", true)` |
@@ -299,6 +303,8 @@ permission.yml
 3. **`$v` 群指令 setter 注入**：`BotCommandService` 创建早于 `FeatureModule`，无法构造注入 → 仿 maintenance/blacklist 的 `setReviewService`，注入点在 `setupEventListeners`。
 4. **资格预检统一在 `ReviewService.submit()`**：任何入口（游戏内/未来其他）都过同一校验。
 5. **无数据迁移**：一期 ranks.yml 的 promoted/pending 标记随 LP track 接管失去意义（见 3.6），不做迁移；避免「迁移了已过时的状态」引入双写漂移。
+6. **权限状态无本地推断**：`currentGroup` 无 LP 时一律回退 default（访客）——无 LP 时权限体系整体不可用，按审核记录推断组会造成虚假展示（一期 hasApprovedBuilder 已删）。
+7. **叠加组是体系外数据，禁止 `parent add`**：LP API 无 TrackNode 概念，track 组即普通继承节点，代码**无法**区分「track 给的组」与「手动叠加的同名组」；叠加组会干扰 `currentTrackGroup` 判定（实测：`$p d` 降级后 /rank 仍显示叠加的 builder 组）。运维规范：权限组只经 `$p u/d` 升降，存量叠加组用 `lp user <X> parent remove <组>` 清理。
 
 ### 8.4 测试通道修复（自动化测试前置）
 

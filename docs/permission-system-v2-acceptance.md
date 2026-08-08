@@ -88,6 +88,8 @@ BUILD SUCCESSFUL in 1m 4s
 | 1 | RCON `orzdebug` 不触发 Bot 模拟 | `OrzDebugEvent` 只监听 `ServerCommandEvent`（stdin），Paper 26 RCON 走 `RemoteServerCommandEvent` | 改监听 `RemoteServerCommandEvent`（RCON 专用通道）+ 兼容前导斜杠；Brigadier 命令走 executes 直调，不双监听 | RCON 驱动 `$v l` 成功 |
 | 2 | `$v y` 抛 `IllegalStateException: Asynchronous Command Dispatched Async` | 群指令/orzdebug 异步线程 dispatch LP 命令，Paper 要求主线程 | `LuckPermsPromoter` 注入 `ServerScheduler`，非主线程 `runSync` 回主线程 | 离线审核 LP 授权成功 |
 | 3 | 自动化脚本 RCON 连不上 | ① shell 展开 `$v`；② node RCON length 字段少算 8 字节头部 | 原生 net 实现 + 正确 length 语义（id+type+payload+2null 总长） | 脚本稳定运行 |
+| 4 | `$h` 帮助缺 `$v`/`$p`；`$v ?`/`$p ?` 无用法 | `BotCommandFeedbackService.helpInfo` 硬编码拼接遗漏新指令；`usageTip` 的 REVIEW/PERMISSION 走 default 返回空（`$cmd ?` 降级为直接执行） | helpInfo 补 $v/$p；usageTip 补 REVIEW（l/y/n）与 PERMISSION（u/d + 权限链） | 实测 `$h` 输出含两指令；`$v ?`/`$p ?` 输出完整用法 |
+| 5 | `$p d joker` 降级后 `/rank` 仍显示「建造者」 | **joker 有手动叠加的 builder 组**（`lp user joker parent info` 实锤：parents 含无 track 标注的 `builder`）；`currentTrackGroup` 按「继承组 ∩ track 组」取最高位，叠加组干扰判定；LP API 无 TrackNode，代码无法区分来源 | 数据清理：`lp user joker parent remove builder`（parents 恢复为仅 default）；沉淀规范：权限组只经 `$p` 管理、禁止 `parent add` 叠加 | 清理后 joker 的 `/rank`/`$l` 与 track 同步（待真实玩家复验） |
 
 ## 六、验收结论
 
@@ -96,8 +98,9 @@ BUILD SUCCESSFUL in 1m 4s
 **遗留说明**：
 - `$v n` 拒绝、`/apply cancel` 撤回已测（补测 ②④）；`$v y` 通过已测（主链路 + 真实场景）
 - 群通知真实投递（EasyBot 网关 → 飞书测试群）链路已通（模板键 + 适配器冒烟），未做真实群消息端到端（避免打扰生产群；测试群无管理员身份的机器人会话）
-- 代码已在 `feat/rank-promotion` 分支（commit `e1c18c1`，含 review 修复 + Alerts 清理），PR #160 OPEN 待合并
+- 代码已在 `feat/rank-promotion` 分支（commit `34a198c`，含 review 修复 + Alerts 清理 + 一期残留清理），PR #160 OPEN 待合并
 - 审核人记录：验收时 RCON/orzdebug 通道显示「群管理员」；后续 S2 修复后审核人=消息发送者昵称透传（BotInboundHandler 4 参），null 兜底「群管理员」——`permission.yml` 落库为真实昵称/ID（如「控制台」「RCON」）
+- **一期残留清理（34a198c）**：/rank demote 移除（升降级统一 `$p`）、无 LP 本地推断删除（hasApprovedBuilder）、模板死占位符 role_alias 清理——权限状态全面收敛为 LP 单一事实源，无行为变化（LP 在线路径不受影响）
 
 ## 七、测试脚本沉淀
 
