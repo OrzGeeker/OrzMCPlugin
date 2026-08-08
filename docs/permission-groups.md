@@ -136,6 +136,85 @@
 3. **越权层**：`lp group <组> permission check <管理节点>` → false（确认无越权，如 admin 组 check `minecraft.command.op`）
 4. **继承层**：`lp group admin permission check <builder 节点>` → true（确认继承链完整，如 `essentials.fly`）
 
+## bot 全量验收（2026-08-08）
+
+### 验收方法
+
+1. **账号对应组**：HermesBot（member，含 default 继承）/ TestNewbie（builder）/ TestMember（admin）——用对应组账号实测
+2. **逐个实测命令**：对配置表每个权限项执行对应命令（见「验证指令」列），目标玩家用不存在的账号（如 NoSuchPlayer）验证**权限放行**（避免副作用）
+3. **判定标准**：命令存在（非 Unknown）+ 权限放行（非「没有权限」拒绝）= ✅ 通过；Unknown = 命令未注册（非权限问题，单独标注）；权限拒绝 = 配置缺失（修复后复测）
+4. **LP check 交叉验证**：命令实测后 `lp group <组> permission check <节点>` 复核 LP 层状态
+
+### 验收结果明细
+
+| 等级 | 权限项 | 实测命令 | 结果 |
+|:--|:--|:--|:--|
+| L0 | `essentials.afk` | `/afk` | ✅「你暂时离开了」 |
+| L0 | `essentials.balance` | `/balance` | ✅「余额：$0」 |
+| L0 | `essentials.balancetop` | `/baltop` | ✅ 排行榜输出 |
+| L0 | `essentials.pay` | `/pay TestNewbie 1` | ✅ 放行（目标离线提示） |
+| L0 | `essentials.msg` | `/msg TestNewbie hi` | ⚠️ 反垃圾拦截（「移动后才能聊天」——非权限问题） |
+| L0 | `essentials.spawn` | `/spawn` | ❌ Unknown（26.2 兼容已知，权限节点已配） |
+| L0 | `ls.bypass`/`bod.back`/`ezshops.*` | LP check + GUI 命令 | ✅ true |
+| L1 | `getmehome.user` | `/sethome` `/home` `/listhomes` `/delhome` | ✅ 全部成功（父权限展开） |
+| L1 | `essentials.tpa`/`tpahere` | `/tpa TestNewbie` | ✅ 放行（目标离线） |
+| L1 | `essentials.warp.list` | `/warp` | ✅ 复测放行（初测缺 list 被拒→修复） |
+| L1 | `essentials.mail.send` | `/mail send TestNewbie hi` | ✅ 复测放行（初测缺 send 被拒→修复） |
+| L1 | `essentials.kit` | `/kit` | ✅「没有可获得的物品包」 |
+| L1 | `griefprevention.createclaims` | LP check | ✅ true（木铲交互需手测） |
+| L1 | `griefprevention.trapped` | `/trapped` | ✅ 命令执行 |
+| L2 | `worldedit.wand` | `//wand` | ✅ 木斧说明输出 |
+| L2 | `worldedit.selection.*` | `//pos1` `//expand 10` | ✅ 选区成功/放行 |
+| L2 | `worldedit.region.*` | `//set stone` | ✅ 放行（需选区提示） |
+| L2 | `worldedit.clipboard.*` | `//copy` `//paste` | ✅ 放行（剪贴板提示） |
+| L2 | `worldedit.history.*` | `//undo` | ✅「Nothing left to undo」 |
+| L2 | `worldedit.brush.*` | `//brush sphere stone` | ✅ 放行（用法提示） |
+| L2 | `worldedit.tool.*` | `//tool` | ⚠️ Unknown（无参需 `//tool <类型>`，命令存在） |
+| L2 | `worldedit.utility.*` | LP check | ✅ true |
+| L2 | `worldedit.help` | `//help` | ✅ |
+| L2 | `worldedit.schematic.*` | `//schem save test` | ✅ 放行 |
+| L2 | `worldedit.navigation.*` | `//unstuck` | ⚠️ Unknown（WE 7.4.4 命令注册待查） |
+| L2 | `worldedit.analysis.*` | `//count stone` | ✅ 放行 |
+| L2 | `worldguard.region.claim.*` | `/rg claim testregion` | ✅ 放行（需选区提示） |
+| L2 | `worldguard.region.define/remove/addmember/removemember/setparent/flag/info/teleport` | `/rg define testrg` 等 | ✅ 全部放行（「No region found」） |
+| L2 | `worldguard.region.list` | `/rg list` | ✅「No results found」 |
+| L2 | `essentials.gamemode.creative/.survival` | `/gamemode creative/survival` | ✅ 切换成功 |
+| L2 | `essentials.fly` | `/fly` | ✅「飞行模式开启」 |
+| L2 | `essentials.heal` | `/heal` | ✅「Healed!」 |
+| L2 | `essentials.workbench` | `/workbench` | ✅ 执行（GUI） |
+| L2 | `essentials.top` | `/top` | ✅「正在传送到顶部」 |
+| L3 | `orzmc.admin` | `/bot status` | ✅ 放行（参数提示） |
+| L3 | `minecraft.command.kick` | `/kick NoSuchPlayer` | ✅「找不到玩家」 |
+| L3 | `minecraft.command.ban` | `/ban NoSuchPlayer` | ✅「无法封禁已离线」 |
+| L3 | `minecraft.command.pardon` | `/pardon NoSuchPlayer` | ✅ 执行（静默） |
+| L3 | `minecraft.command.whitelist` | `/whitelist list` | ✅ 白名单列表 |
+| L3 | `minecraft.command.gamemode` | `/gamemode creative NoSuchPlayer` | ✅ 放行 |
+| L3 | `minecraft.command.effect` | `/effect NoSuchPlayer clear` | ✅ 放行（参数提示） |
+| L3 | `minecraft.command.tp` | `/tp NoSuchPlayer` | ✅「找不到玩家」 |
+| L3 | `minecraft.command.give` | `/give NoSuchPlayer stone 1` | ✅「找不到玩家」 |
+| L3 | `minecraft.command.save-all` | `/save-all` | ✅「Saved the game」 |
+| L3 | `essentials.unban` | `/unban NoSuchPlayer` | ✅ 执行（静默） |
+| L3 | `essentials.time.set` | `/time set day` | ✅ 复测放行（初测缺 set 被拒→修复） |
+| L3 | `essentials.weather` | `/weather clear` | ✅「天气设为晴天」 |
+| L3 | `griefprevention.restorenature` | `/restorenature` | ✅「Ready to restore」 |
+| L3 | `worldguard.region.bypass/override`、`vault.admin`、`ezshops.*.admin`、`deathchest.admin`、`bod.bypass` | LP check | ✅ true（隐式/无直接命令） |
+
+### 验收发现并修复
+
+| 项 | 问题（初测） | 修复 |
+|:--|:--|:--|
+| member `essentials.mail.send` | `/mail send` 拒绝「没有 mail.send 权限」 | 补充配置（mail.send 是独立子权限） |
+| member `essentials.warp.list` | `/warp` 拒绝「没有列出传送点权限」 | 补充配置（warp.list 是独立子权限） |
+| admin `essentials.time.set` | `/time set day` 拒绝「无权设置时间」 | 补充配置（time.set 是独立子权限） |
+| admin `essentials.heal` | 冗余（admin 继承 builder 的 heal） | 移除配置项（继承保持） |
+
+### 遗留标注（非权限配置问题）
+
+- `//tool`：Unknown 因无参（需 `//tool <类型>`）——命令存在，权限项有效
+- `//unstuck`：Unknown——WE 7.4.4 命令注册异常（与 /spawn 同类 26.2 兼容问题），`worldedit.navigation.*` 权限本身有效（LP check true）
+- `/spawn`：Unknown——Essentials 在 Paper 26.2 未注册 spawn 命令（兼容问题，权限节点已配好，命令恢复后即生效）
+- `/msg`：被反垃圾插件拦截（需移动后聊天）——非权限问题
+
 ## 本地测试服验证结果（2026-08-08 实测）
 
 | 等级 | 验证账号 | 权限检查 | 结果 |
