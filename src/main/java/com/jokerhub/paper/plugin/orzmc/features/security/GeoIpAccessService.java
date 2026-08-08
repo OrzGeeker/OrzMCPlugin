@@ -20,7 +20,12 @@ public final class GeoIpAccessService {
     /** 单条 IP 的国家码缓存时长。国家码基本不变，12h 足够，同时大幅减少对 geojs.io 的重复查询。 */
     private static final long CACHE_TTL_MS = Duration.ofHours(12).toMillis();
 
-    /** 缓存条目上限；超过时触发一次过期清理，避免长期运行的条目无限增长。 */
+    /**
+     * 缓存条目软上限；超过时在下一次写入后触发一次过期清理。
+     *
+     * <p>配合 12h TTL，缓存规模受「滚动 12h 内见过的唯一公网 IP 数」约束；
+     * 即使全为未过期条目也只是暂时超出软上限，会在条目逐批过期后被回收。</p>
+     */
     private static final int MAX_CACHE_ENTRIES = 4096;
 
     private record CacheEntry(GeoIpClient.GeoIpResult result, long expiresAtMillis) {}
@@ -36,20 +41,26 @@ public final class GeoIpAccessService {
     private final GeoIpClient client;
     private final TypedConfigProvider configs;
     private final long cacheTtlMillis;
+    private final int maxCacheEntries;
     private final ConcurrentMap<String, CacheEntry> cache = new ConcurrentHashMap<>();
 
     public GeoIpAccessService(TypedConfigProvider configs) {
-        this(new GeoIpClient(), configs, CACHE_TTL_MS);
+        this(new GeoIpClient(), configs, CACHE_TTL_MS, MAX_CACHE_ENTRIES);
     }
 
     GeoIpAccessService(GeoIpClient client, TypedConfigProvider configs) {
-        this(client, configs, CACHE_TTL_MS);
+        this(client, configs, CACHE_TTL_MS, MAX_CACHE_ENTRIES);
     }
 
     GeoIpAccessService(GeoIpClient client, TypedConfigProvider configs, long cacheTtlMillis) {
+        this(client, configs, cacheTtlMillis, MAX_CACHE_ENTRIES);
+    }
+
+    GeoIpAccessService(GeoIpClient client, TypedConfigProvider configs, long cacheTtlMillis, int maxCacheEntries) {
         this.client = client;
         this.configs = configs;
         this.cacheTtlMillis = cacheTtlMillis;
+        this.maxCacheEntries = maxCacheEntries;
     }
 
     public CompletableFuture<Decision> decide(String ipAddress) {
@@ -73,10 +84,14 @@ public final class GeoIpAccessService {
                 return new Decision(true, "", allow, "", true);
             }
             String cc = res.countryCode() == null ? "" : res.countryCode();
-            // 仅缓存成功且拿到国家码的结果；空国家码可能是上游瞬时异常，不缓存避免误锁 12h
-            if (!cc.isEmpty()) {
-                cachePut(ipAddress, res);
+            if (cc.isEmpty()) {
+                // geojs.io 返回了可解析但无国家码的响应（无法定位的保留段/云段 IP，
+                // 或 429/5xx 的错误体恰好是可解析 JSON）。与超时/异常一致按 fail-open 放行，
+                // 延续 2026-08-06 内网误拦教训：未知国家码不应静默误拦合法玩家；
+                // 不缓存（避免误锁 12h），置 lookupFailed 告警管理员。
+                return new Decision(true, "", allow, res.rawJson(), true);
             }
+            cachePut(ipAddress, res);
             return toDecision(res, allow);
         });
     }
@@ -101,7 +116,7 @@ public final class GeoIpAccessService {
 
     private void cachePut(String ip, GeoIpClient.GeoIpResult result) {
         cache.put(ip, new CacheEntry(result, System.currentTimeMillis() + cacheTtlMillis));
-        if (cache.size() > MAX_CACHE_ENTRIES) {
+        if (cache.size() > maxCacheEntries) {
             evictExpired();
         }
     }

@@ -11,11 +11,17 @@ import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
 import com.jokerhub.paper.plugin.orzmc.infra.templates.CoordFormatter;
 import com.jokerhub.paper.plugin.orzmc.infra.templates.ExceptionFormatter;
+import java.time.Duration;
 import java.util.ArrayList;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.AsyncPlayerPreLoginEvent;
 
 public final class PlayerEventService {
+    /** GeoIP 异常告警私信的限频窗口：上游故障时避免每次登录都向管理员发一条 DM。 */
+    private static final long GEOIP_ALERT_THROTTLE_MS = Duration.ofMinutes(1).toMillis();
+
+    private static final String GEOIP_ALERT_THROTTLE_KEY = "geoip_exception_alert";
+
     private final ServerFacade server;
     private final TypedConfigProvider configs;
     private final OrzTextStyles styles;
@@ -83,12 +89,7 @@ public final class PlayerEventService {
     }
 
     public void handleGeoIpException(Throwable e) {
-        String msgText = "IP地址解析服务异常: " + e.toString();
-        server.logger().warning(msgText);
-        MessageEnvelope envelope = configs.renderEvent(
-                "exception_alert",
-                java.util.Map.of("message", msgText, "stack_summary", ExceptionFormatter.summarize(e)));
-        notifier.event("exception_alert", envelope);
+        sendGeoIpAlert("IP地址解析服务异常: " + e.toString(), ExceptionFormatter.summarize(e));
     }
 
     /**
@@ -124,11 +125,8 @@ public final class PlayerEventService {
     }
 
     public void handleGeoIpTimeout(String playerName, String ipAddress, long timeoutMs) {
-        String msgText = "IP地址解析超时(" + timeoutMs + "ms)，已放行: " + playerName + "(" + ipAddress + ")";
-        server.logger().warning(msgText);
-        MessageEnvelope envelope = configs.renderEvent(
-                "exception_alert", java.util.Map.of("message", msgText, "stack_summary", "geoip lookup timeout"));
-        notifier.event("exception_alert", envelope);
+        sendGeoIpAlert(
+                "IP地址解析超时(" + timeoutMs + "ms)，已放行: " + playerName + "(" + ipAddress + ")", "geoip lookup timeout");
     }
 
     /**
@@ -138,10 +136,18 @@ public final class PlayerEventService {
      * {@code exception_alert}（PRIVATE → 各平台 admin_dm），不会发到玩家群。</p>
      */
     public void handleGeoIpLookupFailure(String playerName, String ipAddress) {
-        String msgText = "IP地址解析服务异常，已放行: " + playerName + "(" + ipAddress + ")";
-        server.logger().warning(msgText);
+        sendGeoIpAlert("IP地址解析服务异常，已放行: " + playerName + "(" + ipAddress + ")", "geoip lookup failed");
+    }
+
+    /** 统一的 GeoIP 异常告警：写日志并路由 {@code exception_alert}（PRIVATE → 管理员私信）。 */
+    private void sendGeoIpAlert(String message, String stackSummary) {
+        server.logger().warning(message);
+        // 限频只抑制私信：上游故障时避免每次登录都打扰管理员，日志始终保留完整现场
+        if (!throttledNotifier.shouldRun(GEOIP_ALERT_THROTTLE_KEY, GEOIP_ALERT_THROTTLE_MS)) {
+            return;
+        }
         MessageEnvelope envelope = configs.renderEvent(
-                "exception_alert", java.util.Map.of("message", msgText, "stack_summary", "geoip lookup failed"));
+                "exception_alert", java.util.Map.of("message", message, "stack_summary", stackSummary));
         notifier.event("exception_alert", envelope);
     }
 

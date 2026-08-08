@@ -179,15 +179,36 @@ class GeoIpAccessServiceTest {
     }
 
     @Test
-    void decide_emptyCountryCode_notCached() {
+    void decide_emptyCountryCode_failsOpenAndAlertsWithoutCaching() {
         when(configs.ipWhitelist()).thenReturn(new IpWhitelist(List.of("CN")));
         GeoIpClient.GeoIpResult res = new GeoIpClient.GeoIpResult("", "{}");
         when(client.lookup("1.2.3.4")).thenReturn(CompletableFuture.completedFuture(res));
 
         GeoIpAccessService.Decision d = service.decide("1.2.3.4").join();
 
-        assertFalse(d.allowed(), "空国家码不在白名单应拦截");
+        assertTrue(d.allowed(), "空国家码（上游无法定位）应 fail-open 放行，不误拦合法玩家");
+        assertTrue(d.lookupFailed(), "空国家码应标记 lookupFailed 以便告警管理员");
+        // 不缓存：再次查询仍走上游
         service.decide("1.2.3.4").join();
         verify(client, times(2)).lookup("1.2.3.4");
+    }
+
+    @Test
+    void decide_overCapacity_evictsExpiredEntries() throws Exception {
+        when(configs.ipWhitelist()).thenReturn(new IpWhitelist(List.of("CN")));
+        // 容量 1 + TTL 5ms：写入第二条时 size=2 > 1，触发 evictExpired 清理已过期条目
+        GeoIpAccessService tinyCache = new GeoIpAccessService(client, configs, 5L, 1);
+        when(client.lookup("1.1.1.1"))
+                .thenReturn(CompletableFuture.completedFuture(new GeoIpClient.GeoIpResult("CN", "{}")));
+        when(client.lookup("2.2.2.2"))
+                .thenReturn(CompletableFuture.completedFuture(new GeoIpClient.GeoIpResult("CN", "{}")));
+
+        tinyCache.decide("1.1.1.1").join(); // 写入 A，5ms 后过期
+        Thread.sleep(50);
+        tinyCache.decide("2.2.2.2").join(); // 写入 B 触发清理，过期的 A 被移除
+
+        // A 已被清理：再次查询应重新走上游
+        tinyCache.decide("1.1.1.1").join();
+        verify(client, times(2)).lookup("1.1.1.1");
     }
 }

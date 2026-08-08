@@ -51,6 +51,8 @@ class PlayerEventServiceTest extends ServiceTestBase {
 
     @BeforeEach
     void setUp() {
+        // 告警限频默认放行，聚焦验证告警本身；限频行为由 ThrottledNotifier 单测覆盖
+        when(throttledNotifier.shouldRun(anyString(), anyLong())).thenReturn(true);
         service =
                 new PlayerEventService(server, configs, styles, notifier, throttledNotifier, new OnlineListFormatter());
     }
@@ -98,6 +100,17 @@ class PlayerEventServiceTest extends ServiceTestBase {
 
         verify(logger).warning(contains("lookup failed"));
         verify(notifier).event(eq("exception_alert"), any(MessageEnvelope.class));
+    }
+
+    @Test
+    void handleGeoIpLookupFailure_throttled_suppressesDmButKeepsLog() {
+        when(server.logger()).thenReturn(logger);
+        when(throttledNotifier.shouldRun(anyString(), anyLong())).thenReturn(false);
+
+        service.handleGeoIpLookupFailure("player1", "1.2.3.4");
+
+        verify(logger).warning(contains("已放行"));
+        verifyNoInteractions(notifier, configs, styles);
     }
 
     @Test
