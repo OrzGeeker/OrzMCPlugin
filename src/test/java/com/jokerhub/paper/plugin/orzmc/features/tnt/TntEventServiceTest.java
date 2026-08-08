@@ -1,6 +1,7 @@
 package com.jokerhub.paper.plugin.orzmc.features.tnt;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -58,7 +59,6 @@ class TntEventServiceTest extends ServiceTestBase {
                 false, // enable = false (TNT globally disabled)
                 true, // enableRespawnAnchor
                 0, // placeCooldownSeconds (0 = no cooldown)
-                1000L, // notifyThrottleMs
                 3000L, // notifyAggregateMs (3s 聚合窗口 → 60 ticks)
                 List.of(), // whitelistRegions (empty)
                 List.of()); // exemptEntities
@@ -131,7 +131,7 @@ class TntEventServiceTest extends ServiceTestBase {
     @Test
     void onTNTPrime_tntEnabled_doesNotCancel() {
         // Recreate service with TNT enabled
-        TntConfig tntConfig = new TntConfig(true, false, 0, 1000L, 3000L, List.of(), List.of());
+        TntConfig tntConfig = new TntConfig(true, false, 0, 3000L, List.of(), List.of());
         when(configs.tnt()).thenReturn(tntConfig);
         when(configs.renderEvent(anyString(), anyMap()))
                 .thenReturn(new MessageEnvelope(TargetType.PUBLIC, "msg", Format.DEFAULT));
@@ -154,7 +154,7 @@ class TntEventServiceTest extends ServiceTestBase {
     @Test
     void onPlaceBlock_placingTnt_noCooldown_notCancelled() {
         // TNT enabled with whitelist covering location
-        TntConfig tntConfig = new TntConfig(true, false, 0, 1000L, 3000L, List.of(), List.of());
+        TntConfig tntConfig = new TntConfig(true, false, 0, 3000L, List.of(), List.of());
         when(configs.tnt()).thenReturn(tntConfig);
         when(configs.renderEvent(anyString(), anyMap()))
                 .thenReturn(new MessageEnvelope(TargetType.PUBLIC, "msg", Format.DEFAULT));
@@ -178,7 +178,7 @@ class TntEventServiceTest extends ServiceTestBase {
 
     @Test
     void onPlaceBlock_placingTnt_disabledAndNotInWhitelist_cancels() {
-        TntConfig tntConfig = new TntConfig(false, false, 0, 1000L, 3000L, List.of(), List.of());
+        TntConfig tntConfig = new TntConfig(false, false, 0, 3000L, List.of(), List.of());
         when(configs.tnt()).thenReturn(tntConfig);
         when(configs.renderEvent(anyString(), anyMap()))
                 .thenReturn(new MessageEnvelope(TargetType.PUBLIC, "msg", Format.DEFAULT));
@@ -200,7 +200,7 @@ class TntEventServiceTest extends ServiceTestBase {
 
     @Test
     void onPlaceBlock_placingRespawnAnchor_disabled_cancels() {
-        TntConfig tntConfig = new TntConfig(false, false, 0, 1000L, 3000L, List.of(), List.of());
+        TntConfig tntConfig = new TntConfig(false, false, 0, 3000L, List.of(), List.of());
         when(configs.tnt()).thenReturn(tntConfig);
         service = new TntEventService(configs, styles, notifier, scheduler);
 
@@ -280,7 +280,7 @@ class TntEventServiceTest extends ServiceTestBase {
     @Test
     void onEntityExplode_exemptEntity_doesNothing() {
         // Creeper is in the default exempt list
-        TntConfig tntConfig = new TntConfig(false, true, 0, 1000L, 3000L, List.of(), List.of("CREEPER"));
+        TntConfig tntConfig = new TntConfig(false, true, 0, 3000L, List.of(), List.of("CREEPER"));
         when(configs.tnt()).thenReturn(tntConfig);
         service = new TntEventService(configs, styles, notifier, scheduler);
 
@@ -308,7 +308,7 @@ class TntEventServiceTest extends ServiceTestBase {
     @Test
     void onTNTPrime_configChangedAfterConstruction_takesEffectImmediately() {
         // setUp 已建 service（enable=false）。模拟 reload：provider 返回新配置，不重建 service。
-        TntConfig tntConfig = new TntConfig(true, false, 0, 1000L, 3000L, List.of(), List.of());
+        TntConfig tntConfig = new TntConfig(true, false, 0, 3000L, List.of(), List.of());
         when(configs.tnt()).thenReturn(tntConfig);
 
         Location loc = mock(Location.class);
@@ -327,7 +327,7 @@ class TntEventServiceTest extends ServiceTestBase {
     void onEntityExplode_exemptListChangedAfterConstruction_takesEffectImmediately() {
         // setUp 的 config 空 exempt → 默认豁免（含 CREEPER，不含 ENDERMAN）。
         // 模拟 reload：新配置把 ENDERMAN 加入豁免，不重建 service。
-        TntConfig tntConfig = new TntConfig(false, true, 0, 1000L, 3000L, List.of(), List.of("ENDERMAN"));
+        TntConfig tntConfig = new TntConfig(false, true, 0, 3000L, List.of(), List.of("ENDERMAN"));
         when(configs.tnt()).thenReturn(tntConfig);
 
         EntityExplodeEvent event = entityExplodeAt(10, 64, 20, EntityType.ENDERMAN);
@@ -358,6 +358,13 @@ class TntEventServiceTest extends ServiceTestBase {
         verify(configs, times(2)).renderEvent(eq("tnt_alert"), vars.capture());
         assertEquals("TNT爆炸", vars.getAllValues().get(0).get("msg"));
         assertEquals("TNT爆炸 ×3", vars.getAllValues().get(1).get("msg"));
+        // 尾部汇总复用批次内首个事件的坐标（首事件坐标即批次告警坐标）
+        assertEquals(
+                vars.getAllValues().get(0).get("x"), vars.getAllValues().get(1).get("x"));
+        assertEquals(
+                vars.getAllValues().get(0).get("y"), vars.getAllValues().get(1).get("y"));
+        assertEquals(
+                vars.getAllValues().get(0).get("z"), vars.getAllValues().get(1).get("z"));
     }
 
     @Test
@@ -412,12 +419,51 @@ class TntEventServiceTest extends ServiceTestBase {
     @Test
     void aggregate_reloadAfterConstruction_usesNewWindowForTail() {
         // 配置热重载：新窗口 5000ms → 尾部冲刷延迟 100 ticks
-        TntConfig tntConfig = new TntConfig(false, true, 0, 1000L, 5000L, List.of(), List.of());
+        TntConfig tntConfig = new TntConfig(false, true, 0, 5000L, List.of(), List.of());
         when(configs.tnt()).thenReturn(tntConfig);
 
         service.onEntityExplode(entityExplodeAt(10, 64, 20, EntityType.TNT));
 
         verify(scheduler).runLater(any(Runnable.class), eq(100L));
+    }
+
+    @Test
+    void aggregate_differentHeightLayers_areIndependent() {
+        // 同 XZ 立柱但高度层不同（y=10 层 0 vs y=250 层 3）→ 分开聚合，告警坐标不串层
+        service.onEntityExplode(entityExplodeAt(10, 10, 20, EntityType.TNT)); // ry=0
+        service.onEntityExplode(entityExplodeAt(10, 250, 20, EntityType.TNT)); // ry=3
+
+        verify(notifier, times(2)).event(eq("tnt_alert"), any(MessageEnvelope.class));
+        verify(scheduler, times(2)).runLater(any(Runnable.class), anyLong());
+    }
+
+    @Test
+    void aggregate_negativeCoordinates_floorDivRegionsSymmetric() {
+        // floorDiv：x=-1 → 区域 -1，x=127 → 区域 0；边界恰在 128 整数倍，负坐标区域宽度均匀，不出现 256 宽区域
+        service.onEntityExplode(entityExplodeAt(-1, 64, 20, EntityType.TNT)); // region -1
+        service.onEntityExplode(entityExplodeAt(127, 64, 20, EntityType.TNT)); // region 0
+
+        verify(notifier, times(2)).event(eq("tnt_alert"), any(MessageEnvelope.class));
+        verify(scheduler, times(2)).runLater(any(Runnable.class), anyLong());
+    }
+
+    @Test
+    void aggregate_renderFailure_firstEvent_doesNotOrphanBatch() {
+        // 用 doThrow 打桩：避免 when(mock).thenThrow() 后再次 when(mock) 重打桩时执行旧 throw 桩
+        doThrow(new IllegalStateException("template broken")).when(configs).renderEvent(anyString(), anyMap());
+
+        assertThrows(
+                IllegalStateException.class,
+                () -> service.onEntityExplode(entityExplodeAt(10, 64, 20, EntityType.TNT)));
+
+        // 恢复后同一 key 的事件应创建全新批次，不被孤儿条目永久静默
+        doReturn(new MessageEnvelope(TargetType.PUBLIC, "msg", Format.DEFAULT))
+                .when(configs)
+                .renderEvent(anyString(), anyMap());
+        service.onEntityExplode(entityExplodeAt(30, 64, 40, EntityType.TNT));
+
+        verify(notifier, times(1)).event(eq("tnt_alert"), any(MessageEnvelope.class));
+        verify(scheduler, times(1)).runLater(any(Runnable.class), anyLong());
     }
 
     /** 执行已捕获的尾部冲刷任务（模拟调度器在窗口到期后运行）。仅适用于恰好调度了一次的场景。 */

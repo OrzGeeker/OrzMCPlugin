@@ -32,7 +32,6 @@ public class TntPolicy {
     private final boolean enableTnt;
     private final boolean enableRespawnAnchor;
     private final int placeCooldownSeconds;
-    private final long notifyThrottleMs;
     private final long notifyAggregateMs;
     private final List<Region> whitelistRegions = new ArrayList<>();
     private final List<String> exemptEntities;
@@ -41,7 +40,6 @@ public class TntPolicy {
         this.enableTnt = cfg.enable();
         this.enableRespawnAnchor = cfg.enableRespawnAnchor();
         this.placeCooldownSeconds = cfg.placeCooldownSeconds();
-        this.notifyThrottleMs = cfg.notifyThrottleMs();
         this.notifyAggregateMs = cfg.notifyAggregateMs();
         this.exemptEntities = cfg.exemptEntities();
         for (Map<String, Object> m : cfg.whitelistRegions()) {
@@ -73,10 +71,6 @@ public class TntPolicy {
 
     public int getPlaceCooldownSeconds() {
         return placeCooldownSeconds;
-    }
-
-    public long getNotifyThrottleMs() {
-        return notifyThrottleMs;
     }
 
     public long getNotifyAggregateMs() {

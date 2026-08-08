@@ -36,8 +36,11 @@ public final class TntEventService {
     /** 方块爆炸统一归并到该标签，避免一次大爆炸按方块材质（STONE/DIRT/...）拆分刷屏。 */
     private static final String BLOCK_EXPLODE_LABEL = "方块爆炸";
 
-    /** 聚合区域边长（方块数）：128 = 8×8 区块，覆盖一次大型爆炸的跨度。 */
+    /** 聚合区域水平边长（方块数）：128 = 8×8 区块，覆盖一次大型爆炸的横向跨度。 */
     private static final int REGION_SIZE_BLOCKS = 128;
+
+    /** 聚合区域垂直跨度（方块数）：64 ≈ 常见一层建筑高度。同 XZ 立柱但不同高度层的爆炸分开聚合，告警坐标才可行动。 */
+    private static final int REGION_VERTICAL_BLOCKS = 64;
 
     private static final List<String> DEFAULT_EXEMPT_ENTITIES = List.of(
             "CREEPER",
@@ -57,7 +60,7 @@ public final class TntEventService {
     private final OrzTextStyles styles;
     private final Notifier notifier;
     private final ServerScheduler scheduler;
-    /** 突发聚合状态：key=world|区域|消息类型 → 批次计数/震中。仅主线程访问（Bukkit 事件与 runLater 均同步）。 */
+    /** 突发聚合状态：key=world|区域|消息类型 → 批次计数/首事件坐标。仅主线程访问（Bukkit 事件与 runLater 均同步）。 */
     private final Map<String, PendingAlert> pendingAlerts = new HashMap<>();
 
     public TntEventService(
@@ -182,7 +185,6 @@ public final class TntEventService {
         PendingAlert alert = pendingAlerts.get(key);
         if (alert == null) {
             alert = new PendingAlert();
-            pendingAlerts.put(key, alert);
             alert.epicenter = location;
             alert.message = message;
             alert.blockType = blockType;
@@ -191,11 +193,13 @@ public final class TntEventService {
             long windowMs = currentPolicy().getNotifyAggregateMs();
             long ticks = Math.max(1, windowMs / 50);
             scheduler.runLater(() -> flushTail(key), ticks);
+            // 立即发送 + 尾部调度都成功后才入表：中途抛异常不留孤儿条目，避免该 key 永久静默且 map 无界增长
+            pendingAlerts.put(key, alert);
         }
         alert.count++;
     }
 
-    /** 窗口尾部冲刷：批次内不止一个事件时补发一条带次数与震中坐标的汇总。 */
+    /** 窗口尾部冲刷：批次内不止一个事件时补发一条带次数与首事件坐标的汇总。 */
     private void flushTail(String key) {
         PendingAlert alert = pendingAlerts.remove(key);
         if (alert == null || alert.count <= 1) {
@@ -259,12 +263,13 @@ public final class TntEventService {
         return styles.coordString(location);
     }
 
-    /** 聚合 key：世界 + 128×128 方块区域 + 消息类型，保证批次内事件在地理上相邻、消息类型一致。 */
+    /** 聚合 key：世界 + 128×128×64 方块区域 + 消息类型，保证批次内事件地理上相邻（含高度）、消息类型一致。 */
     private @NotNull String aggregateKey(@NotNull Location location, @NotNull String message) {
         int rx = Math.floorDiv(location.getBlockX(), REGION_SIZE_BLOCKS);
         int rz = Math.floorDiv(location.getBlockZ(), REGION_SIZE_BLOCKS);
+        int ry = Math.floorDiv(location.getBlockY(), REGION_VERTICAL_BLOCKS);
         String world = location.getWorld().getName();
-        return world + "|" + rx + "|" + rz + "|" + message;
+        return world + "|" + rx + "|" + ry + "|" + rz + "|" + message;
     }
 
     /** 一批待聚合的 TNT/爆炸告警。仅主线程访问。 */
