@@ -142,6 +142,9 @@ public final class LuckPermsPromoter implements RankPromoter {
             return null;
         }
         // 一次加载用户继承组集合，避免对每个 track 组重复 loadUser（N+1，离线玩家每次 3s 超时 × N）
+        // 注：LP API 无 TrackNode 概念，track 组即普通继承节点——本方法按「继承组 ∩ track 组列表」
+        // 取最高位。玩家若手动叠加了与 track 组同名的组（体系外数据），会干扰判定，
+        // 须保持 OrzMC 规范：权限组只经 track 升降级管理，禁止 parent add 叠加（见清理脚本）
         var inherited = user.getInheritedGroups(user.getQueryOptions()).stream()
                 .map(g -> g.getName())
                 .collect(java.util.stream.Collectors.toCollection(
