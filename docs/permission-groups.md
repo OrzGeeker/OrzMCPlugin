@@ -39,9 +39,11 @@
 | `getmehome.user` | `/sethome`、`/home`、`/delhome`、`/listhomes` | 全部可用（父权限含 5 个家命令） |
 | `essentials.tpa` | `/tpa <玩家>` | 传送请求发出 |
 | `essentials.tpahere` | `/tpahere <玩家>` | 邀请对方 |
-| `essentials.warp` | `/warp` | 显示传送点列表 |
+| `essentials.warp` | `/warp test` | 传送到传送点 |
+| `essentials.warp.list` | `/warp` | 列出传送点（2026-08-08 验收补：/warp 无参需 list） |
 | `essentials.kit` | `/kit` | 显示可用补给包 |
-| `essentials.mail` | `/mail send <玩家> hi` | 发送成功 |
+| `essentials.mail` | `/mail` | 邮件基础 |
+| `essentials.mail.send` | `/mail send <玩家> hi` | 发送成功（2026-08-08 验收补：send 为独立子权限） |
 | `griefprevention.createclaims` | 木铲圈地 | 成功圈地 |
 | `griefprevention.trapped` | `/trapped` | 触发卡死传送 |
 | `ezshops.playershop.create` | 牌子创建商店 | 创建成功 |
@@ -107,10 +109,11 @@
 | `essentials.ban` | `/ban <玩家>` | Essentials 封禁 |
 | `essentials.unban` | `/unban <玩家>` | Essentials 解封 |
 | `essentials.gamemode` | `/gamemode creative <玩家>` | 改他人模式 |
-| `essentials.heal` | `/heal <玩家>` | 治疗他人 |
+| `essentials.heal` | `/heal` | 自我治疗（继承 builder，2026-08-08 验收清理冗余；无 heal.others） |
 | `essentials.give` | `/give <玩家> stone 1` | 发放物品 |
 | `essentials.tp` | `/tp <玩家>` | 传送他人 |
-| `essentials.time` | `/time set day` | 设置时间 |
+| `essentials.time` | `/time` | 时间基础 |
+| `essentials.time.set` | `/time set day` | 设置时间（2026-08-08 验收补：set 为独立子权限） |
 | `essentials.weather` | `/weather clear` | 设置天气 |
 | `griefprevention.admin.*` | `/gpadmin` 相关 | 领地管理 |
 | `griefprevention.restorenature` | `/restorenature` | 自然恢复 |
