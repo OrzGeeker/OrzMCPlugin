@@ -24,6 +24,10 @@ public record TntConfig(
         int placeCooldownSeconds = cfg.getInt("place_cooldown", 5);
         long notifyThrottleMs = cfg.getLong("notify_throttle_ms", 1000L);
         long notifyAggregateMs = cfg.getLong("notify_aggregate_ms", 3000L);
+        if (notifyAggregateMs <= 0) {
+            // 非正窗口会让聚合退化为 1 tick，等于关闭防刷屏 → 回退默认
+            notifyAggregateMs = 3000L;
+        }
         List<Map<String, Object>> whitelistRegions = new ArrayList<>();
         Object rawRegions = cfg.get("whitelist");
         if (rawRegions instanceof List<?> list) {
