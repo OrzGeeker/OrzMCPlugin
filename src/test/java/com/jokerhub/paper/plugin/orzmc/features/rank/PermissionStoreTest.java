@@ -172,4 +172,66 @@ class PermissionStoreTest {
         assertEquals(1, store.listByApplicant(applicant).size());
         assertEquals("r1", store.listByApplicant(applicant).get(0).id());
     }
+
+    // ---- 结案历史裁剪（permission.yml 增长控制）----
+
+    private ReviewRequest closed(String id, UUID applicant, long createdAt) {
+        return new ReviewRequest(
+                id,
+                "builder-promotion",
+                applicant,
+                Map.of("target-group", "builder"),
+                ReviewRequest.Status.APPROVED,
+                createdAt,
+                createdAt + 1000L,
+                "admin");
+    }
+
+    @Test
+    void save_trimsOldestClosedBeyondLimit() {
+        UUID applicant = UUID.randomUUID();
+        // 先写满上限 10 条（createdAt 递增 1..10）
+        for (int i = 1; i <= 10; i++) {
+            store.save(closed("c" + i, applicant, i * 1000L));
+        }
+        // 第 11 条触发裁剪：应删最旧的 c1，保留 c2..c11
+        store.save(closed("c11", applicant, 11 * 1000L));
+
+        var history = store.listByApplicant(applicant);
+        assertEquals(10, history.size());
+        assertTrue(history.stream().noneMatch(r -> r.id().equals("c1")));
+        assertTrue(history.stream().anyMatch(r -> r.id().equals("c11")));
+        // 保留的是最近的 10 条
+        assertEquals("c2", history.get(0).id());
+        assertEquals("c11", history.get(history.size() - 1).id());
+    }
+
+    @Test
+    void save_keepsPendingWhenTrimming() {
+        UUID applicant = UUID.randomUUID();
+        for (int i = 1; i <= 10; i++) {
+            store.save(closed("c" + i, applicant, i * 1000L));
+        }
+        store.save(new ReviewRequest(
+                "p1", "builder-promotion", applicant, Map.of(), ReviewRequest.Status.PENDING, 11000L, 0L, null));
+        store.save(new ReviewRequest(
+                "p2", "admin-promotion", applicant, Map.of(), ReviewRequest.Status.PENDING, 12000L, 0L, null));
+
+        // 12 条（10 结案 + 2 待审）→ 裁剪 2 条最旧结案，PENDING 全部保留
+        var history = store.listByApplicant(applicant);
+        assertEquals(10, history.size());
+        assertTrue(history.stream().anyMatch(r -> r.id().equals("p1")));
+        assertTrue(history.stream().anyMatch(r -> r.id().equals("p2")));
+        assertTrue(history.stream().noneMatch(r -> r.id().equals("c1")));
+        assertTrue(history.stream().noneMatch(r -> r.id().equals("c2")));
+    }
+
+    @Test
+    void save_underLimit_noTrim() {
+        UUID applicant = UUID.randomUUID();
+        for (int i = 1; i <= 9; i++) {
+            store.save(closed("c" + i, applicant, i * 1000L));
+        }
+        assertEquals(9, store.listByApplicant(applicant).size());
+    }
 }

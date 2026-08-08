@@ -42,6 +42,16 @@ public final class PermissionStore implements RankStore, ReviewStore {
     private static final String PLAY_TIME_KEY = "minecraft:play_time";
     private static final int DEFAULT_MEMBER_THRESHOLD_HOURS = 10;
 
+    /**
+     * 每玩家结案历史保留上限。
+     *
+     * <p>审核记录只增不删会让 permission.yml 无限增长（每次提交/审核全量写盘
+     * O(N)）。PENDING 天然有界（防重复提交：每玩家每类型最多 1 条待审），
+     * 只需裁剪结案记录（APPROVED/REJECTED/CANCELLED）：保留最近
+     * {@link #MAX_HISTORY_PER_PLAYER} 条，超出的删最旧。</p>
+     */
+    private static final int MAX_HISTORY_PER_PLAYER = 10;
+
     private final ConfigService configService;
 
     public PermissionStore(ConfigService configService) {
@@ -70,6 +80,7 @@ public final class PermissionStore implements RankStore, ReviewStore {
     public void save(ReviewRequest request) {
         FileConfiguration cfg = configService.getConfig(FILE);
         writeRequest(cfg, request);
+        trimHistory(cfg, request.applicantId());
         configService.saveConfig(FILE);
     }
 
@@ -145,6 +156,43 @@ public final class PermissionStore implements RankStore, ReviewStore {
     @Override
     public boolean hasPending(String typeId, UUID applicantId) {
         return pendingFor(typeId, applicantId).isPresent();
+    }
+
+    /**
+     * 结案历史裁剪：每玩家最多保留 {@link #MAX_HISTORY_PER_PLAYER} 条记录。
+     *
+     * <p>PENDING 永不删（防重复提交已保证其有界）；超限时按 createdAt 删最旧的
+     * 结案记录（APPROVED/REJECTED/CANCELLED）。在 save() 写盘前调用，一次落盘。</p>
+     */
+    private void trimHistory(FileConfiguration cfg, UUID applicantId) {
+        ConfigurationSection section = cfg.getConfigurationSection(REVIEWS_SECTION);
+        if (section == null) {
+            return;
+        }
+        List<Map.Entry<String, Long>> closed = new ArrayList<>();
+        int total = 0;
+        for (String id : section.getKeys(false)) {
+            Optional<ReviewRequest> maybe = readRequest(cfg, REVIEWS_SECTION + "." + id);
+            if (maybe.isEmpty()) {
+                continue;
+            }
+            ReviewRequest request = maybe.get();
+            if (!request.applicantId().equals(applicantId)) {
+                continue;
+            }
+            total++;
+            if (request.status() != ReviewRequest.Status.PENDING) {
+                closed.add(Map.entry(id, request.createdAt()));
+            }
+        }
+        int overflow = total - MAX_HISTORY_PER_PLAYER;
+        if (overflow <= 0 || closed.isEmpty()) {
+            return;
+        }
+        closed.sort(Comparator.comparingLong(Map.Entry::getValue));
+        for (int i = 0; i < overflow && i < closed.size(); i++) {
+            cfg.set(REVIEWS_SECTION + "." + closed.get(i).getKey(), null);
+        }
     }
 
     /** 写一条审核记录到 cfg（不落盘，调用方负责 saveConfig）。 */
