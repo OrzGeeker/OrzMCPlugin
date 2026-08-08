@@ -181,6 +181,11 @@ BUILD SUCCESSFUL in 1m 4s
 - ✅ builder 从 `worldedit.*` 通配 → 9 项子集（brush/clipboard/history/region/selection/tool/utility/help/wand）
 - ✅ 备份链：pre-sync（重启前）→ pre-align（对齐前）→ post-align（对齐后）
 
+### 用户级杂权限清理（追加）
+- **第一批**（eric/momo 12 项）：TP/TPA/essentials.tp/bukkit.command.tps/minecraft.command.TP/minecraft.command.gamemode/spark.tps/luckperms.*.meta.setprefix（momo op/deop 已在前章清理）
+- **第二批**（11 项，post-clean export 暴露）：vodka002/wodandlike/__sa_ka_na__ 的 `minecraft.command.gamemode`、wodandlike 的 `minecraft.command.give`（可刷物品⚠️）、mei 的 essentials.gamemode.* 全量 6 项、kingsang 的 essentials.tp
+- **验证**（post-clean2 export）：全部用户仅剩继承组（meta.lp-editor-key 为 LP 编辑器会话 key 无害，保留）
+- 备份链追加：post-clean → post-clean2
 ### 遗留说明
-- 用户级杂权限（eric/momo 的 TP/gamemode/tps 等）未清理（不在组配置表范围，如有需要单独处理）
+- ~~用户级杂权限~~ ✅ 已全部清理（两批共 23 项，post-clean2 实证）
 - 玩家组归属未动（builder 玩家继续 builder）——四级流转（$p/$v）待玩家自然晋升/管理员操作生效
