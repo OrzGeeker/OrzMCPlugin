@@ -25,7 +25,13 @@ public final class GeoIpAccessService {
 
     private record CacheEntry(GeoIpClient.GeoIpResult result, long expiresAtMillis) {}
 
-    public record Decision(boolean allowed, String countryCode, List<String> allowList, String rawJson) {}
+    public record Decision(
+            boolean allowed, String countryCode, List<String> allowList, String rawJson, boolean lookupFailed) {
+        /** 兼容旧调用：默认查询未失败。 */
+        public Decision(boolean allowed, String countryCode, List<String> allowList, String rawJson) {
+            this(allowed, countryCode, allowList, rawJson, false);
+        }
+    }
 
     private final GeoIpClient client;
     private final TypedConfigProvider configs;
@@ -62,8 +68,9 @@ public final class GeoIpAccessService {
         }
         return client.lookup(ipAddress).handle((res, ex) -> {
             if (ex != null || res == null) {
-                // 查询失败 fail-open 放行（可用性优先），不缓存，避免把临时故障误固定
-                return new Decision(true, "", allow, "");
+                // 查询失败 fail-open 放行（可用性优先），不缓存，避免把临时故障误固定；
+                // 置 lookupFailed=true，由调用方（PlayerEventService）私信告警管理员
+                return new Decision(true, "", allow, "", true);
             }
             String cc = res.countryCode() == null ? "" : res.countryCode();
             // 仅缓存成功且拿到国家码的结果；空国家码可能是上游瞬时异常，不缓存避免误锁 12h

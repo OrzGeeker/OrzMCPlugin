@@ -120,7 +120,7 @@ class GeoIpAccessServiceTest {
     }
 
     @Test
-    void decide_geoIpQueryFailure_failsOpen() {
+    void decide_geoIpQueryFailure_failsOpenAndMarksLookupFailed() {
         when(configs.ipWhitelist()).thenReturn(new IpWhitelist(List.of("CN")));
         CompletableFuture<GeoIpClient.GeoIpResult> failed = new CompletableFuture<>();
         failed.completeExceptionally(new RuntimeException("timeout"));
@@ -129,6 +129,7 @@ class GeoIpAccessServiceTest {
         GeoIpAccessService.Decision d = service.decide("1.2.3.4").join();
 
         assertTrue(d.allowed(), "查询异常应 fail-open 放行");
+        assertTrue(d.lookupFailed(), "查询异常应标记 lookupFailed 以便私信告警");
     }
 
     // ---- 结果缓存（TTL）----

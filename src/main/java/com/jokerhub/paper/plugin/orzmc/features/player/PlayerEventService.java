@@ -47,6 +47,10 @@ public final class PlayerEventService {
     public void handleGeoIpDecision(
             AsyncPlayerPreLoginEvent event, String playerName, String ipAddress, GeoIpAccessService.Decision decision) {
         if (decision.allowed()) {
+            // fail-open 放行；若因上游查询失败放行，仍私信告警管理员（不入玩家群）
+            if (decision.lookupFailed()) {
+                handleGeoIpLookupFailure(playerName, ipAddress);
+            }
             return;
         }
         java.util.Map<String, String> vars = new java.util.HashMap<>();
@@ -124,6 +128,20 @@ public final class PlayerEventService {
         server.logger().warning(msgText);
         MessageEnvelope envelope = configs.renderEvent(
                 "exception_alert", java.util.Map.of("message", msgText, "stack_summary", "geoip lookup timeout"));
+        notifier.event("exception_alert", envelope);
+    }
+
+    /**
+     * GeoIP 上游查询失败（非超时）但 fail-open 放行时调用：告警到日志与管理员私信。
+     *
+     * <p>经 {@link com.jokerhub.paper.plugin.orzmc.infra.notify.Notifier} 路由为
+     * {@code exception_alert}（PRIVATE → 各平台 admin_dm），不会发到玩家群。</p>
+     */
+    public void handleGeoIpLookupFailure(String playerName, String ipAddress) {
+        String msgText = "IP地址解析服务异常，已放行: " + playerName + "(" + ipAddress + ")";
+        server.logger().warning(msgText);
+        MessageEnvelope envelope = configs.renderEvent(
+                "exception_alert", java.util.Map.of("message", msgText, "stack_summary", "geoip lookup failed"));
         notifier.event("exception_alert", envelope);
     }
 
