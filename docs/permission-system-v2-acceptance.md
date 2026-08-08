@@ -145,3 +145,42 @@ BUILD SUCCESSFUL in 1m 4s
 
 ### 结论
 权限系统在 Exaroton 线上服**全部功能正常**：四级链显示、手动升降级（$p）、申请条件校验（/apply）、审核晋升（$v）、高危隔离（无 op / 无 luckperms）。**部署流程**：新 jar 上传 → 重启 → 同步权限组配置表 → 可用。权限组配置表（docs/permission-groups.md）为唯一权威源，三端（本地/Exaroton/MCSM）保持一致。
+
+---
+
+## 七、MCSM 主服务器同步（2026-08-08）
+
+**目标**：生产服对齐权限组配置表 + 清理高危权限 + 部署 OrzMC 1.0.16-dev。
+
+### 部署
+- OrzMC 1.0.16-dev 上传 `plugins/update/` → 玩家同意重启 → 重启应用（日志 `Enabling OrzMC v1.0.16`）
+- **装即用生效**：自动创建 track「rank」（default→member→builder→admin）+ member/admin 组（线上原本只有 builder/default）
+
+### 对齐前现状（重启前 LP export 实证）
+- 组：builder（`worldedit.*`/`worldguard.*` 全量通配 + gamemode）、default（9 项 balance/tpa）
+- 无 member/admin 组、无 track
+- **高危**：momo 用户级 `minecraft.command.op` + `deop`（可自封 op）
+- 用户归属：8 名 builder（joker/ultrablind/fancy/nnnnn/sasha_uzbek/mark/ripprenameagin/kingsang）+ 8 名 default
+
+### 对齐执行（用户确认「完全对齐」）
+1. `lp export pre-align` 备份
+2. 配置表 85 条 set（perm_commands.txt 蓝本）
+3. 清理旧节点 10 条：builder 通配 ×3（worldedit.\*/worldguard.\*/gamemode.\*）+ default 旧项 ×7（balance/tpa 系列）
+4. momo 高危清理 ×2（op/deop）
+5. `lp export post-align` 验证
+
+### 对齐后验证（post-align export 实证）
+| 组 | 结构 | 权限节点数 |
+|:--|:--|:--|
+| default | 无继承 | 15（配置表 14 项） |
+| member | 继承 default | 16 |
+| builder | 继承 default | **20（WE 裁剪子集 9 项，无通配）** |
+| admin | 继承 builder | 33（无 \* / luckperms.\* / op） |
+
+- ✅ momo op/deop 已清除
+- ✅ builder 从 `worldedit.*` 通配 → 9 项子集（brush/clipboard/history/region/selection/tool/utility/help/wand）
+- ✅ 备份链：pre-sync（重启前）→ pre-align（对齐前）→ post-align（对齐后）
+
+### 遗留说明
+- 用户级杂权限（eric/momo 的 TP/gamemode/tps 等）未清理（不在组配置表范围，如有需要单独处理）
+- 玩家组归属未动（builder 玩家继续 builder）——四级流转（$p/$v）待玩家自然晋升/管理员操作生效
