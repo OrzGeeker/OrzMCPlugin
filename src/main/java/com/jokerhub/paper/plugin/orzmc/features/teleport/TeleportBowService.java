@@ -64,7 +64,38 @@ public final class TeleportBowService {
             if (event.getProjectile() instanceof org.bukkit.entity.Arrow arrow) {
                 arrow.getPersistentDataContainer()
                         .set(keyTpBow, org.bukkit.persistence.PersistentDataType.BYTE, (byte) 1);
+                preloadTrajectory(arrow);
             }
+        }
+    }
+
+    /**
+     * 预加载箭飞行路径上的区块（异步），避免箭落入未加载区块被卸载导致 hit 事件丢失。
+     *
+     * <p>实测根因：箭落点超出服务器区块加载半径（view-distance）时，目标区块未加载，
+     * 箭实体被卸载，{@code ProjectileHitEvent} 永不触发，传送弓失效。此处沿箭飞行方向
+     * 异步加载最多 {@link #TRAJECTORY_CHUNKS} 个区块（覆盖箭最大射程约 120 格），
+     * 箭飞抵时区块已加载，hit 正常触发。</p>
+     */
+    private static final int TRAJECTORY_CHUNKS = 8;
+
+    void preloadTrajectory(org.bukkit.entity.Arrow arrow) {
+        org.bukkit.Location start = arrow.getLocation();
+        if (start == null) {
+            return;
+        }
+        org.bukkit.World world = start.getWorld();
+        org.bukkit.util.Vector vel = arrow.getVelocity();
+        if (world == null || vel == null || vel.lengthSquared() < 1.0e-6) {
+            return;
+        }
+        org.bukkit.util.Vector dir = vel.clone().normalize();
+        for (int i = 1; i <= TRAJECTORY_CHUNKS; i++) {
+            org.bukkit.Location step = start.clone().add(dir.clone().multiply(i * 16.0));
+            int cx = step.getBlockX() >> 4;
+            int cz = step.getBlockZ() >> 4;
+            // gen=false：只加载已存在的区块，不生成新地形（避免射向世界边缘时浪费资源）
+            world.getChunkAtAsync(cx, cz, false, chunk -> {});
         }
     }
 
