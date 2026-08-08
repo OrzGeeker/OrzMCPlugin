@@ -104,6 +104,8 @@ BUILD SUCCESSFUL in 1m 4s
 - **一期残留清理（34a198c）**：/rank demote 移除（升降级统一 `$p`）、无 LP 本地推断删除（hasApprovedBuilder）、模板死占位符 role_alias 清理——权限状态全面收敛为 LP 单一事实源，无行为变化（LP 在线路径不受影响）
 - **状态展示动态化（63ee984）**：/rank 与 /apply 按当前权限组展示（实测四级流转：default→成员→建造者→管理员 各分支文案正确）；新增 ADMIN_PROMOTION（/apply admin）打通 builder→admin；TestMember 实测全链路：/apply admin → $v l 列表（当前组：builder）→ $v y → LP promote SUCCESS → /rank 管理员（已达最高等级）
 - **global 上下文修复（63dc5ef）**：$p 升降级/组查询统一 global 上下文——根治 track 节点上下文混存（joker world 上下文脏节点不再影响判定；AMBIGUOUS_CALL 消失）；$p u 新玩家连续 promote 直达 member；失败提示合并边界/数据异常（详见五、问题 5/6）
+- **结案历史裁剪（d145578）**：permission.yml 每玩家保留最近 10 条结案记录（PENDING 永不删，防重复提交保证其有界）——文件大小有上限，全量写盘/扫描成本恒定
+- **装即用（d303b02）**：LuckPermsBootstrap 启动自动初始化——track「rank」/四级组缺失自动创建（幂等不覆盖）；实测：track 改名模拟缺失 → 重启自动重建（链序 default→member→builder→admin 正确）+ $p 功能正常；线上部署仅剩人工项=核对已有组权限内容
 
 ## 七、测试脚本沉淀
 

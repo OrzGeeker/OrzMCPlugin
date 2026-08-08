@@ -278,6 +278,7 @@ permission.yml
 | `features/rank/RankService.java` | 业务 | 自动晋升 + 手动升降级 + currentGroup（LP 唯一事实源，无 LP 回退 default）；阈值读 config 节 |
 | `features/rank/RankCommandService.java` | 游戏内命令 | `/rank` 纯查询 + 注册表反向生成 |
 | `features/rank/LuckPermsPromoter.java` | handler 实现 | LP 授权（主线程派发，见 8.3） |
+| `features/rank/LuckPermsBootstrap.java` | 启动初始化 | 装即用：track「rank」/四级组缺失自动创建（幂等，已有不覆盖） |
 | `features/botcommands/OrzUserCmd.java` | 群指令枚举 | 新增 `REVIEW("v", "查看/处理审核申请", true)` + `PERMISSION("p", "权限升降级", true)` |
 | `features/botcommands/BotCommandService.java` | 群指令分发 | `$v l/y/n` + `$p u/d` handler（setReviewService setter 注入；$v 审核人=消息发送者昵称透传） |
 | `infra/notify/ReviewNotifierAdapter.java` | 通知适配 | 按配置键 renderTemplate + fallback（见 8.4） |
@@ -314,6 +315,7 @@ permission.yml
 6. **权限状态无本地推断**：`currentGroup` 无 LP 时一律回退 default（访客）——无 LP 时权限体系整体不可用，按审核记录推断组会造成虚假展示（一期 hasApprovedBuilder 已删）。
 7. **叠加组/上下文脏节点是体系外数据**：LP API 无 TrackNode 概念，track 组即普通继承节点，代码**无法**区分「track 给的组」与「同名叠加组」；叠加组会干扰 `currentTrackGroup` 判定。运维规范：权限组只经 `$p u/d` 升降，禁止 `parent add` 叠加；存量脏数据用 `lp user <X> parent info` 检查后清理。
 8. **LP 操作统一 global 上下文（根因修复）**：一期 `$p` 升降级用**玩家实时上下文**（在线时 world/gamemode/essentials 等）调 LP API，节点带完整上下文快照落库 → 与离线操作（global）的节点混存 → track 节点重叠、`/rank` 误判、promote/demote 报 `AMBIGUOUS_CALL`（joker/TestMember 实测复现）。修复：promote/demote/currentTrackGroup/isInGroup 全部固定 global 上下文；`$p u` 新玩家（不在 track）ADDED_TO_FIRST_GROUP 连续 promote 直达 member；AMBIGUOUS_CALL 输出 WARNING 日志 + 检查指引。
+9. **装即用（LuckPermsBootstrap 自动初始化）**：部署前处理内置到插件——LP 可用时启动自动补齐 track「rank」+ 四级组骨架（缺失创建、已有跳过、**绝不覆盖线上定义**）；无 LP 时跳过（NoopRankPromoter 降级）。部署顺序不再敏感（无需先手动建 track/组）。仅剩人工项：核对**已有**组权限内容是否符合预期（插件不覆盖）。
 
 ### 8.4 测试通道修复（自动化测试前置）
 
