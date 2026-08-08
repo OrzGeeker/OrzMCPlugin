@@ -3,6 +3,7 @@
 > 基于本地测试服（与线上插件一致：EssentialsX/GetMeHome/GriefPrevention/WorldEdit/WorldGuard/OrzMC 等 16 插件）设计并实测验证。
 > 配置命令：`lp group <组> permission set <节点> true`（LP 继承链 admin→builder→member→default，各组只配增量）。
 > **线上同步时逐条执行本表命令即可**（同步前先 `lp export` 备份）。
+> **⚠️ 继承链（parent）必须一并设置**：同步后执行 `lp group member parent set default`、`lp group builder parent set member`、`lp group admin parent set builder`——旧服遗留组（1.0.15 时代）parent 可能仍是 default，LuckPermsBootstrap 幂等设计不校正已有组，须显式设置（2026-08-08 实测：builder 曾错误继承 default，缺 member 功能）。
 
 ## L0 default（访客）— 生存基础体验
 
