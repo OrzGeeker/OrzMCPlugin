@@ -23,7 +23,7 @@
 | `essentials.balance` | `/balance` | 显示余额 |
 | `essentials.balancetop` | `/baltop` | 显示排行 |
 | `essentials.pay` | `/pay <玩家> 1` | 转账成功 |
-| `essentials.spawn` | `lp group default permission check essentials.spawn` | true（命令由服务器 26.2 兼容问题另行解决） |
+| `essentials.spawn` | `lp group default permission check essentials.spawn` | ⚠️ **命令未注册（26.2 兼容问题）——当前不可用**；权限节点保留（命令恢复后即生效） |
 | `bod.back` | 死亡后重生 | 死亡箱/回档提示 |
 | `ezshops.shop` | `/shop` | 打开商店 GUI |
 | `ezshops.shop.buy` | 商店点购买 | 购买成功 |
@@ -62,11 +62,11 @@
 | `worldedit.clipboard.*` | `//copy`、`//paste` | 复制粘贴成功 |
 | `worldedit.history.*` | `//undo` | 撤销成功 |
 | `worldedit.brush.*` | `//brush sphere stone` | 笔刷设置成功 |
-| `worldedit.tool.*` | `//tool` | 工具列表 |
+| `worldedit.tool.*` | `//tool <类型>`（无参报 Unknown——命令存在需参数） | 工具绑定 |
 | `worldedit.utility.*` | `//fill`、`//drain` | 工具命令可用 |
 | `worldedit.help` | `//help` | 显示帮助 |
 | `worldedit.schematic.*` | `//schem save test` | 保存成功 |
-| `worldedit.navigation.*` | `//unstuck` | 脱出卡墙 |
+| `worldedit.navigation.*` | `//unstuck` | ⚠️ **//unstuck 命令未注册（26.2 兼容）——当前不可用**；权限节点有效（LP check true，与 /spawn 同类） |
 | `worldedit.analysis.*` | `//count stone` | 显示统计 |
 | `worldguard.region.claim.*` | `//claim`、`/rg claim` | 圈地成功（含 claim.own） |
 | `worldguard.region.define` | `/rg define test` | 创建区域 |
@@ -227,6 +227,29 @@
 | L2 | TestNewbie | `minecraft.command.kick` | ✅ false（无越权） |
 | L3 | TestMember | `orzmc.admin` / `minecraft.command.kick` | ✅ true |
 | L3 | TestMember | `minecraft.command.op` / `luckperms.user` | ✅ **false（不可自封 op/改权限）** |
+
+## 插件默认开启权限（default: true——未声明也生效）
+
+> 2026-08-08 全量盘点本地 16 插件 plugin.yml 的权限默认值。**以下权限插件声明 `default: true`**——即使 LP 组未显式设置节点，**所有玩家（含 default）实际可用**。四组实际可用权限 = 下方配置表声明 ∪ 本清单。
+
+| 插件 | 权限（default: true） | 配置表声明 | 实际影响 / 备注 |
+|:--|:--|:--|:--|
+| GetMeHome | `getmehome.user`（父——含 sethome/home/delhome/listhomes/setdefaulthome 全部子权限） | L0 未声明（LP 已清） | **所有玩家可用全部家功能**——与「家功能 member 专属」设计不符；如需禁须在 default 组显式设 false（父+5 命令逐项，插件默认不吃父权限 false） |
+| GetMeHome | `bstats` | - | 统计（无关） |
+| EssentialsX | `essentials.back.onteleport` | 未声明 | 传送后死亡点回档（跟随 /back） |
+| EssentialsX | `essentials.teleport.cooldown.bypass.tpa` / `.back` | 未声明 | tpa/back 冷却豁免（配合 member 的 tpa 生效） |
+| EzShops | `ezshops.playershop.create` / `.buy` | L1 声明（**冗余**——默认已开） | **default 也能创建/购买玩家商店** |
+| EzShops | `ezshops.stock.view` / `ezshops.teamshop` / `.teamshop.market` / `.teamshop.treasury.withdraw` | 未声明 | 库存查看/团队商店默认开（withdraw 为团队金库提款语义） |
+| GriefPrevention | `griefprevention.createclaims` | L1 声明（**冗余**——默认已开） | **default 也能圈地** |
+| GriefPrevention | `griefprevention.claims` / `.trapped` / `.ignore` / `.givepet` / `.unlockdrops` / `.buysellclaimblocks` / `.abandonallclaims` | 部分未声明 | 领地基本功能默认开（trapped 配置表 L1 已声明——冗余） |
+| GriefPrevention | `griefprevention.siege` | 未声明 | **攻城默认开**（GP 官方默认——风险项：可对他人领地发起攻城） |
+| BackOnDeath | `bod.back` | L0 已声明 | 一致（LP 节点显式冗余但无害） |
+
+### 风险项建议（需用户决策）
+- `griefprevention.siege`（攻城）——若不允许攻城，default 组显式 `set griefprevention.siege false`
+- `griefprevention.abandonallclaims`（一键弃全部领地）——若担心误触，可显式禁
+- `ezshops.teamshop.treasury.withdraw`（团队金库提款）——无团队时不生效，暂可不管
+- GetMeHome 家功能全开——如需「家功能 member 专属」，default 组显式 false（见上表）
 
 ## 多父组残留案例（2026-08-08 joker）
 
