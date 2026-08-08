@@ -245,11 +245,12 @@
 | GriefPrevention | `griefprevention.siege` | 未声明 | **攻城默认开**（GP 官方默认——风险项：可对他人领地发起攻城） |
 | BackOnDeath | `bod.back` | L0 已声明 | 一致（LP 节点显式冗余但无害） |
 
-### 风险项建议（需用户决策）
-- `griefprevention.siege`（攻城）——若不允许攻城，default 组显式 `set griefprevention.siege false`
-- `griefprevention.abandonallclaims`（一键弃全部领地）——若担心误触，可显式禁
-- `ezshops.teamshop.treasury.withdraw`（团队金库提款）——无团队时不生效，暂可不管
-- GetMeHome 家功能全开——如需「家功能 member 专属」，default 组显式 false（见上表）
+### 风险项决策（2026-08-08：按插件默认值处理）
+- ~~`griefprevention.siege`（攻城）~~ **保持默认开启**（用户决策：按默认值）
+- ~~`griefprevention.abandonallclaims`（一键弃全部领地）~~ **保持默认开启**
+- ~~`ezshops.teamshop.treasury.withdraw`（团队金库提款）~~ **保持默认开启**（无团队时不生效）
+- ~~GetMeHome 家功能全开~~ **保持默认开启**（default 玩家可用家功能；如需收紧后续再显式 false）
+- 结论：**四组权限全部按「LP 声明 + 插件默认」实际可用状态执行，不额外显式禁用**
 
 ## 多父组残留案例（2026-08-08 joker）
 
