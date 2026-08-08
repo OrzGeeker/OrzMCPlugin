@@ -247,7 +247,7 @@ lp user <X> parent set <目标组>
 
 ### 预防（线上同步必读）
 - **组操作统一走控制台 / RCON / bot（`$e` 或 `$p`）**——不要在游戏内执行 `lp user ... parent set/remove`
-- **升降级一律用 `$p u / $p d`**（LP track 原生钳位，自动清理旧组）——避免手动 parent set 累积
+- **升降级一律用 `$p u / $p d`**（LP track 原生钳位，自动清理旧组）——避免手动 parent set 累积；**2026-08-08 起 OrzMC promote/demote 已加固**：操作前 `normalizeSingleGroup`（清全部继承节点+仅保留 global 当前组）——即使历史残留也能自动根治，不再产生 AMBIGUOUS_CALL/组累积
 - **存量玩家体检**：同步前 `lp user <X> parent info`——发现带 `world=` 等上下文的组节点即按上法清理（MCSM/Exaroton 玩家可能有同源残留）
 - 游戏内确需 LP 管理时：先 `lp --context global ...` 或观察输出上下文
 
