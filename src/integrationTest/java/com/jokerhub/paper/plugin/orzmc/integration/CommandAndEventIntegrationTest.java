@@ -68,7 +68,10 @@ public class CommandAndEventIntegrationTest {
         AtomicReference<MessageEnvelope> got = new AtomicReference<>();
 
         Assertions.assertDoesNotThrow(() -> handler.handleMessage("$e bot", true, got::set));
-        server.getScheduler().performOneTick();
+        // $e 走「同步执行 + 日志窗口延迟回包」（40 tick 收集窗口），需推进足够 tick
+        for (int i = 0; i < 60; i++) {
+            server.getScheduler().performOneTick();
+        }
 
         MessageEnvelope envelope = got.get();
         Assertions.assertNotNull(envelope, "missing bot command response");
