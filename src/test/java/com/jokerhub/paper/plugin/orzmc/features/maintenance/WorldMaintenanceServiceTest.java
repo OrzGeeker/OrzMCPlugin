@@ -34,6 +34,9 @@ public class WorldMaintenanceServiceTest extends ServiceTestBase {
         Assertions.assertEquals("0毫秒", WorldMaintenanceService.formatDuration(0));
         Assertions.assertEquals("854毫秒", WorldMaintenanceService.formatDuration(854));
         Assertions.assertEquals("999毫秒", WorldMaintenanceService.formatDuration(999));
+        // 负值按 0 处理
+        Assertions.assertEquals("0毫秒", WorldMaintenanceService.formatDuration(-5));
+        Assertions.assertEquals("0毫秒", WorldMaintenanceService.formatDuration(-1_000));
     }
 
     @Test
@@ -59,5 +62,9 @@ public class WorldMaintenanceServiceTest extends ServiceTestBase {
         Assertions.assertEquals("1小时", WorldMaintenanceService.formatDuration(3_600_000));
         Assertions.assertEquals("1小时1分1秒", WorldMaintenanceService.formatDuration(3_661_000));
         Assertions.assertEquals("2小时3分", WorldMaintenanceService.formatDuration(7_380_000));
+        // 小时>0、分钟=0、秒>0 → 补 0 分占位
+        Assertions.assertEquals("1小时0分5秒", WorldMaintenanceService.formatDuration(3_605_000));
+        // 59分59.5 秒四舍五入进位到整小时
+        Assertions.assertEquals("1小时", WorldMaintenanceService.formatDuration(3_599_500));
     }
 }

@@ -62,15 +62,16 @@ public class WorldMaintenanceService {
      *   <li>&lt; 1 秒 → {@code 854毫秒}</li>
      *   <li>&lt; 1 分钟 → {@code 35秒}</li>
      *   <li>&lt; 1 小时 → {@code 2分35秒}</li>
-     *   <li>≥ 1 小时 → {@code 1小时2分3秒}（整小时省略秒）</li>
+     *   <li>≥ 1 小时 → {@code 1小时2分3秒}（整分/整小时省略低位；如 {@code 1小时0分5秒}、{@code 2小时3分}）</li>
      * </ul>
-     * 秒数按四舍五入取整（154901ms → 155s → {@code 2分35秒}）。
+     * 秒数按四舍五入取整（154901ms → 155s → {@code 2分35秒}）；负值按 0 处理。
      */
     public static String formatDuration(long ms) {
-        if (ms < 1000) {
-            return ms + "毫秒";
+        long safeMs = Math.max(0, ms);
+        if (safeMs < 1000) {
+            return safeMs + "毫秒";
         }
-        long totalSec = Math.round(ms / 1000.0);
+        long totalSec = Math.round(safeMs / 1000.0);
         long hours = totalSec / 3600;
         long minutes = (totalSec % 3600) / 60;
         long seconds = totalSec % 60;
@@ -78,7 +79,7 @@ public class WorldMaintenanceService {
         if (hours > 0) {
             sb.append(hours).append("小时");
         }
-        if (minutes > 0) {
+        if (minutes > 0 || (hours > 0 && seconds > 0)) {
             sb.append(minutes).append("分");
         }
         if (seconds > 0 || (hours == 0 && minutes == 0)) {
