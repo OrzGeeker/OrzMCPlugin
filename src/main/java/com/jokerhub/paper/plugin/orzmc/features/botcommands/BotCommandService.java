@@ -111,10 +111,18 @@ public final class BotCommandService implements BotInboundHandler {
         for (OrzUserCmd userCmd : OrzUserCmd.values()) {
             String cmdPrefix = promptChar + userCmd.cmdName();
             if (matchesCommandPrefix(message, cmdPrefix)) {
-                String rawArgs = extractArgs(message, cmdPrefix);
+                // 全角空格（U+3000）归一化为半角再 trim——Java String.trim() 不处理 U+3000，
+                // 否则 "$b　?"（全角空格分隔）会绕过 ? 拦截直接触发备份/优化等重量级命令
+                String rawArgs =
+                        extractArgs(message, cmdPrefix).replace('\u3000', ' ').trim();
 
-                // $cmd ?：在此指令分发前统一拦截
-                if (rawArgs.equals("?") || rawArgs.equals("？")) {
+                // $cmd ?：在此指令分发前统一拦截。
+                // 前缀匹配（$b ?x / $b ?? / $b ? 2 均视为帮助请求），防误触重量级命令；
+                // $e 特判精确匹配——控制台命令本身可能以 ? 开头（如 "$e ?list"）
+                boolean helpQuery = userCmd == OrzUserCmd.EXECUTE_CONSOLE_COMMAND
+                        ? rawArgs.equals("?") || rawArgs.equals("？")
+                        : rawArgs.startsWith("?") || rawArgs.startsWith("？");
+                if (helpQuery) {
                     String tip = feedbackService.usageTip(userCmd, promptChar);
                     if (!tip.isBlank()) {
                         emitUsage(callback, tip);

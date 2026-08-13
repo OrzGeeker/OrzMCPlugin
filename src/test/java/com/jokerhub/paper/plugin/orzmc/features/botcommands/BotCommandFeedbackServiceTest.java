@@ -67,28 +67,31 @@ class BotCommandFeedbackServiceTest {
     void usageTip_forWhitelistCommands() {
         String tip = feedback.usageTip(OrzUserCmd.ADD_PLAYER_TO_WHITELIST, "$");
         assertTrue(tip.contains("$a"));
-        assertTrue(tip.contains("[玩家]"));
+        assertTrue(tip.contains("<玩家>"));
     }
 
     @Test
     void usageTip_forConsoleCommand() {
         String tip = feedback.usageTip(OrzUserCmd.EXECUTE_CONSOLE_COMMAND, "$");
         assertTrue(tip.contains("$e"));
-        assertTrue(tip.contains("[控制台命令]"));
+        assertTrue(tip.contains("<控制台命令>"));
     }
 
     @Test
     void usageTip_forEveryCommand_usesUnifiedTemplate() {
         // 所有命令统一三段式模板：🎯 标题 + 📚 用法 + 🚀 示例，且不含中文方括号
+        // 双前缀（$ 与 !）都断言，防止单命令 usageTip 回归为硬编码 "$x"（M3 审查项）
         for (OrzUserCmd cmd : OrzUserCmd.values()) {
-            String tip = feedback.usageTip(cmd, "$");
-            assertNotNull(tip, cmd + " 的 usageTip 不应为 null");
-            assertFalse(tip.isBlank(), cmd + " 的 usageTip 不应为空");
-            assertTrue(tip.contains("🎯 $" + cmd.cmdName()), cmd + " 应包含 🎯 标题");
-            assertTrue(tip.contains("📚 用法："), cmd + " 应包含用法节");
-            assertTrue(tip.contains("🚀 示例："), cmd + " 应包含示例节");
-            assertFalse(tip.contains("【"), cmd + " 不应使用中文方括号");
-            assertFalse(tip.contains("】"), cmd + " 不应使用中文方括号");
+            for (String promptChar : new String[] {"$", "!"}) {
+                String tip = feedback.usageTip(cmd, promptChar);
+                assertNotNull(tip, cmd + " 的 usageTip 不应为 null");
+                assertFalse(tip.isBlank(), cmd + " 的 usageTip 不应为空");
+                assertTrue(tip.contains("🎯 " + promptChar + cmd.cmdName()), cmd + " 应包含 🎯 标题");
+                assertTrue(tip.contains("📚 用法："), cmd + " 应包含用法节");
+                assertTrue(tip.contains("🚀 示例："), cmd + " 应包含示例节");
+                assertFalse(tip.contains("【"), cmd + " 不应使用中文方括号");
+                assertFalse(tip.contains("】"), cmd + " 不应使用中文方括号");
+            }
         }
     }
 
@@ -108,6 +111,6 @@ class BotCommandFeedbackServiceTest {
     @Test
     void usageTip_usesCustomPromptChar() {
         String tip = feedback.usageTip(OrzUserCmd.PERMISSION, "!");
-        assertTrue(tip.contains("!p u [玩家]"));
+        assertTrue(tip.contains("!p u <玩家>"));
     }
 }

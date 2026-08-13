@@ -65,10 +65,10 @@ public final class BotCommandFeedbackService {
             case ADD_PLAYER_TO_WHITELIST, REMOVE_PLAYER_FROM_WHITELIST ->
                 usageBlock(
                         "🎯 " + name + " " + (cmd == OrzUserCmd.ADD_PLAYER_TO_WHITELIST ? "添加玩家到白名单" : "移除白名单玩家"),
-                        name + " [玩家] [玩家2] ...（空格或逗号分隔，可批量）",
+                        name + " <玩家> <玩家2> ...（空格或逗号分隔，可批量）",
                         name + " Steve\n" + name + " Steve Alex Bob\n" + name + " Steve,Alex,Bob");
             case EXECUTE_CONSOLE_COMMAND ->
-                usageBlock("🎯 " + name + " 执行控制台命令", name + " [控制台命令]", name + " plugins\n" + name + " say 大家好");
+                usageBlock("🎯 " + name + " 执行控制台命令", name + " <控制台命令>", name + " plugins\n" + name + " say 大家好");
             case BLACKLIST ->
                 usageBlock(
                         "🎯 " + name + " IP黑名单管理",
@@ -81,12 +81,14 @@ public final class BotCommandFeedbackService {
             case REVIEW ->
                 usageBlock(
                         "🎯 " + name + " 审核申请",
-                        name + " l              查看待审列表\n" + name + " y [玩家]       通过申请\n" + name + " n [玩家]       拒绝申请",
-                        name + " l\n" + name + " y Steve");
+                        name + " l [页码]       查看待审列表\n" + name + " y <玩家>       通过申请\n" + name + " n <玩家>       拒绝申请",
+                        name + " l\n" + name + " l 2\n" + name + " y Steve");
             case PERMISSION ->
                 usageBlock(
                         "🎯 " + name + " 权限管理",
-                        name + " u [玩家]       权限升级\n" + name + " d [玩家]       权限降级",
+                        name + " u <玩家>       权限升级（default→member→builder→admin）\n"
+                                + name
+                                + " d <玩家>       权限降级（admin→builder→member→default）",
                         name + " u Steve\n" + name + " d Steve");
             case SHOW_PLAYERS -> usageBlock("🎯 " + name + " 查看在线玩家", name + "（无参数，直接执行）", name);
             case SHOW_WHITELIST ->

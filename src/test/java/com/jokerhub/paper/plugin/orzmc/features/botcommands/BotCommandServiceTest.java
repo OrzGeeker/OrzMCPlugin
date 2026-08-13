@@ -37,8 +37,11 @@ class BotCommandServiceTest {
         WhitelistConfig whitelistConfig = mock(WhitelistConfig.class);
         when(configs.bot()).thenReturn(botConfig);
         when(configs.whitelist()).thenReturn(whitelistConfig);
-        when(configs.renderTemplate(anyString(), anyMap(), anyString()))
-                .thenReturn(new MessageEnvelope(TargetType.PUBLIC, "response", Format.DEFAULT));
+        when(configs.renderTemplate(anyString(), anyMap(), anyString())).thenAnswer(invocation -> {
+            // 透传 fallback 文本进信封，便于断言实际展示内容（如帮助文本与 usageTip 一致）
+            String fallback = invocation.getArgument(2);
+            return new MessageEnvelope(TargetType.PUBLIC, fallback, Format.DEFAULT);
+        });
         when(serverFacade.logger()).thenReturn(logger);
 
         // Execute async/sync runnables immediately
@@ -379,5 +382,135 @@ class BotCommandServiceTest {
         service.parse("$p d TestMember", false, callback);
         verify(rankService, never()).demote(any(java.util.UUID.class));
         verify(callback, atLeastOnce()).accept(any(MessageEnvelope.class));
+    }
+
+    // ---- parse: $cmd ? 帮助拦截与 fallback 收敛（PR #12 审查 M1/M2 回归护栏） ----
+
+    @Test
+    void parse_backupHelpQuery_emitsUsageWithoutBackup() {
+        var maintenance = mock(com.jokerhub.paper.plugin.orzmc.features.maintenance.WorldMaintenanceService.class);
+        service.setMaintenanceService(maintenance);
+
+        service.parse("$b ?", true, callback);
+        var captor = org.mockito.ArgumentCaptor.forClass(MessageEnvelope.class);
+        verify(callback).accept(captor.capture());
+        assertEquals(
+                new BotCommandFeedbackService().usageTip(OrzUserCmd.BACKUP, "$"),
+                captor.getValue().message());
+        verify(maintenance, never()).backup(anyLong(), anyInt(), any());
+    }
+
+    @Test
+    void parse_backupHelpQuerySuffix_emitsUsageWithoutBackup() {
+        // M1：前缀匹配——$b ?x / $b ?? / $b ? 2 均视为帮助请求，绝不执行备份
+        var maintenance = mock(com.jokerhub.paper.plugin.orzmc.features.maintenance.WorldMaintenanceService.class);
+        service.setMaintenanceService(maintenance);
+
+        service.parse("$b ? 2", true, callback);
+        var captor = org.mockito.ArgumentCaptor.forClass(MessageEnvelope.class);
+        verify(callback).accept(captor.capture());
+        assertEquals(
+                new BotCommandFeedbackService().usageTip(OrzUserCmd.BACKUP, "$"),
+                captor.getValue().message());
+        verify(maintenance, never()).backup(anyLong(), anyInt(), any());
+    }
+
+    @Test
+    void parse_backupHelpQueryFullWidthSpace_emitsUsageWithoutBackup() {
+        // M1：U+3000 全角空格分隔（Java trim 不去全角空格），归一化后仍触发帮助拦截
+        var maintenance = mock(com.jokerhub.paper.plugin.orzmc.features.maintenance.WorldMaintenanceService.class);
+        service.setMaintenanceService(maintenance);
+
+        service.parse("$b　?", true, callback);
+        var captor = org.mockito.ArgumentCaptor.forClass(MessageEnvelope.class);
+        verify(callback).accept(captor.capture());
+        assertEquals(
+                new BotCommandFeedbackService().usageTip(OrzUserCmd.BACKUP, "$"),
+                captor.getValue().message());
+        verify(maintenance, never()).backup(anyLong(), anyInt(), any());
+    }
+
+    @Test
+    void parse_optimizeHelpQuery_emitsUsageWithoutOptimize() {
+        var maintenance = mock(com.jokerhub.paper.plugin.orzmc.features.maintenance.WorldMaintenanceService.class);
+        service.setMaintenanceService(maintenance);
+
+        service.parse("$o ?", true, callback);
+        var captor = org.mockito.ArgumentCaptor.forClass(MessageEnvelope.class);
+        verify(callback).accept(captor.capture());
+        assertEquals(
+                new BotCommandFeedbackService().usageTip(OrzUserCmd.OPTIMIZE_WORLD, "$"),
+                captor.getValue().message());
+        verify(maintenance, never()).optimize(anyLong(), any());
+    }
+
+    @Test
+    void parse_permissionBlank_emitsUsageMatchingTip() {
+        var rankService = mock(RankService.class);
+        service.setRankService(rankService);
+        when(rankService.isLuckPermsAvailable()).thenReturn(true);
+
+        service.parse("$p", true, callback);
+        var captor = org.mockito.ArgumentCaptor.forClass(MessageEnvelope.class);
+        verify(callback).accept(captor.capture());
+        assertEquals(
+                new BotCommandFeedbackService().usageTip(OrzUserCmd.PERMISSION, "$"),
+                captor.getValue().message());
+    }
+
+    @Test
+    void parse_permissionInvalidSubcommand_emitsUsageMatchingTip() {
+        var rankService = mock(RankService.class);
+        service.setRankService(rankService);
+        when(rankService.isLuckPermsAvailable()).thenReturn(true);
+
+        service.parse("$p x", true, callback);
+        var captor = org.mockito.ArgumentCaptor.forClass(MessageEnvelope.class);
+        verify(callback).accept(captor.capture());
+        assertEquals(
+                new BotCommandFeedbackService().usageTip(OrzUserCmd.PERMISSION, "$"),
+                captor.getValue().message());
+    }
+
+    @Test
+    void parse_reviewBlank_emitsUsageMatchingTip() {
+        service.setReviewService(mock(com.jokerhub.paper.plugin.orzmc.features.review.ReviewService.class));
+
+        service.parse("$v", true, callback);
+        var captor = org.mockito.ArgumentCaptor.forClass(MessageEnvelope.class);
+        verify(callback).accept(captor.capture());
+        assertEquals(
+                new BotCommandFeedbackService().usageTip(OrzUserCmd.REVIEW, "$"),
+                captor.getValue().message());
+    }
+
+    @Test
+    void parse_addWhitelistBlank_emitsUsageMatchingTip() {
+        service.parse("$a", true, callback);
+        var captor = org.mockito.ArgumentCaptor.forClass(MessageEnvelope.class);
+        verify(callback).accept(captor.capture());
+        assertEquals(
+                new BotCommandFeedbackService().usageTip(OrzUserCmd.ADD_PLAYER_TO_WHITELIST, "$"),
+                captor.getValue().message());
+    }
+
+    @Test
+    void parse_executeConsoleHelpQuery_emitsUsage() {
+        service.parse("$e ?", true, callback);
+        var captor = org.mockito.ArgumentCaptor.forClass(MessageEnvelope.class);
+        verify(callback).accept(captor.capture());
+        assertEquals(
+                new BotCommandFeedbackService().usageTip(OrzUserCmd.EXECUTE_CONSOLE_COMMAND, "$"),
+                captor.getValue().message());
+    }
+
+    @Test
+    void parse_executeConsoleQuestionMarkCommand_notHelp() {
+        // M1 $e 特判：控制台命令以 ? 开头（如 "$e ?list"）不算帮助请求，正常执行
+        when(serverFacade.executeConsoleCommand("?list"))
+                .thenReturn(new ServerFacade.ConsoleCommandResult("?list", true, java.util.List.of()));
+
+        service.parse("$e ?list", true, callback);
+        verify(serverFacade).executeConsoleCommand("?list");
     }
 }
