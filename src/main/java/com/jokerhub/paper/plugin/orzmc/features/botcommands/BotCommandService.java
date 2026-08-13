@@ -120,7 +120,10 @@ public final class BotCommandService implements BotInboundHandler {
                         emitUsage(callback, tip);
                         return;
                     }
-                    // 无 usageTip 定义，降级为此指令的正常执行
+                    // 防御：无 usageTip 定义时发总帮助，绝不降级为执行命令
+                    // （避免 $b ? / $o ? 等误触发备份/优化等重量级操作）
+                    emitHelp(callback);
+                    return;
                 }
 
                 CmdHandler handler = handlers.get(userCmd);
