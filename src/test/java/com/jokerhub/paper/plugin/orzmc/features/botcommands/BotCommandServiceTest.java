@@ -11,6 +11,7 @@ import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
 import com.jokerhub.paper.plugin.orzmc.features.rank.RankService;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.BotConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.WhitelistConfig;
+import com.jokerhub.paper.plugin.orzmc.infra.logging.LogCaptureService;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import java.util.function.Consumer;
 import java.util.logging.Logger;
@@ -60,6 +61,14 @@ class BotCommandServiceTest {
                 })
                 .when(serverFacade)
                 .runSync(any(Runnable.class));
+
+        doAnswer(invocation -> {
+                    Runnable r = invocation.getArgument(0);
+                    r.run();
+                    return null;
+                })
+                .when(serverFacade)
+                .runLater(any(Runnable.class), anyLong());
 
         service = new BotCommandService(serverFacade, configs);
     }
@@ -158,6 +167,97 @@ class BotCommandServiceTest {
 
         service.parse("$e say hello", true, callback);
         verify(callback, atLeastOnce()).accept(any(MessageEnvelope.class));
+    }
+
+    // ---- $e 日志窗口收集（setLogCaptureService 注入后） ----
+
+    @Test
+    void parse_executeConsole_withLogCapture_emitsAssembledOutput() {
+        LogCaptureService capture = mock(LogCaptureService.class);
+        when(capture.watermark()).thenReturn(42L);
+        when(capture.drainSince(42L)).thenReturn(java.util.List.of("async log line"));
+        service.setLogCaptureService(capture);
+
+        when(serverFacade.executeConsoleCommand("say hello"))
+                .thenReturn(new ServerFacade.ConsoleCommandResult("say hello", true, java.util.List.of("sync line")));
+
+        service.parse("$e say hello", true, callback);
+
+        org.mockito.ArgumentCaptor<MessageEnvelope> captor = org.mockito.ArgumentCaptor.forClass(MessageEnvelope.class);
+        verify(callback).accept(captor.capture());
+        // 同步捕获行在前，日志窗口行在后（合并去重）
+        assertEquals("sync line\nasync log line", captor.getValue().message());
+    }
+
+    @Test
+    void parse_executeConsole_withLogCapture_watermarkTakenBeforeDispatch() {
+        LogCaptureService capture = mock(LogCaptureService.class);
+        when(capture.watermark()).thenReturn(1L);
+        when(capture.drainSince(anyLong())).thenReturn(java.util.List.of());
+        service.setLogCaptureService(capture);
+
+        when(serverFacade.executeConsoleCommand("say hi"))
+                .thenReturn(new ServerFacade.ConsoleCommandResult("say hi", true, java.util.List.of()));
+
+        service.parse("$e say hi", true, callback);
+
+        // 水位必须在执行命令前取，否则命令自身的日志行会漏出窗口
+        org.mockito.InOrder inOrder = org.mockito.Mockito.inOrder(capture, serverFacade);
+        inOrder.verify(capture).watermark();
+        inOrder.verify(serverFacade).executeConsoleCommand("say hi");
+    }
+
+    @Test
+    void parse_executeConsole_withLogCapture_noOutputFallsBackToStatus() {
+        LogCaptureService capture = mock(LogCaptureService.class);
+        when(capture.watermark()).thenReturn(7L);
+        when(capture.drainSince(7L)).thenReturn(java.util.List.of());
+        service.setLogCaptureService(capture);
+
+        when(serverFacade.executeConsoleCommand("say hi"))
+                .thenReturn(new ServerFacade.ConsoleCommandResult("say hi", true, java.util.List.of()));
+
+        service.parse("$e say hi", true, callback);
+
+        org.mockito.ArgumentCaptor<MessageEnvelope> captor = org.mockito.ArgumentCaptor.forClass(MessageEnvelope.class);
+        verify(callback).accept(captor.capture());
+        assertEquals("命令已执行: say hi", captor.getValue().message());
+    }
+
+    @Test
+    void parse_executeConsole_withLogCapture_filtersIssuedServerCommandNoise() {
+        LogCaptureService capture = mock(LogCaptureService.class);
+        when(capture.watermark()).thenReturn(9L);
+        when(capture.drainSince(9L))
+                .thenReturn(java.util.List.of("Rcon issued server command: /say hi", "real async output"));
+        service.setLogCaptureService(capture);
+
+        when(serverFacade.executeConsoleCommand("say hi"))
+                .thenReturn(new ServerFacade.ConsoleCommandResult("say hi", true, java.util.List.of()));
+
+        service.parse("$e say hi", true, callback);
+
+        org.mockito.ArgumentCaptor<MessageEnvelope> captor = org.mockito.ArgumentCaptor.forClass(MessageEnvelope.class);
+        verify(callback).accept(captor.capture());
+        assertEquals("real async output", captor.getValue().message());
+    }
+
+    @Test
+    void parse_executeConsole_withLogCapture_bufferOverflow_prependsWarning() {
+        LogCaptureService capture = mock(LogCaptureService.class);
+        when(capture.watermark()).thenReturn(3L);
+        when(capture.drainSince(3L)).thenReturn(java.util.List.of("survived line"));
+        when(capture.hasGapSince(3L)).thenReturn(true);
+        service.setLogCaptureService(capture);
+
+        when(serverFacade.executeConsoleCommand("say hi"))
+                .thenReturn(new ServerFacade.ConsoleCommandResult("say hi", true, java.util.List.of()));
+
+        service.parse("$e say hi", true, callback);
+
+        org.mockito.ArgumentCaptor<MessageEnvelope> captor = org.mockito.ArgumentCaptor.forClass(MessageEnvelope.class);
+        verify(callback).accept(captor.capture());
+        assertEquals("⚠️ 日志缓冲溢出，输出可能不完整\nsurvived line", captor.getValue().message());
     }
 
     @Test

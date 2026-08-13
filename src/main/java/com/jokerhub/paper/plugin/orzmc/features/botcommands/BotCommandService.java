@@ -11,6 +11,7 @@ import com.jokerhub.paper.plugin.orzmc.features.whitelist.WhitelistService;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.BotConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.MaintenanceConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.WhitelistConfig;
+import com.jokerhub.paper.plugin.orzmc.infra.logging.LogCaptureService;
 import com.jokerhub.paper.plugin.orzmc.infra.paging.Paginator;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import java.util.ArrayList;
@@ -33,6 +34,13 @@ public final class BotCommandService implements BotInboundHandler {
     private BlacklistService blacklistService;
     private com.jokerhub.paper.plugin.orzmc.features.review.ReviewService reviewService;
     private com.jokerhub.paper.plugin.orzmc.features.rank.RankService rankService;
+    private LogCaptureService logCaptureService;
+
+    /** $e 日志收集窗口：40 tick ≈ 2 秒（按 20 TPS 推算，覆盖大多数插件异步命令输出）。 */
+    private static final long CONSOLE_OUTPUT_COLLECT_TICKS = 40L;
+
+    /** $e 输出最大行数，超过截断防刷群。 */
+    private static final int CONSOLE_OUTPUT_MAX_LINES = 30;
 
     @FunctionalInterface
     private interface CmdHandler {
@@ -87,6 +95,11 @@ public final class BotCommandService implements BotInboundHandler {
                 new com.jokerhub.paper.plugin.orzmc.infra.player.OnlineListFormatter();
         formatter.setRankService(rankService);
         this.listFeedbackService = new BotCommandListFeedbackService(server, configs, formatter);
+    }
+
+    /** 注入日志窗口收集服务（$e 命令输出兜底）。未注入时 $e 退化为仅返回执行状态。 */
+    public void setLogCaptureService(LogCaptureService logCaptureService) {
+        this.logCaptureService = logCaptureService;
     }
 
     @Override
@@ -282,8 +295,33 @@ public final class BotCommandService implements BotInboundHandler {
             return;
         }
         server.runSync(() -> {
+            if (logCaptureService == null) {
+                // 未注入日志窗口服务：退化为仅返回执行状态
+                ServerFacade.ConsoleCommandResult result = server.executeConsoleCommand(rawArgs);
+                emit(callback, "command_output", Map.of("message", result.message()), result.message());
+                return;
+            }
+            // 先取水位再执行，命令执行期间的日志行才能落入窗口
+            long watermark = logCaptureService.watermark();
             ServerFacade.ConsoleCommandResult result = server.executeConsoleCommand(rawArgs);
-            emit(callback, "command_output", Map.of("message", result.message()), result.message());
+            // 延迟一个收集窗口后取日志增量：覆盖异步命令输出（LuckPerms 等回调式输出）。
+            // 日志窗口是「尽力而为」兜底：窗口内可能混入服务器其他活动日志（已过滤
+            // 命令回显/玩家聊天），缓冲溢出时输出头部提示可能缺失
+            server.runLater(
+                    () -> {
+                        List<String> windowLogLines = logCaptureService.drainSince(watermark);
+                        String assembled = CommandOutputAssembler.assemble(
+                                result.outputLines(), windowLogLines, CONSOLE_OUTPUT_MAX_LINES);
+                        // 缺口检测独立于输出内容：即使窗口内有效行全被驱逐/过滤也要提示
+                        String message;
+                        if (logCaptureService.hasGapSince(watermark)) {
+                            message = assembled.isEmpty() ? "⚠️ 日志缓冲溢出，输出可能不完整" : "⚠️ 日志缓冲溢出，输出可能不完整\n" + assembled;
+                        } else {
+                            message = assembled.isEmpty() ? result.message() : assembled;
+                        }
+                        emit(callback, "command_output", Map.of("message", message), message);
+                    },
+                    CONSOLE_OUTPUT_COLLECT_TICKS);
         });
     }
 
