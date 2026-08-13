@@ -1,15 +1,18 @@
 package com.jokerhub.paper.plugin.orzmc.features.botcommands;
 
 /**
- * 群指令帮助信息生成（统一模板：标题行 + 用法行 + 示例块）。
+ * 群指令帮助信息生成（统一模板）。
  *
- * <p>所有 {@link OrzUserCmd} 都必须有 usageTip —— {@code $cmd ?} 一律展示用法，
- * 不再有「无帮助降级为执行」的路径（防 $b ? / $o ? 误触发重量级操作）。
+ * <p>总帮助 {@code $h}：🤖 标题 + 发送提示 + emoji 分组标题（👨‍💼/👨🏻‍💻）。
+ *
+ * <p>单命令帮助 {@code $x ?}：🎯 标题 + 📚 用法 + 🚀 示例 三段式。
+ * 所有 {@link OrzUserCmd} 都经由 {@link #usageBlock} 生成同一套结构，
+ * fallback（无参数/参数不完整）与主动查询共用同一内容。
  */
 public final class BotCommandFeedbackService {
 
-    /** 帮助文本中的分隔线（等宽字符，群消息代码块内渲染稳定）。 */
-    private static final String DIVIDER = "━━━━━━━━━━━━━━━━";
+    /** 统一分隔线（21 个等宽字符，群消息代码块内渲染稳定）。 */
+    private static final String DIVIDER = "━━━━━━━━━━━━━━━━━━━";
 
     public String helpInfo(String promptChar) {
         return "🤖 OrzMC 群指令帮助\n"
@@ -18,7 +21,7 @@ public final class BotCommandFeedbackService {
                 + "x ?」可查看单个指令的用法示例\n"
                 + DIVIDER
                 + "\n"
-                + "【管理员指令】\n"
+                + "👨‍💼 管理员指令\n"
                 + OrzUserCmd.ADD_PLAYER_TO_WHITELIST.display(promptChar)
                 + "\n"
                 + OrzUserCmd.REMOVE_PLAYER_FROM_WHITELIST.display(promptChar)
@@ -37,7 +40,7 @@ public final class BotCommandFeedbackService {
                 + "\n"
                 + DIVIDER
                 + "\n"
-                + "【通用指令】\n"
+                + "👨🏻‍💻 通用指令\n"
                 + OrzUserCmd.SHOW_PLAYERS.display(promptChar)
                 + "\n"
                 + OrzUserCmd.SHOW_WHITELIST.display(promptChar)
@@ -53,134 +56,62 @@ public final class BotCommandFeedbackService {
     }
 
     /**
-     * 单命令帮助：标题 + 用法 + 示例。全部 11 个命令均有定义，
-     * default 兜底返回基础用法，保证 {@code $cmd ?} 永不降级执行。
+     * 单命令帮助：🎯 标题 + 📚 用法 + 🚀 示例 三段式统一模板。
+     * 全部 11 个命令均有定义，保证 {@code $cmd ?} 与 fallback 永不降级执行。
      */
     public String usageTip(OrzUserCmd cmd, String promptChar) {
+        String name = promptChar + cmd.cmdName();
         return switch (cmd) {
             case ADD_PLAYER_TO_WHITELIST, REMOVE_PLAYER_FROM_WHITELIST ->
-                "【"
-                        + promptChar
-                        + cmd.cmdName()
-                        + " "
-                        + (cmd == OrzUserCmd.ADD_PLAYER_TO_WHITELIST ? "添加玩家到白名单" : "移除白名单玩家")
-                        + "】\n"
-                        + "用法："
-                        + promptChar
-                        + cmd.cmdName()
-                        + " [玩家] [玩家2] ...（空格或逗号分隔，可批量）\n"
-                        + "示例：\n"
-                        + promptChar
-                        + cmd.cmdName()
-                        + " Steve\n"
-                        + promptChar
-                        + cmd.cmdName()
-                        + " Steve Alex Bob\n"
-                        + promptChar
-                        + cmd.cmdName()
-                        + " Steve,Alex,Bob";
+                usageBlock(
+                        "🎯 " + name + " " + (cmd == OrzUserCmd.ADD_PLAYER_TO_WHITELIST ? "添加玩家到白名单" : "移除白名单玩家"),
+                        name + " [玩家] [玩家2] ...（空格或逗号分隔，可批量）",
+                        name + " Steve\n" + name + " Steve Alex Bob\n" + name + " Steve,Alex,Bob");
             case EXECUTE_CONSOLE_COMMAND ->
-                "【"
-                        + promptChar
-                        + cmd.cmdName()
-                        + " 执行控制台命令】\n"
-                        + "用法："
-                        + promptChar
-                        + cmd.cmdName()
-                        + " [控制台命令]\n"
-                        + "示例：\n"
-                        + promptChar
-                        + cmd.cmdName()
-                        + " plugins\n"
-                        + promptChar
-                        + cmd.cmdName()
-                        + " say 大家好";
+                usageBlock("🎯 " + name + " 执行控制台命令", name + " [控制台命令]", name + " plugins\n" + name + " say 大家好");
             case BLACKLIST ->
-                "【"
-                        + promptChar
-                        + cmd.cmdName()
-                        + " IP黑名单管理】\n"
-                        + "用法：\n"
-                        + promptChar
-                        + cmd.cmdName()
-                        + "                查看黑名单\n"
-                        + promptChar
-                        + cmd.cmdName()
-                        + " [IP]           添加黑名单\n"
-                        + promptChar
-                        + cmd.cmdName()
-                        + " -[IP]          移除黑名单\n"
-                        + "示例：\n"
-                        + promptChar
-                        + cmd.cmdName()
-                        + "\n"
-                        + promptChar
-                        + cmd.cmdName()
-                        + " 1.2.3.4\n"
-                        + promptChar
-                        + cmd.cmdName()
-                        + " -1.2.3.4";
+                usageBlock(
+                        "🎯 " + name + " IP黑名单管理",
+                        name + "                查看黑名单\n"
+                                + name
+                                + " [IP]           添加黑名单\n"
+                                + name
+                                + " -[IP]          移除黑名单",
+                        name + "\n" + name + " 1.2.3.4\n" + name + " -1.2.3.4");
             case REVIEW ->
-                "【"
-                        + promptChar
-                        + cmd.cmdName()
-                        + " 审核申请】\n"
-                        + "用法：\n"
-                        + promptChar
-                        + cmd.cmdName()
-                        + " l              查看待审列表\n"
-                        + promptChar
-                        + cmd.cmdName()
-                        + " y [玩家]       通过申请\n"
-                        + promptChar
-                        + cmd.cmdName()
-                        + " n [玩家]       拒绝申请\n"
-                        + "示例：\n"
-                        + promptChar
-                        + cmd.cmdName()
-                        + " l\n"
-                        + promptChar
-                        + cmd.cmdName()
-                        + " y Steve";
+                usageBlock(
+                        "🎯 " + name + " 审核申请",
+                        name + " l              查看待审列表\n" + name + " y [玩家]       通过申请\n" + name + " n [玩家]       拒绝申请",
+                        name + " l\n" + name + " y Steve");
             case PERMISSION ->
-                "【"
-                        + promptChar
-                        + cmd.cmdName()
-                        + " 权限管理】\n"
-                        + "用法：\n"
-                        + promptChar
-                        + cmd.cmdName()
-                        + " u [玩家]       权限升级\n"
-                        + promptChar
-                        + cmd.cmdName()
-                        + " d [玩家]       权限降级\n"
-                        + "示例：\n"
-                        + promptChar
-                        + cmd.cmdName()
-                        + " u Steve\n"
-                        + promptChar
-                        + cmd.cmdName()
-                        + " d Steve";
-            case SHOW_PLAYERS ->
-                "【" + promptChar + cmd.cmdName() + " 查看在线玩家】\n" + "用法：" + promptChar + cmd.cmdName() + "（无参数，直接执行）";
+                usageBlock(
+                        "🎯 " + name + " 权限管理",
+                        name + " u [玩家]       权限升级\n" + name + " d [玩家]       权限降级",
+                        name + " u Steve\n" + name + " d Steve");
+            case SHOW_PLAYERS -> usageBlock("🎯 " + name + " 查看在线玩家", name + "（无参数，直接执行）", name);
             case SHOW_WHITELIST ->
-                "【"
-                        + promptChar
-                        + cmd.cmdName()
-                        + " 查看白名单玩家】\n"
-                        + "用法："
-                        + promptChar
-                        + cmd.cmdName()
-                        + " [页码]（可选，如 "
-                        + promptChar
-                        + cmd.cmdName()
-                        + " 2）";
-            case SHOW_HELP ->
-                "【" + promptChar + cmd.cmdName() + " 查看帮助】\n" + "用法：" + promptChar + cmd.cmdName() + "（无参数，直接显示本帮助）";
-            case BACKUP ->
-                "【" + promptChar + cmd.cmdName() + " 地图备份】\n" + "用法：" + promptChar + cmd.cmdName() + "（无参数，直接执行备份）";
-            case OPTIMIZE_WORLD ->
-                "【" + promptChar + cmd.cmdName() + " 优化地图大小】\n" + "用法：" + promptChar + cmd.cmdName() + "（无参数，直接执行优化）";
+                usageBlock("🎯 " + name + " 查看白名单玩家", name + " [页码]（可选，如 " + name + " 2）", name + "\n" + name + " 2");
+            case SHOW_HELP -> usageBlock("🎯 " + name + " 查看帮助", name + "（无参数，直接显示本帮助）", name);
+            case BACKUP -> usageBlock("🎯 " + name + " 地图备份", name + "（无参数，直接执行备份）", name);
+            case OPTIMIZE_WORLD -> usageBlock("🎯 " + name + " 优化地图大小", name + "（无参数，直接执行优化）", name);
         };
+    }
+
+    /**
+     * 单命令帮助统一三段式结构：标题 → 📚 用法 → 🚀 示例。
+     * 新增命令只需在此提供三段内容，展示逻辑保持一致。
+     */
+    private String usageBlock(String title, String usageLines, String exampleLines) {
+        return title
+                + "\n"
+                + DIVIDER
+                + "\n"
+                + "📚 用法：\n"
+                + usageLines
+                + "\n"
+                + DIVIDER
+                + "\n"
+                + "🚀 示例：\n"
+                + exampleLines;
     }
 }

@@ -39,11 +39,15 @@ class BotCommandFeedbackServiceTest {
     }
 
     @Test
-    void helpInfo_sectionsUseConsistentColon() {
+    void helpInfo_usesEmojiSectionTitles_withoutBrackets() {
         String help = feedback.helpInfo("$");
-        // 两个分节标题的冒号必须一致（全角），避免半角/全角混用
-        assertTrue(help.contains("【管理员指令】"));
-        assertTrue(help.contains("【通用指令】"));
+        // emoji 分组标题，不用中文方括号强调（字面 emoji 与源码同码点，含 ZWJ 序列）
+        assertTrue(help.contains("👨‍💼 管理员指令"));
+        assertTrue(help.contains("👨🏻‍💻 通用指令"));
+        assertFalse(help.contains("【管理员"));
+        assertFalse(help.contains("【通用"));
+        // 不带冒号尾缀
+        assertFalse(help.contains("管理员指令："));
         assertFalse(help.contains("通用指令:"));
     }
 
@@ -74,26 +78,27 @@ class BotCommandFeedbackServiceTest {
     }
 
     @Test
-    void usageTip_forEveryCommand_returnsNonEmptyUsage() {
-        // 所有命令都必须有用法提示（$cmd ? 一律展示帮助，绝不降级执行）
+    void usageTip_forEveryCommand_usesUnifiedTemplate() {
+        // 所有命令统一三段式模板：🎯 标题 + 📚 用法 + 🚀 示例，且不含中文方括号
         for (OrzUserCmd cmd : OrzUserCmd.values()) {
             String tip = feedback.usageTip(cmd, "$");
             assertNotNull(tip, cmd + " 的 usageTip 不应为 null");
             assertFalse(tip.isBlank(), cmd + " 的 usageTip 不应为空");
-            assertTrue(tip.contains("用法："), cmd + " 的 usageTip 应包含「用法：」");
-            assertTrue(tip.contains("【$" + cmd.cmdName()), cmd + " 的 usageTip 应包含标题行");
+            assertTrue(tip.contains("🎯 $" + cmd.cmdName()), cmd + " 应包含 🎯 标题");
+            assertTrue(tip.contains("📚 用法："), cmd + " 应包含用法节");
+            assertTrue(tip.contains("🚀 示例："), cmd + " 应包含示例节");
+            assertFalse(tip.contains("【"), cmd + " 不应使用中文方括号");
+            assertFalse(tip.contains("】"), cmd + " 不应使用中文方括号");
         }
     }
 
     @Test
     void usageTip_examplesSectionPresent() {
-        // 带参数的命令应包含示例块；无参数命令至少说明无参数
         String whitelistTip = feedback.usageTip(OrzUserCmd.ADD_PLAYER_TO_WHITELIST, "$");
-        assertTrue(whitelistTip.contains("示例："));
         assertTrue(whitelistTip.contains("$a Steve"));
+        assertTrue(whitelistTip.contains("$a Steve,Alex,Bob"));
 
         String blacklistTip = feedback.usageTip(OrzUserCmd.BLACKLIST, "$");
-        assertTrue(blacklistTip.contains("示例："));
         assertTrue(blacklistTip.contains("$d -1.2.3.4"));
 
         String backupTip = feedback.usageTip(OrzUserCmd.BACKUP, "$");
