@@ -33,8 +33,8 @@ class CommandOutputAssemblerTest {
     }
 
     @Test
-    void assemble_keepsCommandOutputStartingWithBracketAngle() {
-        // 命令输出可能以 <xxx> 开头（如 LP 的占位提示），但不能是 "<名字> 聊天" 结构
+    void assemble_keepsCommandOutputWithInlineBracketAngle() {
+        // 行内含 <xxx>（如 LP 占位提示）但不是 "<名字> 聊天" 结构，不应误杀
         String result = CommandOutputAssembler.assemble(List.of("> /luckperms user <user>"), List.of(), 30);
         assertEquals("> /luckperms user <user>", result);
     }

@@ -143,6 +143,20 @@ class LogCaptureServiceTest {
     }
 
     @Test
+    void hasGapSince_exactBoundaryNoEviction_returnsFalse() {
+        // 边界：缓冲恰好从水位之后的首行开始（oldest == fromSeq + 1），无丢失
+        LogCaptureService service = new LogCaptureService(3);
+        service.capture("a"); // seq=1
+        service.capture("b"); // seq=2
+
+        long watermark = service.watermark(); // 2
+        service.capture("c"); // seq=3 —— 驱逐尚未发生
+
+        assertFalse(service.hasGapSince(watermark));
+        assertEquals(List.of("c"), service.drainSince(watermark));
+    }
+
+    @Test
     void constructor_negativeCapacity_throws() {
         assertThrows(IllegalArgumentException.class, () -> new LogCaptureService(0));
         assertThrows(IllegalArgumentException.class, () -> new LogCaptureService(-1));

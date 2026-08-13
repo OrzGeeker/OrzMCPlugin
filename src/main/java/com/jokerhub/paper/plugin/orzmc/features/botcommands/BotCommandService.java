@@ -312,10 +312,13 @@ public final class BotCommandService implements BotInboundHandler {
                         List<String> windowLogLines = logCaptureService.drainSince(watermark);
                         String assembled = CommandOutputAssembler.assemble(
                                 result.outputLines(), windowLogLines, CONSOLE_OUTPUT_MAX_LINES);
-                        if (!assembled.isEmpty() && logCaptureService.hasGapSince(watermark)) {
-                            assembled = "⚠️ 日志缓冲溢出，输出可能不完整\n" + assembled;
+                        // 缺口检测独立于输出内容：即使窗口内有效行全被驱逐/过滤也要提示
+                        String message;
+                        if (logCaptureService.hasGapSince(watermark)) {
+                            message = assembled.isEmpty() ? "⚠️ 日志缓冲溢出，输出可能不完整" : "⚠️ 日志缓冲溢出，输出可能不完整\n" + assembled;
+                        } else {
+                            message = assembled.isEmpty() ? result.message() : assembled;
                         }
-                        String message = assembled.isEmpty() ? result.message() : assembled;
                         emit(callback, "command_output", Map.of("message", message), message);
                     },
                     CONSOLE_OUTPUT_COLLECT_TICKS);
