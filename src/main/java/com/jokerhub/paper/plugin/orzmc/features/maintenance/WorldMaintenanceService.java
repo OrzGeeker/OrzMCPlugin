@@ -56,6 +56,37 @@ public class WorldMaintenanceService {
         return MaintenanceStage.Running;
     }
 
+    /**
+     * 将毫秒耗时格式化为中文可读形式（分级取整）：
+     * <ul>
+     *   <li>&lt; 1 秒 → {@code 854毫秒}</li>
+     *   <li>&lt; 1 分钟 → {@code 35秒}</li>
+     *   <li>&lt; 1 小时 → {@code 2分35秒}</li>
+     *   <li>≥ 1 小时 → {@code 1小时2分3秒}（整小时省略秒）</li>
+     * </ul>
+     * 秒数按四舍五入取整（154901ms → 155s → {@code 2分35秒}）。
+     */
+    public static String formatDuration(long ms) {
+        if (ms < 1000) {
+            return ms + "毫秒";
+        }
+        long totalSec = Math.round(ms / 1000.0);
+        long hours = totalSec / 3600;
+        long minutes = (totalSec % 3600) / 60;
+        long seconds = totalSec % 60;
+        StringBuilder sb = new StringBuilder();
+        if (hours > 0) {
+            sb.append(hours).append("小时");
+        }
+        if (minutes > 0) {
+            sb.append(minutes).append("分");
+        }
+        if (seconds > 0 || (hours == 0 && minutes == 0)) {
+            sb.append(seconds).append("秒");
+        }
+        return sb.toString();
+    }
+
     private static String stageDisplayCN(ProgressStage s) {
         if (s == null) return "进行中";
         String n = s.name();
@@ -118,7 +149,14 @@ public class WorldMaintenanceService {
                 long durationMs = Math.max(0, System.currentTimeMillis() - startMs);
                 String doneKey = "备份".equals(label) ? "maintenance_backup_done" : "maintenance_optimize_done";
                 MessageEnvelope done = configs.renderEvent(
-                        doneKey, java.util.Map.of("label", label, "duration_ms", String.valueOf(durationMs)));
+                        doneKey,
+                        java.util.Map.of(
+                                "label",
+                                label,
+                                "duration_ms",
+                                String.valueOf(durationMs),
+                                "duration_human",
+                                formatDuration(durationMs)));
                 callback.accept(done.message());
             }
             return Unit.INSTANCE;
@@ -131,7 +169,14 @@ public class WorldMaintenanceService {
             long durationMs = Math.max(0, System.currentTimeMillis() - startMs);
             String errKey = "备份".equals(label) ? "maintenance_backup_error" : "maintenance_optimize_error";
             MessageEnvelope err = configs.renderEvent(
-                    errKey, java.util.Map.of("label", label, "duration_ms", String.valueOf(durationMs)));
+                    errKey,
+                    java.util.Map.of(
+                            "label",
+                            label,
+                            "duration_ms",
+                            String.valueOf(durationMs),
+                            "duration_human",
+                            formatDuration(durationMs)));
             callback.accept(err.message());
             notifier.event(errKey, err);
             callback.accept("地图" + label + "失败");
