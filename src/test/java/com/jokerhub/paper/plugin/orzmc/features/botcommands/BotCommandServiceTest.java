@@ -243,6 +243,24 @@ class BotCommandServiceTest {
     }
 
     @Test
+    void parse_executeConsole_withLogCapture_bufferOverflow_prependsWarning() {
+        LogCaptureService capture = mock(LogCaptureService.class);
+        when(capture.watermark()).thenReturn(3L);
+        when(capture.drainSince(3L)).thenReturn(java.util.List.of("survived line"));
+        when(capture.hasGapSince(3L)).thenReturn(true);
+        service.setLogCaptureService(capture);
+
+        when(serverFacade.executeConsoleCommand("say hi"))
+                .thenReturn(new ServerFacade.ConsoleCommandResult("say hi", true, java.util.List.of()));
+
+        service.parse("$e say hi", true, callback);
+
+        org.mockito.ArgumentCaptor<MessageEnvelope> captor = org.mockito.ArgumentCaptor.forClass(MessageEnvelope.class);
+        verify(callback).accept(captor.capture());
+        assertEquals("⚠️ 日志缓冲溢出，输出可能不完整\nsurvived line", captor.getValue().message());
+    }
+
+    @Test
     void parse_botConfigException_usesDefaults() {
         when(configs.bot()).thenThrow(new RuntimeException("config error"));
 

@@ -48,14 +48,17 @@ public final class LogCaptureService {
             if (line.isBlank()) {
                 continue;
             }
-            String clean = ANSI_ESCAPE.matcher(line).replaceAll("");
-            if (clean.isBlank()) {
-                continue;
+            // 快速路径：无 ANSI 码与 CR 时跳过正则/替换（服务器每条日志都会经过这里）
+            if (line.indexOf('\u001B') >= 0) {
+                line = ANSI_ESCAPE.matcher(line).replaceAll("");
+                if (line.isBlank()) {
+                    continue;
+                }
             }
             if (buffer.size() == capacity) {
                 buffer.removeFirst();
             }
-            buffer.addLast(new CapturedLine(++sequence, clean));
+            buffer.addLast(new CapturedLine(++sequence, line));
         }
     }
 
@@ -69,7 +72,7 @@ public final class LogCaptureService {
     }
 
     /**
-     * 取 {@code fromSeq} 之后新增的日志行文本（保序）。
+     * 取 {@code fromSeq} 之后新增的日志行文本（保序、幂等：不消费缓冲）。
      *
      * @param fromSeq 窗口起点序号（执行命令前取到的 {@link #watermark()}）
      * @return 新增行文本列表；无新增返回空列表
@@ -82,6 +85,21 @@ public final class LogCaptureService {
             }
         }
         return lines;
+    }
+
+    /**
+     * 窗口是否发生容量驱逐（水位到缓冲起点之间存在缺口）。
+     *
+     * <p>{@code $e} 窗口内服务器日志流量大时（如备份任务刷日志），缓冲满会把
+     * 水位之后的行驱逐，{@link #drainSince(long)} 会静默丢行。调用方检测到缺口
+     * 应在输出头部提示「可能不完整」。
+     *
+     * @param fromSeq 执行命令前取到的水位
+     * @return true 表示 {@code fromSeq} 之后有行已被驱逐
+     */
+    public synchronized boolean hasGapSince(long fromSeq) {
+        CapturedLine oldest = buffer.peekFirst();
+        return oldest != null && oldest.seq() > fromSeq + 1;
     }
 
     /** 缓冲行数（测试与诊断用）。 */

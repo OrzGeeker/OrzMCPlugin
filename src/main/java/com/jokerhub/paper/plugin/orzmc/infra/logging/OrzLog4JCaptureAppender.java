@@ -17,7 +17,8 @@ public final class OrzLog4JCaptureAppender extends AbstractAppender {
     private final LogCaptureService captureService;
 
     public OrzLog4JCaptureAppender(LogCaptureService captureService) {
-        super("OrzMC-LogCapture", null, null, false, Property.EMPTY_ARRAY);
+        // ignoreExceptions=true：append 异常不回流日志系统（避免递归/污染），捕获失败仅丢行
+        super("OrzMC-LogCapture", null, null, true, Property.EMPTY_ARRAY);
         this.captureService = captureService;
     }
 

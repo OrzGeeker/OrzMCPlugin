@@ -104,6 +104,45 @@ class LogCaptureServiceTest {
     }
 
     @Test
+    void hasGapSince_noEviction_returnsFalse() {
+        LogCaptureService service = new LogCaptureService(10);
+        service.capture("a");
+        service.capture("b");
+
+        long watermark = service.watermark();
+        service.capture("c");
+
+        assertFalse(service.hasGapSince(watermark));
+    }
+
+    @Test
+    void hasGapSince_evictionBetweenWatermarkAndBufferStart_returnsTrue() {
+        LogCaptureService service = new LogCaptureService(3);
+        service.capture("a"); // seq=1
+        service.capture("b"); // seq=2
+
+        long watermark = service.watermark(); // 2
+        service.capture("c"); // 3
+        service.capture("d"); // 4（驱逐 a）
+        service.capture("e"); // 5（驱逐 b）
+        service.capture("f"); // 6（驱逐 c —— 水位 2 之后的行开始丢失）
+
+        // 水位 2 之后的行 c(3) 已被驱逐，缓冲起点 seq=4
+        assertTrue(service.hasGapSince(watermark));
+        assertEquals(List.of("d", "e", "f"), service.drainSince(watermark));
+    }
+
+    @Test
+    void hasGapSince_noNewLines_returnsFalse() {
+        LogCaptureService service = new LogCaptureService(3);
+        service.capture("a");
+        service.capture("b");
+
+        long watermark = service.watermark();
+        assertFalse(service.hasGapSince(watermark));
+    }
+
+    @Test
     void constructor_negativeCapacity_throws() {
         assertThrows(IllegalArgumentException.class, () -> new LogCaptureService(0));
         assertThrows(IllegalArgumentException.class, () -> new LogCaptureService(-1));

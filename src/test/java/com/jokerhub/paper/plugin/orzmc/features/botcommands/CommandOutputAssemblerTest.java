@@ -27,6 +27,25 @@ class CommandOutputAssemblerTest {
     }
 
     @Test
+    void assemble_filtersPlayerChatLines() {
+        String result = CommandOutputAssembler.assemble(List.of(), List.of("<Steve> 大家好", "real output"), 30);
+        assertEquals("real output", result);
+    }
+
+    @Test
+    void assemble_keepsCommandOutputStartingWithBracketAngle() {
+        // 命令输出可能以 <xxx> 开头（如 LP 的占位提示），但不能是 "<名字> 聊天" 结构
+        String result = CommandOutputAssembler.assemble(List.of("> /luckperms user <user>"), List.of(), 30);
+        assertEquals("> /luckperms user <user>", result);
+    }
+
+    @Test
+    void assemble_nonPositiveMaxLines_clampedToOne() {
+        String result = CommandOutputAssembler.assemble(List.of("a", "b"), List.of(), 0);
+        assertEquals("a\n…（输出过长，已截断，共 2 行）", result);
+    }
+
+    @Test
     void assemble_filtersBlankLines() {
         String result = CommandOutputAssembler.assemble(List.of("a", " ", ""), List.of(), 30);
         assertEquals("a", result);

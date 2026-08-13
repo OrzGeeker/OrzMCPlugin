@@ -25,6 +25,9 @@ public final class CommandOutputAssembler {
      * @return 组装后的多行文本；全部被过滤时返回空字符串
      */
     public static String assemble(List<String> syncLines, List<String> windowLogLines, int maxLines) {
+        if (maxLines <= 0) {
+            maxLines = 1;
+        }
         List<String> merged = new ArrayList<>();
         Set<String> seen = new LinkedHashSet<>();
         if (syncLines != null) {
@@ -58,8 +61,20 @@ public final class CommandOutputAssembler {
         }
     }
 
-    /** 噪音行判定：命令回显（{@code <sender> issued server command: /xxx}）。 */
+    /**
+     * 噪音行判定：
+     * <ul>
+     *   <li>命令回显（{@code <sender> issued server command: /xxx}）</li>
+     *   <li>玩家聊天行（{@code <Steve> 大家好}）——$e 日志窗口是全局兜底，活跃服务器
+     *       上窗口内混入玩家聊天属已知限制，尽力过滤</li>
+     * </ul>
+     * 定位为「尽力而为」：无法做到命令级隔离（异步输出无法区分来源），
+     * 不能保证窗口内 100% 无无关日志。
+     */
     static boolean isNoise(String line) {
-        return line.contains("issued server command");
+        if (line.contains("issued server command")) {
+            return true;
+        }
+        return line.startsWith("<") && line.contains("> ");
     }
 }

@@ -36,7 +36,7 @@ public final class BotCommandService implements BotInboundHandler {
     private com.jokerhub.paper.plugin.orzmc.features.rank.RankService rankService;
     private LogCaptureService logCaptureService;
 
-    /** $e 日志收集窗口：40 tick = 2 秒（覆盖大多数插件异步命令输出）。 */
+    /** $e 日志收集窗口：40 tick ≈ 2 秒（按 20 TPS 推算，覆盖大多数插件异步命令输出）。 */
     private static final long CONSOLE_OUTPUT_COLLECT_TICKS = 40L;
 
     /** $e 输出最大行数，超过截断防刷群。 */
@@ -304,12 +304,17 @@ public final class BotCommandService implements BotInboundHandler {
             // 先取水位再执行，命令执行期间的日志行才能落入窗口
             long watermark = logCaptureService.watermark();
             ServerFacade.ConsoleCommandResult result = server.executeConsoleCommand(rawArgs);
-            // 延迟一个收集窗口后取日志增量：覆盖异步命令输出（LuckPerms 等回调式输出）
+            // 延迟一个收集窗口后取日志增量：覆盖异步命令输出（LuckPerms 等回调式输出）。
+            // 日志窗口是「尽力而为」兜底：窗口内可能混入服务器其他活动日志（已过滤
+            // 命令回显/玩家聊天），缓冲溢出时输出头部提示可能缺失
             server.runLater(
                     () -> {
                         List<String> windowLogLines = logCaptureService.drainSince(watermark);
                         String assembled = CommandOutputAssembler.assemble(
                                 result.outputLines(), windowLogLines, CONSOLE_OUTPUT_MAX_LINES);
+                        if (!assembled.isEmpty() && logCaptureService.hasGapSince(watermark)) {
+                            assembled = "⚠️ 日志缓冲溢出，输出可能不完整\n" + assembled;
+                        }
                         String message = assembled.isEmpty() ? result.message() : assembled;
                         emit(callback, "command_output", Map.of("message", message), message);
                     },
