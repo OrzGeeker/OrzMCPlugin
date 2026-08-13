@@ -333,22 +333,18 @@ public final class BotCommandService implements BotInboundHandler {
             return;
         }
         if (rawArgs.isBlank()) {
-            emit(
+            emitUsage(
                     callback,
-                    "command_review_error",
-                    Map.of("message", "用法: $p u <玩家> 升级 / $p d <玩家> 降级"),
-                    "用法: $p u <玩家> 升级 / $p d <玩家> 降级");
+                    feedbackService.usageTip(OrzUserCmd.PERMISSION, botConfig().cmdPromptChar()));
             return;
         }
         String[] parts = rawArgs.split("\\s+", 2);
         String sub = parts[0].toLowerCase();
         String playerName = parts.length > 1 ? parts[1].trim() : "";
         if (playerName.isBlank()) {
-            emit(
+            emitUsage(
                     callback,
-                    "command_review_error",
-                    Map.of("message", "用法: $p " + sub + " <玩家>"),
-                    "用法: $p " + sub + " <玩家>");
+                    feedbackService.usageTip(OrzUserCmd.PERMISSION, botConfig().cmdPromptChar()));
             return;
         }
         boolean upgrade;
@@ -356,11 +352,10 @@ public final class BotCommandService implements BotInboundHandler {
             case "u", "up" -> upgrade = true;
             case "d", "down" -> upgrade = false;
             default -> {
-                emit(
+                emitUsage(
                         callback,
-                        "command_review_error",
-                        Map.of("message", "用法: $p u <玩家> 升级 / $p d <玩家> 降级"),
-                        "用法: $p u <玩家> 升级 / $p d <玩家> 降级");
+                        feedbackService.usageTip(
+                                OrzUserCmd.PERMISSION, botConfig().cmdPromptChar()));
                 return;
             }
         }
@@ -521,8 +516,10 @@ public final class BotCommandService implements BotInboundHandler {
     }
 
     private void emitReviewUsage(Consumer<MessageEnvelope> callback) {
-        String tip = "用法：\n" + "$v l — 待审列表\n" + "$v l 2 — 第 2 页\n" + "$v y <玩家> — 通过\n" + "$v n <玩家> — 拒绝";
-        emit(callback, "command_review_error", Map.of("message", tip), tip);
+        // 与 $v ? 同一套内容（统一 usageTip 模板），保证 fallback 与主动查询一致
+        emitUsage(
+                callback,
+                feedbackService.usageTip(OrzUserCmd.REVIEW, botConfig().cmdPromptChar()));
     }
 
     // ---- Helper ----
