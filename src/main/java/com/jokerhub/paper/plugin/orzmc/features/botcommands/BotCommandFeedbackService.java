@@ -100,18 +100,16 @@ public final class BotCommandFeedbackService {
                         + promptChar
                         + cmd.cmdName()
                         + " IP黑名单管理】\n"
-                        + "用法："
+                        + "用法：\n"
                         + promptChar
                         + cmd.cmdName()
-                        + "         查看黑名单\n"
-                        + "      "
+                        + "                查看黑名单\n"
                         + promptChar
                         + cmd.cmdName()
-                        + " [IP]    添加黑名单\n"
-                        + "      "
+                        + " [IP]           添加黑名单\n"
                         + promptChar
                         + cmd.cmdName()
-                        + " -[IP]   移除黑名单\n"
+                        + " -[IP]          移除黑名单\n"
                         + "示例：\n"
                         + promptChar
                         + cmd.cmdName()
@@ -127,18 +125,16 @@ public final class BotCommandFeedbackService {
                         + promptChar
                         + cmd.cmdName()
                         + " 审核申请】\n"
-                        + "用法："
+                        + "用法：\n"
                         + promptChar
                         + cmd.cmdName()
-                        + " l         查看待审列表\n"
-                        + "      "
+                        + " l              查看待审列表\n"
                         + promptChar
                         + cmd.cmdName()
-                        + " y [玩家]  通过申请\n"
-                        + "      "
+                        + " y [玩家]       通过申请\n"
                         + promptChar
                         + cmd.cmdName()
-                        + " n [玩家]  拒绝申请\n"
+                        + " n [玩家]       拒绝申请\n"
                         + "示例：\n"
                         + promptChar
                         + cmd.cmdName()
@@ -151,14 +147,13 @@ public final class BotCommandFeedbackService {
                         + promptChar
                         + cmd.cmdName()
                         + " 权限管理】\n"
-                        + "用法："
+                        + "用法：\n"
                         + promptChar
                         + cmd.cmdName()
-                        + " u [玩家]  权限升级\n"
-                        + "      "
+                        + " u [玩家]       权限升级\n"
                         + promptChar
                         + cmd.cmdName()
-                        + " d [玩家]  权限降级\n"
+                        + " d [玩家]       权限降级\n"
                         + "示例：\n"
                         + promptChar
                         + cmd.cmdName()
