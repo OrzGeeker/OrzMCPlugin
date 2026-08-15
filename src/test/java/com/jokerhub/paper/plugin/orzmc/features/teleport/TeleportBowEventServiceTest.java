@@ -2,7 +2,6 @@ package com.jokerhub.paper.plugin.orzmc.features.teleport;
 
 import static org.mockito.Mockito.*;
 
-import com.jokerhub.paper.plugin.orzmc.infra.core.OrzConstants;
 import com.jokerhub.paper.plugin.orzmc.testutil.ServiceTestBase;
 import org.bukkit.entity.Arrow;
 import org.bukkit.entity.LivingEntity;
@@ -91,7 +90,7 @@ class TeleportBowEventServiceTest extends ServiceTestBase {
 
     @Test
     void handleShootBow_player_callsMarkArrow() {
-        Player player = playerWithPermission();
+        Player player = mock(Player.class);
         when(shootEvent.getEntity()).thenReturn(player);
 
         service.handleShootBow(shootEvent);
@@ -101,7 +100,7 @@ class TeleportBowEventServiceTest extends ServiceTestBase {
 
     @Test
     void handleShootBow_markedArrow_startsFlightTracking() {
-        Player player = playerWithPermission();
+        Player player = mock(Player.class);
         Arrow arrow = mock(Arrow.class);
         when(shootEvent.getEntity()).thenReturn(player);
         when(bowService.markArrow(shootEvent)).thenReturn(arrow);
@@ -113,7 +112,7 @@ class TeleportBowEventServiceTest extends ServiceTestBase {
 
     @Test
     void handleShootBow_nullMark_doesNotTrack() {
-        Player player = playerWithPermission();
+        Player player = mock(Player.class);
         when(shootEvent.getEntity()).thenReturn(player);
         when(bowService.markArrow(shootEvent)).thenReturn(null);
 
@@ -124,7 +123,7 @@ class TeleportBowEventServiceTest extends ServiceTestBase {
 
     @Test
     void handleShootBow_cancelled_doesNotMark() {
-        Player player = playerWithPermission();
+        Player player = mock(Player.class);
         when(shootEvent.getEntity()).thenReturn(player);
         when(shootEvent.isCancelled()).thenReturn(true);
 
@@ -132,36 +131,5 @@ class TeleportBowEventServiceTest extends ServiceTestBase {
 
         verify(bowService, never()).markArrow(shootEvent);
         verify(bowService, never()).startFlightTracking(any(), any());
-    }
-
-    @Test
-    void handleShootBow_noPermission_doesNotMark_andNotifies() {
-        Player player = mock(Player.class);
-        when(player.hasPermission(OrzConstants.PERM_TPBOW_USE)).thenReturn(false);
-        when(shootEvent.getEntity()).thenReturn(player);
-
-        service.handleShootBow(shootEvent);
-
-        verify(bowService, never()).markArrow(shootEvent);
-        verify(bowService, never()).startFlightTracking(any(), any());
-        verify(bowService).sendDisabledMessage(player);
-    }
-
-    @Test
-    void handleShootBow_hasPermission_marksArrow() {
-        Player player = playerWithPermission();
-        when(shootEvent.getEntity()).thenReturn(player);
-
-        service.handleShootBow(shootEvent);
-
-        verify(bowService).markArrow(shootEvent);
-        verify(bowService, never()).sendDisabledMessage(player);
-    }
-
-    /** 默认拥有 orzmc.tpbow.use 权限的玩家 mock（避免每个测试重复 stub） */
-    private Player playerWithPermission() {
-        Player player = mock(Player.class);
-        when(player.hasPermission(OrzConstants.PERM_TPBOW_USE)).thenReturn(true);
-        return player;
     }
 }
