@@ -1,5 +1,6 @@
 package com.jokerhub.paper.plugin.orzmc.features.teleport;
 
+import com.jokerhub.paper.plugin.orzmc.infra.core.OrzConstants;
 import org.bukkit.entity.Arrow;
 import org.bukkit.entity.Player;
 import org.bukkit.event.entity.EntityShootBowEvent;
@@ -24,6 +25,10 @@ public final class TeleportBowEventService {
     public void handleShootBow(EntityShootBowEvent event) {
         if (event.getEntity() instanceof Player player) {
             if (event.isCancelled()) {
+                return;
+            }
+            if (!player.hasPermission(OrzConstants.PERM_TPBOW_USE)) {
+                service.sendDisabledMessage(player);
                 return;
             }
             Arrow marked = service.markArrow(event);

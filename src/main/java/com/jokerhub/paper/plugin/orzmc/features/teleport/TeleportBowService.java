@@ -52,6 +52,10 @@ public final class TeleportBowService {
         player.sendMessage(styles.success("你获得了" + name));
     }
 
+    public void sendDisabledMessage(Player player) {
+        player.sendMessage(texts.logText("传送弓已被禁用，请与管理员联系").color(styles.colorError()));
+    }
+
     public boolean isTPBowArrow(org.bukkit.entity.Projectile proj) {
         if (proj instanceof org.bukkit.entity.Arrow arrow) {
             return arrow.getPersistentDataContainer().has(keyTpBow, org.bukkit.persistence.PersistentDataType.BYTE);
