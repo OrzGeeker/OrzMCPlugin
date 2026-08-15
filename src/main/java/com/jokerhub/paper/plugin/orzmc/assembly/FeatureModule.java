@@ -226,8 +226,10 @@ public final class FeatureModule implements ServiceModule {
             new OrzTPEvent(
                     plugin,
                     platform.serverFacade(),
+                    // entityTeleportEnabled=true 表示「允许所有实体传送」，
+                    // service 的 cancelEnabled 需取反（true = 仅白名单内实体可传送）
                     new EntityTeleportPolicyService(
-                            mainConfig.entityTeleportEnabled(), mainConfig.entityTeleportWhitelist())),
+                            !mainConfig.entityTeleportEnabled(), mainConfig.entityTeleportWhitelist())),
             new OrzTNTEvent(plugin, tntEventService),
             new OrzMenuEvent(plugin, menuEventService),
             new OrzServerEvent(plugin, serverEventService),

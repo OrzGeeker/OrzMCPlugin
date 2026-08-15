@@ -242,8 +242,8 @@ PUBLIC；异常告警（含 GeoIP 上游异常私信）与维护失败事件走 
 - 传送成功播放猫咕噜声
 
 ### 6.3 实体传送策略
-- 默认**不禁止**实体传送（`entity_teleport_enabled: false`），所有实体可正常传送，兼容原版行为（村民/动物过下界传送门等）
-- 开启后（`entity_teleport_enabled: true`）仅白名单内实体可传送，白名单项支持：
+- 默认**允许**实体传送（`entity_teleport_enabled: true`），所有实体可正常传送，兼容原版行为（村民/动物过下界传送门等）
+- 设为 `entity_teleport_enabled: false` 后仅白名单内实体可传送，白名单项支持：
   - 特殊键：`TAMEABLE`（已驯服动物）、`ENDERMAN`、`ARMOR_STAND`、`SHULKER`
   - 任意大写 `EntityType` 名（如 `VILLAGER`）
 - 默认白名单：`TAMEABLE` / `ENDERMAN` / `ARMOR_STAND` / `SHULKER`
