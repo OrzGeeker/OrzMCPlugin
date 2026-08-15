@@ -218,20 +218,17 @@ class TeleportBowServiceTest extends ServiceTestBase {
         ItemStack bow = mock(ItemStack.class);
         ItemMeta bowMeta = mock(ItemMeta.class);
         PersistentDataContainer pdc = mock(PersistentDataContainer.class);
-        Player player = mock(Player.class);
 
         when(event.getBow()).thenReturn(bow);
         when(bow.getItemMeta()).thenReturn(bowMeta);
         when(bowMeta.getPersistentDataContainer()).thenReturn(pdc);
         when(pdc.has(tpBowKey, PersistentDataType.BYTE)).thenReturn(false);
-        when(event.getEntity()).thenReturn(player);
-        when(player.hasPermission(OrzConstants.PERM_TPBOW_USE)).thenReturn(false);
 
         Arrow marked = service.markArrow(event);
 
         assertNull(marked);
-        verify(player, never()).sendMessage(any(Component.class));
         verify(event, never()).getProjectile();
+        verify(event, never()).getEntity(); // PDC 短路：不触达玩家分支
     }
 
     @Test
