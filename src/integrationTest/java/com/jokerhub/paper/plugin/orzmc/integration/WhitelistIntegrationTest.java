@@ -29,6 +29,9 @@ public class WhitelistIntegrationTest {
     public void setUp() {
         server = MockBukkit.mock();
         plugin = MockBukkit.load(OrzMC.class);
+        // 关闭服务端白名单：MockBukkit 会在 PlayerJoinEvent 后把非白名单玩家移出在线列表，
+        // 保持玩家在线的测试语义（与真实服 E2E 的 force_whitelist=false 对齐）。
+        server.setWhitelist(false);
         sink = new CapturingSink();
         plugin.services().botModule().notifier().registerSink(sink);
     }
@@ -87,10 +90,15 @@ public class WhitelistIntegrationTest {
     public void testPlayerJoinCapturedBySink() {
         PlayerMock player = server.addPlayer();
         // addPlayer() triggers PlayerJoinEvent which routes through notifier
+        // 通知经聚合延迟一个窗口，推进调度器触发冲刷
+        server.getScheduler().performTicks(FLUSH_TICKS);
         Assertions.assertFalse(sink.keys.isEmpty(), "Sink should have captured at least one event");
         Assertions.assertTrue(
                 sink.keys.stream().anyMatch(k -> k.equals("player_join")), "player_join should be captured");
     }
+
+    /** 聚合窗口（config.yml window_ms=3000ms / 50 = 60 ticks），多 1 tick 确保冲刷执行。 */
+    private static final long FLUSH_TICKS = 61;
 
     @Test
     public void testWhitelistConfigLoadedFromYaml() {
