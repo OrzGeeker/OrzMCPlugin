@@ -157,3 +157,22 @@ chat:
   detect_repeat: true
   # 命中时的提示文案
   message: "请勿刷屏或发送广告"
+
+# ==================================================
+#             进服限流/反 bot（安全加固）
+# ==================================================
+# 在异步登录事件（AsyncPlayerPreLoginEvent）上按 IP 做两类拦截，命中即拒绝进入：
+#   max_login_attempts_per_minute —— 60s 滑动窗口内最多登录尝试次数（频率，反 bot 群刷）
+#   max_concurrent_per_ip        —— 同 IP 最大在线上限（并发，反多开/alt 农场）
+# 命中时按 notify_admins 配置 PRIVATE 私信管理员，并给玩家发送 message 提示。
+login_rate_limit:
+  # 总开关：关闭后进服限流全部停用
+  enabled: true
+  # 每分钟最多登录尝试次数（60s 滑动窗口）
+  max_login_attempts_per_minute: 5
+  # 同 IP 最大在线上限
+  max_concurrent_per_ip: 3
+  # 命中时是否 PRIVATE 私信管理员
+  notify_admins: true
+  # 命中时的提示文案
+  message: "登录过于频繁，请稍后再试"
