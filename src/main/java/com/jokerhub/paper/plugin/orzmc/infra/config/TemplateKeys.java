@@ -40,6 +40,7 @@ public final class TemplateKeys {
     public static final String GEOIP_BLOCK = "geoip_block";
     public static final String WHITELIST_BLOCK = "whitelist_block";
     public static final String WHITELIST_TOGGLE_ALERT = "whitelist_toggle_alert";
+    public static final String COMMAND_GUARD_BLOCKED = "command_guard_blocked";
 
     // ---- TNT 事件 ----
     public static final String TNT_ALERT = "tnt_alert";
@@ -81,9 +82,11 @@ public final class TemplateKeys {
     /**
      * 所有已知的模板事件 key。用于 {@link ConfigHealthCheck} 校验。
      *
-     * <p>不含 {@link #PLAYER_DIGEST}：它在 {@code Templates} 中有完整 Java 默认模板，
-     * 升级安装（templates.yml 已存在故未复制新默认值）不携带该键即可正常工作；
-     * 纳入 ALL 会要求模板文件提供该键，造成升级后每次启动的持久「缺失」告警。</p>
+     * <p>不含 {@link #PLAYER_DIGEST} 与 {@link #COMMAND_GUARD_BLOCKED}：调用方始终传入 fallback
+     * 兜底文案（PLAYER_DIGEST 在 {@code Templates} 中有完整 Java 默认模板，COMMAND_GUARD_BLOCKED
+     * 在 {@code CommandGuardEventService} 中内联兜底），升级安装（templates.yml 已存在故未复制
+     * 新默认值）不携带该键即可正常工作；纳入 ALL 会要求模板文件提供该键，造成升级后每次启动的
+     * 持久「缺失」告警。</p>
      */
     public static final String[] ALL = {
         PLAYER_JOIN,

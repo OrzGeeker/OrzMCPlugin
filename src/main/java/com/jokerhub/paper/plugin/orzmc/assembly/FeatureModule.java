@@ -6,6 +6,7 @@ import static io.papermc.paper.command.brigadier.Commands.literal;
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
 import com.jokerhub.paper.plugin.orzmc.commands.OrzConfigCommand;
 import com.jokerhub.paper.plugin.orzmc.events.OrzBowShootEvent;
+import com.jokerhub.paper.plugin.orzmc.events.OrzCommandGuardEvent;
 import com.jokerhub.paper.plugin.orzmc.events.OrzDebugEvent;
 import com.jokerhub.paper.plugin.orzmc.events.OrzMenuEvent;
 import com.jokerhub.paper.plugin.orzmc.events.OrzPlayerEvent;
@@ -14,6 +15,7 @@ import com.jokerhub.paper.plugin.orzmc.events.OrzServerEvent;
 import com.jokerhub.paper.plugin.orzmc.events.OrzTNTEvent;
 import com.jokerhub.paper.plugin.orzmc.events.OrzTPEvent;
 import com.jokerhub.paper.plugin.orzmc.events.OrzWhiteListEvent;
+import com.jokerhub.paper.plugin.orzmc.features.command.CommandFeedbackService;
 import com.jokerhub.paper.plugin.orzmc.features.command.binding.AdminOnlyInterceptor;
 import com.jokerhub.paper.plugin.orzmc.features.command.binding.CommandInterceptor;
 import com.jokerhub.paper.plugin.orzmc.features.command.binding.CooldownInterceptor;
@@ -26,6 +28,8 @@ import com.jokerhub.paper.plugin.orzmc.features.player.PlayerEventService;
 import com.jokerhub.paper.plugin.orzmc.features.portal.PortalCommandService;
 import com.jokerhub.paper.plugin.orzmc.features.portal.PortalEventService;
 import com.jokerhub.paper.plugin.orzmc.features.security.BlacklistService;
+import com.jokerhub.paper.plugin.orzmc.features.security.CommandGuardEventService;
+import com.jokerhub.paper.plugin.orzmc.features.security.CommandGuardService;
 import com.jokerhub.paper.plugin.orzmc.features.security.GeoIpAccessService;
 import com.jokerhub.paper.plugin.orzmc.features.server.ServerEventService;
 import com.jokerhub.paper.plugin.orzmc.features.server.ServerFeedbackService;
@@ -72,6 +76,9 @@ public final class FeatureModule implements ServiceModule {
 
     private final GeoIpAccessService geoIpAccessService;
     private final BlacklistService blacklistService;
+    /** 危险命令拦截（安全加固 P0-3）：玩家聊天栏 + 控制台命令统一过 guard。 */
+    private final CommandGuardEventService commandGuardEventService;
+
     private final GuideService guideService;
     /** 在线玩家列表格式化（$l 命令与上下线广播共用，rankService 创建后注入）。 */
     private final com.jokerhub.paper.plugin.orzmc.infra.player.OnlineListFormatter listFormatter =
@@ -111,6 +118,13 @@ public final class FeatureModule implements ServiceModule {
         // Feature services
         this.geoIpAccessService = new GeoIpAccessService(platform.configs());
         this.blacklistService = new BlacklistService(platform.configService());
+        // 危险命令拦截：纯判定核心 + 事件编排；guard 每次读取最新配置（Supplier），/config reload 生效
+        this.commandGuardEventService = new CommandGuardEventService(
+                new CommandGuardService(() -> platform.configs().securityGuard()),
+                platform.configs(),
+                botModule.notifier(),
+                new CommandFeedbackService(),
+                org.bukkit.Bukkit.getLogger());
         this.guideService = new GuideService(platform.serverFacade(), platform.configService(), platform.textStyles());
         // 上下线通知：窗口聚合限流（不丢消息），单发走原模板、多发走 player_digest 摘要
         this.playerEventService = new PlayerEventService(
@@ -234,6 +248,7 @@ public final class FeatureModule implements ServiceModule {
                     new EntityTeleportPolicyService(
                             !mainConfig.entityTeleportEnabled(), mainConfig.entityTeleportWhitelist())),
             new OrzTNTEvent(plugin, tntEventService),
+            new OrzCommandGuardEvent(plugin, commandGuardEventService),
             new OrzMenuEvent(plugin, menuEventService),
             new OrzServerEvent(plugin, serverEventService),
             new OrzWhiteListEvent(plugin, whitelistEventService),
