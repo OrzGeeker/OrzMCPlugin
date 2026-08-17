@@ -20,9 +20,11 @@ import org.bukkit.event.server.ServerCommandEvent;
  * <ul>
  *   <li>玩家聊天栏命令 {@link PlayerCommandPreprocessEvent} + 控制台/RCON 命令
  *       {@link ServerCommandEvent} 统一走 {@link #handle(CommandSender, String, Consumer)}；</li>
- *   <li>命中 {@code BLOCK} → 取消事件 + 发送者中文反馈 +（按 {@code notify_admins} 配置）
- *       PRIVATE 私信管理员（模板 {@code command_guard_blocked}，Java 兜底文案防模板缺失）；</li>
- *   <li>命中 {@code WARN}（未限定目标选择器）→ 记录 warning 日志但放行。</li>
+ *   <li>命中 {@code BLOCK} → 取消事件 + 发送者中文反馈 + 审计记录 blocked +（按
+ *       {@code notify_admins} 配置）PRIVATE 私信管理员（模板 {@code command_guard_blocked}，
+ *       Java 兜底文案防模板缺失）；</li>
+ *   <li>命中 {@code WARN}（未限定目标选择器）→ 审计记录 executed + warning 日志但放行；</li>
+ *   <li>ALLOW → 审计记录 executed 后放行。</li>
  * </ul>
  */
 public final class CommandGuardEventService {
@@ -31,6 +33,7 @@ public final class CommandGuardEventService {
     private final TypedConfigProvider configs;
     private final Notifier notifier;
     private final CommandFeedbackService feedback;
+    private final CommandAuditService audit;
     private final Logger logger;
 
     public CommandGuardEventService(
@@ -38,11 +41,13 @@ public final class CommandGuardEventService {
             TypedConfigProvider configs,
             Notifier notifier,
             CommandFeedbackService feedback,
+            CommandAuditService audit,
             Logger logger) {
         this.guard = guard;
         this.configs = configs;
         this.notifier = notifier;
         this.feedback = feedback;
+        this.audit = audit;
         this.logger = logger;
     }
 
@@ -62,16 +67,19 @@ public final class CommandGuardEventService {
             case BLOCK -> {
                 cancel.accept(true);
                 sender.sendMessage(feedback.securityBlockedTip(decision.reason()));
+                audit.record(auditSource(sender), sender.getName(), commandLine, true);
                 if (configs.securityGuard().notifyAdmins()) {
                     notifyAdmin(commandLine, sender, decision.reason());
                 }
             }
-            case WARN ->
+            case WARN -> {
+                audit.record(auditSource(sender), sender.getName(), commandLine, false);
                 logger.warning("[OrzMC] 危险命令放行（未限定目标选择器）: "
                         + commandLine
                         + "（来源: " + sourceLabel(sender) + "，发送者: " + sender.getName() + "）");
+            }
             case ALLOW -> {
-                // 放行
+                audit.record(auditSource(sender), sender.getName(), commandLine, false);
             }
         }
     }
@@ -95,5 +103,10 @@ public final class CommandGuardEventService {
 
     private static String sourceLabel(CommandSender sender) {
         return sender instanceof Player ? "玩家" : "控制台/RCON";
+    }
+
+    /** 审计来源分类（audit 记录用英文 token：game / console）。 */
+    private static String auditSource(CommandSender sender) {
+        return sender instanceof Player ? CommandAuditService.SOURCE_GAME : CommandAuditService.SOURCE_CONSOLE;
     }
 }

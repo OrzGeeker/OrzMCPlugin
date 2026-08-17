@@ -28,6 +28,7 @@ import com.jokerhub.paper.plugin.orzmc.features.player.PlayerEventService;
 import com.jokerhub.paper.plugin.orzmc.features.portal.PortalCommandService;
 import com.jokerhub.paper.plugin.orzmc.features.portal.PortalEventService;
 import com.jokerhub.paper.plugin.orzmc.features.security.BlacklistService;
+import com.jokerhub.paper.plugin.orzmc.features.security.CommandAuditService;
 import com.jokerhub.paper.plugin.orzmc.features.security.CommandGuardEventService;
 import com.jokerhub.paper.plugin.orzmc.features.security.CommandGuardService;
 import com.jokerhub.paper.plugin.orzmc.features.security.GeoIpAccessService;
@@ -76,6 +77,8 @@ public final class FeatureModule implements ServiceModule {
 
     private final GeoIpAccessService geoIpAccessService;
     private final BlacklistService blacklistService;
+    /** 命令审计日志（安全加固 P0-4）：audit/command_audit.log，超限轮转。 */
+    private final CommandAuditService commandAuditService;
     /** 危险命令拦截（安全加固 P0-3）：玩家聊天栏 + 控制台命令统一过 guard。 */
     private final CommandGuardEventService commandGuardEventService;
 
@@ -118,12 +121,19 @@ public final class FeatureModule implements ServiceModule {
         // Feature services
         this.geoIpAccessService = new GeoIpAccessService(platform.configs());
         this.blacklistService = new BlacklistService(platform.configService());
+        // 命令审计：audit/command_audit.log，auditEnabled 每次读取最新配置（Supplier）
+        this.commandAuditService = new CommandAuditService(
+                () -> platform.configs().securityGuard().auditEnabled(),
+                platform.configService().dataFolder().toPath().resolve("audit"),
+                CommandAuditService.DEFAULT_MAX_BYTES,
+                org.bukkit.Bukkit.getLogger());
         // 危险命令拦截：纯判定核心 + 事件编排；guard 每次读取最新配置（Supplier），/config reload 生效
         this.commandGuardEventService = new CommandGuardEventService(
                 new CommandGuardService(() -> platform.configs().securityGuard()),
                 platform.configs(),
                 botModule.notifier(),
                 new CommandFeedbackService(),
+                commandAuditService,
                 org.bukkit.Bukkit.getLogger());
         this.guideService = new GuideService(platform.serverFacade(), platform.configService(), platform.textStyles());
         // 上下线通知：窗口聚合限流（不丢消息），单发走原模板、多发走 player_digest 摘要

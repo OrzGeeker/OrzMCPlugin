@@ -25,6 +25,7 @@ class CommandGuardEventServiceTest {
 
     private TypedConfigProvider configs;
     private Notifier notifier;
+    private CommandAuditService audit;
     private Logger logger;
     private CommandGuardEventService service;
 
@@ -32,6 +33,7 @@ class CommandGuardEventServiceTest {
     void setUp() {
         configs = mock(TypedConfigProvider.class);
         notifier = mock(Notifier.class);
+        audit = mock(CommandAuditService.class);
         logger = mock(Logger.class);
     }
 
@@ -44,6 +46,7 @@ class CommandGuardEventServiceTest {
                 configs,
                 notifier,
                 new CommandFeedbackService(),
+                audit,
                 logger);
     }
 
@@ -77,6 +80,7 @@ class CommandGuardEventServiceTest {
         verify(player).sendMessage(feedbackCaptor.capture());
         assertInstanceOf(TextComponent.class, feedbackCaptor.getValue());
         assertTrue(((TextComponent) feedbackCaptor.getValue()).content().contains("已被安全拦截"));
+        verify(audit).record(CommandAuditService.SOURCE_GAME, "steve", "/op steve", true);
         verify(configs).renderTemplate(eq(TemplateKeys.COMMAND_GUARD_BLOCKED), anyMap(), contains("op steve"));
         verify(notifier).event(eq(TemplateKeys.COMMAND_GUARD_BLOCKED), any(MessageEnvelope.class));
         verify(logger, never()).warning(anyString());
@@ -93,6 +97,7 @@ class CommandGuardEventServiceTest {
 
         verify(event).setCancelled(true);
         verify(player).sendMessage(any(Component.class));
+        verify(audit).record(CommandAuditService.SOURCE_GAME, "steve", "/op steve", true);
         verify(notifier, never()).event(anyString(), any(MessageEnvelope.class));
     }
 
@@ -129,6 +134,7 @@ class CommandGuardEventServiceTest {
 
         verify(event).setCancelled(true);
         verify(console).sendMessage(any(Component.class));
+        verify(audit).record(CommandAuditService.SOURCE_CONSOLE, "CONSOLE", "stop", true);
         verify(configs)
                 .renderTemplate(
                         eq(TemplateKeys.COMMAND_GUARD_BLOCKED),
@@ -150,6 +156,7 @@ class CommandGuardEventServiceTest {
 
         verify(event, never()).setCancelled(anyBoolean());
         verify(player, never()).sendMessage(any(Component.class));
+        verify(audit).record(CommandAuditService.SOURCE_GAME, "steve", "/kill @e", false);
         verify(notifier, never()).event(anyString(), any(MessageEnvelope.class));
         verify(logger).warning(contains("kill @e"));
     }
@@ -167,11 +174,12 @@ class CommandGuardEventServiceTest {
 
         verify(event, never()).setCancelled(anyBoolean());
         verify(player, never()).sendMessage(any(Component.class));
+        verify(audit).record(CommandAuditService.SOURCE_GAME, "steve", "/say hello", false);
         verify(notifier, never()).event(anyString(), any(MessageEnvelope.class));
         verify(logger, never()).warning(anyString());
     }
 
-    // ---- guard 关闭：全部放行 ----
+    // ---- guard 关闭：全部放行（审计仍记录 executed）----
 
     @Test
     void guardDisabled_allowsEverything() {
@@ -184,6 +192,7 @@ class CommandGuardEventServiceTest {
 
         verify(event, never()).setCancelled(anyBoolean());
         verify(player, never()).sendMessage(any(Component.class));
+        verify(audit).record(CommandAuditService.SOURCE_GAME, "steve", "/op steve", false);
         verify(notifier, never()).event(anyString(), any(MessageEnvelope.class));
         verify(logger, never()).warning(anyString());
     }
