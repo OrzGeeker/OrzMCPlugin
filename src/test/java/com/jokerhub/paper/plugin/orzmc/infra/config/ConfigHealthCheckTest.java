@@ -529,7 +529,7 @@ class ConfigHealthCheckTest {
         addFullValidConfig_bot();
         addMinimalValidConfig_templates();
         List<String> issues = runValidate();
-        assertTrue(issues.contains("config.yml 缺失 player_notify 配置段"));
+        assertTrue(issues.contains("建议: config.yml 缺失 player_notify 配置段，将使用默认配置（窗口 3000ms，三类通知启用）"));
     }
 
     @Test

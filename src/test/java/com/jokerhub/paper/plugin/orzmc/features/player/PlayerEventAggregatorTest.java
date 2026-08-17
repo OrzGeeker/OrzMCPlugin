@@ -16,6 +16,7 @@ import com.jokerhub.paper.plugin.orzmc.infra.notify.Notifier;
 import com.jokerhub.paper.plugin.orzmc.infra.player.OnlineListFormatter;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import com.jokerhub.paper.plugin.orzmc.testutil.ServiceTestBase;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 import java.util.List;
 import java.util.Map;
@@ -76,6 +77,8 @@ class PlayerEventAggregatorTest extends ServiceTestBase {
         when(p.getName()).thenReturn(name);
         when(p.getGameMode()).thenReturn(GameMode.SURVIVAL);
         when(p.isOp()).thenReturn(false);
+        // 确定性且按名互异的 UUID：KICK→QUIT 去重按 playerId 匹配，不同玩家不可误折叠
+        when(p.getUniqueId()).thenReturn(UUID.nameUUIDFromBytes(name.getBytes(StandardCharsets.UTF_8)));
         return p;
     }
 
@@ -377,6 +380,78 @@ class PlayerEventAggregatorTest extends ServiceTestBase {
         verify(configs).renderEvent(eq("player_quit"), anyMap());
         verify(configs, never()).renderEvent(eq("player_digest"), anyMap());
         verify(notifier).event(eq("player_quit"), any(MessageEnvelope.class));
+    }
+
+    // ---- KICK→QUIT 去重：真实 Paper 一次踢出触发 PlayerKickEvent + PlayerQuitEvent ----
+
+    @Test
+    void enqueue_kickThenQuitSamePlayer_collapsesToSingleKick() {
+        Player p = mockPlayer("Alice");
+        doReturn(List.of()).when(bukkitServer).getOnlinePlayers();
+        when(bukkitServer.getMaxPlayers()).thenReturn(100);
+        when(configs.renderEvent(eq("player_kick"), anyMap())).thenReturn(MessageEnvelope.publicMessage("kick"));
+
+        // 真实 Paper 下成功的踢出会额外触发 PlayerQuitEvent（同一离开上报两次）
+        aggregator.enqueue(p, PlayerEventService.PlayerState.KICK);
+        aggregator.enqueue(p, PlayerEventService.PlayerState.QUIT);
+        runTail();
+
+        // 折叠后窗口内仅 1 条 → 单发走 player_kick 模板，不出现双计摘要
+        verify(configs).renderEvent(eq("player_kick"), anyMap());
+        verify(configs, never()).renderEvent(eq("player_digest"), anyMap());
+        verify(notifier).event(eq("player_kick"), any(MessageEnvelope.class));
+    }
+
+    @Test
+    void enqueue_kickAndQuit_differentPlayers_countsBothInDigest() {
+        Player kicked = mockPlayer("Alice");
+        Player quitter = mockPlayer("Bob");
+        doReturn(List.of()).when(bukkitServer).getOnlinePlayers();
+        when(bukkitServer.getMaxPlayers()).thenReturn(100);
+        when(configs.renderEvent(eq("player_digest"), anyMap())).thenReturn(MessageEnvelope.publicMessage("digest"));
+
+        aggregator.enqueue(kicked, PlayerEventService.PlayerState.KICK);
+        aggregator.enqueue(quitter, PlayerEventService.PlayerState.QUIT);
+        runTail();
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, String>> vars = ArgumentCaptor.forClass(Map.class);
+        verify(configs).renderEvent(eq("player_digest"), vars.capture());
+        Map<String, String> v = vars.getValue();
+        assertTrue(v.get("kick_summary").startsWith("⛔ -1 被踢"), "got: " + v.get("kick_summary"));
+        assertTrue(v.get("quit_summary").startsWith("🔴 -1 下线"), "got: " + v.get("quit_summary"));
+    }
+
+    // ---- 禁用/重载同步冲刷：不走调度器，避免尾部任务被取消导致整窗丢失 ----
+
+    @Test
+    void flushPending_flushesSynchronously_leftoverScheduledTaskIsNoop() {
+        Player p = mockPlayer("Alice");
+        doReturn(List.of(p)).when(bukkitServer).getOnlinePlayers();
+        when(bukkitServer.getMaxPlayers()).thenReturn(100);
+        when(configs.renderEvent(eq("player_join"), anyMap())).thenReturn(MessageEnvelope.publicMessage("ok"));
+
+        aggregator.enqueue(p, PlayerEventService.PlayerState.JOIN);
+        // 禁用场景：不推进调度器，直接同步冲刷
+        aggregator.flushPending();
+
+        verify(notifier).event(eq("player_join"), any(MessageEnvelope.class));
+        // 已交付，入队时调度的尾部任务再执行应为空操作（不重复发送）
+        runTail();
+        verify(notifier, times(1)).event(anyString(), any(MessageEnvelope.class));
+    }
+
+    @Test
+    void flushPending_renderFailure_logsSevereWithoutReschedule() {
+        doThrow(new IllegalStateException("template broken")).when(configs).renderEvent(anyString(), anyMap());
+        aggregator.enqueue(mockPlayer("A"), PlayerEventService.PlayerState.JOIN);
+
+        aggregator.flushPending();
+
+        verify(logger).severe(anyString());
+        verify(notifier, never()).event(anyString(), any(MessageEnvelope.class));
+        // 禁用场景失败不重排：仅告警（只有入队时的 1 次调度）
+        verify(server, times(1)).runLater(any(Runnable.class), anyLong());
     }
 
     // ---- 渲染失败：保留批次重试（有界），不静默丢弃整窗 ----

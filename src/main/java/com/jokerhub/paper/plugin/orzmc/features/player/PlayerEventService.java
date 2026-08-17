@@ -157,4 +157,14 @@ public final class PlayerEventService {
     public void notifyPlayerState(Player player, PlayerState state) {
         aggregator.enqueue(player, state);
     }
+
+    /**
+     * 立即冲刷聚合器中挂起的批次（同步）。
+     *
+     * <p>插件禁用/重载时调用：Bukkit 会取消插件待执行任务，窗口尾部调度可能来不及运行，
+     * 此方法保证最后一个窗口的上下线事件在卸载前交付，不静默丢弃。</p>
+     */
+    public void flushPending() {
+        aggregator.flushPending();
+    }
 }

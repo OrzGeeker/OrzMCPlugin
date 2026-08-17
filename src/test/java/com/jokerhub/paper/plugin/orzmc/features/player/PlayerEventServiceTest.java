@@ -207,4 +207,11 @@ class PlayerEventServiceTest extends ServiceTestBase {
         verify(aggregator).enqueue(player, PlayerEventService.PlayerState.QUIT);
         verify(aggregator).enqueue(player, PlayerEventService.PlayerState.KICK);
     }
+
+    @Test
+    void flushPending_delegatesToAggregator() {
+        service.flushPending();
+
+        verify(aggregator).flushPending();
+    }
 }

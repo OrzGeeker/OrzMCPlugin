@@ -101,7 +101,9 @@ public final class ConfigHealthCheck {
 
     private static void validatePlayerNotifySection(ConfigurationSection section, List<String> issues) {
         if (section == null) {
-            issues.add("config.yml 缺失 player_notify 配置段");
+            // 降级为建议：默认配置完整可用，仅升级安装（config.yml 存在故未复制新默认值）会缺此段，
+            // 属提示而非缺陷，避免升级后每次启动的持久告警
+            issues.add("建议: config.yml 缺失 player_notify 配置段，将使用默认配置（窗口 3000ms，三类通知启用）");
             return;
         }
         for (String key : new String[] {"enabled_join", "enabled_quit", "enabled_kick"}) {
