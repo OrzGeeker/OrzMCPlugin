@@ -88,6 +88,18 @@ orzmc-api 是纯 Java 零 Bukkit 依赖子模块，`ScheduledTask` 是 Paper 类
   - `ExploitHardeningEventService` **无需改**（EntitySpawnEvent 本就在 region 线程，加注释说明）
 - **跨 chunk 方块操作风险**：一期基线按 anchor chunk 投递 + 跨界 warning 降级，
   二期按 chunk 分解（见 §7 分期）。
+- **PR-3 落地情况（2026-08，已合并）**：抽象 `RegionSchedulerProvider`（`run(world, cx, cz, task)`，
+  `@FunctionalInterface`）包住 `Bukkit.getRegionScheduler().execute(plugin, w, cx, cz, task)`，
+  生产注入（`PortalModule`/`TeleportBowService` 传 `new BukkitRegionSchedulerProvider(plugin)`），
+  测试注入 inline（同步直跑）或 capture（记录投递坐标）实现：
+  - `PortalCleaner.clear` 改为**按足迹覆盖的 chunk 逐个投递**（只投递与传送门足迹相交的 chunk，
+    避免无谓加载/生成），方块清理在每个 chunk 的 region 线程内先 `getChunkAt` 再按足迹交集过滤；
+    实体清理抽成共享的 `ArmorStandCleanup`（3×3 chunk，`isChunkLoaded` 守卫 + `chunk.getEntities()`
+    限定本 chunk + 与旧 `getNearbyEntities` 等价的立方体范围过滤，供 Cleaner 与 LabelRenderer 复用）。
+  - `PortalLabelRenderer.spawnLabel/placeInfoSign` 投递到 anchor chunk（`cx>>4, cz>>4`）；
+  - `ForceLoadedChunkLease.acquire/release` 计数与 force-load/unload 全部投递到所属 chunk 的
+    region 线程（同一 chunk 的 acquire/release 经 region FIFO 天然串行）；
+  - `PortalBuilder.build` 保持同步（玩家命令所在 region 线程内即可），仅对跨 chunk 足迹记 warning 降级。
 
 ### D4 主线程判定替换
 
@@ -144,19 +156,26 @@ runPaper.folia.registerTask {
    **直接调包私有的投递方法**（如 `teleportAndFeedback`），断言 `teleportAsync` +
    `EntityScheduler.run` 被调用，不执行回调体；踢人验证直接调 `kickInPlayerRegion` 类似。
    PR-3/PR-6 写 portal/区块相关断言时同样避开 `isSolid()`/`Sound`。
+5. **⚠ Mockito 对 chunk/array 的坑（实测，PR-3 发现）**：`Chunk.getEntities()` 返回 `Entity[]`
+   而非 `List`（编译期注意）；且本仓库 Mockito 版本的 `ReturnsEmptyValues` **不会**为数组类型
+   返回空数组（返回 null）→ 生产代码需对 `chunk.getEntities()` 判空防御，mock 侧要
+   `thenReturn(new Entity[]{...})` 显式造。另 **「最后匹配的 stub 胜出」**：`when(world.getChunkAt(anyInt(), anyInt()))`
+   的泛化 stub 若注册在 `when(world.getChunkAt(0, 0))` 之后会遮蔽具体 stub → 必须**先泛化后具体**。
+   `RegionSchedulerProvider` 用 capture 实现（记录 `{w, cx, cz}` 并选择同步/不执行任务体）
+   即可在普通 JUnit 中断言「方块/区块操作投递到正确 chunk」。
 
 **真实 Folia 验收**：`./gradlew runFolia` 手动冒烟（启动加载 → 白名单 `$w` → TNT 爆炸 →
 传送弓 → 建门/拆门 → `/orzbackup`），无 `IllegalThreadStateException`/死锁。
 
 ### D7 并发安全（Folia 下事件按 region 并发暴露的共享状态）
 
-| 位置 | 改法 |
-|---|---|
-| `TntEventService.pendingAlerts`（HashMap get→put 非原子） | `ConcurrentHashMap` + `compute` |
-| `PlayerEventAggregator.batch`（enqueue/flush 跨线程） | 加 `synchronized` |
-| `ForceLoadedChunkLease.counts` | `ConcurrentHashMap` |
-| `TeleportBowFlightTracker.acquired/pending` | `ConcurrentHashMap.newKeySet()` |
-| `PortalService.interiorTargets` | `ConcurrentHashMap` |
+| 位置 | 改法 | 落地 |
+|---|---|---|
+| `TntEventService.pendingAlerts`（HashMap get→put 非原子） | `ConcurrentHashMap` + `compute` | PR-4 |
+| `PlayerEventAggregator.batch`（enqueue/flush 跨线程） | 加 `synchronized` | PR-4 |
+| `ForceLoadedChunkLease.counts` | `ConcurrentHashMap` | **PR-3 提前落地**（region 投递使跨 region 读写真实化） |
+| `TeleportBowFlightTracker.acquired/pending` | `ConcurrentHashMap.newKeySet()` | PR-4 |
+| `PortalService.interiorTargets` | `ConcurrentHashMap` | **PR-3 提前落地**（同上，含 `portalCenters`） |
 
 ### D8 CI 自动化（是否需要补 Folia 处理）
 

@@ -127,6 +127,8 @@ final class TeleportBowFlightTracker {
         if (acquired.contains(key) || pending.contains(key)) {
             return;
         }
+        // Folia：force-load 投递由 lease 内部经 region scheduler 转到目标 chunk 的 region 线程；
+        // 本线程（tracker tick 所在 region）只维护乐观的 acquired 集合，不触碰区块。
         if (world.isChunkLoaded(cx, cz)) {
             lease.acquire(world, cx, cz);
             acquired.add(key);

@@ -1,6 +1,7 @@
 package com.jokerhub.paper.plugin.orzmc.features.teleport;
 
 import com.jokerhub.paper.plugin.orzmc.infra.core.OrzConstants;
+import com.jokerhub.paper.plugin.orzmc.infra.server.BukkitRegionSchedulerProvider;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
 import net.kyori.adventure.text.Component;
@@ -19,13 +20,15 @@ public final class TeleportBowService {
     private final OrzTextStyles styles;
     private final TeleportBowTexts texts;
     private final NamespacedKey keyTpBow;
-    private final ForceLoadedChunkLease chunkLease = new ForceLoadedChunkLease();
+    private final ForceLoadedChunkLease chunkLease;
 
     public TeleportBowService(ServerFacade server, OrzTextStyles styles) {
         this.server = server;
         this.styles = styles;
         this.texts = new TeleportBowTexts(styles);
         this.keyTpBow = server.key(OrzConstants.TPBOW_KEY);
+        // Folia：force-load 是区块操作，经 region scheduler 投递到目标 chunk 的 region 线程
+        this.chunkLease = new ForceLoadedChunkLease(new BukkitRegionSchedulerProvider(server.plugin()));
     }
 
     public TextComponent prefix() {
