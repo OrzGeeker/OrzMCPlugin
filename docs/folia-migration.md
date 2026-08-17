@@ -221,7 +221,9 @@ runPaper.folia.registerTask {
       （15s）→ 发 `stop` → 断言 90s 内干净退出 exit 0；任何一步失败抛
       `GradleException` 并附带日志尾部。
     - **不嵌套调 gradlew**（项目锁会死锁）：自行解析 Fill API v3 直链下载。
-  - 初期若不稳定，job 先 `continue-on-error: true`，稳定后转必须。
+  - **PR-6 已接进 CI**（`.github/workflows/build.yml`）：新增 `folia-smoke` job
+    （`runs-on: ubuntu-latest` + temurin Java 25 + `continue-on-error: true`，独立 job
+    不拖慢主 `build`），跑 `./gradlew foliaSmoke --stacktrace`。初期不阻塞 PR，稳定后转必须。
   - 备选：文档化手动 `runFolia` 冒烟清单，CI 保持 serverless。**推荐前者**：真实启动回归
     价值高（能抓「插件在 Folia 启动即崩溃」这类集成测试测不出的回归）。
 
