@@ -1,11 +1,19 @@
 package com.jokerhub.paper.plugin.orzmc.features.teleport;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import com.jokerhub.paper.plugin.orzmc.testutil.ServiceTestBase;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
@@ -260,5 +268,57 @@ class TeleportBowFlightTrackerTest extends ServiceTestBase {
         tracker.stop();
 
         verify(task, times(1)).cancel();
+    }
+
+    // ---- Folia 并发：tick（global region）与 getChunkAtAsync 回调（目标 chunk region）并发读写集合 ----
+
+    @Test
+    void concurrentTickAndAsyncCallback_noCorruptionOrLeak() throws Exception {
+        when(location.getBlockX()).thenReturn(16);
+        when(location.getBlockZ()).thenReturn(16);
+        when(world.isChunkLoaded(1, 1)).thenReturn(false);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Consumer> callback = ArgumentCaptor.forClass(Consumer.class);
+        tracker.start(arrow, player);
+        tracker.tick();
+        verify(world).getChunkAtAsync(eq(1), eq(1), eq(true), eq(true), callback.capture());
+
+        // Folia：tick 跑在 global region 线程，异步加载回调跑在目标 chunk 的 region 线程，
+        // acquired/pending 被并发读写。3 × 100 tick < MAX_FLIGHT_TICKS，shouldStop 保持 false。
+        int tickThreads = 3;
+        CyclicBarrier barrier = new CyclicBarrier(tickThreads + 1);
+        ExecutorService pool = Executors.newFixedThreadPool(tickThreads + 1);
+        List<Future<?>> futures = new ArrayList<>();
+        for (int i = 0; i < tickThreads; i++) {
+            futures.add(pool.submit(() -> {
+                awaitBarrier(barrier);
+                for (int j = 0; j < 100; j++) {
+                    tracker.tick();
+                }
+            }));
+        }
+        futures.add(pool.submit(() -> {
+            awaitBarrier(barrier);
+            callback.getValue().accept(mock(Chunk.class));
+        }));
+        pool.shutdown();
+        assertTrue(pool.awaitTermination(10, TimeUnit.SECONDS), "并发 tick/回调应在超时内完成");
+        for (Future<?> f : futures) {
+            f.get(); // 任一线程抛异常（如 ConcurrentModificationException）即测试失败
+        }
+
+        tracker.stop();
+        // 回调 acquire 的引用被 stop 完整释放，不泄漏；tick 因 pending 去重不重复 acquire
+        verify(lease, times(1)).acquire(world, 1, 1);
+        verify(lease).release(world, 1, 1);
+    }
+
+    private static void awaitBarrier(CyclicBarrier barrier) {
+        try {
+            barrier.await();
+        } catch (InterruptedException | java.util.concurrent.BrokenBarrierException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 }

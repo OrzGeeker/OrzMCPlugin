@@ -2,8 +2,8 @@ package com.jokerhub.paper.plugin.orzmc.features.teleport;
 
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
-import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Arrow;
@@ -35,8 +35,14 @@ final class TeleportBowFlightTracker {
     private final ServerFacade server;
     private final ForceLoadedChunkLease lease;
 
-    private final Set<Long> acquired = new HashSet<>();
-    private final Set<Long> pending = new HashSet<>();
+    /**
+     * Folia 线程模型：{@code acquired}/{@code pending} 由 tick（global region 线程）与
+     * {@code getChunkAtAsync} 回调（目标 chunk 的 region 线程）并发读写，故用并发集合。
+     * 它们是租约注册表的乐观本地镜像（非唯一状态来源），停时据此释放已 acquire 的引用。
+     */
+    private final Set<Long> acquired = ConcurrentHashMap.newKeySet();
+
+    private final Set<Long> pending = ConcurrentHashMap.newKeySet();
 
     private Arrow arrow;
     private Player player;
