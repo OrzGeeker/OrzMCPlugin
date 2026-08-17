@@ -220,7 +220,7 @@ public final class BotCommandService implements BotInboundHandler {
         server.runAsync(() -> {
             try {
                 WhitelistConfig whitelistConfig = configs.whitelist();
-                WhitelistService svc = WhitelistService.defaultImpl();
+                WhitelistService svc = WhitelistService.defaultImpl(server.plugin());
                 int delayTicks = Math.max(0, whitelistConfig.paginationDelayTicks());
                 Integer page = parsePageArg(rawArgs);
                 if (isAdmin) {
@@ -255,7 +255,7 @@ public final class BotCommandService implements BotInboundHandler {
         Set<String> userNames = parseArgs(rawArgs);
         if (!guardWhitelistCommand(cmd, isAdmin, userNames, callback)) return;
         server.runSync(() -> {
-            WhitelistService svc = WhitelistService.defaultImpl();
+            WhitelistService svc = WhitelistService.defaultImpl(server.plugin());
             String message = svc.addPlayers(server.server(), userNames);
             emit(callback, "command_whitelist_add_result", Map.of("message", message), message);
         });
@@ -266,7 +266,7 @@ public final class BotCommandService implements BotInboundHandler {
         Set<String> userNames = parseArgs(rawArgs);
         if (!guardWhitelistCommand(cmd, isAdmin, userNames, callback)) return;
         server.runSync(() -> {
-            WhitelistService svc = WhitelistService.defaultImpl();
+            WhitelistService svc = WhitelistService.defaultImpl(server.plugin());
             String message = svc.removePlayers(server.server(), userNames);
             emit(callback, "command_whitelist_remove_result", Map.of("message", message), message);
         });

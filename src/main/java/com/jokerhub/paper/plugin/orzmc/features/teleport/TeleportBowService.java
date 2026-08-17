@@ -220,8 +220,24 @@ public final class TeleportBowService {
             player.sendMessage(texts.logText("目标位置不可站立!").color(styles.colorError()));
             return;
         }
-        player.teleport(safe);
-        player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_CAT_PURR, 1.0F, 1.0F);
-        player.sendMessage(texts.logText("传送完成!").color(styles.colorSuccess()));
+        teleportAndFeedback(player, safe);
+    }
+
+    /**
+     * Folia：跨 region 传送必须用异步 API；完成回调把音效/提示投递到玩家所属 region 线程。
+     * Paper 上 teleportAsync 在主线程完成、getScheduler() 等价于主线程执行，语义不变。
+     * 包私有便于测试直接验证投递目标。
+     */
+    void teleportAndFeedback(Player player, org.bukkit.Location safe) {
+        player.teleportAsync(safe)
+                .thenRun(() -> player.getScheduler()
+                        .run(
+                                server.plugin(),
+                                t -> {
+                                    player.playSound(
+                                            player.getLocation(), org.bukkit.Sound.ENTITY_CAT_PURR, 1.0F, 1.0F);
+                                    player.sendMessage(texts.logText("传送完成!").color(styles.colorSuccess()));
+                                },
+                                () -> {}));
     }
 }
