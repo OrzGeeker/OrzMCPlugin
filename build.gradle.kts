@@ -37,9 +37,9 @@ dependencies {
 
     compileOnly("io.papermc.paper:paper-api:${property("paper_api_version") as String}")
     // Log4J（Paper 运行时自带；compileOnly 不打进 jar）——$e 命令日志窗口收集 Appender
-    compileOnly("org.apache.logging.log4j:log4j-api:2.26.0")
-    compileOnly("org.apache.logging.log4j:log4j-core:2.26.0")
-    testImplementation("org.apache.logging.log4j:log4j-core:2.26.0")
+    compileOnly("org.apache.logging.log4j:log4j-api:2.26.1")
+    compileOnly("org.apache.logging.log4j:log4j-core:2.26.1")
+    testImplementation("org.apache.logging.log4j:log4j-core:2.26.1")
     // LuckPerms API（软依赖：LP 插件在运行时提供 API 类——compileOnly 不打进 jar，
     // shadowJar 排除 net/luckperms 避免类加载器冲突；paper-plugin.yml dependencies 新格式声明软依赖）
     compileOnly("net.luckperms:api:5.5")
