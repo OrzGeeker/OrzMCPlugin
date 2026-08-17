@@ -137,6 +137,13 @@ runPaper.folia.registerTask {
    `BukkitSchedulerMock`，`performOneTick()` 照常推进。**局限需文档化**：MockBukkit 单线程模型
    无法模拟 region 隔离/跨线程竞态——这类 bug 只能靠第 2 层的调度目标断言 + 真实 Folia 冒烟兜底。
    （另见 D1 的 `PaperScheduledTask.cancel()` 未实现 → 生产代码尽力取消。）
+4. **⚠ 注册表相关枚举在普通 JUnit 不可用（实测，PR-2 发现）**：`Material.isSolid()`
+   走 `BlockType.isSolid()`（服务端注册表），无服务器时恒为 false → 无法用 block mock 让
+   `TeleportBowService.findNearestSafe` 走到成功路径；`Sound.<clinit>` 需要完整注册表，
+   引用任意 `Sound` 常量即抛 `ExceptionInInitializerError`。对策：区域亲和语义测试改为
+   **直接调包私有的投递方法**（如 `teleportAndFeedback`），断言 `teleportAsync` +
+   `EntityScheduler.run` 被调用，不执行回调体；踢人验证直接调 `kickInPlayerRegion` 类似。
+   PR-3/PR-6 写 portal/区块相关断言时同样避开 `isSolid()`/`Sound`。
 
 **真实 Folia 验收**：`./gradlew runFolia` 手动冒烟（启动加载 → 白名单 `$w` → TNT 爆炸 →
 传送弓 → 建门/拆门 → `/orzbackup`），无 `IllegalThreadStateException`/死锁。
