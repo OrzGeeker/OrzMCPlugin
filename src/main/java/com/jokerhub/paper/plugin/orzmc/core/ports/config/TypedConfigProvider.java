@@ -2,6 +2,7 @@ package com.jokerhub.paper.plugin.orzmc.core.ports.config;
 
 import com.jokerhub.paper.plugin.orzmc.core.bot.MessageEnvelope;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.BotConfig;
+import com.jokerhub.paper.plugin.orzmc.infra.config.configs.ChatConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.IpWhitelist;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.MaintenanceConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.PlayerNotifyConfig;
@@ -33,6 +34,8 @@ public interface TypedConfigProvider {
     IpWhitelist ipWhitelist();
 
     SecurityGuardConfig securityGuard();
+
+    ChatConfig chat();
 
     MessageEnvelope renderEvent(String eventKey, Map<String, String> vars);
 

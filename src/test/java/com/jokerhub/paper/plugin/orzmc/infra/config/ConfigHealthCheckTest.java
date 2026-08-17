@@ -97,6 +97,15 @@ class ConfigHealthCheckTest {
         config.getConfigurationSection("guard").set("blocked_commands", List.of("op", "reload"));
     }
 
+    private void addFullValidConfig_chat() {
+        config.createSection("chat");
+        config.getConfigurationSection("chat").set("enabled", true);
+        config.getConfigurationSection("chat").set("max_messages_per_minute", 6);
+        config.getConfigurationSection("chat").set("detect_links", true);
+        config.getConfigurationSection("chat").set("detect_repeat", true);
+        config.getConfigurationSection("chat").set("message", "请勿刷屏或发送广告");
+    }
+
     private void addFullValidConfig_commandPolicies() {
         config.createSection("command_policies");
         config.getConfigurationSection("command_policies").createSection("tpbow");
@@ -237,6 +246,7 @@ class ConfigHealthCheckTest {
         addFullValidConfig_geoip();
         addFullValidConfig_commandPolicies();
         addFullValidConfig_guard();
+        addFullValidConfig_chat();
         addFullValidConfig_bot();
         addFullValidConfig_templates();
         List<String> issues = runValidate();
@@ -600,6 +610,42 @@ class ConfigHealthCheckTest {
         // no guard section
         List<String> issues = runValidate();
         assertTrue(issues.contains("建议: config.yml 缺失 guard 配置段，将使用默认配置（危险命令拦截开启）"));
+    }
+
+    @Test
+    void missingChatSection_reportsSuggestion() {
+        addFullValidConfig_whitelist();
+        addFullValidConfig_maintenance();
+        addFullValidConfig_tnt();
+        addFullValidConfig_geoip();
+        addFullValidConfig_commandPolicies();
+        addFullValidConfig_bot();
+        addMinimalValidConfig_templates();
+        // no chat section
+        List<String> issues = runValidate();
+        assertTrue(issues.contains("建议: config.yml 缺失 chat 配置段，将使用默认配置（聊天反垃圾开启）"));
+    }
+
+    @Test
+    void chatWrongTypes_reportIssues() {
+        config.createSection("chat").set("enabled", "yes");
+        config.getConfigurationSection("chat").set("max_messages_per_minute", 0);
+        config.getConfigurationSection("chat").set("detect_links", "yes");
+        config.getConfigurationSection("chat").set("detect_repeat", 1);
+        config.getConfigurationSection("chat").set("message", "");
+        addFullValidConfig_whitelist();
+        addFullValidConfig_maintenance();
+        addFullValidConfig_tnt();
+        addFullValidConfig_geoip();
+        addFullValidConfig_commandPolicies();
+        addFullValidConfig_bot();
+        addMinimalValidConfig_templates();
+        List<String> issues = runValidate();
+        assertTrue(issues.contains("类型错误: chat.enabled 需为布尔值"));
+        assertTrue(issues.contains("非法: chat.max_messages_per_minute 不得小于 1"));
+        assertTrue(issues.contains("类型错误: chat.detect_links 需为布尔值"));
+        assertTrue(issues.contains("类型错误: chat.detect_repeat 需为布尔值"));
+        assertTrue(issues.contains("缺失: chat.message 不可为空"));
     }
 
     @Test

@@ -38,6 +38,7 @@ public final class ConfigHealthCheck {
         validateGeoIpSection(cfg.getConfigurationSection("geoip"), issues);
         validateCommandPoliciesSection(cfg.getConfigurationSection("command_policies"), issues);
         validateGuardSection(cfg.getConfigurationSection("guard"), issues);
+        validateChatSection(cfg.getConfigurationSection("chat"), issues);
     }
 
     private static void validateWhitelistSection(ConfigurationSection section, List<String> issues) {
@@ -183,6 +184,25 @@ public final class ConfigHealthCheck {
         if (ae != null && !(ae instanceof Boolean)) issues.add("类型错误: guard.audit_enabled 需为布尔值");
         Object bl = section.get("blocked_commands");
         if (bl != null && !(bl instanceof List<?>)) issues.add("类型错误: guard.blocked_commands 需为列表");
+    }
+
+    private static void validateChatSection(ConfigurationSection section, List<String> issues) {
+        if (section == null) {
+            // 降级为建议：默认配置完整可用，升级安装（config.yml 存在故未复制新默认值）会缺此段，
+            // 属提示而非缺陷，避免升级后每次启动的持久告警
+            issues.add("建议: config.yml 缺失 chat 配置段，将使用默认配置（聊天反垃圾开启）");
+            return;
+        }
+        Object en = section.get("enabled");
+        if (en != null && !(en instanceof Boolean)) issues.add("类型错误: chat.enabled 需为布尔值");
+        int max = section.getInt("max_messages_per_minute", 6);
+        if (max < 1) issues.add("非法: chat.max_messages_per_minute 不得小于 1");
+        Object dl = section.get("detect_links");
+        if (dl != null && !(dl instanceof Boolean)) issues.add("类型错误: chat.detect_links 需为布尔值");
+        Object dr = section.get("detect_repeat");
+        if (dr != null && !(dr instanceof Boolean)) issues.add("类型错误: chat.detect_repeat 需为布尔值");
+        String msg = section.getString("message", "");
+        if (msg.isBlank()) issues.add("缺失: chat.message 不可为空");
     }
 
     private static void validateEasyBot(FileConfiguration cfg, List<String> issues) {

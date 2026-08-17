@@ -137,3 +137,23 @@ guard:
   notify_admins: true
   # 是否记录命令审计到 audit/command_audit.log
   audit_enabled: true
+
+# ==================================================
+#             聊天反垃圾/反广告（安全加固）
+# ==================================================
+# 在异步聊天事件（AsyncChatEvent）上做三类拦截，命中即丢弃该条消息：
+#   max_messages_per_minute —— 60s 滑动窗口内最多发言条数（限流）
+#   detect_links            —— 检测并丢弃含链接（http/https/www.）的消息（反广告）
+#   detect_repeat           —— 检测并丢弃与本人上一条完全相同的消息（反刷屏）
+# 命中任一规则即取消该条聊天并给玩家发送 message 提示。
+chat:
+  # 总开关：关闭后聊天过滤全部停用
+  enabled: true
+  # 每分钟最多发言条数（60s 滑动窗口）
+  max_messages_per_minute: 6
+  # 是否丢弃含链接的消息
+  detect_links: true
+  # 是否丢弃与上一条完全相同的重复消息
+  detect_repeat: true
+  # 命中时的提示文案
+  message: "请勿刷屏或发送广告"

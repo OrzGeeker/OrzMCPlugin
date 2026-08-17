@@ -6,6 +6,7 @@ import static io.papermc.paper.command.brigadier.Commands.literal;
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
 import com.jokerhub.paper.plugin.orzmc.commands.OrzConfigCommand;
 import com.jokerhub.paper.plugin.orzmc.events.OrzBowShootEvent;
+import com.jokerhub.paper.plugin.orzmc.events.OrzChatEvent;
 import com.jokerhub.paper.plugin.orzmc.events.OrzCommandGuardEvent;
 import com.jokerhub.paper.plugin.orzmc.events.OrzDebugEvent;
 import com.jokerhub.paper.plugin.orzmc.events.OrzMenuEvent;
@@ -16,6 +17,8 @@ import com.jokerhub.paper.plugin.orzmc.events.OrzServerEvent;
 import com.jokerhub.paper.plugin.orzmc.events.OrzTNTEvent;
 import com.jokerhub.paper.plugin.orzmc.events.OrzTPEvent;
 import com.jokerhub.paper.plugin.orzmc.events.OrzWhiteListEvent;
+import com.jokerhub.paper.plugin.orzmc.features.chat.ChatSpamFilterEventService;
+import com.jokerhub.paper.plugin.orzmc.features.chat.ChatSpamFilterService;
 import com.jokerhub.paper.plugin.orzmc.features.command.CommandFeedbackService;
 import com.jokerhub.paper.plugin.orzmc.features.command.binding.AdminOnlyInterceptor;
 import com.jokerhub.paper.plugin.orzmc.features.command.binding.CommandInterceptor;
@@ -100,6 +103,8 @@ public final class FeatureModule implements ServiceModule {
     private final ServerLifecycleService serverLifecycleService;
     /** 启动安全自检报告（安全加固 P1-2）：ServerLoadEvent 时采集配置 PRIVATE 私信管理员。 */
     private final StartupSecurityAuditService startupSecurityAuditService;
+    /** 聊天反垃圾（安全加固 P2-1）：AsyncChatEvent 按玩家限流 + 链接/重复检测。 */
+    private final ChatSpamFilterEventService chatSpamFilterEventService;
 
     private final MenuCommandService menuCommandService;
     private final PortalCommandService portalCommandService;
@@ -164,6 +169,9 @@ public final class FeatureModule implements ServiceModule {
                 new ServerLifecycleService(platform.serverFacade(), platform.configs(), botModule.notifier());
         this.startupSecurityAuditService =
                 new StartupSecurityAuditService(platform.serverFacade(), platform.configs(), botModule.notifier());
+        // 聊天反垃圾：纯判定核心 + 事件编排；chat 每次读取最新配置（Supplier），/config reload 生效
+        this.chatSpamFilterEventService = new ChatSpamFilterEventService(
+                new ChatSpamFilterService(platform.configs()::chat), platform.configs(), platform.textStyles());
         this.menuCommandService = new MenuCommandService(platform.textStyles());
         this.portalCommandService = new PortalCommandService(portalModule.portalService(), platform.textStyles());
         this.orzConfigCommand = new OrzConfigCommand(
@@ -261,6 +269,7 @@ public final class FeatureModule implements ServiceModule {
                             !mainConfig.entityTeleportEnabled(), mainConfig.entityTeleportWhitelist())),
             new OrzTNTEvent(plugin, tntEventService),
             new OrzCommandGuardEvent(plugin, commandGuardEventService),
+            new OrzChatEvent(plugin, chatSpamFilterEventService),
             new OrzMenuEvent(plugin, menuEventService),
             new OrzServerEvent(plugin, serverEventService),
             new OrzSecurityAuditEvent(plugin, startupSecurityAuditService),
