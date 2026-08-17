@@ -278,13 +278,14 @@ tasks {
     // downloadFoliaJar 有缓存（build/folia-smoke/），foliaSmoke 每次执行都真实启动不跳过。
     // 注意：不能嵌套调用 gradlew 下载/启动（会死锁在项目锁上），故自行解析 Fill API v3 + 直接 java -jar。
     val foliaSmokeJar = layout.buildDirectory.file("folia-smoke/folia-$debugServerVersion.jar")
+    val foliaSmokeMarker = layout.buildDirectory.file("folia-smoke/.folia-$debugServerVersion.ok")
     register("downloadFoliaJar") {
         group = "verification"
         description = "下载 Folia 服务端 jar（Paper Fill API v3，SnakeYAML 解析 JSON 响应）"
         inputs.property("foliaVersion", debugServerVersion)
         outputs.file(foliaSmokeJar)
-        // 下载中途被杀留下的残缺 jar 不应被视为"已就绪"：按文件大小兜底
-        outputs.upToDateWhen { foliaSmokeJar.get().asFile.takeIf { it.exists() }?.length() ?: 0L > 50_000_000L }
+        // 下载成功且 SHA256 通过才写标记文件；中途被杀留下的残缺 jar 因标记缺失会被判 out-of-date 重下
+        outputs.file(foliaSmokeMarker)
         doLast {
             val jarFile = foliaSmokeJar.get().asFile
             val apiUrl = "https://fill.papermc.io/v3/projects/folia/versions/$debugServerVersion/builds/latest"
@@ -315,6 +316,7 @@ tasks {
                 jarFile.delete()
                 throw GradleException("Folia jar SHA256 校验失败: expected=$expectedSha actual=$actualSha")
             }
+            foliaSmokeMarker.get().asFile.writeText("sha256=$actualSha\n")
             logger.lifecycle("已下载 Folia $debugServerVersion → ${jarFile.absolutePath}")
         }
     }

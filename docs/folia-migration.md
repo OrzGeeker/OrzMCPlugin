@@ -210,9 +210,10 @@ runPaper.folia.registerTask {
   **不进真实服务器**，保持不变。
 - **新增独立 `folia-smoke` CI job**（Java 25，独立 job 不拖慢主构建，PR-6 落地）：
   - **PR-5 已实现 `foliaSmoke` Gradle 自定义任务**（build.gradle.kts，PR-6 接进 CI）：
-    - 拆成 `downloadFoliaJar`（有缓存：`inputs.property(foliaVersion)` + `outputs.file(jar)` +
-      大小兜底，输出到 `build/folia-smoke/folia-{ver}.jar`，SHA256 校验）+ `foliaSmoke`（每次
-      真实启动不跳过，`outputs.upToDateWhen { false }`）。
+    - 拆成 `downloadFoliaJar`（有缓存：`inputs.property(foliaVersion)` + `outputs.file(jar)`
+      + 成功标记文件 `.folia-{ver}.ok`——校验通过才写，中断残留判 out-of-date 重下，
+      输出到 `build/folia-smoke/`，SHA256 校验）+ `foliaSmoke`（每次真实启动不跳过，
+      `outputs.upToDateWhen { false }`）。
     - 启动用 **Java 25 toolchain**（`javaToolchains.launcherFor(java.toolchain)`），不依赖
       Gradle 守护进程 JDK；参数 `--nogui --nojline --online-mode=false --port 25580` +
       `-Ddisable.watchdog=true`。
