@@ -383,7 +383,7 @@ public final class FeatureModule implements ServiceModule {
                                         String cmd = ctx.getArgument("cmd", String.class);
                                         ctx.getSource().getSender().sendMessage("debug 已受理（模拟 Bot 入站命令）");
                                         var inbound = botModule.botInboundHandler();
-                                        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+                                        platform.serverFacade().runAsync(() -> {
                                             try {
                                                 inbound.handleMessage(cmd, true, "控制台", env -> {
                                                     if (env != null) {

@@ -5,13 +5,13 @@ import static org.mockito.Mockito.*;
 
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import com.jokerhub.paper.plugin.orzmc.testutil.ServiceTestBase;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import java.util.function.Consumer;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Arrow;
 import org.bukkit.entity.Player;
-import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Vector;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,7 +23,7 @@ class TeleportBowFlightTrackerTest extends ServiceTestBase {
 
     private ServerFacade server;
     private ForceLoadedChunkLease lease;
-    private BukkitTask task;
+    private ScheduledTask task;
     private Arrow arrow;
     private Player player;
     private World world;
@@ -35,7 +35,7 @@ class TeleportBowFlightTrackerTest extends ServiceTestBase {
     void setUp() {
         server = mock(ServerFacade.class);
         lease = mock(ForceLoadedChunkLease.class);
-        task = mock(BukkitTask.class);
+        task = mock(ScheduledTask.class);
         when(server.runTaskTimer(any(Runnable.class), anyLong(), anyLong())).thenReturn(task);
 
         arrow = mock(Arrow.class);
