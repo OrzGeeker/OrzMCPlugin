@@ -11,6 +11,7 @@ import com.jokerhub.paper.plugin.orzmc.events.OrzDebugEvent;
 import com.jokerhub.paper.plugin.orzmc.events.OrzMenuEvent;
 import com.jokerhub.paper.plugin.orzmc.events.OrzPlayerEvent;
 import com.jokerhub.paper.plugin.orzmc.events.OrzPortalEvent;
+import com.jokerhub.paper.plugin.orzmc.events.OrzSecurityAuditEvent;
 import com.jokerhub.paper.plugin.orzmc.events.OrzServerEvent;
 import com.jokerhub.paper.plugin.orzmc.events.OrzTNTEvent;
 import com.jokerhub.paper.plugin.orzmc.events.OrzTPEvent;
@@ -34,6 +35,7 @@ import com.jokerhub.paper.plugin.orzmc.features.security.GeoIpAccessService;
 import com.jokerhub.paper.plugin.orzmc.features.server.ServerEventService;
 import com.jokerhub.paper.plugin.orzmc.features.server.ServerFeedbackService;
 import com.jokerhub.paper.plugin.orzmc.features.server.ServerLifecycleService;
+import com.jokerhub.paper.plugin.orzmc.features.server.StartupSecurityAuditService;
 import com.jokerhub.paper.plugin.orzmc.features.teleport.EntityTeleportPolicyService;
 import com.jokerhub.paper.plugin.orzmc.features.teleport.TeleportBowEventService;
 import com.jokerhub.paper.plugin.orzmc.features.teleport.TeleportBowService;
@@ -96,6 +98,9 @@ public final class FeatureModule implements ServiceModule {
     private final ServerFeedbackService serverFeedbackService;
     private final ServerEventService serverEventService;
     private final ServerLifecycleService serverLifecycleService;
+    /** 启动安全自检报告（安全加固 P1-2）：ServerLoadEvent 时采集配置 PRIVATE 私信管理员。 */
+    private final StartupSecurityAuditService startupSecurityAuditService;
+
     private final MenuCommandService menuCommandService;
     private final PortalCommandService portalCommandService;
     private final OrzConfigCommand orzConfigCommand;
@@ -157,6 +162,8 @@ public final class FeatureModule implements ServiceModule {
                 botModule.notifier());
         this.serverLifecycleService =
                 new ServerLifecycleService(platform.serverFacade(), platform.configs(), botModule.notifier());
+        this.startupSecurityAuditService =
+                new StartupSecurityAuditService(platform.serverFacade(), platform.configs(), botModule.notifier());
         this.menuCommandService = new MenuCommandService(platform.textStyles());
         this.portalCommandService = new PortalCommandService(portalModule.portalService(), platform.textStyles());
         this.orzConfigCommand = new OrzConfigCommand(
@@ -256,6 +263,7 @@ public final class FeatureModule implements ServiceModule {
             new OrzCommandGuardEvent(plugin, commandGuardEventService),
             new OrzMenuEvent(plugin, menuEventService),
             new OrzServerEvent(plugin, serverEventService),
+            new OrzSecurityAuditEvent(plugin, startupSecurityAuditService),
             new OrzWhiteListEvent(plugin, whitelistEventService),
             new OrzDebugEvent(plugin, botModule.botInboundHandler()),
             new OrzPortalEvent(plugin, portalEventService),

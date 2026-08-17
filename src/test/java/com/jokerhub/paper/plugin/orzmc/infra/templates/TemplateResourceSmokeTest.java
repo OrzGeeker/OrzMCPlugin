@@ -85,4 +85,26 @@ public class TemplateResourceSmokeTest extends ServiceTestBase {
         String rejected = TemplateRenderer.render(TemplateRenderer.resolveTemplate("review_rejected", cfg, ""), vars);
         Assertions.assertFalse(rejected.contains("{message}"), "rejected 不得为字面 {message}: " + rejected);
     }
+
+    @Test
+    public void testSecurityAuditTemplateResolvesWithRealText() throws Exception {
+        // 安全加固 P1-2：启动自检报告模板必须渲染真实中文文案，而非字面 "{online_mode}" 等占位符
+        YamlConfiguration cfg = load("templates.yml");
+        String resolved = TemplateRenderer.resolveTemplate("security_audit", cfg, "");
+        Assertions.assertFalse(resolved.isEmpty(), "security_audit 模板缺失");
+
+        var vars = java.util.Map.of(
+                "online_mode", "正版验证开启",
+                "command_block", "禁用",
+                "rcon", "未启用",
+                "whitelist", "开启（强制）",
+                "ops", "2 个: steve, alex",
+                "plugins", "LuckPerms、Grim");
+        String rendered = TemplateRenderer.render(resolved, vars);
+
+        Assertions.assertTrue(rendered.contains("正版验证开启"), "应含在线模式文案: " + rendered);
+        Assertions.assertTrue(rendered.contains("LuckPerms、Grim"), "应含插件列表: " + rendered);
+        Assertions.assertFalse(
+                rendered.contains("{online_mode}") || rendered.contains("{plugins}"), "不得残留字面占位符: " + rendered);
+    }
 }
