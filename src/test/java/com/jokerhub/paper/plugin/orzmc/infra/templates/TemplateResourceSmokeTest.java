@@ -127,4 +127,22 @@ public class TemplateResourceSmokeTest extends ServiceTestBase {
                 rendered.contains("{ip}") || rendered.contains("{player}") || rendered.contains("{reason}"),
                 "不得残留字面占位符: " + rendered);
     }
+
+    @Test
+    public void testExploitBlockedTemplateResolvesWithRealText() throws Exception {
+        // 安全加固 P2-3：漏洞利用拦截模板必须渲染真实中文文案，而非字面 "{player}" 等占位符
+        YamlConfiguration cfg = load("templates.yml");
+        String resolved = TemplateRenderer.resolveTemplate("exploit_blocked", cfg, "");
+        Assertions.assertFalse(resolved.isEmpty(), "exploit_blocked 模板缺失");
+
+        var vars = java.util.Map.of(
+                "player", "alice",
+                "reason", "书页超限（150 页）");
+        String rendered = TemplateRenderer.render(resolved, vars);
+
+        Assertions.assertTrue(rendered.contains("alice"), "应含玩家名: " + rendered);
+        Assertions.assertTrue(rendered.contains("书页超限"), "应含原因: " + rendered);
+        Assertions.assertFalse(
+                rendered.contains("{player}") || rendered.contains("{reason}"), "不得残留字面占位符: " + rendered);
+    }
 }
