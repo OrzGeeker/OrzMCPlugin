@@ -3,11 +3,7 @@ package com.jokerhub.paper.plugin.orzmc.integration;
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
 import com.jokerhub.paper.plugin.orzmc.core.bot.MessageEnvelope;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.WhitelistConfig;
-import com.jokerhub.paper.plugin.orzmc.infra.notify.NotifierSink;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
-import net.kyori.adventure.text.Component;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
@@ -111,22 +107,5 @@ public class WhitelistIntegrationTest {
         Assertions.assertTrue(
                 config.forceWhitelist(),
                 "Default force_whitelist should be true when config section is present but empty");
-    }
-
-    private static final class CapturingSink implements NotifierSink {
-        private final List<String> keys = new ArrayList<>();
-        private final List<MessageEnvelope> envelopes = new ArrayList<>();
-        private final List<Component> serverMessages = new ArrayList<>();
-
-        @Override
-        public void server(Component message) {
-            serverMessages.add(message);
-        }
-
-        @Override
-        public void event(String key, MessageEnvelope envelope) {
-            keys.add(key);
-            envelopes.add(envelope);
-        }
     }
 }

@@ -15,6 +15,7 @@ public final class TemplateKeys {
     public static final String PLAYER_JOIN = "player_join";
     public static final String PLAYER_KICK = "player_kick";
     public static final String PLAYER_QUIT = "player_quit";
+    public static final String PLAYER_DIGEST = "player_digest";
 
     // ---- 命令事件 ----
     public static final String COMMAND_OUTPUT = "command_output";
@@ -82,6 +83,7 @@ public final class TemplateKeys {
         PLAYER_JOIN,
         PLAYER_KICK,
         PLAYER_QUIT,
+        PLAYER_DIGEST,
         COMMAND_OUTPUT,
         COMMAND_HELP,
         COMMAND_PLAYERS,

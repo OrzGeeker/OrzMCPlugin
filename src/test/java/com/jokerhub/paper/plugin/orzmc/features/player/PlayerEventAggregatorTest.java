@@ -2,7 +2,7 @@ package com.jokerhub.paper.plugin.orzmc.features.player;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -16,6 +16,7 @@ import com.jokerhub.paper.plugin.orzmc.infra.notify.Notifier;
 import com.jokerhub.paper.plugin.orzmc.infra.player.OnlineListFormatter;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import com.jokerhub.paper.plugin.orzmc.testutil.ServiceTestBase;
+import java.util.ArrayDeque;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -48,6 +49,9 @@ class PlayerEventAggregatorTest extends ServiceTestBase {
     private OnlineListFormatter formatter;
     private PlayerEventAggregator aggregator;
 
+    /** 调度器捕获队列：doAnswer 拦截 runLater，模拟真实调度（含失败重试的重调度）。 */
+    private final ArrayDeque<Runnable> scheduledTasks = new ArrayDeque<>();
+
     @BeforeEach
     void setUp() {
         formatter = new OnlineListFormatter();
@@ -55,6 +59,12 @@ class PlayerEventAggregatorTest extends ServiceTestBase {
         when(server.server()).thenReturn(bukkitServer);
         when(server.logger()).thenReturn(logger);
         when(configs.renderEvent(anyString(), anyMap())).thenReturn(MessageEnvelope.publicMessage("ok"));
+        doAnswer(inv -> {
+                    scheduledTasks.add(inv.getArgument(0));
+                    return null;
+                })
+                .when(server)
+                .runLater(any(Runnable.class), anyLong());
         aggregator = new PlayerEventAggregator(server, configs, notifier, formatter);
     }
 
@@ -69,11 +79,17 @@ class PlayerEventAggregatorTest extends ServiceTestBase {
         return p;
     }
 
-    /** 执行已捕获的尾部冲刷任务（模拟调度器在窗口到期后运行）。仅适用于恰好调度了一次的场景。 */
+    /** 执行最早一个已调度的窗口冲刷任务（模拟调度器在窗口到期后运行）。 */
     private void runTail() {
-        ArgumentCaptor<Runnable> task = ArgumentCaptor.forClass(Runnable.class);
-        verify(server).runLater(task.capture(), anyLong());
-        task.getValue().run();
+        assertFalse(scheduledTasks.isEmpty(), "没有待运行的窗口冲刷任务");
+        scheduledTasks.poll().run();
+    }
+
+    /** 依次执行所有已调度任务（含渲染失败后的重试重调度），直到队列为空。 */
+    private void runAllTails() {
+        while (!scheduledTasks.isEmpty()) {
+            scheduledTasks.poll().run();
+        }
     }
 
     // ---- 单发：窗口内仅 1 条事件，复用原模板 ----
@@ -172,6 +188,27 @@ class PlayerEventAggregatorTest extends ServiceTestBase {
         assertTrue(onlineList.contains("管理员"), "Alice 应显示权限组 管理员, got: " + onlineList);
         assertTrue(onlineList.contains("Bob"), "got: " + onlineList);
         assertTrue(onlineList.contains("建造者"), "Bob 应显示权限组 建造者, got: " + onlineList);
+    }
+
+    @Test
+    void enqueue_offlineQuitNullLocation_omitsCoordsKeepsName() {
+        // 当事人已离线（冲刷时刻坐标不可用）→ 坐标变量省略、world 回退 unknown，名字不受影响
+        Player quitter = mockPlayer("Alice");
+        when(quitter.getLocation()).thenReturn(null);
+        doReturn(List.of()).when(bukkitServer).getOnlinePlayers();
+        when(bukkitServer.getMaxPlayers()).thenReturn(100);
+        when(configs.renderEvent(eq("player_quit"), anyMap())).thenReturn(MessageEnvelope.publicMessage("ok"));
+
+        aggregator.enqueue(quitter, PlayerEventService.PlayerState.QUIT);
+        runTail();
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, String>> vars = ArgumentCaptor.forClass(Map.class);
+        verify(configs).renderEvent(eq("player_quit"), vars.capture());
+        Map<String, String> v = vars.getValue();
+        assertEquals("unknown", v.get("world"), "离线玩家坐标为 null 时应回退 unknown");
+        assertNull(v.get("x_unit"), "坐标缺失时不注入占位值");
+        assertTrue(v.get("name").startsWith("Alice"), "got: " + v.get("name"));
     }
 
     // ---- 多发：窗口内多条事件，渲染聚合摘要（不丢消息，精确计数）----
@@ -309,16 +346,73 @@ class PlayerEventAggregatorTest extends ServiceTestBase {
         verifyNoInteractions(notifier);
     }
 
+    // ---- 冲刷时按最新配置过滤（热重载对挂起批次生效）----
+
     @Test
-    void enqueue_renderFailure_flushClearsBatch_noOrphan() {
+    void flush_configDisabledMidWindow_suppressesBufferedEvents() {
+        aggregator.enqueue(mockPlayer("A"), PlayerEventService.PlayerState.JOIN);
+        aggregator.enqueue(mockPlayer("B"), PlayerEventService.PlayerState.JOIN);
+        // 窗口内管理员关闭上线通知 → 挂起批次不再发送
+        when(configs.playerNotify()).thenReturn(new PlayerNotifyConfig(false, true, true, 3000L, 6, false));
+
+        runTail();
+
+        verify(notifier, never()).event(anyString(), any(MessageEnvelope.class));
+        verify(configs, never()).renderEvent(anyString(), anyMap());
+    }
+
+    @Test
+    void flush_configDisabledMidWindow_singleRemainingUsesSingleTemplate() {
+        Player b = mockPlayer("B");
+        aggregator.enqueue(mockPlayer("A"), PlayerEventService.PlayerState.JOIN);
+        aggregator.enqueue(b, PlayerEventService.PlayerState.QUIT);
+        // 上线被关闭后，窗口内剩余 1 条 QUIT → 走单条模板而非摘要
+        when(configs.playerNotify()).thenReturn(new PlayerNotifyConfig(false, true, true, 3000L, 6, false));
+        doReturn(List.of(b)).when(bukkitServer).getOnlinePlayers();
+        when(bukkitServer.getMaxPlayers()).thenReturn(100);
+        when(configs.renderEvent(eq("player_quit"), anyMap())).thenReturn(MessageEnvelope.publicMessage("quit"));
+
+        runTail();
+
+        verify(configs).renderEvent(eq("player_quit"), anyMap());
+        verify(configs, never()).renderEvent(eq("player_digest"), anyMap());
+        verify(notifier).event(eq("player_quit"), any(MessageEnvelope.class));
+    }
+
+    // ---- 渲染失败：保留批次重试（有界），不静默丢弃整窗 ----
+
+    @Test
+    void flush_renderFailure_retainsBatchAndRetries_transientRecovery() {
         doThrow(new IllegalStateException("template broken")).when(configs).renderEvent(anyString(), anyMap());
         aggregator.enqueue(mockPlayer("A"), PlayerEventService.PlayerState.JOIN);
 
-        // 尾部冲刷渲染失败 → 异常冒出，但批次已清除不留孤儿（后续事件可正常聚合）
-        assertThrows(IllegalStateException.class, () -> runTail());
+        // 首次冲刷渲染失败：不再抛出，批次保留并重试调度
+        runTail();
+        verify(notifier, never()).event(anyString(), any(MessageEnvelope.class));
+        assertFalse(scheduledTasks.isEmpty(), "失败后应重试调度");
 
+        // 渲染恢复后重试成功，事件不丢失
+        doReturn(MessageEnvelope.publicMessage("ok")).when(configs).renderEvent(anyString(), anyMap());
+        runTail();
+        verify(notifier).event(eq("player_join"), any(MessageEnvelope.class));
+        assertTrue(scheduledTasks.isEmpty(), "成功后不应再调度");
+    }
+
+    @Test
+    void flush_renderFailure_boundedRetries_dropsAfterCapWithAlert() {
+        doThrow(new IllegalStateException("template broken")).when(configs).renderEvent(anyString(), anyMap());
+        aggregator.enqueue(mockPlayer("A"), PlayerEventService.PlayerState.JOIN);
+
+        // MAX_RENDER_RETRIES=3 → 第 4 次冲刷后放弃：1 首冲 + 3 重试
+        runAllTails();
+
+        verify(notifier, never()).event(anyString(), any(MessageEnvelope.class));
+        verify(logger).severe(anyString());
+
+        // 有界放弃后批次已清空，新事件可正常聚合（无孤儿批次）
         doReturn(MessageEnvelope.publicMessage("ok")).when(configs).renderEvent(anyString(), anyMap());
         aggregator.enqueue(mockPlayer("B"), PlayerEventService.PlayerState.JOIN);
-        verify(server, times(2)).runLater(any(Runnable.class), anyLong());
+        runTail();
+        verify(notifier).event(eq("player_join"), any(MessageEnvelope.class));
     }
 }

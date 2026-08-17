@@ -34,7 +34,7 @@ public record Templates(
                 "{name} 被踢\n世界:{world_alias} 坐标:{x_unit},{y_unit},{z_unit}({coord_unit})\n------当前在线({online_count}/{max_count})------\n{online_list}");
         String digest = cfg.getString(
                 base + ".player_digest",
-                "{join_summary}{quit_summary}{kick_summary}------当前在线({online_count}/{max_count})------\n{online_list}");
+                "{join_summary}{quit_summary}{kick_summary}------当前在线({online_count}/{max_count})------{online_list}");
         String exceptionAlert = cfg.getString(base + ".exception_alert", "异常: {message}\n摘要: {stack_summary}");
         String geoipBlock = cfg.getString(
                 base + ".geoip_block", "{name}({ip}) 地区:{country_code} 不在允许列表({allow_list})\n{address_info}");

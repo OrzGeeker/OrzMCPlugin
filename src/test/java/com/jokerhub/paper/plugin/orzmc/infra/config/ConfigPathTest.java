@@ -11,7 +11,7 @@ class ConfigPathTest {
     void all_containsExpectedEntries() {
         Map<String, ConfigPath> all = ConfigPath.all();
         assertNotNull(all);
-        assertEquals(31, all.size());
+        assertEquals(30, all.size());
     }
 
     @Test

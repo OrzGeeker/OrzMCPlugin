@@ -64,7 +64,6 @@ public final class ConfigPath {
         reg(map, "config", "tnt.enable_respawn_anchor", Boolean.class, false, "启用重生锚检测");
         reg(map, "config", "tnt.place_cooldown", Integer.class, 5, "TNT放置冷却(秒)");
         reg(map, "config", "tnt.notify_aggregate_ms", Long.class, 3000L, "TNT/爆炸告警聚合窗口(毫秒)");
-        reg(map, "config", "tnt.notify_throttle_ms", Long.class, 1000L, "（已废弃）上下线限流，由 player_notify.window_ms 取代");
         // player_notify (config.yml)
         reg(map, "config", "player_notify.enabled_join", Boolean.class, true, "上线消息通知开关");
         reg(map, "config", "player_notify.enabled_quit", Boolean.class, true, "下线消息通知开关");

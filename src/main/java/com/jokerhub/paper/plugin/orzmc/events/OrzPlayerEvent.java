@@ -79,6 +79,10 @@ public class OrzPlayerEvent extends OrzBaseListener {
 
     @EventHandler
     public void onPlayerKickLeave(PlayerKickEvent event) {
+        if (event.isCancelled()) {
+            // 被其他插件取消的踢人：玩家仍在线上，不产生「被踢」通知
+            return;
+        }
         service.notifyPlayerState(event.getPlayer(), PlayerEventService.PlayerState.KICK);
     }
 }
