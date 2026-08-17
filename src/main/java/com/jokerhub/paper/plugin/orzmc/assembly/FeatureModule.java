@@ -9,6 +9,7 @@ import com.jokerhub.paper.plugin.orzmc.events.OrzBowShootEvent;
 import com.jokerhub.paper.plugin.orzmc.events.OrzChatEvent;
 import com.jokerhub.paper.plugin.orzmc.events.OrzCommandGuardEvent;
 import com.jokerhub.paper.plugin.orzmc.events.OrzDebugEvent;
+import com.jokerhub.paper.plugin.orzmc.events.OrzLoginRateLimitEvent;
 import com.jokerhub.paper.plugin.orzmc.events.OrzMenuEvent;
 import com.jokerhub.paper.plugin.orzmc.events.OrzPlayerEvent;
 import com.jokerhub.paper.plugin.orzmc.events.OrzPortalEvent;
@@ -35,6 +36,8 @@ import com.jokerhub.paper.plugin.orzmc.features.security.BlacklistService;
 import com.jokerhub.paper.plugin.orzmc.features.security.CommandAuditService;
 import com.jokerhub.paper.plugin.orzmc.features.security.CommandGuardEventService;
 import com.jokerhub.paper.plugin.orzmc.features.security.GeoIpAccessService;
+import com.jokerhub.paper.plugin.orzmc.features.security.LoginRateLimitEventService;
+import com.jokerhub.paper.plugin.orzmc.features.security.LoginRateLimitService;
 import com.jokerhub.paper.plugin.orzmc.features.server.ServerEventService;
 import com.jokerhub.paper.plugin.orzmc.features.server.ServerFeedbackService;
 import com.jokerhub.paper.plugin.orzmc.features.server.ServerLifecycleService;
@@ -105,6 +108,8 @@ public final class FeatureModule implements ServiceModule {
     private final StartupSecurityAuditService startupSecurityAuditService;
     /** 聊天反垃圾（安全加固 P2-1）：AsyncChatEvent 按玩家限流 + 链接/重复检测。 */
     private final ChatSpamFilterEventService chatSpamFilterEventService;
+    /** 进服限流/反 bot（安全加固 P2-2）：AsyncPlayerPreLoginEvent 按 IP 限频率/并发。 */
+    private final LoginRateLimitEventService loginRateLimitEventService;
 
     private final MenuCommandService menuCommandService;
     private final PortalCommandService portalCommandService;
@@ -172,6 +177,12 @@ public final class FeatureModule implements ServiceModule {
         // 聊天反垃圾：纯判定核心 + 事件编排；chat 每次读取最新配置（Supplier），/config reload 生效
         this.chatSpamFilterEventService = new ChatSpamFilterEventService(
                 new ChatSpamFilterService(platform.configs()::chat), platform.configs(), platform.textStyles());
+        // 进服限流：纯判定核心 + 事件编排；login_rate_limit 每次读取最新配置（Supplier），/config reload 生效
+        this.loginRateLimitEventService = new LoginRateLimitEventService(
+                new LoginRateLimitService(platform.configs()::loginRateLimit),
+                platform.configs(),
+                botModule.notifier(),
+                platform.textStyles());
         this.menuCommandService = new MenuCommandService(platform.textStyles());
         this.portalCommandService = new PortalCommandService(portalModule.portalService(), platform.textStyles());
         this.orzConfigCommand = new OrzConfigCommand(
@@ -270,6 +281,7 @@ public final class FeatureModule implements ServiceModule {
             new OrzTNTEvent(plugin, tntEventService),
             new OrzCommandGuardEvent(plugin, commandGuardEventService),
             new OrzChatEvent(plugin, chatSpamFilterEventService),
+            new OrzLoginRateLimitEvent(plugin, loginRateLimitEventService),
             new OrzMenuEvent(plugin, menuEventService),
             new OrzServerEvent(plugin, serverEventService),
             new OrzSecurityAuditEvent(plugin, startupSecurityAuditService),

@@ -107,4 +107,24 @@ public class TemplateResourceSmokeTest extends ServiceTestBase {
         Assertions.assertFalse(
                 rendered.contains("{online_mode}") || rendered.contains("{plugins}"), "不得残留字面占位符: " + rendered);
     }
+
+    @Test
+    public void testLoginRateLimitAlertTemplateResolvesWithRealText() throws Exception {
+        // 安全加固 P2-2：进服限流告警模板必须渲染真实中文文案，而非字面 "{ip}" 等占位符
+        YamlConfiguration cfg = load("templates.yml");
+        String resolved = TemplateRenderer.resolveTemplate("login_rate_limit_alert", cfg, "");
+        Assertions.assertFalse(resolved.isEmpty(), "login_rate_limit_alert 模板缺失");
+
+        var vars = java.util.Map.of(
+                "ip", "1.2.3.4",
+                "player", "alice",
+                "reason", "频率超限（5 次/分钟）");
+        String rendered = TemplateRenderer.render(resolved, vars);
+
+        Assertions.assertTrue(rendered.contains("1.2.3.4"), "应含 IP: " + rendered);
+        Assertions.assertTrue(rendered.contains("alice"), "应含玩家名: " + rendered);
+        Assertions.assertFalse(
+                rendered.contains("{ip}") || rendered.contains("{player}") || rendered.contains("{reason}"),
+                "不得残留字面占位符: " + rendered);
+    }
 }

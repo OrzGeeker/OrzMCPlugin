@@ -57,5 +57,6 @@ class TemplateKeysTest {
         assertEquals("whitelist_block", TemplateKeys.WHITELIST_BLOCK);
         assertEquals("command_guard_blocked", TemplateKeys.COMMAND_GUARD_BLOCKED);
         assertEquals("security_audit", TemplateKeys.SECURITY_AUDIT);
+        assertEquals("login_rate_limit_alert", TemplateKeys.LOGIN_RATE_LIMIT_ALERT);
     }
 }

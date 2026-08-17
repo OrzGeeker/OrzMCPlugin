@@ -106,6 +106,15 @@ class ConfigHealthCheckTest {
         config.getConfigurationSection("chat").set("message", "请勿刷屏或发送广告");
     }
 
+    private void addFullValidConfig_loginRateLimit() {
+        config.createSection("login_rate_limit");
+        config.getConfigurationSection("login_rate_limit").set("enabled", true);
+        config.getConfigurationSection("login_rate_limit").set("max_login_attempts_per_minute", 5);
+        config.getConfigurationSection("login_rate_limit").set("max_concurrent_per_ip", 3);
+        config.getConfigurationSection("login_rate_limit").set("notify_admins", true);
+        config.getConfigurationSection("login_rate_limit").set("message", "登录过于频繁，请稍后再试");
+    }
+
     private void addFullValidConfig_commandPolicies() {
         config.createSection("command_policies");
         config.getConfigurationSection("command_policies").createSection("tpbow");
@@ -247,6 +256,7 @@ class ConfigHealthCheckTest {
         addFullValidConfig_commandPolicies();
         addFullValidConfig_guard();
         addFullValidConfig_chat();
+        addFullValidConfig_loginRateLimit();
         addFullValidConfig_bot();
         addFullValidConfig_templates();
         List<String> issues = runValidate();
@@ -624,6 +634,42 @@ class ConfigHealthCheckTest {
         // no chat section
         List<String> issues = runValidate();
         assertTrue(issues.contains("建议: config.yml 缺失 chat 配置段，将使用默认配置（聊天反垃圾开启）"));
+    }
+
+    @Test
+    void missingLoginRateLimitSection_reportsSuggestion() {
+        addFullValidConfig_whitelist();
+        addFullValidConfig_maintenance();
+        addFullValidConfig_tnt();
+        addFullValidConfig_geoip();
+        addFullValidConfig_commandPolicies();
+        addFullValidConfig_bot();
+        addMinimalValidConfig_templates();
+        // no login_rate_limit section
+        List<String> issues = runValidate();
+        assertTrue(issues.contains("建议: config.yml 缺失 login_rate_limit 配置段，将使用默认配置（进服限流开启）"));
+    }
+
+    @Test
+    void loginRateLimitWrongTypes_reportIssues() {
+        config.createSection("login_rate_limit").set("enabled", "yes");
+        config.getConfigurationSection("login_rate_limit").set("max_login_attempts_per_minute", 0);
+        config.getConfigurationSection("login_rate_limit").set("max_concurrent_per_ip", 0);
+        config.getConfigurationSection("login_rate_limit").set("notify_admins", "yes");
+        config.getConfigurationSection("login_rate_limit").set("message", "");
+        addFullValidConfig_whitelist();
+        addFullValidConfig_maintenance();
+        addFullValidConfig_tnt();
+        addFullValidConfig_geoip();
+        addFullValidConfig_commandPolicies();
+        addFullValidConfig_bot();
+        addMinimalValidConfig_templates();
+        List<String> issues = runValidate();
+        assertTrue(issues.contains("类型错误: login_rate_limit.enabled 需为布尔值"));
+        assertTrue(issues.contains("非法: login_rate_limit.max_login_attempts_per_minute 不得小于 1"));
+        assertTrue(issues.contains("非法: login_rate_limit.max_concurrent_per_ip 不得小于 1"));
+        assertTrue(issues.contains("类型错误: login_rate_limit.notify_admins 需为布尔值"));
+        assertTrue(issues.contains("缺失: login_rate_limit.message 不可为空"));
     }
 
     @Test

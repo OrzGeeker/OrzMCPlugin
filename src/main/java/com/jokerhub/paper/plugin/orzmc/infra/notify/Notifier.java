@@ -51,7 +51,8 @@ public final class Notifier {
                             TemplateKeys.MAINTENANCE_BACKUP_ERROR,
                             TemplateKeys.MAINTENANCE_OPTIMIZE_ERROR,
                             TemplateKeys.COMMAND_GUARD_BLOCKED,
-                            TemplateKeys.SECURITY_AUDIT -> MessageEnvelope.TargetType.PRIVATE;
+                            TemplateKeys.SECURITY_AUDIT,
+                            TemplateKeys.LOGIN_RATE_LIMIT_ALERT -> MessageEnvelope.TargetType.PRIVATE;
                     default -> MessageEnvelope.TargetType.PUBLIC;
                 };
         botMessageService.send(envelope.withTargetType(target));
