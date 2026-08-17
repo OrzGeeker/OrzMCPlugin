@@ -134,7 +134,7 @@
 
 ### P1
 - [x] P1-1 定时自动备份 — PR [#179](https://github.com/OrzMC/OrzMCPlugin/pull/179)（含 P0 全模块）
-- [ ] P1-2 启动安全自检报告 — PR #
+- [x] P1-2 启动安全自检报告 — PR [#180](https://github.com/OrzMC/OrzMCPlugin/pull/180)
 
 ### P2
 - [ ] P2-1 聊天反垃圾/反广告 — PR #
