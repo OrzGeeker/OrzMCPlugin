@@ -12,7 +12,6 @@ import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
 import org.bukkit.scheduler.BukkitTask;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 
 class ScheduledBackupServiceTest {
 
@@ -33,40 +32,94 @@ class ScheduledBackupServiceTest {
     }
 
     @Test
-    void setup_zeroHours_doesNotSchedule() {
+    void setup_alwaysRegistersMinuteChecker() {
+        // 无论开关状态都注册常驻检查器（每分钟 1200 ticks），以支持 /config reload 热重载即时生效
         when(configs.maintenance()).thenReturn(config(0L));
         ScheduledBackupService service =
                 new ScheduledBackupService(server, configs, mock(WorldMaintenanceService.class));
 
         service.setup();
 
-        verify(server, never()).runTaskTimer(any(Runnable.class), anyLong(), anyLong());
+        verify(server).runTaskTimer(any(Runnable.class), eq(1200L), eq(1200L));
     }
 
     @Test
-    void setup_positiveHours_schedulesRepeatingTimer() {
-        when(configs.maintenance()).thenReturn(config(2L));
-        ScheduledBackupService service =
-                new ScheduledBackupService(server, configs, mock(WorldMaintenanceService.class));
+    void tick_disabled_neverFiresBackup() {
+        when(configs.maintenance()).thenReturn(config(0L));
+        WorldMaintenanceService maintenance = mock(WorldMaintenanceService.class);
+        ScheduledBackupService service = new ScheduledBackupService(server, configs, maintenance);
 
-        service.setup();
+        for (int i = 0; i < 200; i++) {
+            service.tick();
+        }
 
-        // 2 小时 = 2 * 72000 ticks，delay 与 period 相同（首次 2 小时后触发，之后每 2 小时一次）
-        verify(server).runTaskTimer(any(Runnable.class), eq(144000L), eq(144000L));
+        verifyNoInteractions(maintenance);
     }
 
     @Test
-    void tick_triggersBackupWithMaintenanceConfig() {
+    void tick_enabled_firesAfterIntervalHours() {
         when(configs.maintenance()).thenReturn(config(1L));
         WorldMaintenanceService maintenance = mock(WorldMaintenanceService.class);
         ScheduledBackupService service = new ScheduledBackupService(server, configs, maintenance);
-        service.setup();
 
-        ArgumentCaptor<Runnable> captor = ArgumentCaptor.forClass(Runnable.class);
-        verify(server).runTaskTimer(captor.capture(), anyLong(), anyLong());
-        captor.getValue().run();
+        for (int i = 0; i < 59; i++) {
+            service.tick();
+        }
+        verifyNoInteractions(maintenance); // 第 59 分钟仍未到点
+
+        service.tick(); // 第 60 分钟 → 触发一次备份
 
         verify(maintenance).backup(eq(300L), eq(5), any());
+    }
+
+    @Test
+    void tick_firesBackupOncePerInterval() {
+        when(configs.maintenance()).thenReturn(config(1L));
+        WorldMaintenanceService maintenance = mock(WorldMaintenanceService.class);
+        ScheduledBackupService service = new ScheduledBackupService(server, configs, maintenance);
+
+        for (int i = 0; i < 120; i++) {
+            service.tick();
+        }
+
+        verify(maintenance, times(2)).backup(eq(300L), eq(5), any());
+    }
+
+    @Test
+    void tick_intervalChangedViaReload_reschedulesFromNow() {
+        // 热重载：2 小时 → 1 小时，配置变化后的下一个检查点即按新间隔重排倒计时
+        when(configs.maintenance()).thenReturn(config(2L));
+        WorldMaintenanceService maintenance = mock(WorldMaintenanceService.class);
+        ScheduledBackupService service = new ScheduledBackupService(server, configs, maintenance);
+
+        for (int i = 0; i < 30; i++) {
+            service.tick(); // 2 小时计划下累计 30 分钟，未到点
+        }
+        verifyNoInteractions(maintenance);
+
+        when(configs.maintenance()).thenReturn(config(1L)); // 模拟 /config reload 把间隔改为 1 小时
+        for (int i = 0; i < 60; i++) {
+            service.tick(); // 按新间隔重新累计
+        }
+
+        verify(maintenance, times(1)).backup(eq(300L), eq(5), any());
+    }
+
+    @Test
+    void tick_disabledMidRun_stopsFiring() {
+        when(configs.maintenance()).thenReturn(config(1L));
+        WorldMaintenanceService maintenance = mock(WorldMaintenanceService.class);
+        ScheduledBackupService service = new ScheduledBackupService(server, configs, maintenance);
+
+        for (int i = 0; i < 30; i++) {
+            service.tick();
+        }
+        when(configs.maintenance()).thenReturn(config(0L)); // 模拟 /config reload 关闭
+        for (int i = 0; i < 200; i++) {
+            service.tick();
+        }
+
+        verifyNoInteractions(maintenance);
     }
 
     @Test
@@ -79,8 +132,14 @@ class ScheduledBackupServiceTest {
                 new WorldMaintenanceService(server, configs, styles, mock(Notifier.class));
         ScheduledBackupService service = new ScheduledBackupService(server, configs, maintenance);
 
-        service.tick();
-        service.tick();
+        for (int i = 0; i < 60; i++) { // 第一个周期到点 → 备份启动（异步，进行中）
+            service.tick();
+        }
+        assertTrue(maintenance.isRunning());
+
+        for (int i = 0; i < 60; i++) { // 第二个周期到点 → runExclusive 互斥，跳过
+            service.tick();
+        }
 
         verify(server, times(1)).runSync(any(Runnable.class));
         assertTrue(maintenance.isRunning());

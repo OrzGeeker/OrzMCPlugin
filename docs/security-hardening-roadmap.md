@@ -99,7 +99,7 @@
 ### P1-1 定时自动备份
 
 - **目标**：文章 26 §5 明确"备份不要依赖手动"。插件已有完整备份机械（`$b`、踢人→save-off→压缩→save-on、保留轮转、维护 MOTD/锁登录），只缺调度。
-- **行为**：`MaintenanceConfig` 增加 `backupIntervalHours`（默认 `0` = 关闭）；新增 `features/maintenance/ScheduledBackupService.java`，用 `SafeScheduler.runTaskTimer` 按小时触发 `WorldMaintenanceService.backup()`；`runExclusive` 天然互斥，运行中跳过；错误沿用现有 PRIVATE 私信。
+- **行为**：`MaintenanceConfig` 增加 `backupIntervalHours`（默认 `0` = 关闭）；新增 `features/maintenance/ScheduledBackupService.java`，用 `SafeScheduler.runTaskTimer` 按小时触发 `WorldMaintenanceService.backup()`；`runExclusive` 天然互斥，运行中跳过；错误沿用现有 PRIVATE 私信。**热重载**：常驻轻量检查器（每分钟）惰性读取配置，间隔/开关经 `/config reload` 修改后下一检查点即生效，无需重启。
 - **验收**：`ScheduledBackupServiceTest`（0 不调度、正数调度且重复 tick 不叠加）+ `MaintenanceConfigTest` 扩展。
 
 ### P1-2 启动安全自检报告
