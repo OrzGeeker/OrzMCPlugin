@@ -185,6 +185,8 @@ runPaper.folia.registerTask {
 
 **真实 Folia 验收**：`./gradlew runFolia` 手动冒烟（启动加载 → 白名单 `$w` → TNT 爆炸 →
 传送弓 → 建门/拆门 → `/orzbackup`），无 `IllegalThreadStateException`/死锁。
+已固化为逐项清单：**[docs/folia-acceptance.md](folia-acceptance.md)**（FA-01~07 无头已验 ✅ +
+TC-F1~F6 真实环境待验 ⬜，含通过标准与失败判据）。
 
 ### D7 并发安全（Folia 下事件按 region 并发暴露的共享状态）
 
