@@ -171,11 +171,19 @@ runPaper.folia.registerTask {
 
 | 位置 | 改法 | 落地 |
 |---|---|---|
-| `TntEventService.pendingAlerts`（HashMap get→put 非原子） | `ConcurrentHashMap` + `compute` | PR-4 |
-| `PlayerEventAggregator.batch`（enqueue/flush 跨线程） | 加 `synchronized` | PR-4 |
-| `ForceLoadedChunkLease.counts` | `ConcurrentHashMap` | **PR-3 提前落地**（region 投递使跨 region 读写真实化） |
-| `TeleportBowFlightTracker.acquired/pending` | `ConcurrentHashMap.newKeySet()` | PR-4 |
-| `PortalService.interiorTargets` | `ConcurrentHashMap` | **PR-3 提前落地**（同上，含 `portalCenters`） |
+| `TntEventService.pendingAlerts`（HashMap get→put 非原子） | `ConcurrentHashMap` + `compute` | **PR-4 已合并** |
+| `PlayerEventAggregator.batch`（enqueue/flush 跨线程） | 加 `synchronized` | **PR-4 已合并** |
+| `ForceLoadedChunkLease.counts` | `ConcurrentHashMap` | **PR-3 已合并**（region 投递使跨 region 读写真实化） |
+| `TeleportBowFlightTracker.acquired/pending` | `ConcurrentHashMap.newKeySet()` | **PR-4 已合并** |
+| `PortalService.interiorTargets` | `ConcurrentHashMap` | **PR-3 已合并**（同上，含 `portalCenters`） |
+
+- **PR-4 落地情况（2026-08，已合并）**：`TntEventService.aggregateNotify` 的建表/调度/计数
+  全部收进 `pendingAlerts.compute` 映射函数（按 key 原子化；调度在 compute 返回入表前完成，
+  保留「不留孤儿批次」不变量）；`PlayerEventAggregator` 的 `enqueue`/`flushPending`/`flushAndRender`
+  加 `synchronized` 串行化 region 入队与 global 冲刷；`TeleportBowFlightTracker.acquired/pending`
+  改 `ConcurrentHashMap.newKeySet()`（tick 与异步回调并发读写）。并发单测：64 线程同 key 爆炸
+  计数精确 ×64 且单次调度；50 线程并发入队单批计数精确；tick×3 与回调并发无
+  `ConcurrentModificationException` 且停时释放不泄漏。
 
 ### D8 CI 自动化（是否需要补 Folia 处理）
 
