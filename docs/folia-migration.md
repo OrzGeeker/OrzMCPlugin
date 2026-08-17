@@ -131,6 +131,25 @@ runPaper.folia.registerTask {
 | 手动下载 Folia jar + 手写启动脚本 | 每次冒烟要手动放 jar/配置 | 性价比低 |
 | Docker 起 Folia | 需要镜像维护 + 端口映射，冒烟改代码要重建 | 性价比低 |
 
+- **PR-5 落地情况（2026-08，本 PR）**：
+  - `paper-plugin.yml`：`folia-supported: false` → `true`（Folia 现可加载本插件）
+  - `build.gradle.kts`：新增 `agreeFoliaEula`（写 `run-folia/eula.txt`）+ `runPaper.folia.registerTask`
+    （`runFolia`，`minecraftVersion(debugServerVersion)`、`args("--nojline","--nogui","--online-mode=false")`、
+    `runDirectory` 隔离到 `run-folia/`）。实测 26.2 可用。
+  - **发布 loader**：Modrinth `loaders` 加 `folia`（与 `paper` 共用同一 shadowJar）；
+    **Hangar 无 FOLIA 平台**（`PlatformContainer`/`Platforms` 仅有 PAPER/VELOCITY/WATERFALL，
+    0.1.4 与 master 均无，Folia 兼容由 PAPER 平台条目 + `folia-supported` 声明承载）。
+  - `foliaSmoke` 无头冒烟任务（D8 详述）：实测**通过**——Folia 26.2 约 7s 启动、
+    OrzMC 全部配置加载成功、`stop` 干净退出 exit 0。
+  - **关键坑 1（下载源）**：旧的 `api.papermc.io/v2` 已下线，现为 **Paper Fill API v3**
+    （`https://fill.papermc.io/v3/projects/folia/versions/{ver}/builds/latest`，响应
+    `downloads["server:default"].url` 即直链）。JSON ⊂ YAML，`foliaSmoke` 直接复用 buildscript
+    已有的 SnakeYAML 解析，零新增依赖。
+  - **关键坑 2（自阻断）**：OrzMC 安全加固 deny-list 默认拦截 `stop`/`reload` 等危险命令，
+    冒烟发送 `stop` 会被拦截、服务器不退出 → `foliaSmoke` 在隔离的 `run-folia-smoke/plugins/OrzMC/config.yml`
+    写 `guard.blocked_commands: []` 放行（仅影响冒烟目录，不触碰真实配置）。开发机手动
+    `runFolia`/`runServer` 亦会被拦截，属插件既有安全设计。
+
 ### D6 测试策略（单元/集成测试是否需要单独 Folia 处理）
 
 **单元测试不需要单独 Folia 套件**，三层解释：
@@ -189,10 +208,19 @@ runPaper.folia.registerTask {
 
 - 主 `check` 流水线（spotlessCheck → test → integrationTest → jacoco → shadowJar）
   **不进真实服务器**，保持不变。
-- **新增独立 `folia-smoke` CI job**（Java 25，独立 job 不拖慢主构建）：
-  - 新增 `foliaSmoke` Gradle 自定义任务：用 run-paper 的 folia 下载启动 Folia 无头服务器
-    （`--nogui --noconsole`），安装 shadowJar，轮询日志确认 `Done` + OrzMC 加载标记，
-    发 `stop` 断言干净退出，超时即失败。
+- **新增独立 `folia-smoke` CI job**（Java 25，独立 job 不拖慢主构建，PR-6 落地）：
+  - **PR-5 已实现 `foliaSmoke` Gradle 自定义任务**（build.gradle.kts，PR-6 接进 CI）：
+    - 拆成 `downloadFoliaJar`（有缓存：`inputs.property(foliaVersion)` + `outputs.file(jar)`
+      + 成功标记文件 `.folia-{ver}.ok`——校验通过才写，中断残留判 out-of-date 重下，
+      输出到 `build/folia-smoke/`，SHA256 校验）+ `foliaSmoke`（每次真实启动不跳过，
+      `outputs.upToDateWhen { false }`）。
+    - 启动用 **Java 25 toolchain**（`javaToolchains.launcherFor(java.toolchain)`），不依赖
+      Gradle 守护进程 JDK；参数 `--nogui --nojline --online-mode=false --port 25580` +
+      `-Ddisable.watchdog=true`。
+    - 流程：安装 shadowJar → 轮询 `Done (`（240s 超时）→ 校验 `OrzMC` 出现在日志
+      （15s）→ 发 `stop` → 断言 90s 内干净退出 exit 0；任何一步失败抛
+      `GradleException` 并附带日志尾部。
+    - **不嵌套调 gradlew**（项目锁会死锁）：自行解析 Fill API v3 直链下载。
   - 初期若不稳定，job 先 `continue-on-error: true`，稳定后转必须。
   - 备选：文档化手动 `runFolia` 冒烟清单，CI 保持 serverless。**推荐前者**：真实启动回归
     价值高（能抓「插件在 Folia 启动即崩溃」这类集成测试测不出的回归）。
