@@ -29,11 +29,11 @@
 | 优先级 | 子任务 | 状态 | 依赖 |
 |---|---|---|---|
 | **P0** | 危险命令拦截模块（文章 25 核心） | | |
-| | P0-1 `SecurityGuardConfig` 配置记录 | ⬜ | — |
-| | P0-2 `CommandGuardService` 判定核心 | ⬜ | P0-1 |
-| | P0-3 `CommandGuardListener` 事件接入 | ⬜ | P0-2 |
-| | P0-4 `CommandAuditService` 命令审计 | ⬜ | P0-2 |
-| | P0-5 `$e`/`/orzdebug`/RCON 执行路径接入 guard | ⬜ | P0-2 |
+| | P0-1 `SecurityGuardConfig` 配置记录 | ☑ | — |
+| | P0-2 `CommandGuardService` 判定核心 | ☑ | P0-1 |
+| | P0-3 `CommandGuardListener` 事件接入 | ☑ | P0-2 |
+| | P0-4 `CommandAuditService` 命令审计 | ☑ | P0-2 |
+| | P0-5 `$e`/`/orzdebug`/RCON 执行路径接入 guard | ☑ | P0-2 |
 | **P1** | 运维自动化（文章 26 §5 + 上线验收） | | |
 | | P1-1 定时自动备份 | ⬜ | — |
 | | P1-2 启动安全自检报告 | ⬜ | — |
@@ -126,11 +126,11 @@
 > 当前进度以任务清单（Task List）为准，每完成一个子任务在此打勾并附 PR 链接。
 
 ### P0
-- [ ] P0-1 `SecurityGuardConfig` — PR #
-- [ ] P0-2 `CommandGuardService` — PR #
-- [ ] P0-3 `CommandGuardListener` — PR #
-- [ ] P0-4 `CommandAuditService` — PR #
-- [ ] P0-5 `$e` 路径接入 guard — PR #
+- [x] P0-1 `SecurityGuardConfig` — 分支 feat/security-hardening（`a67674c`）
+- [x] P0-2 `CommandGuardService` — 分支 feat/security-hardening（`a67674c`）
+- [x] P0-3 `CommandGuardListener` — 分支 feat/security-hardening（`7fa4326`）
+- [x] P0-4 `CommandAuditService` — 分支 feat/security-hardening（`e03349d`）
+- [x] P0-5 `$e` 路径接入 guard — 分支 feat/security-hardening（`506fab6`）
 
 ### P1
 - [ ] P1-1 定时自动备份 — PR #
