@@ -28,6 +28,9 @@ maintenance:
   optimize_tick_time_threshold: 300
   backup_retention_count: 5
   backup_maintenance_motd: "服务器维护中，稍后再试"
+  # 定时自动备份间隔（小时）：0 = 关闭；>0 表示每 N 小时自动备份一次。
+  # 该字段支持 /config reload 热重载：修改后无需重启，下一个检查点（每分钟）即生效。
+  backup_interval_hours: 0
 
 # ==================================================
 #                   TNT 检查配置
