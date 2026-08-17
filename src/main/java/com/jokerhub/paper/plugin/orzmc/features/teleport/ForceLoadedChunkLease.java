@@ -1,7 +1,8 @@
 package com.jokerhub.paper.plugin.orzmc.features.teleport;
 
-import java.util.HashMap;
+import com.jokerhub.paper.plugin.orzmc.infra.server.RegionSchedulerProvider;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -17,31 +18,40 @@ import org.bukkit.entity.Player;
  * <p>最后一个引用释放后主动卸载区块（立即回收内存，不必等 unload 计时），
  * 但仅卸载「由本注册表 force-load」且「无玩家在内」的区块：
  * 既不会撤销其他插件持有的 force-load，也不会把玩家脚下区块卸掉。</p>
+ *
+ * <p>Folia：force-load/unload 是区块操作，必须投递到该区块所属的 region 线程执行；
+ * 同一区块的 acquire/release 经 region 队列天然串行，计数更新因此被逐区块串行化。
+ * Paper 上 region 调度即主线程执行，语义不变。</p>
  */
 final class ForceLoadedChunkLease {
 
-    private final Map<World, Map<Long, LeaseRef>> counts = new HashMap<>();
+    private final RegionSchedulerProvider regionScheduler;
+    private final Map<World, Map<Long, LeaseRef>> counts = new ConcurrentHashMap<>();
+
+    ForceLoadedChunkLease(RegionSchedulerProvider regionScheduler) {
+        this.regionScheduler = regionScheduler;
+    }
 
     /**
      * 持有一个区块的 force-load 引用。计数 0→1 时仅在区块原本未被 force-load 时
      * 才真正 force-load（不覆盖其他插件已有的 force-load），并记录是否需要我们在释放时清除。
-     *
-     * <p>仅应在主线程调用（tracker tick / 异步加载回调均在主线程）。</p>
      */
     void acquire(World world, int cx, int cz) {
-        Map<Long, LeaseRef> perWorld = counts.computeIfAbsent(world, w -> new HashMap<>());
-        long key = key(cx, cz);
-        LeaseRef ref = perWorld.get(key);
-        if (ref == null) {
-            Chunk chunk = world.getChunkAt(cx, cz);
-            boolean alreadyForced = chunk.isForceLoaded();
-            if (!alreadyForced) {
-                chunk.setForceLoaded(true);
+        regionScheduler.run(world, cx, cz, () -> {
+            Map<Long, LeaseRef> perWorld = counts.computeIfAbsent(world, w -> new ConcurrentHashMap<>());
+            long key = key(cx, cz);
+            LeaseRef ref = perWorld.get(key);
+            if (ref == null) {
+                Chunk chunk = world.getChunkAt(cx, cz);
+                boolean alreadyForced = chunk.isForceLoaded();
+                if (!alreadyForced) {
+                    chunk.setForceLoaded(true);
+                }
+                perWorld.put(key, new LeaseRef(1, !alreadyForced));
+            } else {
+                ref.refs++;
             }
-            perWorld.put(key, new LeaseRef(1, !alreadyForced));
-        } else {
-            ref.refs++;
-        }
+        });
     }
 
     /**
@@ -49,31 +59,33 @@ final class ForceLoadedChunkLease {
      * 随后在无玩家在内时主动 {@code unloadChunk} 回收内存（已卸载则跳过，避免 {@code getChunkAt} 重新加载）。
      */
     void release(World world, int cx, int cz) {
-        Map<Long, LeaseRef> perWorld = counts.get(world);
-        if (perWorld == null) {
-            return;
-        }
-        long key = key(cx, cz);
-        LeaseRef ref = perWorld.get(key);
-        if (ref == null || ref.refs <= 0) {
-            return;
-        }
-        if (ref.refs == 1) {
-            if (world.isChunkLoaded(cx, cz)) {
-                if (ref.weForced) {
-                    world.getChunkAt(cx, cz).setForceLoaded(false);
-                    if (noPlayerInChunk(world, cx, cz)) {
-                        world.unloadChunk(cx, cz, true);
+        regionScheduler.run(world, cx, cz, () -> {
+            Map<Long, LeaseRef> perWorld = counts.get(world);
+            if (perWorld == null) {
+                return;
+            }
+            long key = key(cx, cz);
+            LeaseRef ref = perWorld.get(key);
+            if (ref == null || ref.refs <= 0) {
+                return;
+            }
+            if (ref.refs == 1) {
+                if (world.isChunkLoaded(cx, cz)) {
+                    if (ref.weForced) {
+                        world.getChunkAt(cx, cz).setForceLoaded(false);
+                        if (noPlayerInChunk(world, cx, cz)) {
+                            world.unloadChunk(cx, cz, true);
+                        }
                     }
                 }
+                perWorld.remove(key);
+                if (perWorld.isEmpty()) {
+                    counts.remove(world);
+                }
+            } else {
+                ref.refs--;
             }
-            perWorld.remove(key);
-            if (perWorld.isEmpty()) {
-                counts.remove(world);
-            }
-        } else {
-            ref.refs--;
-        }
+        });
     }
 
     /** 区块内是否没有在线玩家：有玩家则不主动卸载，避免把玩家脚下区块卸掉造成回弹/加载屏。 */
