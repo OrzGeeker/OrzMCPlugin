@@ -281,7 +281,9 @@ public final class FeatureModule implements ServiceModule {
                     playerEventService,
                     guideService,
                     platform.textStyles(),
-                    maintenanceModule.worldMaintenanceService()),
+                    maintenanceModule.worldMaintenanceService(),
+                    botModule.notifier(),
+                    platform.configs()),
             new OrzTPEvent(
                     plugin,
                     platform.serverFacade(),
