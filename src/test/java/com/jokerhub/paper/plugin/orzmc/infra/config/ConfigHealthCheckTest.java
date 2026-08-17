@@ -89,6 +89,14 @@ class ConfigHealthCheckTest {
         config.createSection("geoip").set("allow_country_code", List.of("CN", "HK"));
     }
 
+    private void addFullValidConfig_guard() {
+        config.createSection("guard");
+        config.getConfigurationSection("guard").set("enabled", true);
+        config.getConfigurationSection("guard").set("notify_admins", true);
+        config.getConfigurationSection("guard").set("audit_enabled", true);
+        config.getConfigurationSection("guard").set("blocked_commands", List.of("op", "reload"));
+    }
+
     private void addFullValidConfig_commandPolicies() {
         config.createSection("command_policies");
         config.getConfigurationSection("command_policies").createSection("tpbow");
@@ -228,6 +236,7 @@ class ConfigHealthCheckTest {
         addFullValidConfig_playerNotify();
         addFullValidConfig_geoip();
         addFullValidConfig_commandPolicies();
+        addFullValidConfig_guard();
         addFullValidConfig_bot();
         addFullValidConfig_templates();
         List<String> issues = runValidate();
@@ -577,6 +586,40 @@ class ConfigHealthCheckTest {
         List<String> issues = runValidate();
         assertTrue(issues.contains("类型错误: player_notify.enabled_join 需为布尔值"));
         assertTrue(issues.contains("类型错误: player_notify.include_online_list 需为布尔值"));
+    }
+
+    @Test
+    void missingGuardSection_reportsSuggestion() {
+        addFullValidConfig_whitelist();
+        addFullValidConfig_maintenance();
+        addFullValidConfig_tnt();
+        addFullValidConfig_geoip();
+        addFullValidConfig_commandPolicies();
+        addFullValidConfig_bot();
+        addMinimalValidConfig_templates();
+        // no guard section
+        List<String> issues = runValidate();
+        assertTrue(issues.contains("建议: config.yml 缺失 guard 配置段，将使用默认配置（危险命令拦截开启）"));
+    }
+
+    @Test
+    void guardWrongTypes_reportIssues() {
+        config.createSection("guard").set("enabled", "yes");
+        config.getConfigurationSection("guard").set("notify_admins", "yes");
+        config.getConfigurationSection("guard").set("audit_enabled", 1);
+        config.getConfigurationSection("guard").set("blocked_commands", "op,reload");
+        addFullValidConfig_whitelist();
+        addFullValidConfig_maintenance();
+        addFullValidConfig_tnt();
+        addFullValidConfig_geoip();
+        addFullValidConfig_commandPolicies();
+        addFullValidConfig_bot();
+        addMinimalValidConfig_templates();
+        List<String> issues = runValidate();
+        assertTrue(issues.contains("类型错误: guard.enabled 需为布尔值"));
+        assertTrue(issues.contains("类型错误: guard.notify_admins 需为布尔值"));
+        assertTrue(issues.contains("类型错误: guard.audit_enabled 需为布尔值"));
+        assertTrue(issues.contains("类型错误: guard.blocked_commands 需为列表"));
     }
 
     @Test

@@ -28,6 +28,7 @@ templates:
     server_stop: PLAIN
     whitelist_block: PLAIN
     whitelist_toggle_alert: PLAIN
+    command_guard_blocked: PLAIN
     maintenance_backup_stage: CODE_BLOCK
     maintenance_backup_done: CODE_BLOCK
     maintenance_backup_error: CODE_BLOCK
@@ -77,6 +78,7 @@ templates:
   server_stop: "{message}"
   whitelist_block: "{message}"
   whitelist_toggle_alert: "{message}"
+  command_guard_blocked: "⚠ 高危命令已被拦截\n命令: {command}\n来源: {source} | 发送者: {sender}\n原因: {reason}"
   player_join: "{name} 上线\n------当前在线({online_count}/{max_count})------\n{online_list}"
   player_quit: "{name} 下线\n------当前在线({online_count}/{max_count})------\n{online_list}"
   player_kick: "{name} 被踢\n------当前在线({online_count}/{max_count})------\n{online_list}"

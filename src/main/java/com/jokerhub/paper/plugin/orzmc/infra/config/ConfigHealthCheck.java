@@ -37,6 +37,7 @@ public final class ConfigHealthCheck {
         validatePlayerNotifySection(cfg.getConfigurationSection("player_notify"), issues);
         validateGeoIpSection(cfg.getConfigurationSection("geoip"), issues);
         validateCommandPoliciesSection(cfg.getConfigurationSection("command_policies"), issues);
+        validateGuardSection(cfg.getConfigurationSection("guard"), issues);
     }
 
     private static void validateWhitelistSection(ConfigurationSection section, List<String> issues) {
@@ -167,6 +168,21 @@ public final class ConfigHealthCheck {
             if (ao != null && !(ao instanceof Boolean))
                 issues.add("类型错误: command_policies." + key + ".admin_only 需为布尔值");
         }
+    }
+
+    private static void validateGuardSection(ConfigurationSection section, List<String> issues) {
+        if (section == null) {
+            issues.add("建议: config.yml 缺失 guard 配置段，将使用默认配置（危险命令拦截开启）");
+            return;
+        }
+        Object en = section.get("enabled");
+        if (en != null && !(en instanceof Boolean)) issues.add("类型错误: guard.enabled 需为布尔值");
+        Object na = section.get("notify_admins");
+        if (na != null && !(na instanceof Boolean)) issues.add("类型错误: guard.notify_admins 需为布尔值");
+        Object ae = section.get("audit_enabled");
+        if (ae != null && !(ae instanceof Boolean)) issues.add("类型错误: guard.audit_enabled 需为布尔值");
+        Object bl = section.get("blocked_commands");
+        if (bl != null && !(bl instanceof List<?>)) issues.add("类型错误: guard.blocked_commands 需为列表");
     }
 
     private static void validateEasyBot(FileConfiguration cfg, List<String> issues) {

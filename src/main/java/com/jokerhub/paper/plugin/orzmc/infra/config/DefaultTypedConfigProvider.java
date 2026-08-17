@@ -6,6 +6,7 @@ import com.jokerhub.paper.plugin.orzmc.infra.config.configs.BotConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.IpWhitelist;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.MaintenanceConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.PlayerNotifyConfig;
+import com.jokerhub.paper.plugin.orzmc.infra.config.configs.SecurityGuardConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.TemplateOptions;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.Templates;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.TntConfig;
@@ -73,6 +74,12 @@ public final class DefaultTypedConfigProvider implements TypedConfigProvider {
     public IpWhitelist ipWhitelist() {
         ConfigurationSection section = sectionOrLegacy("config", "geoip", "ip_whitelist.yml");
         return IpWhitelist.from(section);
+    }
+
+    @Override
+    public SecurityGuardConfig securityGuard() {
+        ConfigurationSection section = sectionOrLegacy("config", "guard", "guard.yml");
+        return SecurityGuardConfig.from(section);
     }
 
     @Override
