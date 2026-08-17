@@ -106,6 +106,19 @@ class ConfigHealthCheckTest {
         config.getConfigurationSection("chat").set("message", "请勿刷屏或发送广告");
     }
 
+    private void addFullValidConfig_exploitHardening() {
+        config.createSection("exploit_hardening");
+        config.getConfigurationSection("exploit_hardening").set("enabled", true);
+        config.getConfigurationSection("exploit_hardening").set("book_enabled", true);
+        config.getConfigurationSection("exploit_hardening").set("book_max_pages", 100);
+        config.getConfigurationSection("exploit_hardening").set("item_enabled", true);
+        config.getConfigurationSection("exploit_hardening").set("item_max_attribute_modifiers", 6);
+        config.getConfigurationSection("exploit_hardening").set("entity_enabled", true);
+        config.getConfigurationSection("exploit_hardening").set("entity_max_per_chunk", 128);
+        config.getConfigurationSection("exploit_hardening").set("notify_admins", true);
+        config.getConfigurationSection("exploit_hardening").set("message", "检测到异常内容，已自动处理");
+    }
+
     private void addFullValidConfig_loginRateLimit() {
         config.createSection("login_rate_limit");
         config.getConfigurationSection("login_rate_limit").set("enabled", true);
@@ -257,6 +270,7 @@ class ConfigHealthCheckTest {
         addFullValidConfig_guard();
         addFullValidConfig_chat();
         addFullValidConfig_loginRateLimit();
+        addFullValidConfig_exploitHardening();
         addFullValidConfig_bot();
         addFullValidConfig_templates();
         List<String> issues = runValidate();
@@ -670,6 +684,48 @@ class ConfigHealthCheckTest {
         assertTrue(issues.contains("非法: login_rate_limit.max_concurrent_per_ip 不得小于 1"));
         assertTrue(issues.contains("类型错误: login_rate_limit.notify_admins 需为布尔值"));
         assertTrue(issues.contains("缺失: login_rate_limit.message 不可为空"));
+    }
+
+    @Test
+    void missingExploitHardeningSection_reportsSuggestion() {
+        addFullValidConfig_whitelist();
+        addFullValidConfig_maintenance();
+        addFullValidConfig_tnt();
+        addFullValidConfig_geoip();
+        addFullValidConfig_commandPolicies();
+        addFullValidConfig_bot();
+        addMinimalValidConfig_templates();
+        // no exploit_hardening section
+        List<String> issues = runValidate();
+        assertTrue(issues.contains("建议: config.yml 缺失 exploit_hardening 配置段，将使用默认配置（漏洞加固开启）"));
+    }
+
+    @Test
+    void exploitHardeningWrongTypes_reportIssues() {
+        config.createSection("exploit_hardening").set("enabled", "yes");
+        config.getConfigurationSection("exploit_hardening").set("book_enabled", "yes");
+        config.getConfigurationSection("exploit_hardening").set("book_max_pages", 0);
+        config.getConfigurationSection("exploit_hardening").set("item_max_attribute_modifiers", 0);
+        config.getConfigurationSection("exploit_hardening").set("entity_enabled", "yes");
+        config.getConfigurationSection("exploit_hardening").set("entity_max_per_chunk", 0);
+        config.getConfigurationSection("exploit_hardening").set("notify_admins", "yes");
+        config.getConfigurationSection("exploit_hardening").set("message", "");
+        addFullValidConfig_whitelist();
+        addFullValidConfig_maintenance();
+        addFullValidConfig_tnt();
+        addFullValidConfig_geoip();
+        addFullValidConfig_commandPolicies();
+        addFullValidConfig_bot();
+        addMinimalValidConfig_templates();
+        List<String> issues = runValidate();
+        assertTrue(issues.contains("类型错误: exploit_hardening.enabled 需为布尔值"));
+        assertTrue(issues.contains("类型错误: exploit_hardening.book_enabled 需为布尔值"));
+        assertTrue(issues.contains("非法: exploit_hardening.book_max_pages 不得小于 1"));
+        assertTrue(issues.contains("非法: exploit_hardening.item_max_attribute_modifiers 不得小于 1"));
+        assertTrue(issues.contains("类型错误: exploit_hardening.entity_enabled 需为布尔值"));
+        assertTrue(issues.contains("非法: exploit_hardening.entity_max_per_chunk 不得小于 1"));
+        assertTrue(issues.contains("类型错误: exploit_hardening.notify_admins 需为布尔值"));
+        assertTrue(issues.contains("缺失: exploit_hardening.message 不可为空"));
     }
 
     @Test

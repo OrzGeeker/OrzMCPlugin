@@ -176,3 +176,29 @@ login_rate_limit:
   notify_admins: true
   # 命中时的提示文案
   message: "登录过于频繁，请稍后再试"
+
+# ==================================================
+#             已知漏洞加固（安全加固 P2-3）
+# ==================================================
+# 三类已知利用的插件侧兜底（对应站点文章《PaperMC 开放服务器检查清单》§4）：
+#   book_enabled / book_max_pages           —— 书与笔页数上限（防超大书页/大量书崩溃）
+#   item_enabled / item_max_attribute_modifiers —— 物品属性修饰符数量上限（防 32k：NBT 叠加超量属性）
+#   entity_enabled / entity_max_per_chunk   —— 单区块实体数上限（防卡服机，到达上限后拒绝新的实体生成，
+#                                              掉落物/抛射物豁免）
+# 命中书页/物品规则时按 notify_admins 配置 PRIVATE 私信管理员，并给玩家发送 message 提示。
+exploit_hardening:
+  # 总开关：关闭后漏洞加固全部停用
+  enabled: true
+  # 书与笔：每本最多页数（关闭请用 book_enabled=false）
+  book_enabled: true
+  book_max_pages: 100
+  # 物品：属性修饰符数量上限（关闭请用 item_enabled=false）
+  item_enabled: true
+  item_max_attribute_modifiers: 6
+  # 实体：单区块实体数上限（关闭请用 entity_enabled=false）
+  entity_enabled: true
+  entity_max_per_chunk: 128
+  # 命中书页/物品时是否 PRIVATE 私信管理员（实体拦截静默，防刷屏）
+  notify_admins: true
+  # 命中时的提示文案
+  message: "检测到异常内容，已自动处理"

@@ -9,6 +9,7 @@ import com.jokerhub.paper.plugin.orzmc.events.OrzBowShootEvent;
 import com.jokerhub.paper.plugin.orzmc.events.OrzChatEvent;
 import com.jokerhub.paper.plugin.orzmc.events.OrzCommandGuardEvent;
 import com.jokerhub.paper.plugin.orzmc.events.OrzDebugEvent;
+import com.jokerhub.paper.plugin.orzmc.events.OrzExploitHardeningEvent;
 import com.jokerhub.paper.plugin.orzmc.events.OrzLoginRateLimitEvent;
 import com.jokerhub.paper.plugin.orzmc.events.OrzMenuEvent;
 import com.jokerhub.paper.plugin.orzmc.events.OrzPlayerEvent;
@@ -35,6 +36,8 @@ import com.jokerhub.paper.plugin.orzmc.features.portal.PortalEventService;
 import com.jokerhub.paper.plugin.orzmc.features.security.BlacklistService;
 import com.jokerhub.paper.plugin.orzmc.features.security.CommandAuditService;
 import com.jokerhub.paper.plugin.orzmc.features.security.CommandGuardEventService;
+import com.jokerhub.paper.plugin.orzmc.features.security.ExploitHardeningEventService;
+import com.jokerhub.paper.plugin.orzmc.features.security.ExploitHardeningService;
 import com.jokerhub.paper.plugin.orzmc.features.security.GeoIpAccessService;
 import com.jokerhub.paper.plugin.orzmc.features.security.LoginRateLimitEventService;
 import com.jokerhub.paper.plugin.orzmc.features.security.LoginRateLimitService;
@@ -110,6 +113,8 @@ public final class FeatureModule implements ServiceModule {
     private final ChatSpamFilterEventService chatSpamFilterEventService;
     /** 进服限流/反 bot（安全加固 P2-2）：AsyncPlayerPreLoginEvent 按 IP 限频率/并发。 */
     private final LoginRateLimitEventService loginRateLimitEventService;
+    /** 已知漏洞加固（安全加固 P2-3）：书页上限 / 32k 物品 / 单区块实体上限。 */
+    private final ExploitHardeningEventService exploitHardeningEventService;
 
     private final MenuCommandService menuCommandService;
     private final PortalCommandService portalCommandService;
@@ -180,6 +185,12 @@ public final class FeatureModule implements ServiceModule {
         // 进服限流：纯判定核心 + 事件编排；login_rate_limit 每次读取最新配置（Supplier），/config reload 生效
         this.loginRateLimitEventService = new LoginRateLimitEventService(
                 new LoginRateLimitService(platform.configs()::loginRateLimit),
+                platform.configs(),
+                botModule.notifier(),
+                platform.textStyles());
+        // 漏洞加固：纯判定核心 + 事件编排；exploit_hardening 每次读取最新配置（Supplier），/config reload 生效
+        this.exploitHardeningEventService = new ExploitHardeningEventService(
+                new ExploitHardeningService(platform.configs()::exploitHardening),
                 platform.configs(),
                 botModule.notifier(),
                 platform.textStyles());
@@ -282,6 +293,7 @@ public final class FeatureModule implements ServiceModule {
             new OrzCommandGuardEvent(plugin, commandGuardEventService),
             new OrzChatEvent(plugin, chatSpamFilterEventService),
             new OrzLoginRateLimitEvent(plugin, loginRateLimitEventService),
+            new OrzExploitHardeningEvent(plugin, exploitHardeningEventService),
             new OrzMenuEvent(plugin, menuEventService),
             new OrzServerEvent(plugin, serverEventService),
             new OrzSecurityAuditEvent(plugin, startupSecurityAuditService),
