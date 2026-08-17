@@ -30,7 +30,6 @@ import com.jokerhub.paper.plugin.orzmc.features.portal.PortalEventService;
 import com.jokerhub.paper.plugin.orzmc.features.security.BlacklistService;
 import com.jokerhub.paper.plugin.orzmc.features.security.CommandAuditService;
 import com.jokerhub.paper.plugin.orzmc.features.security.CommandGuardEventService;
-import com.jokerhub.paper.plugin.orzmc.features.security.CommandGuardService;
 import com.jokerhub.paper.plugin.orzmc.features.security.GeoIpAccessService;
 import com.jokerhub.paper.plugin.orzmc.features.server.ServerEventService;
 import com.jokerhub.paper.plugin.orzmc.features.server.ServerFeedbackService;
@@ -121,15 +120,11 @@ public final class FeatureModule implements ServiceModule {
         // Feature services
         this.geoIpAccessService = new GeoIpAccessService(platform.configs());
         this.blacklistService = new BlacklistService(platform.configService());
-        // 命令审计：audit/command_audit.log，auditEnabled 每次读取最新配置（Supplier）
-        this.commandAuditService = new CommandAuditService(
-                () -> platform.configs().securityGuard().auditEnabled(),
-                platform.configService().dataFolder().toPath().resolve("audit"),
-                CommandAuditService.DEFAULT_MAX_BYTES,
-                org.bukkit.Bukkit.getLogger());
+        // 命令审计 + 危险命令判定核心：由平台模块统一持有（$e 与事件共享同一实例）
+        this.commandAuditService = platform.commandAuditService();
         // 危险命令拦截：纯判定核心 + 事件编排；guard 每次读取最新配置（Supplier），/config reload 生效
         this.commandGuardEventService = new CommandGuardEventService(
-                new CommandGuardService(() -> platform.configs().securityGuard()),
+                platform.commandGuardService(),
                 platform.configs(),
                 botModule.notifier(),
                 new CommandFeedbackService(),
