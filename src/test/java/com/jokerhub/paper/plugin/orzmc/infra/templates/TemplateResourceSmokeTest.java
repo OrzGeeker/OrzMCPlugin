@@ -145,4 +145,24 @@ public class TemplateResourceSmokeTest extends ServiceTestBase {
         Assertions.assertFalse(
                 rendered.contains("{player}") || rendered.contains("{reason}"), "不得残留字面占位符: " + rendered);
     }
+
+    @Test
+    public void testIpBlacklistBlockTemplateResolvesWithRealText() throws Exception {
+        // 安全加固 P2-4：封禁命中告警模板必须渲染真实中文文案，而非字面 "{ip}" 等占位符
+        YamlConfiguration cfg = load("templates.yml");
+        String resolved = TemplateRenderer.resolveTemplate("ip_blacklist_block", cfg, "");
+        Assertions.assertFalse(resolved.isEmpty(), "ip_blacklist_block 模板缺失");
+
+        var vars = java.util.Map.of(
+                "player", "alice",
+                "ip", "2001:db8::1",
+                "pattern", "2001:db8::/32");
+        String rendered = TemplateRenderer.render(resolved, vars);
+
+        Assertions.assertTrue(rendered.contains("alice"), "应含玩家名: " + rendered);
+        Assertions.assertTrue(rendered.contains("2001:db8::/32"), "应含命中规则: " + rendered);
+        Assertions.assertFalse(
+                rendered.contains("{player}") || rendered.contains("{ip}") || rendered.contains("{pattern}"),
+                "不得残留字面占位符: " + rendered);
+    }
 }
