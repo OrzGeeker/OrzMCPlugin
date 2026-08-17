@@ -41,7 +41,7 @@
 | | P2-1 聊天反垃圾/反广告 | ☑ | #181 |
 | | P2-2 进服限流/反 bot | ☑ | #182 |
 | | P2-3 已知漏洞加固（书页/32k/实体上限） | ☑ | #183 |
-| | P2-4 IP 黑名单增强（IPv6 + 封禁告警） | ⬜ | — |
+| | P2-4 IP 黑名单增强（IPv6 + 封禁告警） | ☑ | #184 |
 
 ---
 
@@ -140,7 +140,7 @@
 - [x] P2-1 聊天反垃圾/反广告 — PR #181（`8b16ce9`）
 - [x] P2-2 进服限流/反 bot — PR [#182](https://github.com/OrzMC/OrzMCPlugin/pull/182)（`4ba5774`）
 - [x] P2-3 已知漏洞加固 — PR [#183](https://github.com/OrzMC/OrzMCPlugin/pull/183)（`782d6ed`）
-- [ ] P2-4 IP 黑名单增强 — PR #
+- [x] P2-4 IP 黑名单增强 — PR [#184](https://github.com/OrzMC/OrzMCPlugin/pull/184)（`616fb2d`）
 
 ---
 
