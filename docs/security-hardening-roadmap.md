@@ -133,7 +133,7 @@
 - [x] P0-5 `$e` 路径接入 guard — 分支 feat/security-hardening（`506fab6`）
 
 ### P1
-- [ ] P1-1 定时自动备份 — 分支 feat/security-hardening（实现完成，PR 待开）
+- [x] P1-1 定时自动备份 — PR [#179](https://github.com/OrzMC/OrzMCPlugin/pull/179)（含 P0 全模块）
 - [ ] P1-2 启动安全自检报告 — PR #
 
 ### P2
