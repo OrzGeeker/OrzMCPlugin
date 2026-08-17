@@ -9,7 +9,7 @@ import com.jokerhub.paper.plugin.orzmc.infra.config.configs.MaintenanceConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.notify.Notifier;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
-import org.bukkit.scheduler.BukkitTask;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -17,13 +17,13 @@ class ScheduledBackupServiceTest {
 
     private ServerFacade server;
     private TypedConfigProvider configs;
-    private BukkitTask task;
+    private ScheduledTask task;
 
     @BeforeEach
     void setUp() {
         server = mock(ServerFacade.class);
         configs = mock(TypedConfigProvider.class);
-        task = mock(BukkitTask.class);
+        task = mock(ScheduledTask.class);
         when(server.runTaskTimer(any(Runnable.class), anyLong(), anyLong())).thenReturn(task);
     }
 

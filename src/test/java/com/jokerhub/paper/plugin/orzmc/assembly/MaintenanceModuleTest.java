@@ -6,7 +6,7 @@ import static org.mockito.Mockito.*;
 import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.MaintenanceConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
-import org.bukkit.scheduler.BukkitTask;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,7 +36,7 @@ class MaintenanceModuleTest {
         ServerFacade server = mock(ServerFacade.class);
         lenient()
                 .when(server.runTaskTimer(any(Runnable.class), anyLong(), anyLong()))
-                .thenReturn(mock(BukkitTask.class));
+                .thenReturn(mock(ScheduledTask.class));
         lenient().when(platform.serverFacade()).thenReturn(server);
         module = new MaintenanceModule(platform, botModule);
     }

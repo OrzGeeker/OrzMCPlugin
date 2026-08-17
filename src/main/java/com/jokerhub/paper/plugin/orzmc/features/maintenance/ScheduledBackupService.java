@@ -3,6 +3,7 @@ package com.jokerhub.paper.plugin.orzmc.features.maintenance;
 import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.MaintenanceConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 
 /**
  * 定时自动备份（安全加固 P1-1）。
@@ -39,7 +40,7 @@ public final class ScheduledBackupService {
     /** 当前计划对应的触发分钟数（间隔小时 × 60）。 */
     private long targetMinutes;
 
-    private org.bukkit.scheduler.BukkitTask task;
+    private ScheduledTask task;
 
     public ScheduledBackupService(
             ServerFacade server, TypedConfigProvider configs, WorldMaintenanceService maintenance) {
@@ -53,9 +54,7 @@ public final class ScheduledBackupService {
      * 这样运行中通过 {@code /config reload} 修改间隔/开关也能即时生效。
      */
     public void setup() {
-        if (task != null) {
-            task.cancel();
-        }
+        cancelTask(); // 重设前取消旧任务
         // 强制首个检查点按当前配置重排（插件重载后重新倒计时）
         plannedIntervalHours = 0;
         elapsedMinutes = 0;
@@ -65,8 +64,23 @@ public final class ScheduledBackupService {
 
     /** 取消定时任务（插件卸载时）。 */
     public void tearDown() {
-        if (task != null) {
+        cancelTask();
+    }
+
+    /**
+     * 尽力取消：取消失败不阻塞卸载流程。真实 Paper/Folia 在插件禁用时会自动回收
+     * 本插件全部任务，显式取消仅为及时释放；MockBukkit 的 {@code PaperScheduledTask.cancel()}
+     * 尚未实现（4.115.0），测试环境也靠此防御避免卸载异常。
+     */
+    private void cancelTask() {
+        if (task == null) {
+            return;
+        }
+        try {
             task.cancel();
+        } catch (RuntimeException e) {
+            server.logger().warning("[定时备份] 取消调度任务失败: " + e.getMessage());
+        } finally {
             task = null;
         }
     }

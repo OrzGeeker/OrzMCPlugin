@@ -1,13 +1,13 @@
 package com.jokerhub.paper.plugin.orzmc.features.teleport;
 
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import java.util.HashSet;
 import java.util.Set;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Arrow;
 import org.bukkit.entity.Player;
-import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Vector;
 
 /**
@@ -41,7 +41,7 @@ final class TeleportBowFlightTracker {
     private Arrow arrow;
     private Player player;
     private World world;
-    private BukkitTask task;
+    private ScheduledTask task;
     private int ticks;
     private boolean active;
 
@@ -148,10 +148,7 @@ final class TeleportBowFlightTracker {
             return;
         }
         active = false;
-        if (task != null) {
-            task.cancel();
-            task = null;
-        }
+        cancelSafely();
         if (world != null) {
             for (long key : acquired) {
                 lease.release(world, (int) (key >> 32), (int) (key & 0xffffffffL));
@@ -162,6 +159,24 @@ final class TeleportBowFlightTracker {
         arrow = null;
         player = null;
         world = null;
+    }
+
+    /**
+     * 尽力取消跟踪任务：取消失败不阻塞收尾。真实 Paper/Folia 在插件禁用时会自动回收
+     * 本插件全部任务；MockBukkit 的 {@code PaperScheduledTask.cancel()} 尚未实现（4.115.0），
+     * 测试环境也靠此防御避免异常中断 stop()。
+     */
+    private void cancelSafely() {
+        if (task == null) {
+            return;
+        }
+        try {
+            task.cancel();
+        } catch (RuntimeException e) {
+            server.logger().warning("取消传送箭跟踪任务失败: " + e.getMessage());
+        } finally {
+            task = null;
+        }
     }
 
     private static long key(int cx, int cz) {
