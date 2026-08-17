@@ -3,6 +3,7 @@ package com.jokerhub.paper.plugin.orzmc.infra.config;
 import com.jokerhub.paper.plugin.orzmc.core.bot.MessageEnvelope;
 import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.BotConfig;
+import com.jokerhub.paper.plugin.orzmc.infra.config.configs.ChatConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.IpWhitelist;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.MaintenanceConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.PlayerNotifyConfig;
@@ -80,6 +81,12 @@ public final class DefaultTypedConfigProvider implements TypedConfigProvider {
     public SecurityGuardConfig securityGuard() {
         ConfigurationSection section = sectionOrLegacy("config", "guard", "guard.yml");
         return SecurityGuardConfig.from(section);
+    }
+
+    @Override
+    public ChatConfig chat() {
+        ConfigurationSection section = sectionOrLegacy("config", "chat", "chat.yml");
+        return ChatConfig.from(section);
     }
 
     @Override
