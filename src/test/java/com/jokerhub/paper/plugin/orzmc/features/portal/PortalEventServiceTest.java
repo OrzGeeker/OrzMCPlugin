@@ -152,7 +152,8 @@ class PortalEventServiceTest extends ServiceTestBase {
 
     @Test
     void portalEvent_cooldown_sharedWithMovePath() {
-        // G4: 冷却为双路径共享——move 路径刚 transfer 过，5s 内 portal 路径不再重复 transfer
+        // G4: 冷却为双路径共享——move 路径刚 transfer 过，5s 内 portal 路径不再重复 transfer；
+        // 且冷却内不接管事件（不取消原版传送），保证「取消 ⇔ transfer」自洽
         when(portalService.findTarget(any(Location.class))).thenReturn("127.0.0.1:25566");
         PortalEventService service = new PortalEventService(server, portalService, true);
         service.handleMove(new PlayerMoveEvent(player, loc(100, 64, 100), loc(101, 64, 100)));
@@ -162,7 +163,33 @@ class PortalEventServiceTest extends ServiceTestBase {
                 player, loc(101, 64, 100), loc(101, 64, 100), TeleportCause.NETHER_PORTAL, 1, true, 1);
         service.handle(portalEvent);
 
+        assertFalse(portalEvent.isCancelled());
         verify(server, times(1)).executeConsoleCommands(any(), anyString());
+    }
+
+    @Test
+    void portalEvent_unauthenticated_cancelsEvent() {
+        // 未认证玩家触发传送门 → 取消原版传送（不放行穿门），不 transfer
+        when(portalService.findTarget(any(Location.class))).thenReturn("127.0.0.1:25566");
+        PortalEventService service = new PortalEventService(server, portalService, false, p -> false);
+
+        PlayerPortalEvent event = new PlayerPortalEvent(
+                player, loc(100, 64, 100), loc(100, 64, 100), TeleportCause.NETHER_PORTAL, 1, true, 1);
+        service.handle(event);
+
+        assertTrue(event.isCancelled());
+        verify(server, never()).executeConsoleCommands(any(), anyString());
+    }
+
+    @Test
+    void moveEvent_unauthenticated_skipped() {
+        // 未认证玩家走进传送门 → 不 transfer（登录插件自行保护）
+        when(portalService.findTarget(any(Location.class))).thenReturn("127.0.0.1:25566");
+        PortalEventService service = new PortalEventService(server, portalService, true, p -> false);
+
+        service.handleMove(new PlayerMoveEvent(player, loc(100, 64, 100), loc(101, 64, 100)));
+
+        verify(server, never()).executeConsoleCommands(any(), anyString());
     }
 
     @Test

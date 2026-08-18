@@ -6,6 +6,7 @@ import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Predicate;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerMoveEvent;
@@ -31,7 +32,7 @@ public final class PortalEventService {
 
     private final ServerFacade server;
     private final PortalPort portalService;
-    private final PlayerAuthenticationService authService;
+    private final Predicate<Player> authCheck;
     private final boolean folia;
     private final Map<UUID, Long> lastTransfer = new ConcurrentHashMap<>();
 
@@ -41,17 +42,26 @@ public final class PortalEventService {
 
     /** 测试用：可注入 folia 模式（真实环境默认自动检测）。 */
     PortalEventService(ServerFacade server, PortalPort portalService, boolean folia) {
+        this(server, portalService, folia, new PlayerAuthenticationService()::isAuthenticated);
+    }
+
+    /** 测试用：可注入 folia 模式 + 认证决策（测试环境无 LoginSecurity，默认实现恒 true 无法覆盖未认证分支）。 */
+    PortalEventService(ServerFacade server, PortalPort portalService, boolean folia, Predicate<Player> authCheck) {
         this.server = server;
         this.portalService = portalService;
-        this.authService = new PlayerAuthenticationService();
+        this.authCheck = authCheck;
         this.folia = folia;
     }
 
     /** Paper 路径：PlayerPortalEvent（玩家即将传送门传送）。 */
     public void handle(PlayerPortalEvent event) {
         Player player = event.getPlayer();
+        // 冷却内不接管本次事件：避免「取消了原版传送但 transfer 被冷却拦截」的状态分歧
+        if (isOnCooldown(player, System.currentTimeMillis())) {
+            return;
+        }
         // 检查玩家是否已认证
-        if (!authService.isAuthenticated(player)) {
+        if (!authCheck.test(player)) {
             // 未登录时，不进行传送
             event.setCancelled(true);
             return;
@@ -100,7 +110,7 @@ public final class PortalEventService {
         if (target == null) {
             return;
         }
-        if (!authService.isAuthenticated(player)) {
+        if (!authCheck.test(player)) {
             return;
         }
         transfer(player, target);
