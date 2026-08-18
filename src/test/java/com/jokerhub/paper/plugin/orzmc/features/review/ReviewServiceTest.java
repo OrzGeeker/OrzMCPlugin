@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -52,7 +53,7 @@ class ReviewServiceTest {
                 },
                 id -> true,
                 data -> "申请晋升 builder" + (data.get("reason") == null ? "" : "：" + data.get("reason")),
-                id -> true);
+                id -> CompletableFuture.completedFuture(true));
         service.register(builderType);
         when(lookup.name(applicant)).thenReturn(Optional.of("TestMember"));
         when(lookup.name(other)).thenReturn(Optional.of("OtherPlayer"));
@@ -92,7 +93,13 @@ class ReviewServiceTest {
     @Test
     void submit_notEligible_rejected() {
         ReviewType restricted = new ReviewType(
-                "builder-promotion", "晋升建造者", "builder", a -> Map.of(), id -> false, d -> "x", id -> false);
+                "builder-promotion",
+                "晋升建造者",
+                "builder",
+                a -> Map.of(),
+                id -> false,
+                d -> "x",
+                id -> CompletableFuture.completedFuture(false));
         service.register(restricted);
 
         var result = service.submit(restricted, applicant, Map.of());
@@ -157,11 +164,11 @@ class ReviewServiceTest {
         ReviewType observable =
                 new ReviewType("builder-promotion", "晋升建造者", "builder", a -> Map.of(), id -> true, d -> "x", id -> {
                     calls[0]++;
-                    return true;
+                    return CompletableFuture.completedFuture(true);
                 });
         service.register(observable);
 
-        var result = service.review("r1", true, "admin");
+        var result = service.review("r1", true, "admin").join();
 
         assertTrue(result.success());
         assertEquals(1, calls[0]);
@@ -175,7 +182,7 @@ class ReviewServiceTest {
     void review_reject_noHandlerAndNotifies() {
         when(store.findById("r1")).thenReturn(Optional.of(pendingRequest("r1")));
 
-        var result = service.review("r1", false, "admin");
+        var result = service.review("r1", false, "admin").join();
 
         assertTrue(result.success());
         verify(store).save(argThat(r -> r.status() == ReviewRequest.Status.REJECTED));
@@ -189,7 +196,7 @@ class ReviewServiceTest {
                 "r1", "builder-promotion", applicant, Map.of(), ReviewRequest.Status.APPROVED, 1000L, 2000L, "admin");
         when(store.findById("r1")).thenReturn(Optional.of(approved));
 
-        var result = service.review("r1", true, "admin");
+        var result = service.review("r1", true, "admin").join();
 
         assertFalse(result.success());
         verify(store, never()).save(any());
@@ -203,7 +210,7 @@ class ReviewServiceTest {
         when(store.listPending()).thenReturn(List.of(pendingRequest("r1")));
         when(store.findById("r1")).thenReturn(Optional.of(pendingRequest("r1")));
 
-        var result = service.reviewByApplicantName("TestMember", true, "群管理员");
+        var result = service.reviewByApplicantName("TestMember", true, "群管理员").join();
 
         assertTrue(result.success());
         verify(store).save(argThat(r -> r.status() == ReviewRequest.Status.APPROVED));
@@ -213,7 +220,7 @@ class ReviewServiceTest {
     void reviewByApplicantName_unknownPlayer_rejected() {
         when(lookup.resolve("Nobody")).thenReturn(Optional.empty());
 
-        var result = service.reviewByApplicantName("Nobody", true, "admin");
+        var result = service.reviewByApplicantName("Nobody", true, "admin").join();
 
         assertFalse(result.success());
     }
@@ -234,7 +241,7 @@ class ReviewServiceTest {
                                 0L,
                                 null)));
 
-        var result = service.reviewByApplicantName("TestMember", true, "admin");
+        var result = service.reviewByApplicantName("TestMember", true, "admin").join();
 
         assertFalse(result.success());
         assertTrue(result.message().contains("多条待审"));
@@ -250,7 +257,7 @@ class ReviewServiceTest {
                 });
         service.register(failing);
 
-        var result = service.review("r1", true, "admin");
+        var result = service.review("r1", true, "admin").join();
 
         assertFalse(result.success());
         assertTrue(result.message().contains("授权处理失败"));
@@ -264,10 +271,16 @@ class ReviewServiceTest {
         // handler 静默失败（返回 false，如 promote 返回 null）：同样保持 PENDING，不落 APPROVED
         when(store.findById("r1")).thenReturn(Optional.of(pendingRequest("r1")));
         ReviewType failing = new ReviewType(
-                "builder-promotion", "晋升建造者", "builder", a -> Map.of(), id -> true, d -> "x", id -> false); // 授权处理返回失败
+                "builder-promotion",
+                "晋升建造者",
+                "builder",
+                a -> Map.of(),
+                id -> true,
+                d -> "x",
+                id -> CompletableFuture.completedFuture(false)); // 授权处理返回失败
         service.register(failing);
 
-        var result = service.review("r1", true, "admin");
+        var result = service.review("r1", true, "admin").join();
 
         assertFalse(result.success());
         assertTrue(result.message().contains("授权处理失败"));
@@ -279,11 +292,17 @@ class ReviewServiceTest {
     void review_handlerReturnsTrue_approvesAndNotifies() {
         when(store.findById("r1")).thenReturn(Optional.of(pendingRequest("r1")));
         ReviewType okType = new ReviewType(
-                "builder-promotion", "晋升建造者", "builder", a -> Map.of(), id -> true, d -> "x", id -> true); // 授权成功
+                "builder-promotion",
+                "晋升建造者",
+                "builder",
+                a -> Map.of(),
+                id -> true,
+                d -> "x",
+                id -> CompletableFuture.completedFuture(true)); // 授权成功
         service.register(okType);
         when(lookup.name(applicant)).thenReturn(Optional.of("TestMember"));
 
-        var result = service.review("r1", true, "admin");
+        var result = service.review("r1", true, "admin").join();
 
         assertTrue(result.success());
         verify(store).save(argThat(r -> r.status() == ReviewRequest.Status.APPROVED));

@@ -3,6 +3,7 @@ package com.jokerhub.paper.plugin.orzmc.features.rank;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.logging.Logger;
@@ -33,13 +34,17 @@ import org.bukkit.plugin.PluginManager;
  * LP 未安装时本类永远不会被加载，因此不会触发 NoClassDefFoundError。
  * 装配层在 LP 缺失时改用 {@link NoopRankPromoter} 降级。</p>
  *
- * <p>⚠️ LP API 修改用户是<b>内存态</b>，成功后须显式 {@code saveUser} 落库；
- * 变更须在「同步调度线程」执行（Paper 主线程 / Folia global region 线程）。本类经注入
- * scheduler 调度；无 scheduler 时同步。Folia 上写操作（promote/demote 及离线 loadUser/
- * saveUser 的同步等待）经 {@link #runSync} 从 region 线程转至 global region 线程执行，
- * 避免 region 线程同步阻塞等待 LP 异步回调导致的死锁（/review approve 卡死）。
- * 读路径（{@link #currentTrackGroup}）在线玩家先取 LP 在线缓存（不阻塞、不进 runSync），
- * 仅离线玩家才转 global 线程。{@link #runSync} 带超时等待，调度器停摆时返回 null 降级。</p>
+ * <p>⚠️ LP API 修改用户是<b>内存态</b>，成功后须显式 {@code saveUser} 落库。</p>
+ *
+ * <p><b>线程模型（核心约束）</b>：LP 的 loadUser/saveUser 异步 future 完成回调调度到
+ * 服务器同步调度线程（Paper 主线程 / Folia global region 线程）执行——因此<b>任何服务器
+ * 调度线程都不能同步等待 LP future</b>（回调排在自己后面 → 自锁超时，/review approve 实测）。
+ * 升降级（{@link #promoteAsync} / {@link #demoteAsync}）在注入的 {@code asyncExecutor}
+ * （非服务器线程）上执行 LP 操作；无执行器时内联（测试/无阻塞场景）。读路径
+ * （{@link #currentTrackGroup}）在线玩家先取 LP 在线缓存（零 future 等待），离线玩家
+ * 在异步执行器加载并在调用线程等待（同步线程上遇到离线玩家时降级返回 null 避免自锁）。
+ * {@link #runSync} 仅保留给 {@link #resolvePlayerId}（Bukkit.getOfflinePlayer 快速同步调用，
+ * 不等待 LP future）。</p>
  */
 public final class LuckPermsPromoter implements RankPromoter {
 
@@ -50,14 +55,24 @@ public final class LuckPermsPromoter implements RankPromoter {
 
     private final PlayerNameResolver nameResolver;
     private final ServerScheduler scheduler;
+    private final Executor asyncExecutor;
 
     public LuckPermsPromoter(PlayerNameResolver nameResolver) {
-        this(nameResolver, null);
+        this(nameResolver, null, null);
     }
 
     public LuckPermsPromoter(PlayerNameResolver nameResolver, ServerScheduler scheduler) {
+        this(nameResolver, scheduler, null);
+    }
+
+    /**
+     * @param scheduler    回同步调度线程的执行器（仅 {@link #resolvePlayerId} 用；可 null）
+     * @param asyncExecutor 非服务器线程执行器（升降级 LP 操作在此运行；null 时内联，测试用）
+     */
+    public LuckPermsPromoter(PlayerNameResolver nameResolver, ServerScheduler scheduler, Executor asyncExecutor) {
         this.nameResolver = nameResolver;
         this.scheduler = scheduler;
+        this.asyncExecutor = asyncExecutor;
     }
 
     /** LuckPerms 是否已启用（软依赖检测）。 */
@@ -177,21 +192,32 @@ public final class LuckPermsPromoter implements RankPromoter {
 
     @Override
     public String currentTrackGroup(UUID playerId) {
-        // 读路径优化：在线玩家先取 LP 在线缓存（getUser 不阻塞、不进 runSync），
-        // 避免 $v l（WS 线程）/ /apply 资格预检（region 线程）/ checkPromotion（async 线程）
-        // 的常见在线场景做无谓的 G 往返；仅离线玩家（缓存未命中，loadUser 会同步等待）
-        // 才转 global region 线程执行。
+        // 读路径优化：在线玩家先取 LP 在线缓存（getUser 不阻塞、不产生 LP future），
+        // 常见在线场景（$v l / /apply 资格预检 / checkPromotion / 上下线广播）零往返。
         User online = api().getUserManager().getUser(playerId);
         if (online != null) {
             return resolveTrackGroup(online);
         }
-        return runSync(() -> {
-            User user = loadUser(playerId);
-            if (user == null) {
-                return null;
-            }
-            return resolveTrackGroup(user);
-        });
+        // 离线玩家缓存未命中：需 loadUser（LP 异步 future，完成回调调度到服务器同步线程）。
+        // 若在同步调度线程上同步等待会自锁（回调排在自己后面）→ 检测到同步线程时降级返回 null；
+        // 否则在异步执行器上加载并在当前线程等待（同步线程空闲，LP 回调可正常执行）。
+        if (Bukkit.isGlobalTickThread()) {
+            LOG.warning("currentTrackGroup 在同步调度线程上查询离线玩家（缓存未命中），跳过避免自锁: " + playerId);
+            return null;
+        }
+        try {
+            return supplyAsync(() -> {
+                        User user = loadUser(playerId);
+                        if (user == null) {
+                            return null;
+                        }
+                        return resolveTrackGroup(user);
+                    })
+                    .get(LOAD_USER_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            LOG.warning("currentTrackGroup 离线加载失败（超时/中断/异常）: " + playerId + " - " + e);
+            return null;
+        }
     }
 
     /** 从已加载用户解析其在 rank track 的最高组（读路径主体，须持有已加载的 User）。 */
@@ -220,12 +246,22 @@ public final class LuckPermsPromoter implements RankPromoter {
 
     @Override
     public String promote(UUID playerId) {
-        // Folia 兼容：整个 promote（含 loadUser/saveUser 的同步等待）转 global region 线程执行，
-        // 避免 region 线程同步阻塞等待 LP 异步回调死锁（/review approve 卡死）
-        return runSync(() -> promoteInternal(playerId));
+        // 同步便捷版：仅测试/非服务器调度线程使用；生产路径一律用 promoteAsync。
+        // 在服务器调度线程上 join 会因 LP future 回调排队在自己后面而超时（Folia）。
+        return promoteAsync(playerId).join();
     }
 
-    /** {@link #promote} 主体（仅在同步调度线程经 {@link #runSync} 执行，内部直接调 LP API，不再嵌套 runSync）。 */
+    @Override
+    public CompletableFuture<String> promoteAsync(UUID playerId) {
+        if (!isAvailable()) {
+            return CompletableFuture.completedFuture(null);
+        }
+        // LP 操作（loadUser/saveUser 的等待）在非服务器线程执行：global/region 线程空闲，
+        // 可自由处理 LP future 完成回调，杜绝「调度线程同步等 LP future」自锁超时。
+        return supplyAsync(() -> promoteInternal(playerId));
+    }
+
+    /** {@link #promoteAsync} 主体（在非服务器线程执行，内部直接调 LP API，不做任何跨线程调度）。 */
     private String promoteInternal(UUID playerId) {
         User user = loadUser(playerId);
         Track trk = track();
@@ -278,11 +314,19 @@ public final class LuckPermsPromoter implements RankPromoter {
 
     @Override
     public String demote(UUID playerId) {
-        // Folia 兼容：整个 demote（含 loadUser/saveUser 的同步等待）转 global region 线程执行
-        return runSync(() -> demoteInternal(playerId));
+        // 同步便捷版：仅测试/非服务器调度线程使用；生产路径一律用 demoteAsync。
+        return demoteAsync(playerId).join();
     }
 
-    /** {@link #demote} 主体（仅在同步调度线程经 {@link #runSync} 执行，内部直接调 LP API，不再嵌套 runSync）。 */
+    @Override
+    public CompletableFuture<String> demoteAsync(UUID playerId) {
+        if (!isAvailable()) {
+            return CompletableFuture.completedFuture(null);
+        }
+        return supplyAsync(() -> demoteInternal(playerId));
+    }
+
+    /** {@link #demoteAsync} 主体（在非服务器线程执行，内部直接调 LP API，不做任何跨线程调度）。 */
     private String demoteInternal(UUID playerId) {
         User user = loadUser(playerId);
         Track trk = track();
@@ -317,7 +361,24 @@ public final class LuckPermsPromoter implements RankPromoter {
         return result.getGroupTo().orElse(null);
     }
 
-    /** 在同步调度线程（Paper 主线程 / Folia global region 线程）执行 LP 变更（异步线程时经 scheduler 回主线程）。 */
+    /**
+     * 在异步执行器（非服务器线程）上执行 LP 操作。
+     *
+     * <p>无注入执行器时内联（测试/无阻塞场景）；有执行器时经其调度，调用线程不等待。
+     * LP 操作在此类线程上等待 future 时，服务器同步线程空闲可正常处理回调，无自锁。</p>
+     */
+    private <T> CompletableFuture<T> supplyAsync(Supplier<T> action) {
+        if (asyncExecutor == null) {
+            return CompletableFuture.completedFuture(action.get());
+        }
+        return CompletableFuture.supplyAsync(action, asyncExecutor);
+    }
+
+    /**
+     * 在同步调度线程（Paper 主线程 / Folia global region 线程）执行快速 Bukkit 调用
+     * （当前仅 {@link #resolvePlayerId} 的 getOfflinePlayer）。带超时等待，停摆时返回 null 降级。
+     * <b>不得</b>用于等待 LP 异步 future 的操作（会自锁，见类注释）。
+     */
     private <T> T runSync(Supplier<T> action) {
         // Paper 主线程与 Folia global region 线程都是「同步调度线程」，直接执行；
         // 异步线程（LP loadUser 等）上则回调度器执行，避免 self-schedule + join 死锁。

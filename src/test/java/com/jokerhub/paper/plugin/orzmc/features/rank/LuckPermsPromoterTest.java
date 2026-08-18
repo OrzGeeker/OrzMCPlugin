@@ -238,8 +238,10 @@ class LuckPermsPromoterTest {
     }
 
     @Test
-    void currentTrackGroup_offlineCacheMiss_schedulesToSyncThread() {
-        // 回归（读路径优化）：离线玩家缓存未命中，loadUser 同步等待经 runSync 转同步线程
+    void currentTrackGroup_offlineCacheMiss_doesNotScheduleToSyncThread() {
+        // 回归（Folia 线程模型）：离线玩家缓存未命中需 loadUser（LP future 完成回调调度到
+        // 同步调度线程）——绝不能经 runSync 转同步线程执行（同步线程等 LP future 会自锁超时）。
+        // 未注入 asyncExecutor 时内联执行，注入时经其调度；runSync 仅保留给 resolvePlayerId。
         mockEmptyContext();
         ServerScheduler scheduler = mock(ServerScheduler.class);
         doAnswer(invocation -> {
@@ -256,17 +258,18 @@ class LuckPermsPromoterTest {
         when(user.getInheritedGroups(any())).thenReturn(inherited);
 
         assertEquals("builder", withScheduler.currentTrackGroup(id));
-        verify(scheduler).runSync(any(Runnable.class));
+        verify(scheduler, never()).runSync(any(Runnable.class));
     }
 
     @Test
     void promote_schedulerStalled_returnsNullWithoutBlockingForever() {
-        // 回归（runSync 超时）：scheduler 停摆（runSync 永不执行）时 promote 带超时返回 null 视为失败，
-        // 而非 done.join() 无限阻塞调用线程
-        ServerScheduler stalledScheduler = mock(ServerScheduler.class); // 不执行 runnable → done 永不完成
+        // 回归（Folia 线程模型）：promote 的 LP 操作在非服务器线程执行，绝不依赖 runSync 转同步线程
+        // ——scheduler 停摆也不会阻塞调用线程；LP 调用失败时返回 null 视为失败（不落库、不通知）
+        ServerScheduler stalledScheduler = mock(ServerScheduler.class); // 不执行 runnable → 若走 runSync 会永不完成
         LuckPermsPromoter withScheduler = new LuckPermsPromoter(u -> "TestPlayer", stalledScheduler);
 
         assertNull(withScheduler.promote(id));
+        verify(stalledScheduler, never()).runSync(any(Runnable.class));
     }
 
     private net.luckperms.api.model.group.Group mockGroup(String name) {
