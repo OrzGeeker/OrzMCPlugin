@@ -38,6 +38,7 @@
 |:--|:--|:--|
 | `getmehome.user` | `/sethome`、`/home`、`/delhome`、`/listhomes` | 全部可用（父权限含 5 个家命令） |
 | `essentials.tpa` | `/tpa <玩家>` | 传送请求发出 |
+| `essentials.tpaccept` | `/tpaccept` | 接受传送请求（2026-08-18 补：漏配导致「没有授受传送请求的权限」——tpa 发送时 Essentials 检查目标玩家 tpaccept 权限） |
 | `essentials.tpahere` | `/tpahere <玩家>` | 邀请对方 |
 | `essentials.warp` | `/warp test` | 传送到传送点 |
 | `essentials.warp.list` | `/warp` | 列出传送点（2026-08-08 验收补：/warp 无参需 list） |
