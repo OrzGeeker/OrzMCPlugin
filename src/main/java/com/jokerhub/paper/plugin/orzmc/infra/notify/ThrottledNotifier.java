@@ -20,14 +20,18 @@ public final class ThrottledNotifier {
 
     private boolean shouldRun(String key, long periodMs, long ttlMs) {
         long now = System.currentTimeMillis();
-        Long prev = last.get(key);
-        if (prev == null || now - prev >= periodMs) {
-            last.put(key, now);
-            maybeCleanup(now, ttlMs);
-            return true;
-        }
+        boolean[] updated = {false};
+        // compute 原子完成「判定 + 更新」：Folia 多 region 线程并发登录时，同 key 同窗口
+        // 的并发调用在 compute 的 bin 锁下串行，杜绝旧实现 check-then-act 的竞态（同窗口发 2 条）。
+        last.compute(key, (k, prev) -> {
+            if (prev == null || now - prev >= periodMs) {
+                updated[0] = true;
+                return now;
+            }
+            return prev;
+        });
         maybeCleanup(now, ttlMs);
-        return false;
+        return updated[0];
     }
 
     private void maybeCleanup(long now, long ttlMs) {

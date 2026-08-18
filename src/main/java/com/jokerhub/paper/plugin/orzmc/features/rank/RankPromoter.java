@@ -20,9 +20,6 @@ public interface RankPromoter {
     /** LuckPerms 是否可用（软依赖检测）。 */
     boolean isAvailable();
 
-    /** 玩家是否在指定组（LP 真实查询，离线加载）。 */
-    boolean isInGroup(UUID playerId, String groupName);
-
     /** 玩家当前所在 rank track 的组（不在 track / LP 不可用返回 null）。 */
     String currentTrackGroup(UUID playerId);
 

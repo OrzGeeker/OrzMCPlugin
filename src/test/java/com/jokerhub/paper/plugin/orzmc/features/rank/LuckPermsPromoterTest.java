@@ -25,7 +25,7 @@ import org.mockito.MockedStatic;
  *
  * <p>本类仅在 LP 已启用时由装配层实例化（条件实例化），单测用 mockStatic 模拟 LP API：
  * 验证 promote/demote 的成功路径（含 saveUser 落库）、链顶/链底钳位翻译、
- * currentTrackGroup 最高组判定、isInGroup 查询。Noop 降级路径见 NoopRankPromoterTest。</p>
+ * currentTrackGroup 最高组判定。Noop 降级路径见 NoopRankPromoterTest。</p>
  */
 class LuckPermsPromoterTest {
 
@@ -222,19 +222,57 @@ class LuckPermsPromoterTest {
         assertEquals("builder", promoter.currentTrackGroup(id));
     }
 
+    @Test
+    void currentTrackGroup_onlineCacheHit_doesNotScheduleToSyncThread() {
+        // 回归（读路径优化）：在线玩家走 LP 在线缓存，即使注入 scheduler 也不做 G 往返
+        mockEmptyContext();
+        ServerScheduler scheduler = mock(ServerScheduler.class);
+        LuckPermsPromoter withScheduler = new LuckPermsPromoter(u -> "TestPlayer", scheduler);
+        when(userManager.getUser(id)).thenReturn(user);
+        when(track.getGroups()).thenReturn(java.util.List.of("default", "member", "builder", "admin"));
+        java.util.List<net.luckperms.api.model.group.Group> inherited = java.util.List.of(mockGroup("member"));
+        when(user.getInheritedGroups(any())).thenReturn(inherited);
+
+        assertEquals("member", withScheduler.currentTrackGroup(id));
+        verify(scheduler, never()).runSync(any());
+    }
+
+    @Test
+    void currentTrackGroup_offlineCacheMiss_schedulesToSyncThread() {
+        // 回归（读路径优化）：离线玩家缓存未命中，loadUser 同步等待经 runSync 转同步线程
+        mockEmptyContext();
+        ServerScheduler scheduler = mock(ServerScheduler.class);
+        doAnswer(invocation -> {
+                    invocation.getArgument(0, Runnable.class).run();
+                    return null;
+                })
+                .when(scheduler)
+                .runSync(any(Runnable.class));
+        LuckPermsPromoter withScheduler = new LuckPermsPromoter(u -> "TestPlayer", scheduler);
+        when(userManager.getUser(id)).thenReturn(null);
+        when(userManager.loadUser(id)).thenReturn(java.util.concurrent.CompletableFuture.completedFuture(user));
+        when(track.getGroups()).thenReturn(java.util.List.of("default", "member", "builder", "admin"));
+        java.util.List<net.luckperms.api.model.group.Group> inherited = java.util.List.of(mockGroup("builder"));
+        when(user.getInheritedGroups(any())).thenReturn(inherited);
+
+        assertEquals("builder", withScheduler.currentTrackGroup(id));
+        verify(scheduler).runSync(any(Runnable.class));
+    }
+
+    @Test
+    void promote_schedulerStalled_returnsNullWithoutBlockingForever() {
+        // 回归（runSync 超时）：scheduler 停摆（runSync 永不执行）时 promote 带超时返回 null 视为失败，
+        // 而非 done.join() 无限阻塞调用线程
+        ServerScheduler stalledScheduler = mock(ServerScheduler.class); // 不执行 runnable → done 永不完成
+        LuckPermsPromoter withScheduler = new LuckPermsPromoter(u -> "TestPlayer", stalledScheduler);
+
+        assertNull(withScheduler.promote(id));
+    }
+
     private net.luckperms.api.model.group.Group mockGroup(String name) {
         net.luckperms.api.model.group.Group g = mock(net.luckperms.api.model.group.Group.class);
         when(g.getName()).thenReturn(name);
         return g;
-    }
-
-    @Test
-    void isInGroup_memberPresent_returnsTrue() {
-        java.util.List<net.luckperms.api.model.group.Group> inherited = java.util.List.of(mockGroup("member"));
-        when(user.getInheritedGroups(any())).thenReturn(inherited);
-
-        assertTrue(promoter.isInGroup(id, "member"));
-        assertFalse(promoter.isInGroup(id, "admin"));
     }
 
     // ---- 玩家解析 ----

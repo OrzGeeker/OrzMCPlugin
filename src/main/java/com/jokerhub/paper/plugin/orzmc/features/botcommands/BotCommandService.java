@@ -508,7 +508,9 @@ public final class BotCommandService implements BotInboundHandler {
             String typeName =
                     reviewService.typeById(r.typeId()).map(t -> t.displayName()).orElse(r.typeId());
             String playerName = playerNameOf(r);
-            String group = rankService == null ? "" : "（当前组：" + rankService.currentGroup(r.applicantId()) + "）";
+            String group = rankService == null
+                    ? ""
+                    : "（当前组：" + RankService.groupDisplayName(rankService.currentGroup(r.applicantId())) + "）";
             String summary = reviewService
                     .typeById(r.typeId())
                     .map(t -> t.summarize(r.data()))

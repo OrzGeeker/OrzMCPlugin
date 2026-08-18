@@ -66,6 +66,10 @@ public final class RankService {
         if (!promoter.isAvailable()) {
             return; // 无 LuckPerms：晋升不可用
         }
+        // 不合并单次 G 调度：stats 时长读取（文件 I/O）不应放到 global tick 线程；且
+        // currentTrackGroup 读路径已优化为在线玩家走 LP 缓存（0 次 G 往返，见
+        // LuckPermsPromoter#currentTrackGroup），仅离线玩家才经 G 加载，promote 是唯一
+        // 必有的写路径 G 往返——合并收益有限、阻塞 global tick 的代价更高，故保持现状。
         long playtime = store.getPlaytimeMinutes(playerId);
         if (playtime < memberThresholdMinutes()) {
             return;

@@ -35,9 +35,11 @@ import org.bukkit.plugin.PluginManager;
  *
  * <p>⚠️ LP API 修改用户是<b>内存态</b>，成功后须显式 {@code saveUser} 落库；
  * 变更须在「同步调度线程」执行（Paper 主线程 / Folia global region 线程）。本类经注入
- * scheduler 调度；无 scheduler 时同步。Folia 上整个操作（含 {@code loadUser}/{@code saveUser}
- * 的同步等待）经 {@link #runSync} 从 region 线程转至 global region 线程执行，避免
- * region 线程同步阻塞等待 LP 异步回调导致的死锁（/review approve 卡死）。</p>
+ * scheduler 调度；无 scheduler 时同步。Folia 上写操作（promote/demote 及离线 loadUser/
+ * saveUser 的同步等待）经 {@link #runSync} 从 region 线程转至 global region 线程执行，
+ * 避免 region 线程同步阻塞等待 LP 异步回调导致的死锁（/review approve 卡死）。
+ * 读路径（{@link #currentTrackGroup}）在线玩家先取 LP 在线缓存（不阻塞、不进 runSync），
+ * 仅离线玩家才转 global 线程。{@link #runSync} 带超时等待，调度器停摆时返回 null 降级。</p>
  */
 public final class LuckPermsPromoter implements RankPromoter {
 
@@ -126,26 +128,17 @@ public final class LuckPermsPromoter implements RankPromoter {
 
     @Override
     public UUID resolvePlayerId(String playerName) {
-        org.bukkit.OfflinePlayer p = Bukkit.getOfflinePlayer(playerName);
-        return p.hasPlayedBefore() ? p.getUniqueId() : null;
+        // Folia 兼容：Bukkit.getOfflinePlayer(name) 在 Folia 下部分版本异步调用可能抛
+        // IllegalStateException，转 global region 线程执行；超时/不可用时返回 null（找不到玩家）。
+        return runSync(() -> {
+            org.bukkit.OfflinePlayer p = Bukkit.getOfflinePlayer(playerName);
+            return p.hasPlayedBefore() ? p.getUniqueId() : null;
+        });
     }
 
     @Override
     public Optional<String> playerName(UUID playerId) {
         return Optional.ofNullable(nameResolver.resolve(playerId));
-    }
-
-    @Override
-    public boolean isInGroup(UUID playerId, String groupName) {
-        // Folia 兼容：LP 用户读取（离线 loadUser 同步等待）转 global region 线程执行
-        return runSync(() -> {
-            User user = loadUser(playerId);
-            if (user == null) {
-                return false;
-            }
-            return user.getInheritedGroups(queryOptionsGlobal()).stream()
-                    .anyMatch(g -> g.getName().equalsIgnoreCase(groupName));
-        });
     }
 
     /** global 上下文的查询选项（track 判定/组查询统一用，见 GLOBAL 说明）。 */
@@ -184,15 +177,27 @@ public final class LuckPermsPromoter implements RankPromoter {
 
     @Override
     public String currentTrackGroup(UUID playerId) {
-        // Folia 兼容：LP 用户读取（离线 loadUser 同步等待）转 global region 线程执行
-        return runSync(() -> currentTrackGroupInternal(playerId));
+        // 读路径优化：在线玩家先取 LP 在线缓存（getUser 不阻塞、不进 runSync），
+        // 避免 $v l（WS 线程）/ /apply 资格预检（region 线程）/ checkPromotion（async 线程）
+        // 的常见在线场景做无谓的 G 往返；仅离线玩家（缓存未命中，loadUser 会同步等待）
+        // 才转 global region 线程执行。
+        User online = api().getUserManager().getUser(playerId);
+        if (online != null) {
+            return resolveTrackGroup(online);
+        }
+        return runSync(() -> {
+            User user = loadUser(playerId);
+            if (user == null) {
+                return null;
+            }
+            return resolveTrackGroup(user);
+        });
     }
 
-    /** {@link #currentTrackGroup} 主体（在同步调度线程执行，见 {@link #runSync}）。 */
-    private String currentTrackGroupInternal(UUID playerId) {
-        User user = loadUser(playerId);
+    /** 从已加载用户解析其在 rank track 的最高组（读路径主体，须持有已加载的 User）。 */
+    private String resolveTrackGroup(User user) {
         Track trk = track();
-        if (user == null || trk == null) {
+        if (trk == null) {
             return null;
         }
         // 一次加载用户继承组集合（global 上下文），避免对每个 track 组重复 loadUser（N+1，离线玩家每次 3s 超时 × N）
@@ -220,7 +225,7 @@ public final class LuckPermsPromoter implements RankPromoter {
         return runSync(() -> promoteInternal(playerId));
     }
 
-    /** {@link #promote} 主体（在同步调度线程执行，见 {@link #runSync}）。 */
+    /** {@link #promote} 主体（仅在同步调度线程经 {@link #runSync} 执行，内部直接调 LP API，不再嵌套 runSync）。 */
     private String promoteInternal(UUID playerId) {
         User user = loadUser(playerId);
         Track trk = track();
@@ -234,7 +239,7 @@ public final class LuckPermsPromoter implements RankPromoter {
             LOG.warning("promote(" + playerId + ") 归一组失败，视为失败");
             return null;
         }
-        PromotionResult result = runSync(() -> trk.promote(user, globalContext()));
+        PromotionResult result = trk.promote(user, globalContext());
         if (result == null) {
             LOG.warning("promote(" + playerId + ") 结果为 null");
             return null;
@@ -257,7 +262,7 @@ public final class LuckPermsPromoter implements RankPromoter {
                 && groupTo.equalsIgnoreCase(trk.getGroups().get(0))) {
             // 用户此前不在 track：被加到链首（default），继续 promote 到下一级（member），
             // 避免「升级为访客」的误导（升级至少到 member）
-            PromotionResult second = runSync(() -> trk.promote(user, globalContext()));
+            PromotionResult second = trk.promote(user, globalContext());
             if (second != null && second.getStatus() == PromotionResult.Status.SUCCESS) {
                 groupTo = second.getGroupTo().orElse(groupTo);
                 LOG.info("promote(" + playerId + ") 首入链（链首）→ 连续 promote -> "
@@ -277,7 +282,7 @@ public final class LuckPermsPromoter implements RankPromoter {
         return runSync(() -> demoteInternal(playerId));
     }
 
-    /** {@link #demote} 主体（在同步调度线程执行，见 {@link #runSync}）。 */
+    /** {@link #demote} 主体（仅在同步调度线程经 {@link #runSync} 执行，内部直接调 LP API，不再嵌套 runSync）。 */
     private String demoteInternal(UUID playerId) {
         User user = loadUser(playerId);
         Track trk = track();
@@ -290,7 +295,7 @@ public final class LuckPermsPromoter implements RankPromoter {
             LOG.warning("demote(" + playerId + ") 归一组失败，视为失败");
             return null;
         }
-        DemotionResult result = runSync(() -> trk.demote(user, globalContext()));
+        DemotionResult result = trk.demote(user, globalContext());
         if (result == null) {
             LOG.warning("demote(" + playerId + ") 结果为 null");
             return null;
@@ -312,7 +317,7 @@ public final class LuckPermsPromoter implements RankPromoter {
         return result.getGroupTo().orElse(null);
     }
 
-    /** 在主线程执行 LP 变更（异步线程时经 scheduler 回主线程）。 */
+    /** 在同步调度线程（Paper 主线程 / Folia global region 线程）执行 LP 变更（异步线程时经 scheduler 回主线程）。 */
     private <T> T runSync(Supplier<T> action) {
         // Paper 主线程与 Folia global region 线程都是「同步调度线程」，直接执行；
         // 异步线程（LP loadUser 等）上则回调度器执行，避免 self-schedule + join 死锁。
@@ -328,6 +333,14 @@ public final class LuckPermsPromoter implements RankPromoter {
                 done.completeExceptionally(t);
             }
         });
-        return done.join();
+        // 带超时等待：global 调度器停摆时避免调用线程无限阻塞（join 无超时）。
+        // 超时/中断/执行异常一律按失败处理返回 null，由读路径（null→default/未命中）
+        // 与写路径（null→晋升失败）各自降级，并在此记日志保留现场。
+        try {
+            return done.get(LOAD_USER_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            LOG.warning("runSync 等待同步线程执行失败（超时/中断/异常）: " + e);
+            return null;
+        }
     }
 }
