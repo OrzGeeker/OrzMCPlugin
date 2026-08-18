@@ -75,6 +75,28 @@ class PortalServiceTest {
         assertNull(portalService.findTarget(loc));
     }
 
+    // ---- findTargetExact（无邻域容差，供 Folia move 补偿路径）----
+
+    @Test
+    void findTargetExact_hitOnInteriorBlock() {
+        loadPortal("world:100:64:200", "host:25565", "X");
+        reloadPortals();
+
+        // (100,64,200) 是传送门内部格 → 精确命中
+        assertEquals("host:25565", portalService.findTargetExact(new Location(world, 100, 64, 200)));
+    }
+
+    @Test
+    void findTargetExact_neighborBlock_noFallback() {
+        loadPortal("world:100:64:200", "host:25565", "X");
+        reloadPortals();
+
+        // (101,65,201) 距内部格 1 格：findTarget 邻域容差会命中，findTargetExact 必须返回 null
+        Location loc = new Location(world, 101, 65, 201);
+        assertNull(portalService.findTargetExact(loc));
+        assertEquals("host:25565", portalService.findTarget(loc));
+    }
+
     // ---- setup (loadFromStorage) ----
 
     @Test

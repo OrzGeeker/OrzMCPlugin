@@ -87,8 +87,8 @@ public class PortalService implements PortalPort {
 
     @Override
     public String findTarget(Location location) {
-        String k = key(location.getWorld(), location.getBlockX(), location.getBlockY(), location.getBlockZ());
-        String v = interiorTargets.getOrDefault(k, null);
+        // 先精确命中，再做 3×3×3 邻域容差（Paper 路径玩家站在门内时方块坐标可能有 1 格对齐偏差）
+        String v = findTargetExact(location);
         if (v != null) return v;
         int bx = location.getBlockX();
         int by = location.getBlockY();
@@ -104,6 +104,12 @@ public class PortalService implements PortalPort {
             }
         }
         return null;
+    }
+
+    @Override
+    public String findTargetExact(Location location) {
+        String k = key(location.getWorld(), location.getBlockX(), location.getBlockY(), location.getBlockZ());
+        return interiorTargets.getOrDefault(k, null);
     }
 
     @Override

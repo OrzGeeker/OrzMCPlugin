@@ -6,6 +6,7 @@ import static org.mockito.Mockito.*;
 import com.jokerhub.paper.plugin.orzmc.core.ports.portal.PortalPort;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import com.jokerhub.paper.plugin.orzmc.testutil.ServiceTestBase;
+import java.util.List;
 import java.util.UUID;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -38,13 +39,23 @@ class PortalEventServiceTest extends ServiceTestBase {
         when(player.getUniqueId()).thenReturn(uuid);
         when(player.getName()).thenReturn("TestPlayer");
         when(player.isOnline()).thenReturn(true);
+        // transfer 经 runSync 派发：让 lambda 实际执行，并默认命令派发成功
+        when(server.executeConsoleCommand(anyString()))
+                .thenReturn(
+                        new ServerFacade.ConsoleCommandResult("transfer 127.0.0.1 25566 TestPlayer", true, List.of()));
+        doAnswer(invocation -> {
+                    ((Runnable) invocation.getArgument(0)).run();
+                    return null;
+                })
+                .when(server)
+                .runSync(any());
     }
 
     private Location loc(double x, double y, double z) {
         return new Location(world, x, y, z);
     }
 
-    // ---- Paper 路径：PlayerPortalEvent ----
+    // ---- Paper 路径：PlayerPortalEvent（带邻域容差的 findTarget）----
 
     @Test
     void portalEvent_matchingTarget_cancelsAndTransfers() {
@@ -56,7 +67,7 @@ class PortalEventServiceTest extends ServiceTestBase {
         service.handle(event);
 
         assertTrue(event.isCancelled());
-        verify(server).executeConsoleCommands(any(), eq("transfer 127.0.0.1 25566 TestPlayer"));
+        verify(server).executeConsoleCommand("transfer 127.0.0.1 25566 TestPlayer");
     }
 
     @Test
@@ -69,10 +80,10 @@ class PortalEventServiceTest extends ServiceTestBase {
         service.handle(event);
 
         assertFalse(event.isCancelled());
-        verify(server, never()).executeConsoleCommands(any(), anyString());
+        verify(server, never()).executeConsoleCommand(anyString());
     }
 
-    // ---- Folia 补偿路径：PlayerMoveEvent ----
+    // ---- Folia 补偿路径：PlayerMoveEvent（精确命中 findTargetExact）----
 
     @Test
     void moveEvent_paperMode_ignored() {
@@ -82,21 +93,34 @@ class PortalEventServiceTest extends ServiceTestBase {
 
         service.handleMove(event);
 
-        verify(portalService, never()).findTarget(any());
-        verify(server, never()).executeConsoleCommands(any(), anyString());
+        verify(portalService, never()).findTargetExact(any());
+        verify(server, never()).executeConsoleCommand(anyString());
     }
 
     @Test
     void moveEvent_foliaMode_walkingIntoPortal_transfers() {
-        when(portalService.findTarget(any(Location.class))).thenReturn("127.0.0.1:25566");
+        when(portalService.findTargetExact(any(Location.class))).thenReturn("127.0.0.1:25566");
         PortalEventService service = new PortalEventService(server, portalService, true);
         // 从传送门外（100,64,100）走进传送门方块（101,64,100）
         PlayerMoveEvent event = new PlayerMoveEvent(player, loc(100, 64, 100), loc(101, 64, 100));
 
         service.handleMove(event);
 
-        verify(portalService).findTarget(loc(101, 64, 100));
-        verify(server).executeConsoleCommands(any(), eq("transfer 127.0.0.1 25566 TestPlayer"));
+        verify(portalService).findTargetExact(loc(101, 64, 100));
+        verify(server).executeConsoleCommand("transfer 127.0.0.1 25566 TestPlayer");
+    }
+
+    @Test
+    void moveEvent_adjacentBlock_passesByPortal_noTransfer() {
+        // G-A: move 路径精确命中——贴着传送门 1 格路过（findTarget 邻域容差会命中，findTargetExact 不会）→ 不误触发
+        when(portalService.findTarget(any(Location.class))).thenReturn("127.0.0.1:25566");
+        PortalEventService service = new PortalEventService(server, portalService, true);
+        PlayerMoveEvent event = new PlayerMoveEvent(player, loc(101, 64, 100), loc(102, 64, 100));
+
+        service.handleMove(event);
+
+        verify(portalService).findTargetExact(loc(102, 64, 100));
+        verify(server, never()).executeConsoleCommand(anyString());
     }
 
     @Test
@@ -107,64 +131,65 @@ class PortalEventServiceTest extends ServiceTestBase {
 
         service.handleMove(event);
 
-        verify(portalService, never()).findTarget(any());
-        verify(server, never()).executeConsoleCommands(any(), anyString());
+        verify(portalService, never()).findTargetExact(any());
+        verify(server, never()).executeConsoleCommand(anyString());
     }
 
     @Test
     void moveEvent_outsidePortal_noTransfer() {
-        when(portalService.findTarget(any(Location.class))).thenReturn(null);
+        when(portalService.findTargetExact(any(Location.class))).thenReturn(null);
         PortalEventService service = new PortalEventService(server, portalService, true);
         PlayerMoveEvent event = new PlayerMoveEvent(player, loc(10, 64, 10), loc(11, 64, 10));
 
         service.handleMove(event);
 
-        verify(server, never()).executeConsoleCommands(any(), anyString());
+        verify(server, never()).executeConsoleCommand(anyString());
     }
 
     @Test
     void moveEvent_cancelledByOtherPlugin_ignored() {
         // G3: 反作弊/区域防护插件取消本次移动 → 不按「意图位置」误触发 transfer
-        when(portalService.findTarget(any(Location.class))).thenReturn("127.0.0.1:25566");
+        when(portalService.findTargetExact(any(Location.class))).thenReturn("127.0.0.1:25566");
         PortalEventService service = new PortalEventService(server, portalService, true);
         PlayerMoveEvent event = new PlayerMoveEvent(player, loc(100, 64, 100), loc(101, 64, 100));
         event.setCancelled(true);
 
         service.handleMove(event);
 
-        verify(portalService, never()).findTarget(any());
-        verify(server, never()).executeConsoleCommands(any(), anyString());
+        verify(portalService, never()).findTargetExact(any());
+        verify(server, never()).executeConsoleCommand(anyString());
     }
 
     @Test
     void moveEvent_cooldown_skipsRepeatedTransfer() {
-        when(portalService.findTarget(any(Location.class))).thenReturn("127.0.0.1:25566");
+        when(portalService.findTargetExact(any(Location.class))).thenReturn("127.0.0.1:25566");
         PortalEventService service = new PortalEventService(server, portalService, true);
         service.handleMove(new PlayerMoveEvent(player, loc(100, 64, 100), loc(101, 64, 100)));
-        verify(server, times(1)).executeConsoleCommands(any(), anyString());
+        verify(server, times(1)).executeConsoleCommand(anyString());
 
         // 5 秒冷却内再次移动（方块变化）→ 不重复 transfer
         PlayerMoveEvent second = new PlayerMoveEvent(player, loc(101, 64, 100), loc(102, 64, 100));
         service.handleMove(second);
 
-        verify(server, times(1)).executeConsoleCommands(any(), anyString());
+        verify(server, times(1)).executeConsoleCommand(anyString());
     }
 
     @Test
     void portalEvent_cooldown_sharedWithMovePath() {
         // G4: 冷却为双路径共享——move 路径刚 transfer 过，5s 内 portal 路径不再重复 transfer；
         // 且冷却内不接管事件（不取消原版传送），保证「取消 ⇔ transfer」自洽
+        when(portalService.findTargetExact(any(Location.class))).thenReturn("127.0.0.1:25566");
         when(portalService.findTarget(any(Location.class))).thenReturn("127.0.0.1:25566");
         PortalEventService service = new PortalEventService(server, portalService, true);
         service.handleMove(new PlayerMoveEvent(player, loc(100, 64, 100), loc(101, 64, 100)));
-        verify(server, times(1)).executeConsoleCommands(any(), anyString());
+        verify(server, times(1)).executeConsoleCommand(anyString());
 
         PlayerPortalEvent portalEvent = new PlayerPortalEvent(
                 player, loc(101, 64, 100), loc(101, 64, 100), TeleportCause.NETHER_PORTAL, 1, true, 1);
         service.handle(portalEvent);
 
         assertFalse(portalEvent.isCancelled());
-        verify(server, times(1)).executeConsoleCommands(any(), anyString());
+        verify(server, times(1)).executeConsoleCommand(anyString());
     }
 
     @Test
@@ -178,30 +203,63 @@ class PortalEventServiceTest extends ServiceTestBase {
         service.handle(event);
 
         assertTrue(event.isCancelled());
-        verify(server, never()).executeConsoleCommands(any(), anyString());
+        verify(server, never()).executeConsoleCommand(anyString());
     }
 
     @Test
     void moveEvent_unauthenticated_skipped() {
         // 未认证玩家走进传送门 → 不 transfer（登录插件自行保护）
-        when(portalService.findTarget(any(Location.class))).thenReturn("127.0.0.1:25566");
+        when(portalService.findTargetExact(any(Location.class))).thenReturn("127.0.0.1:25566");
         PortalEventService service = new PortalEventService(server, portalService, true, p -> false);
 
         service.handleMove(new PlayerMoveEvent(player, loc(100, 64, 100), loc(101, 64, 100)));
 
-        verify(server, never()).executeConsoleCommands(any(), anyString());
+        verify(server, never()).executeConsoleCommand(anyString());
     }
 
     @Test
     void moveEvent_afterCooldown_transfersAgain() throws Exception {
-        when(portalService.findTarget(any(Location.class))).thenReturn("127.0.0.1:25566");
+        when(portalService.findTargetExact(any(Location.class))).thenReturn("127.0.0.1:25566");
         PortalEventService service = new PortalEventService(server, portalService, true);
         service.handleMove(new PlayerMoveEvent(player, loc(100, 64, 100), loc(101, 64, 100)));
-        verify(server, times(1)).executeConsoleCommands(any(), anyString());
+        verify(server, times(1)).executeConsoleCommand(anyString());
 
         // 冷却（5s）过期后再次走进传送门 → 允许再次 transfer
         Thread.sleep(5100);
         service.handleMove(new PlayerMoveEvent(player, loc(101, 64, 100), loc(102, 64, 100)));
-        verify(server, times(2)).executeConsoleCommands(any(), anyString());
+        verify(server, times(2)).executeConsoleCommand(anyString());
+    }
+
+    @Test
+    void transfer_failedCommand_logsWarning() {
+        // G-B: transfer 命令派发失败（目标服不可达）→ WARNING 日志，不再静默
+        when(portalService.findTargetExact(any(Location.class))).thenReturn("127.0.0.1:25566");
+        when(server.executeConsoleCommand(anyString()))
+                .thenReturn(new ServerFacade.ConsoleCommandResult(
+                        "transfer 127.0.0.1 25566 TestPlayer", false, List.of("无法连接到目标服务器")));
+        PortalEventService service = new PortalEventService(server, portalService, true);
+
+        java.util.logging.Logger log = java.util.logging.Logger.getLogger("OrzMC.PortalEvent");
+        List<String> records = new java.util.ArrayList<>();
+        java.util.logging.Handler handler = new java.util.logging.Handler() {
+            @Override
+            public void publish(java.util.logging.LogRecord record) {
+                records.add(record.getMessage());
+            }
+
+            @Override
+            public void flush() {}
+
+            @Override
+            public void close() {}
+        };
+        log.addHandler(handler);
+        try {
+            service.handleMove(new PlayerMoveEvent(player, loc(100, 64, 100), loc(101, 64, 100)));
+
+            assertTrue(records.stream().anyMatch(m -> m != null && m.contains("跨服 transfer 命令执行失败")));
+        } finally {
+            log.removeHandler(handler);
+        }
     }
 }

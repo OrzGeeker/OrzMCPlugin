@@ -14,6 +14,7 @@ import org.bukkit.event.player.PlayerPortalEvent;
 
 public final class PortalEventService {
 
+    private static final java.util.logging.Logger LOGGER = java.util.logging.Logger.getLogger("OrzMC.PortalEvent");
     /** 跨服 transfer 触发冷却（毫秒）：防 PlayerPortalEvent + PlayerMoveEvent 双路径重复触发。 */
     private static final long TRANSFER_COOLDOWN_MS = 5000;
 
@@ -104,9 +105,10 @@ public final class PortalEventService {
         if (isOnCooldown(player, System.currentTimeMillis())) {
             return;
         }
-        // 先查目标（纯内存 CHM 查询，廉价），命中后再做认证反射检查——
-        // 避免全服玩家每移动一格都触发跨插件反射链（LoginSecurity）
-        String target = portalService.findTarget(to);
+        // 精确命中传送门内部格（无邻域容差）：move 路径对每个方块移动求值，
+        // 带容差的 findTarget 会把触发区膨胀为「门 + 四周 1 格」，路过玩家会被误 transfer。
+        // 命中后再做认证反射检查——避免全服玩家每移动一格都触发跨插件反射链（LoginSecurity）
+        String target = portalService.findTargetExact(to);
         if (target == null) {
             return;
         }
@@ -127,7 +129,14 @@ public final class PortalEventService {
         String host = parts[0];
         String port = parts.length > 1 ? parts[1] : "25565";
         String cmd = "transfer " + host + " " + port + " " + player.getName();
-        server.executeConsoleCommands(() -> {}, cmd);
+        // Folia 上命令须在 global region 线程派发；捕获执行结果，失败时打 WARNING（避免静默失败，
+        // 叠加「冷却内放行原版传送」造成双重困惑——玩家被取消一次后第二次直接进下界且无任何反馈）
+        server.runSync(() -> {
+            ServerFacade.ConsoleCommandResult result = server.executeConsoleCommand(cmd);
+            if (result != null && !result.dispatched()) {
+                LOGGER.warning("跨服 transfer 命令执行失败: " + cmd + " -> " + result.message());
+            }
+        });
     }
 
     private boolean isOnCooldown(Player player, long now) {
