@@ -45,8 +45,8 @@
 | 前置条件 | 同上 |
 | 步骤 | ① 群内 `$b` 触发一键备份；② `$o` 触发地图优化；③ 观察进度消息到完成 |
 | 预期 | 备份/优化完整执行，进度实时回传，完成无异常（调度走 async + global region） |
-| 实际 | ⬜ |
-| 方式 | Bot |
+| 实际 | 🟡 **$o 部分通过 / $b 环境限制（2026-08-18 真实环境）**：`$o` 触发链路完整验证——`/config set maintenance.optimize_enabled true`（注册路径 ✓）→ orzdebug `$o` → `正在优化地图，请稍等......` + save-off/save-all/save-on 切换（runExclusive 流程）→ MCA 优化器真实写回 region 文件（117+ 个，含 8.7MB 大文件）→ **0 region 线程异常**；优化期间真实玩家（joker）在线正常游戏。⚠️ 17G 世界（21689 region）完整跑完需数小时，验收中途因部署调试版重启中断 → **转入 TC-F6 长稳窗口重新触发直至完成**。**$b 备份：环境限制无法安全执行**——备份 zip 整个 worldContainer（17G symlink 世界）需 >17G 磁盘空间，本机仅 7.9G 可用，强行执行会写满磁盘导致数据损坏风险（非插件缺陷） |
+| 方式 | orzdebug + RCON |
 
 ### TC-F3 TNT 保护与爆炸通知
 
@@ -75,8 +75,8 @@
 | 前置条件 | 双服 Folia（或 Folia + Paper）配置传送门 |
 | 步骤 | ① 管理员创建传送门；② 玩家踩踏传送门触发跨服 transfer；③ 删除传送门 |
 | 预期 | 创建/删除经 region scheduler 在 anchor chunk 投递方块操作，无跨界异常；玩家 transfer 正常；`portal.yml` 运行时读写正确 |
-| 实际 | ⬜ |
-| 方式 | 管理员 + 真实玩家 |
+| 实际 | 🟡 **创建/删除 ✅ / transfer ❌ Folia 核心限制（2026-08-18 真实环境）**：① bot（临时 OP）`/portal 127.0.0.1 25566` → `已创建传送门 -> @ [world] 1000 65 987 框架:4x5`（4x5 黑曜石框架 + NETHER_PORTAL 方块真实生成，方块扫描确认 x=1000-1001,y=64-66,z=987）→ portals.yml 落盘 `127_0_0_1:25566` ✓ 0 region 异常；③ `/portal remove` → `已移除 1 个传送门` + portals.yml 清空 ✓ 0 region 异常。② **transfer 失败（Folia 26.2-4 核心限制）**：bot 多次踩踏/走进传送门 → **只触发原版下界传送，OrzMC 的 PlayerPortalEvent 拦截从未执行**（加临时 [PortalDebug] 日志实证 0 输出 + 反编译 folia-26.2.jar：`callPlayerPortalEvent` **无任何调用者**——下界传送门走 `NetherPortalBlock.getPortalDestination → handlePortalEvents` 链路但事件未达监听器；配置 portal-search-radius=128 正常排除配置因素）。→ **跨服 transfer（依赖 PlayerPortalEvent）在 Folia 26.2-4 BETA 无法工作**，Paper 侧正常（2026-08-06 e2e 28/28 transfer 闭环）。适配候选 `EntityPortalReadyEvent`（folia-api 存在）语义仅为选目标世界，无法替换为 transfer 命令 → 无可行插件侧适配，需等 Folia 修复或改用其他 transfer 触发方式（如交互检测） |
+| 方式 | mineflayer（OP + SimpleLogin 登录）+ RCON + 反编译验证 |
 
 ### TC-F6 长稳运行（8h+ 无死锁）
 
