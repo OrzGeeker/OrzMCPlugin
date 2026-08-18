@@ -1,9 +1,9 @@
 package com.jokerhub.paper.plugin.orzmc.features.teleport;
 
+import com.jokerhub.paper.plugin.orzmc.infra.server.GlobalSchedulerProvider;
 import com.jokerhub.paper.plugin.orzmc.infra.server.RegionSchedulerProvider;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
@@ -19,17 +19,23 @@ import org.bukkit.entity.Player;
  * 但仅卸载「由本注册表 force-load」且「无玩家在内」的区块：
  * 既不会撤销其他插件持有的 force-load，也不会把玩家脚下区块卸掉。</p>
  *
- * <p>Folia：force-load/unload 是区块操作，必须投递到该区块所属的 region 线程执行；
- * 同一区块的 acquire/release 经 region 队列天然串行，计数更新因此被逐区块串行化。
- * Paper 上 region 调度即主线程执行，语义不变。</p>
+ * <p>Folia 线程模型（2026-08-18 实测修正）：force-load 状态由 GlobalRegion 持有，
+ * {@code World.isChunkForceLoaded}/{@code setChunkForceLoaded} 均要求 global region 线程
+ * （反编译 {@code CraftWorld}：{@code ensureGlobalTickThread("... off global region")}）；
+ * 而 {@code unloadChunk} 是区块操作，须投递到该区块所属的 region 线程。
+ * 因此本类：计数与 force-load 读写全部经 {@link GlobalSchedulerProvider} 在 global 线程执行
+ * （global 单线程天然串行，计数无竞态），仅主动卸载经 {@link RegionSchedulerProvider} 投递 region。
+ * Paper 上 global/region 调度即主线程执行，语义不变。</p>
  */
 final class ForceLoadedChunkLease {
 
     private final RegionSchedulerProvider regionScheduler;
+    private final GlobalSchedulerProvider globalScheduler;
     private final Map<World, Map<Long, LeaseRef>> counts = new ConcurrentHashMap<>();
 
-    ForceLoadedChunkLease(RegionSchedulerProvider regionScheduler) {
+    ForceLoadedChunkLease(RegionSchedulerProvider regionScheduler, GlobalSchedulerProvider globalScheduler) {
         this.regionScheduler = regionScheduler;
+        this.globalScheduler = globalScheduler;
     }
 
     /**
@@ -37,15 +43,14 @@ final class ForceLoadedChunkLease {
      * 才真正 force-load（不覆盖其他插件已有的 force-load），并记录是否需要我们在释放时清除。
      */
     void acquire(World world, int cx, int cz) {
-        regionScheduler.run(world, cx, cz, () -> {
+        globalScheduler.run(() -> {
             Map<Long, LeaseRef> perWorld = counts.computeIfAbsent(world, w -> new ConcurrentHashMap<>());
             long key = key(cx, cz);
             LeaseRef ref = perWorld.get(key);
             if (ref == null) {
-                Chunk chunk = world.getChunkAt(cx, cz);
-                boolean alreadyForced = chunk.isForceLoaded();
+                boolean alreadyForced = world.isChunkForceLoaded(cx, cz);
                 if (!alreadyForced) {
-                    chunk.setForceLoaded(true);
+                    world.setChunkForceLoaded(cx, cz, true);
                 }
                 perWorld.put(key, new LeaseRef(1, !alreadyForced));
             } else {
@@ -55,11 +60,12 @@ final class ForceLoadedChunkLease {
     }
 
     /**
-     * 释放一个 force-load 引用。计数 1→0 时：仅在区块仍加载时解除我们自己设置的 force-load，
-     * 随后在无玩家在内时主动 {@code unloadChunk} 回收内存（已卸载则跳过，避免 {@code getChunkAt} 重新加载）。
+     * 释放一个 force-load 引用。计数 1→0 时：解除我们自己设置的 force-load，
+     * 随后在无玩家在内时投递到该区块 region 线程 {@code unloadChunk} 回收内存
+     * （已卸载则跳过，避免 {@code getChunkAt} 重新加载）。
      */
     void release(World world, int cx, int cz) {
-        regionScheduler.run(world, cx, cz, () -> {
+        globalScheduler.run(() -> {
             Map<Long, LeaseRef> perWorld = counts.get(world);
             if (perWorld == null) {
                 return;
@@ -70,12 +76,10 @@ final class ForceLoadedChunkLease {
                 return;
             }
             if (ref.refs == 1) {
-                if (world.isChunkLoaded(cx, cz)) {
-                    if (ref.weForced) {
-                        world.getChunkAt(cx, cz).setForceLoaded(false);
-                        if (noPlayerInChunk(world, cx, cz)) {
-                            world.unloadChunk(cx, cz, true);
-                        }
+                if (ref.weForced) {
+                    world.setChunkForceLoaded(cx, cz, false);
+                    if (noPlayerInChunk(world, cx, cz)) {
+                        regionScheduler.run(world, cx, cz, () -> world.unloadChunk(cx, cz, true));
                     }
                 }
                 perWorld.remove(key);
