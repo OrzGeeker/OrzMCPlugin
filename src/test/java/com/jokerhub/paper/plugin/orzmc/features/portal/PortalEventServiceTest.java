@@ -123,6 +123,20 @@ class PortalEventServiceTest extends ServiceTestBase {
     }
 
     @Test
+    void moveEvent_cancelledByOtherPlugin_ignored() {
+        // G3: 反作弊/区域防护插件取消本次移动 → 不按「意图位置」误触发 transfer
+        when(portalService.findTarget(any(Location.class))).thenReturn("127.0.0.1:25566");
+        PortalEventService service = new PortalEventService(server, portalService, true);
+        PlayerMoveEvent event = new PlayerMoveEvent(player, loc(100, 64, 100), loc(101, 64, 100));
+        event.setCancelled(true);
+
+        service.handleMove(event);
+
+        verify(portalService, never()).findTarget(any());
+        verify(server, never()).executeConsoleCommands(any(), anyString());
+    }
+
+    @Test
     void moveEvent_cooldown_skipsRepeatedTransfer() {
         when(portalService.findTarget(any(Location.class))).thenReturn("127.0.0.1:25566");
         PortalEventService service = new PortalEventService(server, portalService, true);
@@ -132,6 +146,21 @@ class PortalEventServiceTest extends ServiceTestBase {
         // 5 秒冷却内再次移动（方块变化）→ 不重复 transfer
         PlayerMoveEvent second = new PlayerMoveEvent(player, loc(101, 64, 100), loc(102, 64, 100));
         service.handleMove(second);
+
+        verify(server, times(1)).executeConsoleCommands(any(), anyString());
+    }
+
+    @Test
+    void portalEvent_cooldown_sharedWithMovePath() {
+        // G4: 冷却为双路径共享——move 路径刚 transfer 过，5s 内 portal 路径不再重复 transfer
+        when(portalService.findTarget(any(Location.class))).thenReturn("127.0.0.1:25566");
+        PortalEventService service = new PortalEventService(server, portalService, true);
+        service.handleMove(new PlayerMoveEvent(player, loc(100, 64, 100), loc(101, 64, 100)));
+        verify(server, times(1)).executeConsoleCommands(any(), anyString());
+
+        PlayerPortalEvent portalEvent = new PlayerPortalEvent(
+                player, loc(101, 64, 100), loc(101, 64, 100), TeleportCause.NETHER_PORTAL, 1, true, 1);
+        service.handle(portalEvent);
 
         verify(server, times(1)).executeConsoleCommands(any(), anyString());
     }

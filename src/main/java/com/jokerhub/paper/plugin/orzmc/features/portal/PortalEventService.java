@@ -74,6 +74,10 @@ public final class PortalEventService {
         if (!folia) {
             return;
         }
+        // 尊重其他插件（反作弊/区域防护）对本次移动的取消，避免按「意图位置」误触发 transfer
+        if (event.isCancelled()) {
+            return;
+        }
         Player player = event.getPlayer();
         Location from = event.getFrom();
         Location to = event.getTo();
@@ -86,27 +90,38 @@ public final class PortalEventService {
                 && from.getBlockZ() == to.getBlockZ()) {
             return;
         }
-        long now = System.currentTimeMillis();
-        Long last = lastTransfer.get(player.getUniqueId());
-        if (last != null && now - last < TRANSFER_COOLDOWN_MS) {
+        // 冷却内快速跳过（transfer() 内为双路径共享的权威判断）
+        if (isOnCooldown(player, System.currentTimeMillis())) {
+            return;
+        }
+        // 先查目标（纯内存 CHM 查询，廉价），命中后再做认证反射检查——
+        // 避免全服玩家每移动一格都触发跨插件反射链（LoginSecurity）
+        String target = portalService.findTarget(to);
+        if (target == null) {
             return;
         }
         if (!authService.isAuthenticated(player)) {
             return;
         }
-        String target = portalService.findTarget(to);
-        if (target == null) {
-            return;
-        }
-        lastTransfer.put(player.getUniqueId(), now);
         transfer(player, target);
     }
 
     private void transfer(Player player, String target) {
+        // 双路径共享冷却（权威判断）：防 PlayerPortalEvent + PlayerMoveEvent 重复触发
+        long now = System.currentTimeMillis();
+        if (isOnCooldown(player, now)) {
+            return;
+        }
+        lastTransfer.put(player.getUniqueId(), now);
         String[] parts = target.split(":");
         String host = parts[0];
         String port = parts.length > 1 ? parts[1] : "25565";
         String cmd = "transfer " + host + " " + port + " " + player.getName();
         server.executeConsoleCommands(() -> {}, cmd);
+    }
+
+    private boolean isOnCooldown(Player player, long now) {
+        Long last = lastTransfer.get(player.getUniqueId());
+        return last != null && now - last < TRANSFER_COOLDOWN_MS;
     }
 }
