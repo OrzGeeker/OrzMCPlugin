@@ -162,8 +162,11 @@ public final class FeatureModule implements ServiceModule {
                         platform.serverFacade(), platform.configs(), botModule.notifier(), this.listFormatter));
         this.tntEventService = new TntEventService(
                 platform.configs(), platform.textStyles(), botModule.notifier(), platform.serverScheduler());
-        this.whitelistEventService =
-                new WhitelistEventService(platform.configs(), platform.textStyles(), botModule.notifier());
+        this.whitelistEventService = new WhitelistEventService(
+                platform.configs(),
+                platform.textStyles(),
+                botModule.notifier(),
+                platform.throttledNotifier()); // whitelist_block 群通知限频（防刷屏打爆 QQ 频控）
         this.menuEventService = new MenuEventService(platform.textStyles());
         this.teleportBowService = new TeleportBowService(platform.serverFacade(), platform.textStyles());
         this.teleportBowEventService = new TeleportBowEventService(teleportBowService);
@@ -227,7 +230,7 @@ public final class FeatureModule implements ServiceModule {
                     return data;
                 },
                 playerId -> rankService.currentGroup(playerId).equals("member"),
-                data -> "申请晋升 builder"
+                data -> "申请晋升建造者"
                         + (data.get("reason") == null || data.get("reason").isBlank() ? "" : "：" + data.get("reason")),
                 // 审核通过 = track 升一级（member→builder）；返回 null（链顶/LP 异常）视为授权失败，
                 // 保持 PENDING 不落 APPROVED（避免「已通过但未生效」）
@@ -246,7 +249,7 @@ public final class FeatureModule implements ServiceModule {
                     return data;
                 },
                 playerId -> rankService.currentGroup(playerId).equals("builder"),
-                data -> "申请晋升 admin"
+                data -> "申请晋升管理员"
                         + (data.get("reason") == null || data.get("reason").isBlank() ? "" : "：" + data.get("reason")),
                 playerId -> rankService.promote(playerId) != null));
         this.rankCommandService = new com.jokerhub.paper.plugin.orzmc.features.rank.RankCommandService(

@@ -15,6 +15,7 @@ import com.jokerhub.paper.plugin.orzmc.infra.config.configs.WhitelistConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.WhitelistKickMessage;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.WhitelistKickMessage.WhitelistKickMessageItem;
 import com.jokerhub.paper.plugin.orzmc.infra.notify.Notifier;
+import com.jokerhub.paper.plugin.orzmc.infra.notify.ThrottledNotifier;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
 import com.jokerhub.paper.plugin.orzmc.testutil.ServiceTestBase;
 import java.util.List;
@@ -34,6 +35,7 @@ class WhitelistEventServiceTest extends ServiceTestBase {
         configs = mock(TypedConfigProvider.class);
         styles = mock(OrzTextStyles.class);
         notifier = mock(Notifier.class);
+        ThrottledNotifier throttledNotifier = new ThrottledNotifier();
 
         WhitelistConfig whitelistCfg = mock(WhitelistConfig.class);
         BotConfig botConfig = mock(BotConfig.class);
@@ -58,7 +60,7 @@ class WhitelistEventServiceTest extends ServiceTestBase {
         when(configs.renderEvent(anyString(), anyMap()))
                 .thenReturn(new MessageEnvelope(TargetType.PUBLIC, "msg", Format.DEFAULT));
 
-        service = new WhitelistEventService(configs, styles, notifier);
+        service = new WhitelistEventService(configs, styles, notifier, throttledNotifier);
     }
 
     @Test
@@ -100,6 +102,24 @@ class WhitelistEventServiceTest extends ServiceTestBase {
 
         verify(event).kickMessage(any(Component.class));
         verify(notifier).event(eq("whitelist_block"), any(MessageEnvelope.class));
+    }
+
+    @Test
+    void handleVerify_repeatedBlocksWithinWindow_sendsSingleNotification() {
+        // 回归：恶意脚本反复登录被拦（实测 48 次 → 40+ 条消息打爆 QQ 频控），
+        // 限频窗口内只放行 1 条群通知；踢出提示每次都设置不受影响
+        ProfileWhitelistVerifyEvent event = mock(ProfileWhitelistVerifyEvent.class);
+        PlayerProfile profile = mock(PlayerProfile.class);
+        when(event.getPlayerProfile()).thenReturn(profile);
+        when(profile.getName()).thenReturn("Alice");
+        when(event.isWhitelisted()).thenReturn(false);
+
+        service.handleVerify(event);
+        service.handleVerify(event);
+        service.handleVerify(event);
+
+        verify(event, times(3)).kickMessage(any(Component.class));
+        verify(notifier, times(1)).event(eq("whitelist_block"), any(MessageEnvelope.class));
     }
 
     @Test

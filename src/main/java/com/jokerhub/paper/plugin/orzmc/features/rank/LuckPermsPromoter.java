@@ -34,7 +34,10 @@ import org.bukkit.plugin.PluginManager;
  * 装配层在 LP 缺失时改用 {@link NoopRankPromoter} 降级。</p>
  *
  * <p>⚠️ LP API 修改用户是<b>内存态</b>，成功后须显式 {@code saveUser} 落库；
- * 变更须在主线程执行（本类经注入 scheduler 回主线程，无 scheduler 时同步）。</p>
+ * 变更须在「同步调度线程」执行（Paper 主线程 / Folia global region 线程）。本类经注入
+ * scheduler 调度；无 scheduler 时同步。Folia 上整个操作（含 {@code loadUser}/{@code saveUser}
+ * 的同步等待）经 {@link #runSync} 从 region 线程转至 global region 线程执行，避免
+ * region 线程同步阻塞等待 LP 异步回调导致的死锁（/review approve 卡死）。</p>
  */
 public final class LuckPermsPromoter implements RankPromoter {
 
@@ -134,12 +137,15 @@ public final class LuckPermsPromoter implements RankPromoter {
 
     @Override
     public boolean isInGroup(UUID playerId, String groupName) {
-        User user = loadUser(playerId);
-        if (user == null) {
-            return false;
-        }
-        return user.getInheritedGroups(queryOptionsGlobal()).stream()
-                .anyMatch(g -> g.getName().equalsIgnoreCase(groupName));
+        // Folia 兼容：LP 用户读取（离线 loadUser 同步等待）转 global region 线程执行
+        return runSync(() -> {
+            User user = loadUser(playerId);
+            if (user == null) {
+                return false;
+            }
+            return user.getInheritedGroups(queryOptionsGlobal()).stream()
+                    .anyMatch(g -> g.getName().equalsIgnoreCase(groupName));
+        });
     }
 
     /** global 上下文的查询选项（track 判定/组查询统一用，见 GLOBAL 说明）。 */
@@ -178,6 +184,12 @@ public final class LuckPermsPromoter implements RankPromoter {
 
     @Override
     public String currentTrackGroup(UUID playerId) {
+        // Folia 兼容：LP 用户读取（离线 loadUser 同步等待）转 global region 线程执行
+        return runSync(() -> currentTrackGroupInternal(playerId));
+    }
+
+    /** {@link #currentTrackGroup} 主体（在同步调度线程执行，见 {@link #runSync}）。 */
+    private String currentTrackGroupInternal(UUID playerId) {
         User user = loadUser(playerId);
         Track trk = track();
         if (user == null || trk == null) {
@@ -203,6 +215,13 @@ public final class LuckPermsPromoter implements RankPromoter {
 
     @Override
     public String promote(UUID playerId) {
+        // Folia 兼容：整个 promote（含 loadUser/saveUser 的同步等待）转 global region 线程执行，
+        // 避免 region 线程同步阻塞等待 LP 异步回调死锁（/review approve 卡死）
+        return runSync(() -> promoteInternal(playerId));
+    }
+
+    /** {@link #promote} 主体（在同步调度线程执行，见 {@link #runSync}）。 */
+    private String promoteInternal(UUID playerId) {
         User user = loadUser(playerId);
         Track trk = track();
         if (user == null || trk == null) {
@@ -254,6 +273,12 @@ public final class LuckPermsPromoter implements RankPromoter {
 
     @Override
     public String demote(UUID playerId) {
+        // Folia 兼容：整个 demote（含 loadUser/saveUser 的同步等待）转 global region 线程执行
+        return runSync(() -> demoteInternal(playerId));
+    }
+
+    /** {@link #demote} 主体（在同步调度线程执行，见 {@link #runSync}）。 */
+    private String demoteInternal(UUID playerId) {
         User user = loadUser(playerId);
         Track trk = track();
         if (user == null || trk == null) {
