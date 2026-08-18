@@ -308,4 +308,90 @@ class ReviewServiceTest {
         verify(store).save(argThat(r -> r.status() == ReviewRequest.Status.APPROVED));
         verify(notifier).groupEvent(eq("review_approved"), anyMap());
     }
+
+    // ---- 并发审核去重（M2/M3）----
+
+    /** 构造一个授权结果受控的审核类型：handler 返回 {@code pendingAuth}，完成时机由测试决定。 */
+    private ReviewType controllableType(CompletableFuture<Boolean> pendingAuth) {
+        return new ReviewType(
+                "builder-promotion", "晋升建造者", "builder", a -> Map.of(), id -> true, d -> "x", id -> pendingAuth);
+    }
+
+    @Test
+    void review_concurrentDoubleApprove_onlyFirstAuthorizes() {
+        // 回归（M2）：双 approve 并发 → 仅第一个进入者授权 + 落 APPROVED，
+        // 第二个被 in-flight 占位拒绝（不会并发 normalizeSingleGroup + track.promote 越级）
+        when(store.findById("r1")).thenReturn(Optional.of(pendingRequest("r1")));
+        CompletableFuture<Boolean> pendingAuth = new CompletableFuture<>();
+        final int[] calls = {0};
+        ReviewType controllable =
+                new ReviewType("builder-promotion", "晋升建造者", "builder", a -> Map.of(), id -> true, d -> "x", id -> {
+                    calls[0]++;
+                    return pendingAuth;
+                });
+        service.register(controllable);
+
+        var first = service.review("r1", true, "admin1");
+        var second = service.review("r1", true, "admin2");
+
+        assertFalse(second.join().success(), "第二个并发 approve 应被拒绝");
+        assertTrue(second.join().message().contains("正在处理中"));
+        assertEquals(1, calls[0], "并发双 approve 只应触发一次授权");
+
+        pendingAuth.complete(true);
+        var firstResult = first.join();
+        assertTrue(firstResult.success());
+        verify(store).save(argThat(r -> r.status() == ReviewRequest.Status.APPROVED));
+    }
+
+    @Test
+    void cancel_duringApprovalInflight_isRejected() {
+        // 回归（M3）：授权在途时撤回被 in-flight 占位拒绝，防止「状态 CANCELLED 但 LP 已晋升」漂移
+        when(store.findById("r1")).thenReturn(Optional.of(pendingRequest("r1")));
+        CompletableFuture<Boolean> pendingAuth = new CompletableFuture<>();
+        service.register(controllableType(pendingAuth));
+
+        var reviewFuture = service.review("r1", true, "admin1"); // 授权在途
+        var cancelResult = service.cancel("r1", applicant);
+
+        assertFalse(cancelResult.success());
+        assertTrue(cancelResult.message().contains("正在处理中"));
+        verify(store, never()).save(argThat(r -> r.status() == ReviewRequest.Status.CANCELLED));
+
+        // 授权完成后正常落 APPROVED，撤回始终未生效
+        pendingAuth.complete(true);
+        assertTrue(reviewFuture.join().success());
+    }
+
+    @Test
+    void review_rejectDuringApprovalInflight_isRejected() {
+        // 回归（M3）：授权在途时并发 reject 被拒绝，防止「状态 REJECTED 但 LP 已晋升」漂移
+        when(store.findById("r1")).thenReturn(Optional.of(pendingRequest("r1")));
+        CompletableFuture<Boolean> pendingAuth = new CompletableFuture<>();
+        service.register(controllableType(pendingAuth));
+
+        service.review("r1", true, "admin1"); // 授权在途
+        var rejectResult = service.review("r1", false, "admin2");
+
+        assertFalse(rejectResult.join().success());
+        assertTrue(rejectResult.join().message().contains("正在处理中"));
+        verify(store, never()).save(argThat(r -> r.status() == ReviewRequest.Status.REJECTED));
+    }
+
+    @Test
+    void review_inflightClaimReleasedAfterCompletion() {
+        // in-flight 占位随处理链完成而释放：完成前被去重，完成后可再次进入处理
+        when(store.findById("r1")).thenReturn(Optional.of(pendingRequest("r1")));
+        CompletableFuture<Boolean> pendingAuth = new CompletableFuture<>();
+        service.register(controllableType(pendingAuth));
+
+        var first = service.review("r1", true, "admin1");
+        assertFalse(service.review("r1", true, "admin2").join().success(), "在途期间应被去重");
+
+        pendingAuth.complete(true);
+        assertTrue(first.join().success());
+
+        // 占位已释放：再次审核不再被 in-flight 拒绝（mock store 状态未变，故走到处理分支）
+        assertTrue(service.review("r1", false, "admin3").join().success());
+    }
 }

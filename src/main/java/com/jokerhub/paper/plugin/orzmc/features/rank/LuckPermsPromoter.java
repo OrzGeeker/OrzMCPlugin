@@ -1,5 +1,7 @@
 package com.jokerhub.paper.plugin.orzmc.features.rank;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -42,9 +44,9 @@ import org.bukkit.plugin.PluginManager;
  * 升降级（{@link #promoteAsync} / {@link #demoteAsync}）在注入的 {@code asyncExecutor}
  * （非服务器线程）上执行 LP 操作；无执行器时内联（测试/无阻塞场景）。读路径
  * （{@link #currentTrackGroup}）在线玩家先取 LP 在线缓存（零 future 等待），离线玩家
- * 在异步执行器加载并在调用线程等待（同步线程上遇到离线玩家时降级返回 null 避免自锁）。
- * {@link #runSync} 仅保留给 {@link #resolvePlayerId}（Bukkit.getOfflinePlayer 快速同步调用，
- * 不等待 LP future）。</p>
+ * 在异步执行器加载并在调用线程等待——但<b>任何服务器调度线程（Paper 主线程 / Folia
+ * global 或 region 线程）在离线缓存未命中时都降级返回 null 避免自锁</b>（详见
+ * {@link #isServerTickThread()}；Folia region 线程此前漏判会同步等 LP future 阻塞区域 tick）。
  */
 public final class LuckPermsPromoter implements RankPromoter {
 
@@ -52,6 +54,20 @@ public final class LuckPermsPromoter implements RankPromoter {
     private static final String LUCKPERMS_PLUGIN = "LuckPerms";
     private static final long LOAD_USER_TIMEOUT_SECONDS = 3;
     private static final Logger LOG = Logger.getLogger("OrzMC.LP");
+
+    /**
+     * Folia region 线程判定方法（Folia API 独有，paper-api 编译期不可见 → 反射缓存；
+     * Paper 上无此方法为 null）。服务器调度线程判定用 {@link #isRegionTickThread()} 补充。
+     */
+    private static final Method REGION_THREAD_CHECK = resolveRegionThreadCheckMethod();
+
+    private static Method resolveRegionThreadCheckMethod() {
+        try {
+            return org.bukkit.Bukkit.class.getMethod("isRegionOwnedByCurrentThread");
+        } catch (NoSuchMethodException e) {
+            return null; // Paper：无 Folia 独有方法，当前线程不可能是 region 线程
+        }
+    }
 
     private final PlayerNameResolver nameResolver;
     private final ServerScheduler scheduler;
@@ -128,6 +144,31 @@ public final class LuckPermsPromoter implements RankPromoter {
         return ImmutableContextSet.empty();
     }
 
+    /**
+     * 当前线程是否为服务器调度线程（Paper 主线程 / Folia global 或 region 线程）。
+     *
+     * <p>服务器调度线程<b>绝不能同步等待 LP 异步 future</b>（回调排队在自己后面 → 自锁超时）：
+     * Paper 主线程与 Folia global region 线程由 {@link Bukkit#isGlobalTickThread()} 判定；
+     * Folia 的 region 线程（每个区块区域独立线程，命令/事件多跑在此）还需
+     * {@link #isRegionTickThread()} 判定——只判 global 会让 {@code /rank <离线玩家>} 等
+     * region 线程调用在离线缓存未命中时同步等 LP future，卡住该 region 内所有玩家 tick。</p>
+     */
+    static boolean isServerTickThread() {
+        return Bukkit.isGlobalTickThread() || isRegionTickThread();
+    }
+
+    /** Folia region 线程判定：反射调 Folia API 独有方法 {@code Bukkit.isRegionOwnedByCurrentThread()}；Paper 无此方法返回 false。 */
+    static boolean isRegionTickThread() {
+        if (REGION_THREAD_CHECK == null) {
+            return false;
+        }
+        try {
+            return (boolean) REGION_THREAD_CHECK.invoke(null);
+        } catch (IllegalAccessException | InvocationTargetException | RuntimeException e) {
+            return false; // 反射异常一律视为非 region 线程（Paper 路径/防御性降级）
+        }
+    }
+
     /** 持久化用户变更（LP API 的 promote/demote 只改内存，须显式保存）。@return true=落库成功。 */
     private boolean saveUser(User user) {
         try {
@@ -199,10 +240,11 @@ public final class LuckPermsPromoter implements RankPromoter {
             return resolveTrackGroup(online);
         }
         // 离线玩家缓存未命中：需 loadUser（LP 异步 future，完成回调调度到服务器同步线程）。
-        // 若在同步调度线程上同步等待会自锁（回调排在自己后面）→ 检测到同步线程时降级返回 null；
-        // 否则在异步执行器上加载并在当前线程等待（同步线程空闲，LP 回调可正常执行）。
-        if (Bukkit.isGlobalTickThread()) {
-            LOG.warning("currentTrackGroup 在同步调度线程上查询离线玩家（缓存未命中），跳过避免自锁: " + playerId);
+        // 若在服务器调度线程（Paper 主线程 / Folia global 或 region 线程）上同步等待会自锁
+        // （回调排在自己后面）→ 检测到任何调度线程时降级返回 null；
+        // 否则在异步执行器上加载并在当前线程等待（服务器线程空闲，LP 回调可正常执行）。
+        if (isServerTickThread()) {
+            LOG.warning("currentTrackGroup 在服务器调度线程（global/region）上查询离线玩家（缓存未命中），跳过避免自锁: " + playerId);
             return null;
         }
         try {

@@ -20,18 +20,18 @@ public final class ThrottledNotifier {
 
     private boolean shouldRun(String key, long periodMs, long ttlMs) {
         long now = System.currentTimeMillis();
-        boolean[] updated = {false};
-        // compute 原子完成「判定 + 更新」：Folia 多 region 线程并发登录时，同 key 同窗口
-        // 的并发调用在 compute 的 bin 锁下串行，杜绝旧实现 check-then-act 的竞态（同窗口发 2 条）。
-        last.compute(key, (k, prev) -> {
+        // 判定的依据用 compute 的返回值而非外部 boolean[]：ConcurrentHashMap.compute 在 CAS
+        // 重试时可能多次调用 remapping 函数，外部副作用数组会被「先置 true、最终未更新」污染
+        // （假放行）。stamp 装箱一次，remapping 返回 stamp ⇔ 本次确实放行（引用相等判定）。
+        Long stamp = now;
+        Long result = last.compute(key, (k, prev) -> {
             if (prev == null || now - prev >= periodMs) {
-                updated[0] = true;
-                return now;
+                return stamp; // 放行：写回本次时间戳
             }
-            return prev;
+            return prev; // 窗口内：保持原时间戳，不放行
         });
         maybeCleanup(now, ttlMs);
-        return updated[0];
+        return result == stamp;
     }
 
     private void maybeCleanup(long now, long ttlMs) {

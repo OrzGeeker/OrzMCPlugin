@@ -19,6 +19,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 
 /**
  * LuckPermsPromoter 测试（直接 LP API 版）。
@@ -259,6 +260,41 @@ class LuckPermsPromoterTest {
 
         assertEquals("builder", withScheduler.currentTrackGroup(id));
         verify(scheduler, never()).runSync(any(Runnable.class));
+    }
+
+    @Test
+    void currentTrackGroup_onGlobalTickThread_returnsNullWithoutLoading() {
+        // 回归（Paper 主线程 / Folia global region 线程）：离线缓存未命中 + 同步调度线程
+        // → 同步等 LP future 会自锁（回调排在自己后面），必须降级返回 null、不触发 loadUser
+        mockEmptyContext();
+        when(userManager.getUser(id)).thenReturn(null);
+        bukkitMock.when(org.bukkit.Bukkit::isGlobalTickThread).thenReturn(true);
+
+        assertNull(promoter.currentTrackGroup(id));
+        verify(userManager, never()).loadUser(id);
+    }
+
+    @Test
+    void currentTrackGroup_onRegionTickThread_returnsNullWithoutLoading() {
+        // 回归（Folia region 线程）：Bukkit.isGlobalTickThread() 只判定 global region 线程，
+        // region 线程（命令/事件所在）此前漏判会同步等 LP future，阻塞该区域所有玩家 tick。
+        // isRegionOwnedByCurrentThread() 是 Folia API 独有（paper-api 编译期不可见，反射调用）——
+        // 单测无法构造真实 region 线程，经 mockStatic 覆盖 isRegionTickThread 分支。
+        mockEmptyContext();
+        when(userManager.getUser(id)).thenReturn(null);
+        try (MockedStatic<LuckPermsPromoter> promoterMock =
+                mockStatic(LuckPermsPromoter.class, Mockito.CALLS_REAL_METHODS)) {
+            promoterMock.when(LuckPermsPromoter::isRegionTickThread).thenReturn(true);
+
+            assertNull(promoter.currentTrackGroup(id));
+            verify(userManager, never()).loadUser(id);
+        }
+    }
+
+    @Test
+    void isServerTickThread_paperApi_returnsFalseOnAsyncThread() {
+        // Paper 编译/测试环境：无 Folia region 判定方法 + 非 global tick 线程 → 非服务器调度线程
+        assertFalse(LuckPermsPromoter.isServerTickThread());
     }
 
     @Test
