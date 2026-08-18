@@ -87,6 +87,44 @@ public class TemplateResourceSmokeTest extends ServiceTestBase {
     }
 
     @Test
+    public void testWhitelistBlockRendersEmojiStyle() throws Exception {
+        // 群消息样式统一（2026-08-19）：白名单拦截 = 表情 + 原文
+        YamlConfiguration cfg = load("templates.yml");
+        String rendered = TemplateRenderer.render(
+                TemplateRenderer.resolveTemplate("whitelist_block", cfg, ""),
+                java.util.Map.of("message", "RameshChoudary 尝试加入服务器，被白名单拦截"));
+        Assertions.assertTrue(rendered.startsWith("🙅🏻‍♂️ "), "白名单拦截应以表情开头: " + rendered);
+        Assertions.assertTrue(rendered.contains("RameshChoudary 尝试加入服务器，被白名单拦截"), "got: " + rendered);
+    }
+
+    @Test
+    public void testExceptionAlertRendersServerAbnormalBlock() throws Exception {
+        // 异常消息 = 「⚠️ 服务器异常」外壳 + 分割线 + 异常项（支持多项）
+        YamlConfiguration cfg = load("templates.yml");
+        String rendered = TemplateRenderer.render(
+                TemplateRenderer.resolveTemplate("exception_alert", cfg, ""),
+                java.util.Map.of("message", "白名单关闭\n其它异常项"));
+        Assertions.assertTrue(rendered.startsWith("⚠️ 服务器异常\n"), "异常消息应以服务器异常外壳开头: " + rendered);
+        Assertions.assertTrue(rendered.contains("\n---------------------------------\n"), "应含分割线: " + rendered);
+        Assertions.assertTrue(rendered.endsWith("白名单关闭\n其它异常项"), "多项异常应逐行显示: " + rendered);
+    }
+
+    @Test
+    public void testPlayerJoinRendersUnifiedBlockStyle() throws Exception {
+        // 上下线统一样式：🎮 当前玩家头 + 分割线 + 版块头 + 玩家行
+        YamlConfiguration cfg = load("templates.yml");
+        String rendered = TemplateRenderer.render(
+                TemplateRenderer.resolveTemplate("player_join", cfg, ""),
+                java.util.Map.of(
+                        "online_count", "1",
+                        "max_count", "150",
+                        "name", "StyleApp 生存模式 建造者"));
+        Assertions.assertTrue(rendered.startsWith("🎮 当前玩家(1/150)\n"), "got: " + rendered);
+        Assertions.assertTrue(rendered.contains("\n---------------------------------\n🥰 上线：\n"), "got: " + rendered);
+        Assertions.assertTrue(rendered.endsWith("StyleApp 生存模式 建造者"), "got: " + rendered);
+    }
+
+    @Test
     public void testSecurityAuditTemplateResolvesWithRealText() throws Exception {
         // 安全加固 P1-2：启动自检报告模板必须渲染真实中文文案，而非字面 "{online_mode}" 等占位符
         YamlConfiguration cfg = load("templates.yml");

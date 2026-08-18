@@ -240,11 +240,16 @@ class PlayerEventAggregatorTest extends ServiceTestBase {
         verify(configs).renderEvent(eq("player_digest"), vars.capture());
         verify(notifier).event(eq("player_digest"), any(MessageEnvelope.class));
         Map<String, String> v = vars.getValue();
-        assertTrue(v.get("join_summary").startsWith("🟢 +2 上线"), "got: " + v.get("join_summary"));
+        // 版块式摘要：分割线开头 + 版块头（多人带人数）+ 每人一行；空版块连分割线一并省略
+        assertTrue(
+                v.get("join_summary").startsWith("---------------------------------"), "got: " + v.get("join_summary"));
+        assertTrue(v.get("join_summary").contains("🥰 上线(2)："), "got: " + v.get("join_summary"));
         assertTrue(v.get("join_summary").contains("Alice"), "got: " + v.get("join_summary"));
         assertTrue(v.get("join_summary").contains("Bob"), "got: " + v.get("join_summary"));
-        assertTrue(v.get("quit_summary").startsWith("🔴 -1 下线"), "got: " + v.get("quit_summary"));
-        assertEquals("", v.get("kick_summary"));
+        assertTrue(
+                v.get("quit_summary").startsWith("---------------------------------"), "got: " + v.get("quit_summary"));
+        assertTrue(v.get("quit_summary").contains("😋 下线："), "单人版块不显示人数, got: " + v.get("quit_summary"));
+        assertEquals("", v.get("kick_summary"), "空版块整段（含分割线）省略");
         assertEquals("3", v.get("online_count"));
     }
 
@@ -265,7 +270,7 @@ class PlayerEventAggregatorTest extends ServiceTestBase {
         verify(configs).renderEvent(eq("player_digest"), vars.capture());
         String joinSummary = vars.getValue().get("join_summary");
         // 计数精确（+10），名称仅显示前 6 个并截断
-        assertTrue(joinSummary.startsWith("🟢 +10 上线"), "got: " + joinSummary);
+        assertTrue(joinSummary.contains("🥰 上线(10)："), "got: " + joinSummary);
         assertTrue(joinSummary.contains("P0") && joinSummary.contains("P5"), "got: " + joinSummary);
         assertFalse(joinSummary.contains("P6"), "P6 应被截断: " + joinSummary);
         assertTrue(joinSummary.contains("等4人"), "got: " + joinSummary);
@@ -423,8 +428,8 @@ class PlayerEventAggregatorTest extends ServiceTestBase {
         ArgumentCaptor<Map<String, String>> vars = ArgumentCaptor.forClass(Map.class);
         verify(configs).renderEvent(eq("player_digest"), vars.capture());
         Map<String, String> v = vars.getValue();
-        assertTrue(v.get("kick_summary").startsWith("⛔ -1 被踢"), "got: " + v.get("kick_summary"));
-        assertTrue(v.get("quit_summary").startsWith("🔴 -1 下线"), "got: " + v.get("quit_summary"));
+        assertTrue(v.get("kick_summary").contains("😂 被踢："), "got: " + v.get("kick_summary"));
+        assertTrue(v.get("quit_summary").contains("😋 下线："), "got: " + v.get("quit_summary"));
     }
 
     // ---- 禁用/重载同步冲刷：不走调度器，避免尾部任务被取消导致整窗丢失 ----
@@ -534,7 +539,7 @@ class PlayerEventAggregatorTest extends ServiceTestBase {
         ArgumentCaptor<Map<String, String>> vars = ArgumentCaptor.forClass(Map.class);
         verify(configs).renderEvent(eq("player_digest"), vars.capture());
         assertTrue(
-                vars.getValue().get("join_summary").startsWith("🟢 +" + threads + " 上线"),
+                vars.getValue().get("join_summary").contains("🥰 上线(" + threads + ")："),
                 "got: " + vars.getValue().get("join_summary"));
     }
 }
