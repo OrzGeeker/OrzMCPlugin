@@ -111,6 +111,23 @@ class PortalEventServiceTest extends ServiceTestBase {
     }
 
     @Test
+    void moveEvent_groundPortal_feetBelowInterior_torsoTriggers() {
+        // G-1 几何回归：地面传送门内部格从脚底+1 起（PortalBuilder cy=baseY+2，内部 y=baseY+1~+3），
+        // 玩家穿门时脚底格（baseY）精确命中失败，须由躯干格（脚+1）命中 → transfer
+        when(portalService.findTargetExact(loc(101, 64, 100))).thenReturn(null);
+        when(portalService.findTargetExact(loc(101, 65, 100))).thenReturn("127.0.0.1:25566");
+        PortalEventService service = new PortalEventService(server, portalService, true);
+        // 脚底 (101,64,100) = 地面层；躯干 (101,65,100) = 内部格底层
+        PlayerMoveEvent event = new PlayerMoveEvent(player, loc(100, 64, 100), loc(101, 64, 100));
+
+        service.handleMove(event);
+
+        verify(portalService).findTargetExact(loc(101, 64, 100));
+        verify(portalService).findTargetExact(loc(101, 65, 100));
+        verify(server).executeConsoleCommand("transfer 127.0.0.1 25566 TestPlayer");
+    }
+
+    @Test
     void moveEvent_adjacentBlock_passesByPortal_noTransfer() {
         // G-A: move 路径精确命中——贴着传送门 1 格路过（findTarget 邻域容差会命中，findTargetExact 不会）→ 不误触发
         when(portalService.findTarget(any(Location.class))).thenReturn("127.0.0.1:25566");

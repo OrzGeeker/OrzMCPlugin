@@ -105,10 +105,12 @@ public final class PortalEventService {
         if (isOnCooldown(player, System.currentTimeMillis())) {
             return;
         }
-        // 精确命中传送门内部格（无邻域容差）：move 路径对每个方块移动求值，
-        // 带容差的 findTarget 会把触发区膨胀为「门 + 四周 1 格」，路过玩家会被误 transfer。
+        // 精确命中传送门内部格（水平无邻域容差）：move 路径对每个方块移动求值，
+        // 带容差的 findTarget 会把水平触发区膨胀为「门 + 四周 1 格」，路过玩家会被误 transfer。
+        // 垂直方向按玩家身体两格匹配（脚底 + 躯干）：地面传送门内部格从脚底+1 起（cy=baseY+2），
+        // 仅查脚底格会永远差 1 格导致补偿路径静默失效。
         // 命中后再做认证反射检查——避免全服玩家每移动一格都触发跨插件反射链（LoginSecurity）
-        String target = portalService.findTargetExact(to);
+        String target = findPortalTarget(to);
         if (target == null) {
             return;
         }
@@ -116,6 +118,16 @@ public final class PortalEventService {
             return;
         }
         transfer(player, target);
+    }
+
+    private String findPortalTarget(Location feet) {
+        String target = portalService.findTargetExact(feet);
+        if (target != null) {
+            return target;
+        }
+        // 躯干格（脚 +1）：玩家身体占两格，覆盖地面传送门（内部格从脚底+1 起）；水平仍精确
+        Location torso = new Location(feet.getWorld(), feet.getX(), feet.getBlockY() + 1, feet.getZ());
+        return portalService.findTargetExact(torso);
     }
 
     private void transfer(Player player, String target) {
