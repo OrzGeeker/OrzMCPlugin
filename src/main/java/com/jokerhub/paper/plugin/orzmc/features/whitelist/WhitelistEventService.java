@@ -96,7 +96,8 @@ public final class WhitelistEventService {
 
     public void handleToggle(WhitelistToggleEvent event) {
         if (isEnableForceWhitelist() && !event.isEnabled()) {
-            String msg = "‼️服务器白名单异常关闭";
+            // 模板已提供「⚠️ 服务器异常 + 分割线」外壳，这里只传具体异常项
+            String msg = "白名单关闭";
             MessageEnvelope env = configs.renderEvent("whitelist_toggle_alert", Map.of("message", msg));
             notifier.event("whitelist_toggle_alert", env);
         }

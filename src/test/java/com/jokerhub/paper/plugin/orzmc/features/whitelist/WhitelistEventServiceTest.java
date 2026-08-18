@@ -1,5 +1,6 @@
 package com.jokerhub.paper.plugin.orzmc.features.whitelist;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -19,9 +20,11 @@ import com.jokerhub.paper.plugin.orzmc.infra.notify.ThrottledNotifier;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
 import com.jokerhub.paper.plugin.orzmc.testutil.ServiceTestBase;
 import java.util.List;
+import java.util.Map;
 import net.kyori.adventure.text.Component;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 class WhitelistEventServiceTest extends ServiceTestBase {
 
@@ -163,6 +166,10 @@ class WhitelistEventServiceTest extends ServiceTestBase {
 
         service.handleToggle(event);
 
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, String>> vars = ArgumentCaptor.forClass(Map.class);
+        verify(configs).renderEvent(eq("whitelist_toggle_alert"), vars.capture());
+        assertEquals("白名单关闭", vars.getValue().get("message"));
         verify(notifier).event(eq("whitelist_toggle_alert"), any(MessageEnvelope.class));
     }
 
