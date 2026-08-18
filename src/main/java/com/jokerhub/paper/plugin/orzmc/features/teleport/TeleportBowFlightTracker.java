@@ -15,7 +15,8 @@ import org.bukkit.util.Vector;
  * 从而让 {@code ProjectileHitEvent} 正常触发、传送到真实落点。
  *
  * <p>每支传送弓箭一个实例（在 {@link TeleportBowService#startFlightTracking} 中创建）。
- * 用 {@code runTaskTimer} 每 tick 检查停止条件，并把当前区块到按速度预测前方之间
+ * 用 {@code EntityScheduler.runAtFixedRate}（实体所属 region 线程）每 tick 检查停止条件，
+ * 并把当前区块到按速度预测前方之间
  * 整段路径的连续区块全部 force-load（提前 24 格，异步加载/生成有足够余量，路径中间不留缺口）；
  * 已加载区块直接 force-load（纯内存），未加载区块走 {@code getChunkAtAsync} 异步加载，
  * 加载/生成在异步线程完成，避免主线程同步生成区块造成卡顿。
@@ -49,7 +50,7 @@ final class TeleportBowFlightTracker {
     private World world;
     private ScheduledTask task;
     private int ticks;
-    private boolean active;
+    private volatile boolean active;
 
     TeleportBowFlightTracker(ServerFacade server, ForceLoadedChunkLease lease) {
         this.server = server;
@@ -62,7 +63,7 @@ final class TeleportBowFlightTracker {
         this.world = arrow.getWorld();
         this.ticks = 0;
         this.active = true;
-        this.task = server.runTaskTimer(this::tick, 1L, 1L);
+        this.task = arrow.getScheduler().runAtFixedRate(server.plugin(), unused -> tick(), this::stop, 1L, 1L);
     }
 
     /** 每 tick 主线程回调：停止条件满足则收尾释放，否则继续加载前方区块。包私有便于测试直调。 */
@@ -142,12 +143,14 @@ final class TeleportBowFlightTracker {
         }
         pending.add(key);
         world.getChunkAtAsync(cx, cz, true, true, chunk -> {
-            pending.remove(key);
+            // 先 acquire + acquired.add 再 pending.remove：任何瞬间 tick 线程都能命中
+            // acquired 或 pending 任一集合去重，避免窗口期二次 acquire 泄漏。
             // 迟到的回调（tracker 已 stop）不再 acquire，避免泄漏。
             if (active) {
                 lease.acquire(world, cx, cz);
                 acquired.add(key);
             }
+            pending.remove(key);
         });
     }
 
