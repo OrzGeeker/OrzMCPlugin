@@ -6,6 +6,7 @@ import static org.mockito.Mockito.*;
 
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import com.jokerhub.paper.plugin.orzmc.testutil.ServiceTestBase;
+import io.papermc.paper.threadedregions.scheduler.EntityScheduler;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,6 +32,7 @@ class TeleportBowFlightTrackerTest extends ServiceTestBase {
 
     private ServerFacade server;
     private ForceLoadedChunkLease lease;
+    private EntityScheduler entityScheduler;
     private ScheduledTask task;
     private Arrow arrow;
     private Player player;
@@ -43,8 +45,10 @@ class TeleportBowFlightTrackerTest extends ServiceTestBase {
     void setUp() {
         server = mock(ServerFacade.class);
         lease = mock(ForceLoadedChunkLease.class);
+        entityScheduler = mock(EntityScheduler.class);
         task = mock(ScheduledTask.class);
-        when(server.runTaskTimer(any(Runnable.class), anyLong(), anyLong())).thenReturn(task);
+        when(entityScheduler.runAtFixedRate(any(), any(), any(), anyLong(), anyLong()))
+                .thenReturn(task);
 
         arrow = mock(Arrow.class);
         player = mock(Player.class);
@@ -52,6 +56,7 @@ class TeleportBowFlightTrackerTest extends ServiceTestBase {
         location = mock(Location.class);
 
         when(arrow.getWorld()).thenReturn(world);
+        when(arrow.getScheduler()).thenReturn(entityScheduler);
         when(arrow.getLocation()).thenReturn(location);
         when(arrow.getVelocity()).thenReturn(new Vector(0, 0, 0));
         when(arrow.isDead()).thenReturn(false);
@@ -68,7 +73,20 @@ class TeleportBowFlightTrackerTest extends ServiceTestBase {
     void start_schedulesPerTickTimer() {
         tracker.start(arrow, player);
 
-        verify(server).runTaskTimer(any(Runnable.class), eq(1L), eq(1L));
+        verify(entityScheduler).runAtFixedRate(any(), any(), notNull(), eq(1L), eq(1L));
+    }
+
+    @Test
+    void start_retiredCallback_stops() {
+        tracker.start(arrow, player);
+
+        // retired 回调 = stop()：实体被移除/任务被系统取消时自动释放 force-load 区块，避免泄漏。
+        ArgumentCaptor<Runnable> retired = ArgumentCaptor.forClass(Runnable.class);
+        verify(entityScheduler).runAtFixedRate(any(), any(), retired.capture(), eq(1L), eq(1L));
+        retired.getValue().run();
+
+        verify(task).cancel();
+        verifyNoMoreInteractions(lease);
     }
 
     @Test

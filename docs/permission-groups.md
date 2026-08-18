@@ -32,7 +32,7 @@
 
 > 剔除项：`getmehome.user`（家功能属 member，default 不给）、`deathchest.command.report`（管理命令，位于 DeathChest admin 包）、`essentials.reply`（无此权限，/reply 随 /msg）。
 
-## L1 member（成员）— 完整玩家功能（13 项）
+## L1 member（成员）— 完整玩家功能（14 项）
 
 | 权限节点 | 验证指令 | 预期 |
 |:--|:--|:--|
