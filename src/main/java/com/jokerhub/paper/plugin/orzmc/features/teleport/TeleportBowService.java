@@ -28,8 +28,8 @@ public final class TeleportBowService {
         this.texts = new TeleportBowTexts(styles);
         this.keyTpBow = server.key(OrzConstants.TPBOW_KEY);
         // Folia：force-load 状态读写是全局状态（global region 线程），unloadChunk 走 region 调度
-        this.chunkLease = new ForceLoadedChunkLease(
-                new BukkitRegionSchedulerProvider(server.plugin()), server::runSync);
+        this.chunkLease =
+                new ForceLoadedChunkLease(new BukkitRegionSchedulerProvider(server.plugin()), server::runSync);
     }
 
     public TextComponent prefix() {
