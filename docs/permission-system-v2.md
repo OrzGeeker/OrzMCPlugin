@@ -203,7 +203,7 @@ permission.yml
 ```
 玩家 /apply builder [理由]
   → 预检 → permission.yml (PENDING)
-  → 游戏内「已提交」 → 群 📋 review_submitted
+  → 游戏内「已提交」 → 群 🙋🏻‍♂️ review_submitted
         ↓
 玩家 /apply cancel → CANCELLED → 游戏内「已撤回」 → 群 ↩️ review_cancelled
         ↓

@@ -91,6 +91,7 @@ templates:
   player_quit: "🎮 当前玩家({online_count}/{max_count})\n---------------------------------\n😋 下线：\n{name}"
   player_kick: "🎮 当前玩家({online_count}/{max_count})\n---------------------------------\n😂 被踢：\n{name}"
   player_digest: "🎮 当前玩家({online_count}/{max_count})\n{join_summary}{quit_summary}{kick_summary}"
+  # 群消息不再附堆栈摘要（{stack_summary} 仍保留在白名单供自定义模板使用）
   exception_alert: "⚠️ 服务器异常\n---------------------------------\n{message}"
   geoip_block: "{name}({ip}) 地区:{country_code} 不在允许列表({allow_list})\n{address_info}"
   tnt_alert: "{msg}\n世界:{world_alias} 坐标:{x_unit},{y_unit},{z_unit}({coord_unit})\n触发:{actor} 方块:{block_type}"

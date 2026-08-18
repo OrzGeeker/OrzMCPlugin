@@ -210,7 +210,6 @@ public final class PlayerEventAggregator {
         vars.put("name", event.displayLine);
         vars.put("online_count", String.valueOf(onlinePlayers.size()));
         vars.put("max_count", String.valueOf(server.server().getMaxPlayers()));
-        vars.put("online_list", listFormatter.list(onlinePlayers));
         String eventKey =
                 switch (state) {
                     case JOIN -> TemplateKeys.PLAYER_JOIN;
@@ -222,7 +221,7 @@ public final class PlayerEventAggregator {
         server.logger().info(envelope.message());
     }
 
-    /** 多发渲染：按状态精确计数，玩家名显示截断（计数不受影响），可选附带在线列表。 */
+    /** 多发渲染：按状态精确计数，玩家名显示截断（计数不受影响）。 */
     private void renderDigest(PendingBatch current) {
         PlayerNotifyConfig cfg = configs.playerNotify();
         String joinSummary = buildSection(current.joins, "🥰", "上线", cfg.maxListItems());
@@ -235,7 +234,6 @@ public final class PlayerEventAggregator {
         vars.put("kick_summary", kickSummary);
         vars.put("online_count", String.valueOf(onlinePlayers.size()));
         vars.put("max_count", String.valueOf(server.server().getMaxPlayers()));
-        vars.put("online_list", cfg.includeOnlineList() ? "\n" + listFormatter.list(onlinePlayers) : "");
         MessageEnvelope envelope = configs.renderEvent(TemplateKeys.PLAYER_DIGEST, vars);
         notifier.event(TemplateKeys.PLAYER_DIGEST, envelope);
         server.logger().info(envelope.message());
@@ -243,8 +241,9 @@ public final class PlayerEventAggregator {
 
     /**
      * 单状态版块：分割线 + 版块头（多人带人数）+ 每人一行显示行；无事件返回空串（含分割线一并省略）。
-     * 例（多人）："---------------------------------\n🥰 上线(3)：\nA 生存模式 建造者\nB 生存模式 访客\n"
+     * 例（多人）："---------------------------------\n🥰 上线(3)：\nA 生存模式 建造者\nB 生存模式 访客\nC 生存模式 成员\n"
      * 例（单人）："---------------------------------\n🥰 上线：\nA 生存模式 建造者\n"
+     * 超 maxListItems 时行数截断并追加 "等N人" 行（计数不受影响）。
      */
     private static String buildSection(List<PendingEvent> events, String marker, String action, int maxListItems) {
         if (events.isEmpty()) {
