@@ -90,3 +90,39 @@ Tag 使用严格 SemVer，**不加 `v` 前缀**。本地构建产物为 `{versio
 - **类型化配置**：所有 YAML 访问通过 `configs/` 子包中的记录类（15 个，含 `WhitelistConfig`, `TntConfig`），附带健康检查
 - **异步安全**：`SafeScheduler` 包装 Bukkit 调度器，统一异常日志
 - **健康注册表**：`HealthStatus` 接口在 orzmc-api 中，`HealthAccessor` 适配器桥接实例化的 `HealthRegistry`
+
+## 开发红线（2026-08-19 实战教训，AI 迭代必读）
+
+### Folia 线程模型（最高优先级）
+
+- **服务器调度线程（global/region）绝不能同步等待 LuckPerms 的异步 future**（`loadUser`/`saveUser`/`track.promote` 的 `.get()/.join()`）：LP 的 future 完成回调调度回服务器同步线程执行——在 global/region 线程上同步等待等于回调排在自己后面，必自锁（实测：修复前 132s 死锁卡服；转 global 线程后仍 3s 超时）。
+- **授权处理（promote/demote）必须异步化**：`ReviewHandler` 返回 `CompletableFuture<Boolean>`，LP 操作在**自己管理的异步线程**执行，审核框架异步等待结果后再落状态。服务器线程「能不能不等」是修线程问题第一问。
+- **状态一致性**：授权结果与业务状态必须原子一致（LP 已晋升 + 申请仍 PENDING = 漂移，重复 approve 会越级晋升）。
+- 用 `ServerFacade.runSync`（Folia GlobalRegionScheduler / Paper 主线程），勿用 removed 的 BukkitScheduler；嵌套 runSync 在已处同步线程时直接内联（`Bukkit.isGlobalTickThread()`）。
+- 读路径（查当前组等）优先 `um.getUser(uuid)` 在线缓存（不阻塞、不调度）；仅离线加载才转异步。
+- `done.join()` 必须带超时（`done.get(3s)`），否则调度器停摆时调用线程永久挂起。
+
+### LuckPerms 集成
+
+- track 节点必须创建/查询在 **global 上下文**（`ImmutableContextSet.empty()`），在线/离线上下文混存 → `AMBIGUOUS_CALL`（promote/demote 报歧义）。
+- `promote/demote` 只改内存态，必须显式 `saveUser` 落库（失败视为操作失败）；操作前 `normalizeSingleGroup` 归一组。
+- LP 命令经 RCON **无回显**，验证走日志或实际行为。
+- 新增 LP 逻辑先看 `LuckPermsPromoterTest` 的 mock 范式。
+
+### 群消息通知（防刷屏）
+
+- **高频事件必须节流/聚合**：whitelist_block 曾 48 次拦截 → 48 条消息 → QQ 主动消息频控（40034100）被打爆。上下线走 3s 聚合（player_notify.window_ms），TNT 走 notify_aggregate_ms，其余用 `ThrottledNotifier`。
+- `ThrottledNotifier.shouldRun` 判定+更新必须原子（`ConcurrentHashMap.compute`），多 region 线程并发时 check-then-act 有竞态。
+- 限频 key 防「换马甲刷」用**全局 key**（per-player key 会放行每马甲一条）；玩家侧提示不受节流影响。
+- 新增通知类型先评估触发频率：单事件直发 → 需限频/聚合。
+
+### 审核/命令/测试
+
+- `/apply` 资格预检（isEligible）：builder 申请要求当前组 member，default 组返回「当前没有可申请的审核类型」。
+- AuthMe 登录完成前玩家命令被**静默拦截**（bot 自动化测试须等 spawn + /login 完成）。
+- orzdebug 控制台命令**只回显日志、不发群**，无法模拟群用户命令。
+- 测试服验证方法论（bot 脚本、RCON、投递查询、重启流程）见 `docs/dev/folia-luckperms-gotchas.md` §6。
+
+### 完整案例与修复时间线
+
+详见 `docs/dev/folia-luckperms-gotchas.md`（根因分析、正确异步模式、f0fbe1b/8000f2f/bf2f588 三阶段修复教训）。
