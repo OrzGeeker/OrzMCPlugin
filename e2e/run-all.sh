@@ -65,6 +65,34 @@ if [ ! -d "$NODE_PATH" ]; then
   exit 1
 fi
 
+# 模板一致性检查（防配置漂移：群消息模板与仓库不同步 → 消息格式回归，2026-08-19 实测踩坑）
+TEMPLATE_REPO="$E2E_DIR/../src/main/resources/templates.yml"
+if [ -f "$TEMPLATE_REPO" ]; then
+  TEMPLATE_SERVER=""
+  case "$ORZMC_TEST_PORT" in
+    25565) TEMPLATE_SERVER="$HOME/folia-test/plugins/OrzMC/templates.yml" ;;
+    25566) TEMPLATE_SERVER="$HOME/papermc-test/plugins/OrzMC/templates.yml" ;;
+  esac
+  if [ -n "$TEMPLATE_SERVER" ]; then
+    if [ ! -f "$TEMPLATE_SERVER" ]; then
+      echo "⚠️ 测试服模板缺失: $TEMPLATE_SERVER（插件启动时将从 jar 提取默认，通常与仓库一致）" >&2
+    elif ! diff -q "$TEMPLATE_REPO" "$TEMPLATE_SERVER" >/dev/null 2>&1; then
+      echo "❌ 模板配置漂移：测试服 templates.yml 与仓库不一致！" >&2
+      echo "   仓库: $TEMPLATE_REPO" >&2
+      echo "   测试服: $TEMPLATE_SERVER" >&2
+      echo "   差异预览:" >&2
+      diff "$TEMPLATE_REPO" "$TEMPLATE_SERVER" | head -15 >&2
+      echo "   修复: cp $TEMPLATE_REPO $TEMPLATE_SERVER && RCON '/config reload'" >&2
+      echo "   临时跳过: ORZMC_SKIP_TEMPLATE_CHECK=1" >&2
+      if [ -z "${ORZMC_SKIP_TEMPLATE_CHECK:-}" ]; then
+        exit 1
+      fi
+    else
+      echo "✅ 模板一致性检查通过（templates.yml 与仓库一致）"
+    fi
+  fi
+fi
+
 # 选择用例（macOS bash 3.2 无 mapfile，用 while read）
 CASES=()
 while IFS= read -r c; do CASES+=("$c"); done < <(ls "$CASES_DIR"/[0-9]*.js 2>/dev/null | sort)
