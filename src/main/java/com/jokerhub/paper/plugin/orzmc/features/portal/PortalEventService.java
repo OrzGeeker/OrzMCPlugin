@@ -153,6 +153,14 @@ public final class PortalEventService {
 
     private boolean isOnCooldown(Player player, long now) {
         Long last = lastTransfer.get(player.getUniqueId());
-        return last != null && now - last < TRANSFER_COOLDOWN_MS;
+        if (last == null) {
+            return false;
+        }
+        if (now - last >= TRANSFER_COOLDOWN_MS) {
+            // 冷却已过期：移除条目，避免玩家用过一次传送门后永久残留
+            lastTransfer.remove(player.getUniqueId());
+            return false;
+        }
+        return true;
     }
 }

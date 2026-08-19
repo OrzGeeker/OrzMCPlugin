@@ -36,4 +36,14 @@ public class CooldownRegistryTest {
         Assertions.assertFalse(CooldownRegistry.isCoolingDown(key, 0));
         Assertions.assertFalse(CooldownRegistry.isCoolingDown(key, 0));
     }
+
+    @Test
+    public void reset_clearsCooldownState() {
+        String key = "reset|test";
+        CooldownRegistry.reset();
+        Assertions.assertFalse(CooldownRegistry.isCoolingDown(key, 10));
+        Assertions.assertTrue(CooldownRegistry.isCoolingDown(key, 10)); // 冷却中
+        CooldownRegistry.reset();
+        Assertions.assertFalse(CooldownRegistry.isCoolingDown(key, 10)); // reset 后重新放行
+    }
 }
