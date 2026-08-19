@@ -67,10 +67,12 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: build/reports/jacoco/test/jacocoTestReport.xml
-          flags: unittests
+          # jacocoTestReport 合并了 test + integrationTest 两个 exec，覆盖两种 flag 的 paths
+          flags: unittests,integrationtests
           fail_ci_if_error: false
 
       - name: generate build summary
+        if: github.event_name == 'pull_request'
         run: |
           echo "### Build Summary" >> $GITHUB_STEP_SUMMARY
           echo "- **BuildID:** $GITHUB_RUN_ID" >> $GITHUB_STEP_SUMMARY
@@ -79,6 +81,7 @@ jobs:
           echo "- **Author:** ${{ github.event.pull_request.user.login }}" >> $GITHUB_STEP_SUMMARY
 
       - name: upload jar artifact
+        if: github.event_name == 'pull_request'
         uses: actions/upload-artifact@v7
         with:
           name: orzmc-plugin-${{ github.event.pull_request.head.sha }}
