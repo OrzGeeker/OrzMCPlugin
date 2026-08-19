@@ -5,7 +5,6 @@ import com.jokerhub.paper.plugin.orzmc.core.bot.MessageEnvelope;
 import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
 import com.jokerhub.paper.plugin.orzmc.features.maintenance.WorldMaintenanceService;
 import com.jokerhub.paper.plugin.orzmc.features.rank.RankService;
-import com.jokerhub.paper.plugin.orzmc.features.review.ReviewService;
 import com.jokerhub.paper.plugin.orzmc.features.security.BlacklistService;
 import com.jokerhub.paper.plugin.orzmc.features.security.CommandAuditService;
 import com.jokerhub.paper.plugin.orzmc.features.security.CommandGuardService;
@@ -36,6 +35,8 @@ public final class BotCommandService extends BotCommandContext implements BotInb
     private CommandGuardService commandGuardService;
     /** 命令审计日志（安全加固 P0-4）：$e 路径记录 bot 来源审计。 */
     private CommandAuditService commandAuditService;
+    /** $v 群审核命令处理器（Supplier 注入 reviewService/rankService，调用时读取最新值）。 */
+    private final ReviewCommandHandler reviewCommandHandler;
 
     /** $e 日志收集窗口：40 tick ≈ 2 秒（按 20 TPS 推算，覆盖大多数插件异步命令输出）。 */
     private static final long CONSOLE_OUTPUT_COLLECT_TICKS = 40L;
@@ -58,6 +59,7 @@ public final class BotCommandService extends BotCommandContext implements BotInb
     public BotCommandService(ServerFacade server, TypedConfigProvider configs) {
         super(server, configs);
         this.listFeedbackService = new BotCommandListFeedbackService(server, configs);
+        this.reviewCommandHandler = new ReviewCommandHandler(server, configs, () -> reviewService, () -> rankService);
         this.handlers = Map.ofEntries(
                 Map.entry(OrzUserCmd.SHOW_PLAYERS, (c, a, s, cb, r) -> handleShowPlayers(c, a, cb, r)),
                 Map.entry(OrzUserCmd.SHOW_WHITELIST, (c, a, s, cb, r) -> handleShowWhitelist(c, a, cb, r)),
@@ -69,7 +71,7 @@ public final class BotCommandService extends BotCommandContext implements BotInb
                 Map.entry(OrzUserCmd.BACKUP, (c, a, s, cb, r) -> handleBackup(c, a, cb, r)),
                 Map.entry(OrzUserCmd.OPTIMIZE_WORLD, (c, a, s, cb, r) -> handleOptimize(c, a, cb, r)),
                 Map.entry(OrzUserCmd.BLACKLIST, (c, a, s, cb, r) -> handleBlacklist(c, a, cb, r)),
-                Map.entry(OrzUserCmd.REVIEW, (c, a, s, cb, r) -> handleReview(c, a, s, cb, r)),
+                Map.entry(OrzUserCmd.REVIEW, (c, a, s, cb, r) -> reviewCommandHandler.handle(c, a, s, cb, r)),
                 Map.entry(OrzUserCmd.PERMISSION, (c, a, s, cb, r) -> handlePermission(c, a, cb, r)),
                 Map.entry(
                         OrzUserCmd.EXECUTE_CONSOLE_COMMAND,
@@ -446,147 +448,6 @@ public final class BotCommandService extends BotCommandContext implements BotInb
                         "已将 " + playerName + (upgrade ? " 升级为" : " 降级为") + RankService.groupDisplayName(target) + "。");
             }
         });
-    }
-
-    // ---- Review command ($v l|y|n) ----
-
-    private void handleReview(OrzUserCmd cmd, boolean isAdmin, Consumer<MessageEnvelope> callback, String rawArgs) {
-        handleReview(cmd, isAdmin, null, callback, rawArgs);
-    }
-
-    private void handleReview(
-            OrzUserCmd cmd, boolean isAdmin, String senderName, Consumer<MessageEnvelope> callback, String rawArgs) {
-        if (!guardAdminCommand(cmd, isAdmin, callback)) return;
-        if (reviewService == null) {
-            emit(callback, "command_review_error", Map.of("message", "审核服务不可用"), "审核服务不可用");
-            return;
-        }
-        if (rawArgs.isBlank()) {
-            emitReviewUsage(callback);
-            return;
-        }
-        String[] parts = rawArgs.split("\\s+", 2);
-        String sub = parts[0].toLowerCase();
-        String rest = parts.length > 1 ? parts[1].trim() : "";
-        switch (sub) {
-            case "l" -> handleReviewList(callback, rest);
-            case "y", "yes" -> handleReviewDecision(callback, rest, true, senderName);
-            case "n", "no" -> handleReviewDecision(callback, rest, false, senderName);
-            default -> emitReviewUsage(callback);
-        }
-    }
-
-    private void handleReviewList(Consumer<MessageEnvelope> callback, String pageArg) {
-        var pending = reviewService.listPending();
-        if (pending.isEmpty()) {
-            emit(callback, "command_review_list_empty", Map.of(), "当前没有待审核的申请。");
-            return;
-        }
-        Integer page = parsePageArg(pageArg);
-        List<String> lines = new ArrayList<>();
-        for (var r : pending) {
-            String typeName =
-                    reviewService.typeById(r.typeId()).map(t -> t.displayName()).orElse(r.typeId());
-            String playerName = playerNameOf(r);
-            String group = rankService == null
-                    ? ""
-                    : "（当前组：" + RankService.groupDisplayName(rankService.currentGroup(r.applicantId())) + "）";
-            String summary = reviewService
-                    .typeById(r.typeId())
-                    .map(t -> t.summarize(r.data()))
-                    .orElse("");
-            lines.add(
-                    "[%s] %s%s：%s（%s 提交）".formatted(typeName, playerName, group, summary, relativeTime(r.createdAt())));
-        }
-        Paginator.paginate(
-                server,
-                text -> emit(callback, "command_review_list", Map.of("message", text), text),
-                "------待审核申请------",
-                lines,
-                5,
-                page);
-    }
-
-    private void handleReviewDecision(
-            Consumer<MessageEnvelope> callback, String rest, boolean approved, String senderName) {
-        if (rest.isBlank()) {
-            emitReviewUsage(callback);
-            return;
-        }
-        // 审核人：优先群发送者身份（网关透传昵称）；未透传时兜底「群管理员」
-        String reviewer = (senderName == null || senderName.isBlank()) ? "群管理员" : senderName;
-        // 支持：$v y <玩家>  或  $v y <typeId> <玩家>
-        String[] parts = rest.split("\\s+", 2);
-        String first = parts[0];
-        String second = parts.length > 1 ? parts[1].trim() : "";
-
-        // 定位 + 发起审核在同步调度线程执行（Bukkit.getOfflinePlayer 需全局线程），
-        // 但不 join 等待——审核通过时的授权（LP 晋升）在非服务器线程执行，结果经 CF
-        // 回调发出（落状态回同步线程）。服务器调度线程绝不同步等待 LP future（自锁超时）。
-        final boolean byType = reviewService.typeById(first).isPresent() && !second.isBlank();
-        final String playerOrType = first;
-        final String playerName = second;
-        server.runSync(() -> {
-            try {
-                java.util.concurrent.CompletableFuture<
-                                com.jokerhub.paper.plugin.orzmc.features.review.ReviewService.Result>
-                        future;
-                if (byType) {
-                    var request = reviewService.pendingFor(playerOrType, playerName);
-                    if (request.isEmpty()) {
-                        future = java.util.concurrent.CompletableFuture.completedFuture(
-                                ReviewService.Result.fail("找不到待审申请: " + rest));
-                    } else {
-                        future = reviewService.review(request.get().id(), approved, reviewer);
-                    }
-                } else {
-                    future = reviewService.reviewByApplicantName(playerOrType, approved, reviewer);
-                }
-                future.whenComplete((result, err) -> {
-                    if (err != null) {
-                        result = ReviewService.Result.fail(
-                                "审核处理异常: " + (err.getMessage() == null ? "未知错误" : err.getMessage()));
-                    }
-                    emit(
-                            callback,
-                            result.success() ? "command_review_result" : "command_review_error",
-                            Map.of("message", result.message()),
-                            result.message());
-                });
-            } catch (Throwable t) {
-                emit(
-                        callback,
-                        "command_review_error",
-                        Map.of("message", "审核处理异常: " + (t.getMessage() == null ? "未知错误" : t.getMessage())),
-                        "审核处理异常: " + (t.getMessage() == null ? "未知错误" : t.getMessage()));
-            }
-        });
-    }
-
-    private String playerNameOf(com.jokerhub.paper.plugin.orzmc.features.review.ReviewRequest r) {
-        // 通过 reviewService 的玩家解析端口获取名字（不可用则回退短 UUID）
-        try {
-            var name = org.bukkit.Bukkit.getOfflinePlayer(r.applicantId()).getName();
-            return name == null ? r.applicantId().toString().substring(0, 8) : name;
-        } catch (Exception e) {
-            return r.applicantId().toString().substring(0, 8);
-        }
-    }
-
-    private static String relativeTime(long epochMillis) {
-        long diff = System.currentTimeMillis() - epochMillis;
-        long minutes = diff / 60000L;
-        if (minutes < 1) return "刚刚";
-        if (minutes < 60) return minutes + "分钟前";
-        long hours = minutes / 60;
-        return hours < 24 ? hours + "小时前" : (hours / 24) + "天前";
-    }
-
-    private void emitReviewUsage(Consumer<MessageEnvelope> callback) {
-        // 与 $v ? 同一套内容（统一 usageTip 模板），保证 fallback 与主动查询一致
-        emitUsage(
-                callback,
-                feedbackService.usageTip(OrzUserCmd.REVIEW, botConfig().cmdPromptChar()));
     }
 
     // ---- Helper ----
