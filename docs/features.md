@@ -193,7 +193,7 @@ PUBLIC；异常告警（含 GeoIP 上游异常私信）与维护失败事件走 
 - **突发聚合防刷屏**：同一区域（128×128×64 方块）+ 同类型事件在聚合窗口内合并，窗口尾部只发一条告警（带 `×N` 次数与首个事件坐标）；批次内事件不立即发送，避免「立即发送 + 尾部汇总」双条刷屏
 - 聚合窗口由 `tnt.notify_aggregate_ms` 控制（默认 3000ms），既是突发合并也限制持续刷屏频率
 - 方块爆炸统一归并为「方块爆炸」标签，不再按方块材质拆分
-- 注意：`tnt.notify_throttle_ms` 仅用于玩家上下线消息限流，与 TNT 告警无关
+- 上下线消息限流由 `player_notify.window_ms`（3s 聚合窗口）承担（`tnt.notify_throttle_ms` 已废弃移除）
 
 ---
 
@@ -340,7 +340,6 @@ PUBLIC；异常告警（含 GeoIP 上游异常私信）与维护失败事件走 
 | `tnt.enable_respawn_anchor` | Boolean | false | 启用重生锚检测 |
 | `tnt.place_cooldown` | Integer | 5 | TNT 放置冷却（秒） |
 | `tnt.notify_aggregate_ms` | Long | 3000 | TNT/爆炸告警聚合窗口（毫秒） |
-| `tnt.notify_throttle_ms` | Long | 1000 | 玩家上下线消息限流（毫秒） |
 
 **命令策略**
 | 配置路径 | 类型 | 默认值 | 描述 |
@@ -416,8 +415,9 @@ PUBLIC；异常告警（含 GeoIP 上游异常私信）与维护失败事件走 
 
 插件配置文件位于 `plugins/OrzMC/` 目录：
 
-- **config.yml** — 核心配置（白名单、TNT、维护、GeoIP、实体传送策略、命令策略）
+- **config.yml** — 核心配置（白名单、TNT、维护、GeoIP、命令策略、上下线通知、实体传送、危险命令拦截 guard、聊天反垃圾、进服限流、漏洞加固）
 - **easybot.yml** — Bot 通用设置与 EasyBot IM Gateway 连接配置（多平台消息路由、WebSocket + HTTP）
+- **guide_book.yml** — 新手指南书内容配置（链接/悬停/样式/分页）
 - **permission.yml** — 权限系统配置（`config` 阈值节 + `reviews` 申请记录节，运行时修改）
 - **templates.yml** — 通知模板、样式配色、坐标格式、世界别名、权限组显示名、i18n 覆盖
 - **portals.yml** — 传送门数据（运行时修改）
