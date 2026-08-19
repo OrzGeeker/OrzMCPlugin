@@ -17,8 +17,6 @@ import com.jokerhub.paper.plugin.orzmc.infra.logging.LogCaptureService;
 import com.jokerhub.paper.plugin.orzmc.infra.paging.Paginator;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -26,11 +24,8 @@ import java.util.function.Consumer;
 import java.util.logging.Level;
 import org.bukkit.entity.Player;
 
-public final class BotCommandService implements BotInboundHandler {
-    private final BotCommandFeedbackService feedbackService = new BotCommandFeedbackService();
+public final class BotCommandService extends BotCommandContext implements BotInboundHandler {
     private BotCommandListFeedbackService listFeedbackService;
-    private final ServerFacade server;
-    private final TypedConfigProvider configs;
     private final Map<OrzUserCmd, CmdHandler> handlers;
     private WorldMaintenanceService maintenanceService;
     private BlacklistService blacklistService;
@@ -61,8 +56,7 @@ public final class BotCommandService implements BotInboundHandler {
     }
 
     public BotCommandService(ServerFacade server, TypedConfigProvider configs) {
-        this.server = server;
-        this.configs = configs;
+        super(server, configs);
         this.listFeedbackService = new BotCommandListFeedbackService(server, configs);
         this.handlers = Map.ofEntries(
                 Map.entry(OrzUserCmd.SHOW_PLAYERS, (c, a, s, cb, r) -> handleShowPlayers(c, a, cb, r)),
@@ -178,15 +172,6 @@ public final class BotCommandService implements BotInboundHandler {
         emit(callback, "command_help", Map.of("help", help), help);
     }
 
-    private BotConfig botConfig() {
-        try {
-            return configs.bot();
-        } catch (Exception e) {
-            server.logger().warning("读取 botConfig 失败，使用默认值: " + e.getMessage());
-            return new BotConfig("$", null, null);
-        }
-    }
-
     private boolean matchesCommandPrefix(String message, String fullCmd) {
         return message.equals(fullCmd)
                 || (message.startsWith(fullCmd)
@@ -232,17 +217,6 @@ public final class BotCommandService implements BotInboundHandler {
                 server.logger().log(Level.SEVERE, "whiteListInfo 异步任务异常", e);
             }
         });
-    }
-
-    private Integer parsePageArg(String rawArgs) {
-        if (rawArgs.isBlank()) return null;
-        String token = rawArgs.split("[, ]+")[0];
-        try {
-            return Integer.parseInt(token);
-        } catch (Exception e) {
-            server.logger().warning("白名单页码解析失败: " + token + " - " + e.getMessage());
-            return null;
-        }
     }
 
     private void handleShowHelp(OrzUserCmd cmd, boolean isAdmin, Consumer<MessageEnvelope> callback, String rawArgs) {
@@ -617,11 +591,6 @@ public final class BotCommandService implements BotInboundHandler {
 
     // ---- Helper ----
 
-    private Set<String> parseArgs(String rawArgs) {
-        if (rawArgs.isBlank()) return new HashSet<>();
-        return new HashSet<>(Arrays.asList(rawArgs.split("[, ]+")));
-    }
-
     // ---- Whitelist rendering ----
 
     private void renderWhitelistWithCleanup(
@@ -680,54 +649,6 @@ public final class BotCommandService implements BotInboundHandler {
 
     // ---- Guards ----
 
-    private boolean guardAdminCommand(OrzUserCmd cmd, boolean isAdmin, Consumer<MessageEnvelope> callback) {
-        if (isAdmin) return true;
-        emitAdminRequired(
-                callback, feedbackService.adminRequiredTip(cmd, botConfig().cmdPromptChar()));
-        return false;
-    }
-
-    private boolean guardWhitelistCommand(
-            OrzUserCmd cmd, boolean isAdmin, Set<String> userNames, Consumer<MessageEnvelope> callback) {
-        if (!isAdmin) {
-            emitAdminRequired(
-                    callback, feedbackService.adminRequiredTip(cmd, botConfig().cmdPromptChar()));
-            return false;
-        }
-        if (userNames.isEmpty()) {
-            emitUsage(callback, feedbackService.usageTip(cmd, botConfig().cmdPromptChar()));
-            return false;
-        }
-        return true;
-    }
-
-    private boolean guardOptimizeEnabled(Consumer<MessageEnvelope> callback) {
-        boolean enabled = false;
-        try {
-            enabled = configs.maintenance().optimizeEnabled();
-        } catch (Exception e) {
-            server.logger().warning("读取 optimizeEnabled 配置失败: " + e.getMessage());
-        }
-        if (!enabled) {
-            emit(callback, "command_optimize_disabled", Map.of("message", "地图优化功能已禁用"), "地图优化功能已禁用");
-            return false;
-        }
-        return true;
-    }
-
     // ---- Emitters ----
 
-    private void emitAdminRequired(Consumer<MessageEnvelope> callback, String tip) {
-        emit(callback, "command_admin_required", Map.of("message", tip), tip);
-    }
-
-    private void emitUsage(Consumer<MessageEnvelope> callback, String tip) {
-        emit(callback, "command_usage", Map.of("message", tip), tip);
-    }
-
-    private void emit(
-            Consumer<MessageEnvelope> callback, String templateKey, Map<String, String> vars, String fallback) {
-        MessageEnvelope env = configs.renderTemplate(templateKey, vars, fallback);
-        callback.accept(env);
-    }
 }
