@@ -4,7 +4,6 @@ import com.jokerhub.paper.plugin.orzmc.core.bot.BotInboundHandler;
 import com.jokerhub.paper.plugin.orzmc.core.bot.MessageEnvelope;
 import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
 import com.jokerhub.paper.plugin.orzmc.features.maintenance.WorldMaintenanceService;
-import com.jokerhub.paper.plugin.orzmc.features.rank.RankService;
 import com.jokerhub.paper.plugin.orzmc.features.security.BlacklistService;
 import com.jokerhub.paper.plugin.orzmc.features.security.CommandAuditService;
 import com.jokerhub.paper.plugin.orzmc.features.security.CommandGuardService;
@@ -37,12 +36,10 @@ public final class BotCommandService extends BotCommandContext implements BotInb
     private CommandAuditService commandAuditService;
     /** $v 群审核命令处理器（Supplier 注入 reviewService/rankService，调用时读取最新值）。 */
     private final ReviewCommandHandler reviewCommandHandler;
-
-    /** $e 日志收集窗口：40 tick ≈ 2 秒（按 20 TPS 推算，覆盖大多数插件异步命令输出）。 */
-    private static final long CONSOLE_OUTPUT_COLLECT_TICKS = 40L;
-
-    /** $e 输出最大行数，超过截断防刷群。 */
-    private static final int CONSOLE_OUTPUT_MAX_LINES = 30;
+    /** $p 群权限升降级命令处理器（Supplier 注入 rankService）。 */
+    private final PermissionCommandHandler permissionCommandHandler;
+    /** $e 控制台命令执行处理器（Supplier 注入 guard/audit/logCapture）。 */
+    private final ConsoleCommandHandler consoleCommandHandler;
 
     @FunctionalInterface
     private interface CmdHandler {
@@ -60,6 +57,9 @@ public final class BotCommandService extends BotCommandContext implements BotInb
         super(server, configs);
         this.listFeedbackService = new BotCommandListFeedbackService(server, configs);
         this.reviewCommandHandler = new ReviewCommandHandler(server, configs, () -> reviewService, () -> rankService);
+        this.permissionCommandHandler = new PermissionCommandHandler(server, configs, () -> rankService);
+        this.consoleCommandHandler = new ConsoleCommandHandler(
+                server, configs, () -> commandGuardService, () -> commandAuditService, () -> logCaptureService);
         this.handlers = Map.ofEntries(
                 Map.entry(OrzUserCmd.SHOW_PLAYERS, (c, a, s, cb, r) -> handleShowPlayers(c, a, cb, r)),
                 Map.entry(OrzUserCmd.SHOW_WHITELIST, (c, a, s, cb, r) -> handleShowWhitelist(c, a, cb, r)),
@@ -72,10 +72,10 @@ public final class BotCommandService extends BotCommandContext implements BotInb
                 Map.entry(OrzUserCmd.OPTIMIZE_WORLD, (c, a, s, cb, r) -> handleOptimize(c, a, cb, r)),
                 Map.entry(OrzUserCmd.BLACKLIST, (c, a, s, cb, r) -> handleBlacklist(c, a, cb, r)),
                 Map.entry(OrzUserCmd.REVIEW, (c, a, s, cb, r) -> reviewCommandHandler.handle(c, a, s, cb, r)),
-                Map.entry(OrzUserCmd.PERMISSION, (c, a, s, cb, r) -> handlePermission(c, a, cb, r)),
+                Map.entry(OrzUserCmd.PERMISSION, (c, a, s, cb, r) -> permissionCommandHandler.handle(c, a, cb, r)),
                 Map.entry(
                         OrzUserCmd.EXECUTE_CONSOLE_COMMAND,
-                        (c, a, s, cb, r) -> handleExecuteConsoleCommand(c, a, s, cb, r)));
+                        (c, a, s, cb, r) -> consoleCommandHandler.handle(c, a, s, cb, r)));
     }
 
     public void setMaintenanceService(WorldMaintenanceService maintenanceService) {
@@ -270,65 +270,6 @@ public final class BotCommandService extends BotCommandContext implements BotInb
         }
     }
 
-    // ---- Console command ----
-
-    private void handleExecuteConsoleCommand(
-            OrzUserCmd cmd, boolean isAdmin, String senderName, Consumer<MessageEnvelope> callback, String rawArgs) {
-        if (!guardAdminCommand(cmd, isAdmin, callback)) return;
-        if (rawArgs.isBlank()) {
-            emitUsage(
-                    callback,
-                    feedbackService.usageTip(
-                            OrzUserCmd.EXECUTE_CONSOLE_COMMAND, botConfig().cmdPromptChar()));
-            return;
-        }
-        // 安全加固 P0-5：$e 控制台执行前过 guard。BLOCK → 拦截 + 审计 blocked，不执行；
-        // WARN/ALLOW → 审计 executed 后照常执行。guard 未注入时直接执行（测试向后兼容）。
-        String auditSender = senderName == null ? CommandAuditService.SOURCE_BOT : senderName;
-        CommandGuardService.GuardDecision decision = commandGuardService == null
-                ? CommandGuardService.GuardDecision.allow()
-                : commandGuardService.guard(rawArgs);
-        if (decision.blocked()) {
-            if (commandAuditService != null) {
-                commandAuditService.record(CommandAuditService.SOURCE_BOT, auditSender, rawArgs, true);
-            }
-            emit(callback, "command_output", Map.of("message", decision.reason()), decision.reason());
-            return;
-        }
-        if (commandAuditService != null) {
-            commandAuditService.record(CommandAuditService.SOURCE_BOT, auditSender, rawArgs, false);
-        }
-        server.runSync(() -> {
-            if (logCaptureService == null) {
-                // 未注入日志窗口服务：退化为仅返回执行状态
-                ServerFacade.ConsoleCommandResult result = server.executeConsoleCommand(rawArgs);
-                emit(callback, "command_output", Map.of("message", result.message()), result.message());
-                return;
-            }
-            // 先取水位再执行，命令执行期间的日志行才能落入窗口
-            long watermark = logCaptureService.watermark();
-            ServerFacade.ConsoleCommandResult result = server.executeConsoleCommand(rawArgs);
-            // 延迟一个收集窗口后取日志增量：覆盖异步命令输出（LuckPerms 等回调式输出）。
-            // 日志窗口是「尽力而为」兜底：窗口内可能混入服务器其他活动日志（已过滤
-            // 命令回显/玩家聊天），缓冲溢出时输出头部提示可能缺失
-            server.runLater(
-                    () -> {
-                        List<String> windowLogLines = logCaptureService.drainSince(watermark);
-                        String assembled = CommandOutputAssembler.assemble(
-                                result.outputLines(), windowLogLines, CONSOLE_OUTPUT_MAX_LINES);
-                        // 缺口检测独立于输出内容：即使窗口内有效行全被驱逐/过滤也要提示
-                        String message;
-                        if (logCaptureService.hasGapSince(watermark)) {
-                            message = assembled.isEmpty() ? "⚠️ 日志缓冲溢出，输出可能不完整" : "⚠️ 日志缓冲溢出，输出可能不完整\n" + assembled;
-                        } else {
-                            message = assembled.isEmpty() ? result.message() : assembled;
-                        }
-                        emit(callback, "command_output", Map.of("message", message), message);
-                    },
-                    CONSOLE_OUTPUT_COLLECT_TICKS);
-        });
-    }
-
     // ---- Blacklist command ----
 
     private void handleBlacklist(OrzUserCmd cmd, boolean isAdmin, Consumer<MessageEnvelope> callback, String rawArgs) {
@@ -361,93 +302,6 @@ public final class BotCommandService extends BotCommandContext implements BotInb
             blacklistService.add(rawArgs);
             emit(callback, "command_blacklist_add", Map.of("message", "已添加: " + rawArgs), "已添加: " + rawArgs);
         }
-    }
-
-    // ---- Permission command ($p u|d) ----
-
-    /** $p u <玩家> / $p d <玩家> — 权限升级/降级一级（钳位：default→member→builder→admin）。 */
-    private void handlePermission(OrzUserCmd cmd, boolean isAdmin, Consumer<MessageEnvelope> callback, String rawArgs) {
-        if (!guardAdminCommand(cmd, isAdmin, callback)) return;
-        if (rankService == null) {
-            emit(callback, "command_review_error", Map.of("message", "权限服务不可用"), "权限服务不可用");
-            return;
-        }
-        if (!rankService.isLuckPermsAvailable()) {
-            emit(
-                    callback,
-                    "command_review_error",
-                    Map.of("message", "未检测到 LuckPerms，权限管理功能不可用"),
-                    "未检测到 LuckPerms，权限管理功能不可用");
-            return;
-        }
-        if (rawArgs.isBlank()) {
-            emitUsage(
-                    callback,
-                    feedbackService.usageTip(OrzUserCmd.PERMISSION, botConfig().cmdPromptChar()));
-            return;
-        }
-        String[] parts = rawArgs.split("\\s+", 2);
-        String sub = parts[0].toLowerCase();
-        String playerName = parts.length > 1 ? parts[1].trim() : "";
-        if (playerName.isBlank()) {
-            emitUsage(
-                    callback,
-                    feedbackService.usageTip(OrzUserCmd.PERMISSION, botConfig().cmdPromptChar()));
-            return;
-        }
-        boolean upgrade;
-        switch (sub) {
-            case "u", "up" -> upgrade = true;
-            case "d", "down" -> upgrade = false;
-            default -> {
-                emitUsage(
-                        callback,
-                        feedbackService.usageTip(
-                                OrzUserCmd.PERMISSION, botConfig().cmdPromptChar()));
-                return;
-            }
-        }
-        var playerId = rankService.resolvePlayerId(playerName);
-        if (playerId == null) {
-            emit(callback, "command_review_error", Map.of("message", "找不到玩家: " + playerName), "找不到玩家: " + playerName);
-            return;
-        }
-        final var id = playerId;
-        // 异步升降级：LP 操作（loadUser/saveUser 等待）在非服务器线程执行，绝不 runSync+join
-        // （服务器调度线程同步等待 LP future 会自锁超时，Folia LP 适配器行为）
-        java.util.concurrent.CompletableFuture<String> future =
-                upgrade ? rankService.promoteAsync(id) : rankService.demoteAsync(id);
-        future.whenComplete((target, err) -> {
-            if (err != null) {
-                emit(
-                        callback,
-                        "command_review_error",
-                        Map.of("message", playerName + " 权限操作异常（详见服务器日志）。"),
-                        playerName + " 权限操作异常（详见服务器日志）。");
-                return;
-            }
-            if (target == null) {
-                emit(
-                        callback,
-                        "command_review_error",
-                        Map.of(
-                                "message",
-                                playerName
-                                        + (upgrade
-                                                ? " 无法升级：已达最高等级或权限数据异常（详见服务器日志）。"
-                                                : " 无法降级：已达最低等级或权限数据异常（详见服务器日志）。")),
-                        playerName + (upgrade ? " 无法升级：已达最高等级或权限数据异常（详见服务器日志）。" : " 无法降级：已达最低等级或权限数据异常（详见服务器日志）。"));
-            } else {
-                emit(
-                        callback,
-                        "command_review_result",
-                        Map.of(
-                                "message",
-                                "已将 " + playerName + (upgrade ? " 升级为" : " 降级为") + RankService.groupDisplayName(target)
-                                        + "。"),
-                        "已将 " + playerName + (upgrade ? " 升级为" : " 降级为") + RankService.groupDisplayName(target) + "。");
-            }
-        });
     }
 
     // ---- Helper ----
