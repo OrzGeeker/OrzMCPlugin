@@ -31,6 +31,7 @@ OrzMC 插件 E2E 测试套件
   02-player-cmds.js     玩家命令（/guide /menu /bot /rank /apply /config 权限隔离）
   03-security.js        安全拦截（黑名单登录 / 聊天过滤 / 命令守卫）
   04-maintenance.js     世界维护（$b 备份三阶段+落盘）
+  05-groupmsg.js        群消息发送（白名单拦截/上下线/聚合/IP黑名单拦截，日志断言）
 EOF
 }
 
