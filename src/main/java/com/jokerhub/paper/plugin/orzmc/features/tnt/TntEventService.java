@@ -172,11 +172,16 @@ public final class TntEventService {
     }
 
     private boolean checkCooldown(@NotNull Player player, int tntPlaceCooldown) {
-        if (!playerCooldowns.containsKey(player.getUniqueId())) {
+        Long lastPlaceTime = playerCooldowns.get(player.getUniqueId());
+        if (lastPlaceTime == null) {
             return false;
         }
-        long lastPlaceTime = playerCooldowns.get(player.getUniqueId());
-        return System.currentTimeMillis() - lastPlaceTime < tntPlaceCooldown * 1000L;
+        boolean coolingDown = System.currentTimeMillis() - lastPlaceTime < tntPlaceCooldown * 1000L;
+        if (!coolingDown) {
+            // 冷却已过期：移除条目，避免玩家放置一次 TNT 后永久残留
+            playerCooldowns.remove(player.getUniqueId());
+        }
+        return coolingDown;
     }
 
     /**

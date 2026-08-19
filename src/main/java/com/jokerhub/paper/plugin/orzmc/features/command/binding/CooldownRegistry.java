@@ -17,4 +17,9 @@ public final class CooldownRegistry {
         }
         return true;
     }
+
+    /** 清空冷却状态（供测试隔离；生产 key=命令|玩家 有界，冷却过期即覆盖，无需主动清扫）。 */
+    static void reset() {
+        lastInvoke.clear();
+    }
 }
