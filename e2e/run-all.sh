@@ -51,6 +51,15 @@ if ! nc -z 127.0.0.1 "$ORZMC_TEST_PORT" 2>/dev/null; then
   echo "❌ 测试服未在线（127.0.0.1:${ORZMC_TEST_PORT}）——Paper 用 ORZMC_TEST_PORT=25566 等" >&2
   exit 1
 fi
+# 日志路径按端口推断（双核心适配：25565=Folia，25566=Paper，其余可 ORZMC_LOG_PATH 覆盖）
+if [ -z "${ORZMC_LOG_PATH:-}" ]; then
+  case "$ORZMC_TEST_PORT" in
+    25565) ORZMC_LOG_PATH="$HOME/folia-test/logs/latest.log" ;;
+    25566) ORZMC_LOG_PATH="$HOME/papermc-test/logs/latest.log" ;;
+    *) ORZMC_LOG_PATH="" ;; # 未知端口：交给用例默认值
+  esac
+fi
+export ORZMC_LOG_PATH
 if [ ! -d "$NODE_PATH" ]; then
   echo "❌ 缺少 mineflayer 依赖: $NODE_PATH（请确认 ~/minecraft-bot/node_modules 存在）" >&2
   exit 1
