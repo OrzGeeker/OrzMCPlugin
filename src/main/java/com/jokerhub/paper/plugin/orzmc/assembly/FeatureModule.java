@@ -1,5 +1,9 @@
 package com.jokerhub.paper.plugin.orzmc.assembly;
 
+import static com.jokerhub.paper.plugin.orzmc.assembly.BrigadierSupport.adminInterceptors;
+import static com.jokerhub.paper.plugin.orzmc.assembly.BrigadierSupport.commandInterceptors;
+import static com.jokerhub.paper.plugin.orzmc.assembly.BrigadierSupport.guardedExec;
+import static com.jokerhub.paper.plugin.orzmc.assembly.BrigadierSupport.requirement;
 import static io.papermc.paper.command.brigadier.Commands.argument;
 import static io.papermc.paper.command.brigadier.Commands.literal;
 
@@ -24,8 +28,6 @@ import com.jokerhub.paper.plugin.orzmc.features.chat.ChatSpamFilterService;
 import com.jokerhub.paper.plugin.orzmc.features.command.CommandFeedbackService;
 import com.jokerhub.paper.plugin.orzmc.features.command.binding.AdminOnlyInterceptor;
 import com.jokerhub.paper.plugin.orzmc.features.command.binding.CommandInterceptor;
-import com.jokerhub.paper.plugin.orzmc.features.command.binding.CooldownInterceptor;
-import com.jokerhub.paper.plugin.orzmc.features.command.binding.PlayerOnlyInterceptor;
 import com.jokerhub.paper.plugin.orzmc.features.guide.GuideService;
 import com.jokerhub.paper.plugin.orzmc.features.menu.MenuCommandService;
 import com.jokerhub.paper.plugin.orzmc.features.menu.MenuEventService;
@@ -69,7 +71,6 @@ import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
-import net.kyori.adventure.text.Component;
 import org.bukkit.GameMode;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
@@ -844,67 +845,6 @@ public final class FeatureModule implements ServiceModule {
                 .build();
 
         commands.register(node, "配置管理", List.of("cfg"));
-    }
-
-    // ================================================================
-    // Interceptor helpers
-    // ================================================================
-
-    /**
-     * Build a {@link Predicate} for {@code .requires()} on the command node.
-     * Only checks {@link AdminOnlyInterceptor} — non-admin users won't see the command.
-     */
-    private static Predicate<CommandSourceStack> requirement(List<CommandInterceptor> interceptors) {
-        return stack -> {
-            for (CommandInterceptor ci : interceptors) {
-                if (ci instanceof AdminOnlyInterceptor aoi) {
-                    return aoi.canUse(stack.getSender());
-                }
-            }
-            return true;
-        };
-    }
-
-    /**
-     * Wrap a {@link Command} with runtime interceptor checks
-     * (PlayerOnly and Cooldown).  AdminOnly is handled by {@link #requirement(List)}.
-     */
-    private static Command<CommandSourceStack> guardedExec(
-            String name, List<CommandInterceptor> interceptors, Command<CommandSourceStack> delegate) {
-        return ctx -> {
-            CommandSender sender = ctx.getSource().getSender();
-            for (CommandInterceptor ci : interceptors) {
-                if (ci instanceof AdminOnlyInterceptor) continue;
-                Component res = ci.preHandle(sender, name);
-                if (res != null) {
-                    sender.sendMessage(res);
-                    return 1;
-                }
-            }
-            return delegate.run(ctx);
-        };
-    }
-
-    /**
-     * Build interceptors for regular commands from config policies.
-     */
-    private static List<CommandInterceptor> commandInterceptors(
-            String name, CommandPolicies cp, boolean skipPlayerOnly) {
-        CommandPolicy p = cp.policies().getOrDefault(name, new CommandPolicy(0, false));
-        List<CommandInterceptor> list = new ArrayList<>();
-        if (!skipPlayerOnly) {
-            list.add(new PlayerOnlyInterceptor());
-        }
-        list.add(new AdminOnlyInterceptor(p.adminOnly()));
-        list.add(new CooldownInterceptor(name, Math.max(0, p.cooldownSeconds())));
-        return list;
-    }
-
-    /**
-     * Build interceptors for hardcoded admin-only commands (blacklist, config).
-     */
-    private static List<CommandInterceptor> adminInterceptors(String name) {
-        return List.of(new AdminOnlyInterceptor(true), new CooldownInterceptor(name, 0));
     }
 
     // --- Whitelist ---
