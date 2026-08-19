@@ -176,6 +176,11 @@ public class WorldMaintenanceService {
     private final java.util.concurrent.atomic.AtomicBoolean fatalErrorReported =
             new java.util.concurrent.atomic.AtomicBoolean(false);
 
+    /** 备份并行度 = CPU 逻辑核数（backup-core 按维度+区域并行扫描/写入，单线程大世界太慢）。 */
+    private static int cpuParallelism() {
+        return Math.max(1, Runtime.getRuntime().availableProcessors());
+    }
+
     private Function1<Object, Unit> errorHandler(String label, Consumer<String> callback) {
         return obj -> {
             server.logger().warning(String.valueOf(obj));
@@ -225,7 +230,7 @@ public class WorldMaintenanceService {
             builder.setProgress(new ProgressOptions(100L, 1000L, event -> {
                 progressHandler(label, callback).invoke(event);
             }));
-            builder.setRuntime(new RuntimeOptions(0));
+            builder.setRuntime(new RuntimeOptions(cpuParallelism()));
             builder.setHooks(new Hooks(errorHandler(label, callback), null, null));
             builder.setIo(new IOOptions(fs, mcaIOFactory));
             return Unit.INSTANCE;
