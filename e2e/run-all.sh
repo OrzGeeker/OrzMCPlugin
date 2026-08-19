@@ -31,6 +31,7 @@ OrzMC 插件 E2E 测试套件
   02-player-cmds.js     玩家命令（/guide /menu /bot /rank /apply /config 权限隔离）
   03-security.js        安全拦截（黑名单登录 / 聊天过滤 / 命令守卫）
   04-maintenance.js     世界维护（$b 备份三阶段+落盘）
+  05-groupmsg.js        群消息发送（白名单拦截/上下线/聚合/IP黑名单拦截，日志断言）
 EOF
 }
 
@@ -60,6 +61,15 @@ if [ -z "${ORZMC_LOG_PATH:-}" ]; then
   esac
 fi
 export ORZMC_LOG_PATH
+# RCON 端口按端口推断（双核心适配：25565→25575，25566→25576，可 ORZMC_RCON_PORT 覆盖）
+if [ -z "${ORZMC_RCON_PORT:-}" ]; then
+  case "$ORZMC_TEST_PORT" in
+    25565) ORZMC_RCON_PORT=25575 ;;
+    25566) ORZMC_RCON_PORT=25576 ;;
+    *) ORZMC_RCON_PORT="" ;;
+  esac
+fi
+export ORZMC_RCON_PORT
 if [ ! -d "$NODE_PATH" ]; then
   echo "❌ 缺少 mineflayer 依赖: $NODE_PATH（请确认 ~/minecraft-bot/node_modules 存在）" >&2
   exit 1

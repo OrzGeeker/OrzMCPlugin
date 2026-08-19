@@ -218,7 +218,6 @@ public final class PlayerEventAggregator {
                 };
         MessageEnvelope envelope = configs.renderEvent(eventKey, vars);
         notifier.event(eventKey, envelope);
-        server.logger().info(envelope.message());
     }
 
     /** 多发渲染：按状态精确计数，玩家名显示截断（计数不受影响）。 */
@@ -236,7 +235,6 @@ public final class PlayerEventAggregator {
         vars.put("max_count", String.valueOf(server.server().getMaxPlayers()));
         MessageEnvelope envelope = configs.renderEvent(TemplateKeys.PLAYER_DIGEST, vars);
         notifier.event(TemplateKeys.PLAYER_DIGEST, envelope);
-        server.logger().info(envelope.message());
     }
 
     /**
