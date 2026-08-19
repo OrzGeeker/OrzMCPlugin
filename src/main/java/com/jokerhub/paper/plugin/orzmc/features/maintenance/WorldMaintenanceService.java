@@ -241,6 +241,10 @@ public class WorldMaintenanceService {
         if (!running.compareAndSet(false, true)) {
             return;
         }
+        // 复位本次运行的错误聚合计数器：否则跨 run 累积——fatalErrorReported 一旦置 true，
+        // 后续 run 的致命错误不再发群通知；chunkErrorCount 累积导致干净 run 误报「含 N 个损坏区块」。
+        chunkErrorCount.set(0);
+        fatalErrorReported.set(false);
         server.runSync(() -> {
             startMs = System.currentTimeMillis();
             for (Player p : server.server().getOnlinePlayers()) {

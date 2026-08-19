@@ -212,6 +212,28 @@ public class WorldMaintenanceServiceTest extends ServiceTestBase {
     }
 
     @Test
+    public void runExclusive_resetsErrorCountersBetweenRuns() throws Exception {
+        // bug 场景：chunkErrorCount/fatalErrorReported 跨 run 不复位——上一次 run 残留状态污染本次
+        // （致命错误只报一次 + 损坏区块计数累积误报）。复位应在 runExclusive 入口发生。
+        java.lang.reflect.Field chunkField = WorldMaintenanceService.class.getDeclaredField("chunkErrorCount");
+        chunkField.setAccessible(true);
+        java.util.concurrent.atomic.AtomicInteger chunk =
+                (java.util.concurrent.atomic.AtomicInteger) chunkField.get(service);
+        chunk.set(5);
+
+        java.lang.reflect.Field fatalField = WorldMaintenanceService.class.getDeclaredField("fatalErrorReported");
+        fatalField.setAccessible(true);
+        java.util.concurrent.atomic.AtomicBoolean fatal =
+                (java.util.concurrent.atomic.AtomicBoolean) fatalField.get(service);
+        fatal.set(true);
+
+        service.runExclusive("维护中", () -> {}, null);
+
+        Assertions.assertEquals(0, chunk.get(), "chunkErrorCount 应在每次 run 入口复位");
+        Assertions.assertFalse(fatal.get(), "fatalErrorReported 应在每次 run 入口复位");
+    }
+
+    @Test
     public void backup_createsDirAndReportsProgress() {
         AtomicBoolean sawStartMsg = new AtomicBoolean(false);
         AtomicBoolean sawDirMsg = new AtomicBoolean(false);
