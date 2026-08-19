@@ -255,9 +255,6 @@ public final class FeatureModule implements ServiceModule {
     // --- Event Listener Registration ---
 
     public void setupEventListeners(OrzMC plugin) {
-        // $v 群指令依赖的审核/权限服务（BotCommandService 早于 FeatureModule 创建，这里补注入）
-        botModule.botCommandService().setReviewService(reviewService);
-        botModule.botCommandService().setRankService(rankService);
         Listener[] eventListeners = new Listener[] {
             new OrzBowShootEvent(plugin, teleportBowEventService),
             new OrzPlayerEvent(
@@ -932,6 +929,14 @@ public final class FeatureModule implements ServiceModule {
 
     public BlacklistService blacklistService() {
         return blacklistService;
+    }
+
+    public com.jokerhub.paper.plugin.orzmc.features.review.ReviewService reviewService() {
+        return reviewService;
+    }
+
+    public com.jokerhub.paper.plugin.orzmc.features.rank.RankService rankService() {
+        return rankService;
     }
 
     // --- Lifecycle ---

@@ -71,6 +71,7 @@ public final class PlatformModule implements ServiceModule {
     @Override
     public void tearDown() {
         detachLogCaptureAppender();
+        commandAuditService.shutdown();
         configService.tearDown();
     }
 
