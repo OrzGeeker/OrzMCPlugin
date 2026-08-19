@@ -319,7 +319,9 @@ public final class TntEventService {
         for (String name : names) {
             try {
                 set.add(EntityType.valueOf(name));
-            } catch (IllegalArgumentException ignored) {
+            } catch (IllegalArgumentException e) {
+                // 配置里存在非法的实体类型名：忽略该项（debug 记录，避免高频 TNT 事件刷 warning）
+                java.util.logging.Logger.getLogger("OrzMC.Tnt").fine("TNT 豁免实体配置含非法 EntityType: " + name);
             }
         }
         return set;

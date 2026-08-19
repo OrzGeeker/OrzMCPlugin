@@ -391,8 +391,6 @@ public final class BotCommandService implements BotInboundHandler {
 
     /** $p u <玩家> / $p d <玩家> — 权限升级/降级一级（钳位：default→member→builder→admin）。 */
     private void handlePermission(OrzUserCmd cmd, boolean isAdmin, Consumer<MessageEnvelope> callback, String rawArgs) {
-        java.util.logging.Logger.getLogger("OrzMC.BotCmd")
-                .info("handlePermission: args=[" + rawArgs + "] isAdmin=" + isAdmin);
         if (!guardAdminCommand(cmd, isAdmin, callback)) return;
         if (rankService == null) {
             emit(callback, "command_review_error", Map.of("message", "权限服务不可用"), "权限服务不可用");

@@ -283,7 +283,7 @@ public class OrzEasyBot implements BotMessageService {
                     });
         } catch (Exception e) {
             completeHttpRequest(e.toString());
-            logger.logger().info("EasyBot sendToTarget error: " + e);
+            logger.logger().warning("EasyBot sendToTarget error: " + e);
         }
     }
 
@@ -345,7 +345,7 @@ public class OrzEasyBot implements BotMessageService {
                         });
             } catch (Exception e) {
                 completeHttpRequest(e.toString());
-                logger.logger().info("EasyBot sendBatch error: " + e);
+                logger.logger().warning("EasyBot sendBatch error: " + e);
             }
         }
     }
@@ -414,7 +414,7 @@ public class OrzEasyBot implements BotMessageService {
             }
         } catch (Exception e) {
             // 畸形 results（目标值非对象、status 为 null 等）不当作失败上报，避免误标健康
-            logger.logger().info("EasyBot 批量结果解析异常: " + e);
+            logger.logger().warning("EasyBot 批量结果解析异常: " + e);
         }
     }
 
@@ -600,7 +600,7 @@ public class OrzEasyBot implements BotMessageService {
             client.connect();
         } catch (Exception e) {
             healthRegistry.setLastError(HEALTH_KEY, e.toString());
-            logger.logger().info("EasyBot WS setup failed: " + e);
+            logger.logger().warning("EasyBot WS setup failed: " + e);
         }
     }
 
@@ -782,7 +782,7 @@ public class OrzEasyBot implements BotMessageService {
             BotInboundDispatcher.dispatch(inboundHandler, text, isAdmin, senderName, sink);
         } catch (Exception e) {
             healthRegistry.setLastError(HEALTH_KEY, e.toString());
-            logger.logger().info("EasyBot inbound parse error: " + e);
+            logger.logger().warning("EasyBot inbound parse error: " + e);
         }
     }
 

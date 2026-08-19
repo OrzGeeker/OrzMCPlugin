@@ -123,7 +123,6 @@ public final class FeatureModule implements ServiceModule {
     private final com.jokerhub.paper.plugin.orzmc.features.rank.RankCommandService rankCommandService;
     private final com.jokerhub.paper.plugin.orzmc.features.review.ReviewService reviewService;
     private final com.jokerhub.paper.plugin.orzmc.features.review.ReviewCommandService reviewCommandService;
-    private com.jokerhub.paper.plugin.orzmc.events.OrzRankEvent rankEventService; // setupEventListeners 中创建
 
     // 模块引用（供事件/命令注册使用）
     private final PlatformModule platform;
@@ -216,47 +215,15 @@ public final class FeatureModule implements ServiceModule {
         this.listFormatter.setRankService(this.rankService);
         this.reviewService = new com.jokerhub.paper.plugin.orzmc.features.review.ReviewService(
                 permissionStore, reviewNotifier, playerLookup, platform.serverFacade()::runSync);
-        // 注册审核类型 BUILDER_PROMOTION：handler 由 rank 模块注入（LP 授权），框架零 LP 依赖
-        this.reviewService.register(new com.jokerhub.paper.plugin.orzmc.features.review.ReviewType(
-                "builder-promotion",
-                "晋升建造者",
-                "builder",
-                rawArgs -> {
-                    var data = new java.util.LinkedHashMap<String, String>();
-                    data.put("target-group", "builder");
-                    if (rawArgs != null && !rawArgs.isBlank()) {
-                        data.put("reason", rawArgs);
-                    }
-                    return data;
-                },
-                playerId -> rankService.currentGroup(playerId).equals("member"),
-                data -> "申请晋升建造者"
-                        + (data.get("reason") == null || data.get("reason").isBlank() ? "" : "：" + data.get("reason")),
-                // 审核通过 = track 升一级（member→builder）；异步授权（LP 操作在非服务器线程），
-                // 结果 null/异常 视为授权失败 → 保持 PENDING 不落 APPROVED（避免「已通过但未生效」漂移）
-                playerId -> rankService.promoteAsync(playerId).thenApply(to -> to != null)));
-        // ADMIN_PROMOTION：builder→admin（四级流转最后一环；审核通过 = track 升一级）
-        this.reviewService.register(new com.jokerhub.paper.plugin.orzmc.features.review.ReviewType(
-                "admin-promotion",
-                "晋升管理员",
-                "admin",
-                rawArgs -> {
-                    var data = new java.util.LinkedHashMap<String, String>();
-                    data.put("target-group", "admin");
-                    if (rawArgs != null && !rawArgs.isBlank()) {
-                        data.put("reason", rawArgs);
-                    }
-                    return data;
-                },
-                playerId -> rankService.currentGroup(playerId).equals("builder"),
-                data -> "申请晋升管理员"
-                        + (data.get("reason") == null || data.get("reason").isBlank() ? "" : "：" + data.get("reason")),
-                playerId -> rankService.promoteAsync(playerId).thenApply(to -> to != null)));
+        // 注册审核类型：handler 由 rank 模块注入（LP 授权），框架零 LP 依赖。
+        // 审核通过 = track 升一级；异步授权（LP 操作在非服务器线程），结果 null/异常 视为
+        // 授权失败 → 保持 PENDING 不落 APPROVED（避免「已通过但未生效」漂移）。
+        this.reviewService.register(promotionType("builder-promotion", "晋升建造者", "builder", "member"));
+        this.reviewService.register(promotionType("admin-promotion", "晋升管理员", "admin", "builder"));
         this.rankCommandService = new com.jokerhub.paper.plugin.orzmc.features.rank.RankCommandService(
                 rankService, reviewService, platform.textStyles());
         this.reviewCommandService = new com.jokerhub.paper.plugin.orzmc.features.review.ReviewCommandService(
                 reviewService, platform.textStyles());
-        this.rankEventService = null; // setupEventListeners 中创建
 
         // 保留模块引用（供事件/命令注册使用）
         this.platform = platform;
@@ -264,9 +231,25 @@ public final class FeatureModule implements ServiceModule {
         this.maintenanceModule = maintenanceModule;
     }
 
-    @Override
-    public void setup() {
-        // 由组合根在 setupAll 中统一触发
+    /** 构造一个「晋升」审核类型（builder-promotion / admin-promotion 共用模板，消除重复）。 */
+    private com.jokerhub.paper.plugin.orzmc.features.review.ReviewType promotionType(
+            String id, String name, String targetGroup, String fromGroup) {
+        return new com.jokerhub.paper.plugin.orzmc.features.review.ReviewType(
+                id,
+                name,
+                targetGroup,
+                rawArgs -> {
+                    var data = new java.util.LinkedHashMap<String, String>();
+                    data.put("target-group", targetGroup);
+                    if (rawArgs != null && !rawArgs.isBlank()) {
+                        data.put("reason", rawArgs);
+                    }
+                    return data;
+                },
+                playerId -> rankService.currentGroup(playerId).equals(fromGroup),
+                data -> "申请" + name
+                        + (data.get("reason") == null || data.get("reason").isBlank() ? "" : "：" + data.get("reason")),
+                playerId -> rankService.promoteAsync(playerId).thenApply(to -> to != null));
     }
 
     // --- Event Listener Registration ---
@@ -305,7 +288,7 @@ public final class FeatureModule implements ServiceModule {
             new OrzWhiteListEvent(plugin, whitelistEventService),
             new OrzDebugEvent(plugin, botModule.botInboundHandler()),
             new OrzPortalEvent(plugin, portalEventService),
-            this.rankEventService = new com.jokerhub.paper.plugin.orzmc.events.OrzRankEvent(plugin, rankService)
+            new com.jokerhub.paper.plugin.orzmc.events.OrzRankEvent(plugin, rankService)
         };
         EventBinder.bind(plugin, Arrays.asList(eventListeners));
     }
@@ -339,15 +322,8 @@ public final class FeatureModule implements ServiceModule {
                     List.of(),
                     cp,
                     false,
-                    sender -> guideService.openGuide((Player) sender));
-            registerSimple(
-                    commands,
-                    "menu",
-                    "菜单展示",
-                    List.of(),
-                    cp,
-                    false,
-                    sender -> menuCommandService.handle((Player) sender));
+                    player -> guideService.openGuide(player));
+            registerSimple(commands, "menu", "菜单展示", List.of(), cp, false, player -> menuCommandService.handle(player));
             registerSimple(
                     commands,
                     "tpbow",
@@ -355,7 +331,7 @@ public final class FeatureModule implements ServiceModule {
                     List.of("tpb"),
                     cp,
                     false,
-                    sender -> teleportBowService.giveAndEquip((Player) sender));
+                    player -> teleportBowService.giveAndEquip(player));
             // ---- Bot 健康状态：/bot 显示最简状态，/bot http、/bot ws 查看详情 ----
             registerBotStatus(commands, cp);
 
@@ -426,13 +402,19 @@ public final class FeatureModule implements ServiceModule {
             List<String> aliases,
             CommandPolicies cp,
             boolean skipPlayerOnly,
-            Consumer<CommandSender> action) {
+            Consumer<Player> action) {
         List<CommandInterceptor> interceptors = commandInterceptors(name, cp, skipPlayerOnly);
         commands.register(
                 literal(name)
                         .requires(requirement(interceptors))
                         .executes(guardedExec(name, interceptors, ctx -> {
-                            action.accept(ctx.getSource().getSender());
+                            // 不依赖 PlayerOnlyInterceptor 顺序兜底：显式判断，控制台执行给友好反馈
+                            CommandSender sender = ctx.getSource().getSender();
+                            if (!(sender instanceof Player player)) {
+                                sender.sendMessage(platform.textStyles().error("仅玩家可用"));
+                                return 1;
+                            }
+                            action.accept(player);
                             return 1;
                         }))
                         .build(),
