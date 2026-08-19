@@ -32,6 +32,7 @@ OrzMC 插件 E2E 测试套件
   03-security.js        安全拦截（黑名单登录 / 聊天过滤 / 命令守卫）
   04-maintenance.js     世界维护（$b 备份三阶段+落盘）
   05-groupmsg.js        群消息发送（白名单拦截/上下线/聚合/IP黑名单拦截，日志断言）
+  06-permission-msg.js  权限/审核消息（申请发起/通过/晋升/拒绝/撤回，LP+op 自建）
 EOF
 }
 
