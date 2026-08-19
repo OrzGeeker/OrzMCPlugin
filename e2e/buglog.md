@@ -53,3 +53,9 @@
 | O2 | Paper 测试服线程名 `Folia Async Scheduler Thread` | Paper 26.2 实现了 Folia 调度 API，OrzMC 统一调度器代码路径，线程名相同属正常 |
 | O3 | Paper 测试服备份目录 retention=1 | 旧 zip 被清理，E2E 断言须用文件名差异而非数量 |
 | O4 | shadowJar 12 个编译警告 | Predicate 泛型 raw type（P3，CI 会标 ##[warning]，建议清零） |
+
+## E2E 套件双核心适配（PR #199，2026-08-19）
+
+- **问题**：Paper 测试服（25566）跑 E2E 时 01/02/03 用例 waitLog 默认读 Folia 日志路径（lib/rcon.js `DEFAULT_LOG_PATH`）→ 断言等待超时 FAIL；04 备份用例与备份锁冲突（备份进行中 bot 被踢、$b 被锁拒绝）会连带后续用例零输出
+- **修复**：run-all.sh 按 `ORZMC_TEST_PORT` 推断 `ORZMC_LOG_PATH` 并 export（25565→folia-test、25566→papermc-test，可显式覆盖）
+- **验证**：**Folia 32/32 + Paper 32/32 全绿**（Paper 需等备份完成后再跑全套，避免与 $b 备份锁冲突）
