@@ -753,7 +753,9 @@ public class OrzEasyBot implements BotMessageService {
                 return;
             }
 
-            // sender.role: 发送者角色（EasyBot 已各平台标准化）；sender.nickname: 群昵称（审核人身份用）
+            // sender.role: 发送者角色（EasyBot 已各平台标准化为群主/管理员）；sender.nickname: 群昵称（审核人身份用）
+            // isAdmin 判定 fail-closed：仅网关返回 Owner/Admin 视为管理员，role 缺失/未知一律按非管理员处理
+            // （2026-08-19 决策：网关 role 即权威，无需额外白名单兜底，判断不了即降级为非管理员）
             boolean isAdmin = false;
             String senderName = null;
             if (data.has("sender") && data.get("sender").isJsonObject()) {

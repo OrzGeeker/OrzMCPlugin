@@ -94,7 +94,7 @@ private void handleExecuteConsoleCommand(...) {
 ### P0 — 上线前必须
 
 - [x] **`/orzdebug` 权限收紧**：已改为 AdminOnlyInterceptor 门禁（见第 4 节）。
-- [ ] **核实 `$e` 群侧管理员判定**：确认 `BotInboundDispatcher` 传入的 `isAdmin` 依据群主/管理员名单，而非可伪造字段。
+- [x] **核实 `$e` 群侧管理员判定**：已确认（2026-08-19）`OrzEasyBot` 的 `isAdmin` 判定 fail-closed——仅网关返回 `role=Owner/Admin` 视为管理员，role 缺失/未知一律按非管理员处理；网关 role 即权威，无需额外白名单兜底。
 - [ ] **复核 op 与 `orzmc.admin` 边界**：`CommandPermissionService.requireAdmin()` 使用 `isOp() || hasPermission("orzmc.admin")`，确认线上无遗留 OP 账号。
 - [ ] **验证白名单关闭告警链路**：实际关一次白名单确认群告警到达。
 
