@@ -180,9 +180,12 @@ public class WorldMaintenanceService {
         return obj -> {
             server.logger().warning(String.valueOf(obj));
             String s = String.valueOf(obj);
-            // chunk 级解析错误（unknown compression / ZLIB 截断等损坏区块）：
-            // 修复后由 backup-core 安全保留原始数据，不视为失败——聚合计数，Done 时汇总提示
-            if (s.contains("Pattern matching failed") || s.contains("kind=Pattern")) {
+            // chunk 级解析/写入错误（unknown compression / ZLIB 截断 / 荒谬长度等损坏区块）：
+            // 修复后由 backup-core 安全跳过或保留原始数据，不视为失败——聚合计数，Done 时汇总提示
+            if (s.contains("Pattern matching failed")
+                    || s.contains("kind=Pattern")
+                    || s.contains("Chunk data unreadable")
+                    || s.contains("corrupted length field")) {
                 chunkErrorCount.incrementAndGet();
                 if (chunkErrorCount.get() == 1) {
                     callback.accept("发现" + label + "目标包含损坏区块，将安全保留原始数据（不丢失）...");

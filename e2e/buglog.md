@@ -3,16 +3,19 @@
 > 本文件由 e2e 测试套件执行时发现的问题自动/手动登记。每条记录含复现方式与验证状态。
 > 优先级：P0=功能不可用（阻塞） / P1=功能异常（需修复） / P2=健壮性/体验 / P3=优化项
 
-## BUG-E2E-002：大世界（17GB/316万chunk）$b 备份失败—— ✅ 已修复（2026-08-19，OrzMCBackup PR #46）
+## BUG-E2E-002：大世界（17GB/316万chunk）$b 备份极慢+失败误报—— ✅ 已修复（2026-08-19，OrzMCBackup PR #46）
 
-- **现象**：Paper 测试服（317 万 chunk）执行 `$b` 备份失败，`OptimizeError: Pattern matching failed: unknown compression: 31`，zip 未生成
-- **根因（全量扫描 3,163,860 chunks 确认）**：99.998% 是标准 ZLIB(2)，另有 ~56 个**损坏 chunk 条目**（compression byte 为随机垃圾值，散布 overworld/nether/end）——**不是 MC 26.2 新压缩格式**。`McaEntry.readHeader()` 对未知 compression 直接抛异常 → `serializedBytes()`（仅需长度字段）也挂 → 损坏 chunk 无法写出 → 备份中断
-- **修复（OrzMCBackup fix/corrupted-chunk-keep → PR #46）**：
-  1. `McaEntry`：未知 compression → 新增 `UNKNOWN` 枚举（不抛），长度字段可读、原样透传；仅解压时抛
-  2. `DimensionProcessor`：pattern 匹配异常 → 安全保留原始 chunk（避免丢数据），错误仅记录不中断
-  3. 新增 `CorruptedChunkKeepTest`（2 测试：损坏保留 + strict 不中断）
+- **现象**：Paper 测试服（317 万 chunk）执行 `$b` 备份数小时未完成，`OptimizeError: Pattern matching failed: unknown compression: 31` 反复触发「地图备份 失败」通知
+- **根因（全量扫描 3,163,860 chunks + 局部复现确认）**：
+  1. 99.998% chunk 是标准 ZLIB(2)，另有 ~56 个**损坏 chunk 条目**（compression byte 垃圾值 + 部分**长度字段荒谬**如 0x789cd12e≈20亿字节）——**不是 MC 26.2 新压缩格式**
+  2. 长度荒谬+compression 合法的损坏 chunk：旧版 `dataBytes` 尝试分配+读取 20 亿字节 → 单 chunk 卡死数分钟 → 56 个损坏 chunk 拖垮整次备份（数小时级）→ **备份实际未完成**（非失败）
+  3. `errorHandler` 对每个 Pattern 错误触发「地图备份 失败」→ 误报风暴
+- **修复（OrzMCBackup fix/corrupted-chunk-keep → PR #46，2 commits）**：
+  1. `McaEntry`：未知 compression → `UNKNOWN`（不抛，长度字段可读）；`dataBytes`/`serializedBytes` 对荒谬长度（>8MB）短路返回空——**秒级跳过不卡死**
+  2. `McaWriter.writeEntry` 空数据明确报错；`DimensionProcessor` pattern 异常 → 安全保留原始 chunk（compression 非法但长度正常的透传保留），错误仅记录不中断
+  3. `CorruptedChunkKeepTest` 3 测试：损坏保留 / strict 不中断 / 荒谬长度快速跳过
 - **插件侧配套（WorldMaintenanceService）**：errorHandler 聚合——Pattern 错误（损坏 chunk）计数不报失败；致命错误限频 1 次；Done 时汇总「含 N 个损坏区块已安全保留」
-- **验证**：OrzMCBackup ktlint+detekt+全量测试通过；真实世界备份复现验证 zip 生成（进行中）
+- **验证**：ktlint+detekt+全量测试通过；真实损坏样本（r.7.2.mca / r.-1.0.mca）CLI 验证：**1.5-1.8s 完成 + zip 生成 + 错误记录**（旧版同样本卡死/极慢）
 - **待办**：发布 backup-core 新版（tag）→ 插件升级依赖 → Paper 服 `$b` 端到端验证
 
 ## BUG-E2E-003：CommandGuard 审计日志洪泛（P2，待修）
