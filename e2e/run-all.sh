@@ -61,6 +61,15 @@ if [ -z "${ORZMC_LOG_PATH:-}" ]; then
   esac
 fi
 export ORZMC_LOG_PATH
+# RCON 端口按端口推断（双核心适配：25565→25575，25566→25576，可 ORZMC_RCON_PORT 覆盖）
+if [ -z "${ORZMC_RCON_PORT:-}" ]; then
+  case "$ORZMC_TEST_PORT" in
+    25565) ORZMC_RCON_PORT=25575 ;;
+    25566) ORZMC_RCON_PORT=25576 ;;
+    *) ORZMC_RCON_PORT="" ;;
+  esac
+fi
+export ORZMC_RCON_PORT
 if [ ! -d "$NODE_PATH" ]; then
   echo "❌ 缺少 mineflayer 依赖: $NODE_PATH（请确认 ~/minecraft-bot/node_modules 存在）" >&2
   exit 1
