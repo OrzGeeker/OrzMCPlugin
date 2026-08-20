@@ -259,7 +259,7 @@ PUBLIC；异常告警（含 GeoIP 上游异常私信）与维护失败事件走 
 ### 7.1 世界备份
 - 命令：`$b`（管理员）
 - 执行流程：踢出所有玩家 → `save-off` → 压缩世界为 ZIP → `save-on` → 恢复服务
-- 备份存储位置：`plugins/OrzMC/backup/`
+- 备份存储位置：**服务器核心根目录 `backup/`**（如 `~/papermc-test/backup/`，非插件数据目录；备份中间产物在系统临时目录，完成后 zip 移入 backup/）
 - 自动清理旧备份，保留最近 N 个（`maintenance.backup_retention_count`，默认 5）
 - ⚠️ **备份为"优化式备份"**：基于 backup-core（InhabitedTime 阈值过滤，阈值= `maintenance.optimize_tick_time_threshold` 默认 300 秒），活跃 ≤ 阈值（15 秒）的区块不进入备份 zip——备份体积远小于世界（实测 17G 世界 → zip ~1.4G），适合日常快照；如需逐字节全量，请用外部快照/全量备份工具
 
