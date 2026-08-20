@@ -64,7 +64,7 @@
 - **根因**：backup-core `RealFileSystem.walk` 用 `Files.walk(path)` **不跟随符号链接** → symlink 世界内部 `dimensions/<dim>/region/*.mca` 全部不可见 → 0 chunk 备份；`progressTotal = 0 + 0 + 2(zip 固定项)` → 假"2/2 完成"
 - **修复**：`Files.walk(path, FileVisitOption.FOLLOW_LINKS)`（backup-core PR #50 main 线 / #51 0.2.x 线）——插件零改动
 - **验证**：backup-core 新增 `RealFileSystemSymlinkTest`（链接目标内 region 可见性）+ 全量测试全绿；Folia 真实环境修复版 $b **3170460/3170460 chunk 全量完成（6分16秒，zip 1.42GB）**
-- **连带**：Folia 上 walk 跟随链接后，worldContainer 内历史残留的备份中间目录（旧布局 `plugins/OrzMC/backup/tempDir`）会被扫入备份源 → 需保持 worldContainer 内无备份残留（新布局输出在外部）
+- **连带**：Folia 上 walk 跟随链接后，worldContainer 内历史残留的备份中间目录（旧布局 `plugins/OrzMC/backup/tempDir`）会被扫入备份源 → 需保持世界目录内无备份残留（新布局：中间目录 `backup/tempDir` 在世界目录外——`backup/` 是世界目录的兄弟路径；崩溃/断电残留由插件启动清理兜底）
 
 ## E2E 套件双核心适配（PR #199，2026-08-19）
 
