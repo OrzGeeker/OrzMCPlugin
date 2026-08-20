@@ -406,7 +406,7 @@
 
 - **E1 ↔ §3 的 6 个 Flash 任务**（P2-02 instanceof、P2-03 死字段、P2-07 OnlineListFormatter、P2-08 ReviewType 工厂、P2-09 渲染收敛、P2-10 tearDown）**同改 `FeatureModule.java`** → 二选一顺序：建议**先做 Flash 小改**（低风险、改动小），再做 E1 大重构；或反过来，但**不可并行**。
 - **E2 ↔ E6** **同改 `OrzEasyBot.java`** → E6 是安全补丁（小而急），**先 E6 后 E2**，或 E2 拆完后在协作类上做 E6，**不可并行**。
-- **E3 先于 E1**：E1 会调整 `botModule.botCommandService().setReviewService/setRankService` 的调用时机，E3 会改这两个 setter 本身，先 E3 定型接口再 E1 接线，避免二次返工。
+- **E3 先于 E1（已完成 ✅ 2026-08-20）**：E3 已将 `BotCommandService` 拆为纯分派 + 独立 `$cmd` 处理器，并把 6 个 setter 收敛为 `injectDependencies(BotCommandDependencies)`（组合根在连接 WebSocket 前一次性注入）。E1 现已解耦：接线点从 6 个 setter 变为 1 个 `injectDependencies`，可直接推进。
 - **E4（orzmc-api SDK 化）已立项**：目标与顺序见 §4.3。注意 SDK 化会动主模块 `core/ports`（被 portal/whitelist 等多个 feature 引用），建议在 E1-E3 稳定后启动，且按 §4.3 分阶段、每阶段全测试绿。
 - **E7/E8 是功能改动非重构**：各自独立，但 E8 涉及 netty 线程模型，需测试服真机验证（见 `folia-luckperms-gotchas.md` §6）。
 
@@ -416,7 +416,7 @@
 |---|---|---|---|
 | E1 | `FeatureModule` 拆分（993→服务装配 + 命令注册分离） | `assembly/FeatureModule.java` | **Step 0**：把 4 个静态拦截器助手（`requirement`/`guardedExec`/`commandInterceptors`/`adminInterceptors`，行 878-929）+ 3 个渲染方法（`renderReviewResult`/`renderReviewResultAsync`/`renderRankResult`，行 745-779）+ `handlePortal`/`listBlacklist` 抽到 `commands/BrigadierSupport` + `commands/CommandResultRenderer`（纯搬移，零行为变化）；**Step 1**：把 `setupCommandHandlers`（行 315-868，约 550 行）整块抽到 `commands/FeatureCommandRegistrar`，构造注入 ~20 个服务，FeatureModule 只留构造装配 + `enableForceWhitelist` + 生命周期方法 |
 | E2 | `OrzEasyBot` 拆分（834→编排 + 协作类） | `infra/bot/OrzEasyBot.java` | 抽 `InboundEventParser`/`HttpSender`/`BatchResultParser`/`WebSocketLifecycle` 四类，逐步搬移，每步全测试绿 |
-| E3 | `BotCommandService` 拆分（735→分派 + 策略） | `features/botcommands/` | 每个 `$cmd` handler 抽独立策略类，`parse()` 只做分发；6 个 `setXxxService` 二阶段注入收敛为一个 `dependencies(...)` 批量注入 |
+| E3 | `BotCommandService` 拆分（735→分派 + 策略） | `features/botcommands/` | ✅ **已完成**（2026-08-20，分支 `refactor/botcommand-service` 5 个 commit：Step 0 `BotCommandContext` → Step 1a/1b/c Review/Permission/Console → Step 2 Whitelist/PlayerList/Maintenance/Blacklist → Step 3 `injectDependencies(BotCommandDependencies)`）。`BotCommandService` 735→192 行纯分派，11 个 `$cmd` 全部独立处理器 |
 | E4 | `orzmc-api` SDK 化（原 E4 去 Bukkit 化 + E5 依赖倒置合并） | `orzmc-api/` + 主模块 `core/ports/*` | **已立项**。分 5 阶段推进，详见 §4.3 |
 | E6 | `$e` 群侧 isAdmin 白名单兜底（S8） | `infra/bot/OrzEasyBot.java` 入站鉴权（行 757-769） | 需产品决策：管理员 user_id 白名单来源（配置/数据库）。先与服主确认再设计；**先于 E2 落地** |
 | E7 | 32k 属性扫描扩展（S7） | `ExploitHardeningEventService.java` | 对 `InventoryClickEvent`/`Pickup`/末影箱等进物品路径做属性上限清理；需评估性能与误伤 |

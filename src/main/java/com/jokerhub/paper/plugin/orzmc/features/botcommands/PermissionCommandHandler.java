@@ -11,8 +11,8 @@ import java.util.function.Supplier;
 /**
  * $p u|d 群权限升降级命令处理器（从 BotCommandService 抽离）。
  *
- * <p>{@code rankService} 通过 {@link Supplier} 注入——组合根在 BotCommandService 构造后经
- * setter 二阶段注入，处理器调用时读取最新值。升降级走 {@code promoteAsync/demoteAsync}
+ * <p>{@code rankService} 通过 {@link Supplier} 注入——组合根经
+ * {@link BotCommandService#injectDependencies} 一次性注入，处理器调用时读取最新值。升降级走 {@code promoteAsync/demoteAsync}
  * 异步（LP 操作在非服务器线程），绝不 runSync+join（自锁超时，见 folia-luckperms-gotchas.md）。</p>
  */
 final class PermissionCommandHandler extends BotCommandContext {
