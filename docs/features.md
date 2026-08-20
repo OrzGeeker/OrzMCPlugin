@@ -259,14 +259,16 @@ PUBLIC；异常告警（含 GeoIP 上游异常私信）与维护失败事件走 
 ### 7.1 世界备份
 - 命令：`$b`（管理员）
 - 执行流程：踢出所有玩家 → `save-off` → 压缩世界为 ZIP → `save-on` → 恢复服务
-- 备份存储位置：**服务器核心根目录 `backup/`**（如 `~/papermc-test/backup/`，非插件数据目录；备份中间产物在系统临时目录，完成后 zip 移入 backup/）
+- 备份存储位置：**服务器核心根目录 `backup/`**（如 `~/papermc-test/backup/`，非插件数据目录）
+- 目录使用：input=世界目录（`getWorldFolder()`）；backup-core 中间目录 = `backup/tempDir/`（backup-core Cleanup 阶段自动删除）；zip 直接落 `backup/`（output 父目录）；崩溃/断电残留由**启动清理**兜底（MaintenanceModule.setup 清 `backup/tempDir`）
 - 自动清理旧备份，保留最近 N 个（`maintenance.backup_retention_count`，默认 5）
 - ⚠️ **备份为"优化式备份"**：基于 backup-core（InhabitedTime 阈值过滤，阈值= `maintenance.optimize_tick_time_threshold` 默认 300 秒），活跃 ≤ 阈值（15 秒）的区块不进入备份 zip——备份体积远小于世界（实测 17G 世界 → zip ~1.4G），适合日常快照；如需逐字节全量，请用外部快照/全量备份工具
 
 ### 7.2 世界优化
 - 命令：`$o`（管理员，需先启用 `maintenance.optimize_enabled`）
-- 使用 OrzMCWorld 优化器就地优化世界区块文件
-- 支持按区块 tick 耗时过滤（`maintenance.optimize_tick_time_threshold`，默认 300ms）
+- 执行流程：踢出所有玩家 → `save-off` → 优化（剔除低活跃区块，InhabitedTime 阈值同上）→ `save-on` → 恢复服务
+- input=世界目录（与备份一致）；in-place 优化（backup-core 内部临时目录处理）
+- 实测（2026-08-20，裁剪后世界）：$o 31 秒完成 190,526/190,526 区块，剔除 5.6 万低活跃区块（22.8%），世界正常加载
 
 ### 7.3 进度报告
 - 实时推送备份/优化进度到 Bot
