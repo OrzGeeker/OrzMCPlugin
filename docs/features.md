@@ -9,6 +9,8 @@
 > **相关测试文档**：
 > - [插件功能测试用例](test-cases.md)（28 项端到端用例，含前置条件/步骤/预期/实际）
 > - [端到端测试报告（2026-08-06）](e2e-test-report-20260806.md)（真实环境：机器人 + 真实玩家 + RCON）
+> - [端到端测试报告（2026-08-20 双核心）](e2e-test-report-20260820.md)（Paper + Folia 62/62 用例，E2E 套件 `plugin/e2e/`）
+> - E2E 自动化套件：`plugin/e2e/run-all.sh`（01-06 用例：Bot 命令/玩家命令/安全拦截/备份维护/群消息/权限审核，双核心自动检测）
 
 ---
 
@@ -259,6 +261,7 @@ PUBLIC；异常告警（含 GeoIP 上游异常私信）与维护失败事件走 
 - 执行流程：踢出所有玩家 → `save-off` → 压缩世界为 ZIP → `save-on` → 恢复服务
 - 备份存储位置：`plugins/OrzMC/backup/`
 - 自动清理旧备份，保留最近 N 个（`maintenance.backup_retention_count`，默认 5）
+- ⚠️ **备份为"优化式备份"**：基于 backup-core（InhabitedTime 阈值过滤，阈值= `maintenance.optimize_tick_time_threshold` 默认 300 秒），活跃 ≤ 阈值（15 秒）的区块不进入备份 zip——备份体积远小于世界（实测 17G 世界 → zip ~1.4G），适合日常快照；如需逐字节全量，请用外部快照/全量备份工具
 
 ### 7.2 世界优化
 - 命令：`$o`（管理员，需先启用 `maintenance.optimize_enabled`）
@@ -340,6 +343,15 @@ PUBLIC；异常告警（含 GeoIP 上游异常私信）与维护失败事件走 
 | `tnt.enable_respawn_anchor` | Boolean | false | 启用重生锚检测 |
 | `tnt.place_cooldown` | Integer | 5 | TNT 放置冷却（秒） |
 | `tnt.notify_aggregate_ms` | Long | 3000 | TNT/爆炸告警聚合窗口（毫秒） |
+
+**上下线通知**
+| 配置路径 | 类型 | 默认值 | 描述 |
+|---------|------|--------|------|
+| `player_notify.enabled_join` | Boolean | true | 上线消息通知开关 |
+| `player_notify.enabled_quit` | Boolean | true | 下线消息通知开关 |
+| `player_notify.enabled_kick` | Boolean | true | 被踢消息通知开关 |
+| `player_notify.window_ms` | Long | 3000 | 上下线通知聚合窗口（毫秒） |
+| `player_notify.max_list_items` | Integer | 6 | 聚合摘要最多列出的玩家数 |
 
 **命令策略**
 | 配置路径 | 类型 | 默认值 | 描述 |
