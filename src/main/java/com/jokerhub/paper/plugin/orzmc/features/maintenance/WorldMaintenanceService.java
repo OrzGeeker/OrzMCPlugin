@@ -317,11 +317,10 @@ public class WorldMaintenanceService {
         if (levelRoot.isDirectory()) {
             return levelRoot;
         }
-        File fallback = new File(container, "world");
-        if (fallback.isDirectory()) {
-            return fallback;
-        }
-        return container;
+        // level-name 目录缺失：回退默认 world/；仍不存在时交给 backup-core 明确报错——
+        // 不能回退 container 本身：backup/ 嵌套其内会触发 0.3.x 重叠校验拒绝，
+        // 或把 plugins/logs/历史 zip 全部扫入备份。
+        return new File(container, "world");
     }
 
     /** 读取 server.properties 的 level-name（尊重自定义世界目录名），缺失/解析失败回退默认 "world"。 */
@@ -332,14 +331,19 @@ public class WorldMaintenanceService {
                 java.util.Properties p = new java.util.Properties();
                 p.load(in);
                 String name = p.getProperty("level-name");
-                if (name != null && !name.isBlank()) {
+                if (name != null && !name.isBlank() && isValidLevelName(name)) {
                     return name.trim();
                 }
-            } catch (java.io.IOException ignored) {
-                // 解析失败回退默认值，备份不因此中断
+            } catch (Exception e) {
+                // 解析失败（含非法 Unicode 转义序列导致的 IllegalArgumentException）回退默认值，备份不因此中断
             }
         }
         return "world";
+    }
+
+    /** level-name 只允许目录名（Minecraft 本身不允许路径分隔符），拒绝越出容器/撞入备份目录。 */
+    private static boolean isValidLevelName(String name) {
+        return !name.contains("/") && !name.contains("\\") && !name.contains("..") && !name.equals(".");
     }
 
     /** backup/ 下最新 zip 的 mtime（无 zip 为 0）。备份成功判定：备份后出现 mtime 更新的 zip。 */
