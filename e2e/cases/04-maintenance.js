@@ -8,7 +8,7 @@ const path = require('path');
 const os = require('os');
 
 const LOG_PATH = process.env.ORZMC_LOG_PATH || path.join(os.homedir(), 'papermc-test', 'logs', 'latest.log');
-const BACKUP_DIR = process.env.ORZMC_BACKUP_DIR || path.join(os.homedir(), 'papermc-test', 'plugins', 'OrzMC', 'backup');
+const BACKUP_DIR = process.env.ORZMC_BACKUP_DIR || path.join(os.homedir(), 'papermc-test', 'backup');
 
 const results = [];
 let failed = 0;

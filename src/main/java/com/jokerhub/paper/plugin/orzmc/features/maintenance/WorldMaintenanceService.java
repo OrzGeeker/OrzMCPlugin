@@ -232,7 +232,7 @@ public class WorldMaintenanceService {
             }));
             builder.setRuntime(new RuntimeOptions(cpuParallelism()));
             builder.setHooks(new Hooks(errorHandler(label, callback), null, null));
-            builder.setIo(new IOOptions(fs, mcaIOFactory));
+            builder.setIo(new IOOptions(fs, mcaIOFactory, true));
             return Unit.INSTANCE;
         });
     }
@@ -273,7 +273,8 @@ public class WorldMaintenanceService {
                 "服务器地图备份中，请稍后再尝试登录。",
                 () -> {
                     File worldContainerDir = server.server().getWorldContainer();
-                    File worldBackupDir = new File(server.plugin().getDataFolder(), "backup");
+                    // 备份目录放服务器核心根目录（非插件数据目录），便于快照/迁移整体打包
+                    File worldBackupDir = new File(worldContainerDir, "backup");
                     if (!worldBackupDir.exists() && !worldBackupDir.mkdirs()) {
                         server.logger().warning("创建地图备份目录失败: " + worldBackupDir.getAbsolutePath());
                         callback.accept("地图备份失败");
@@ -281,13 +282,66 @@ public class WorldMaintenanceService {
                     }
                     Path input = Path.of(worldContainerDir.getAbsolutePath());
                     callback.accept("服务器地图目录：" + input);
-                    File worldBackupTempDir = new File(worldBackupDir, "tempDir");
-                    Path output = Path.of(worldBackupTempDir.getAbsolutePath());
+                    // backup-core 0.3.x 校验 input/output 不得重叠（防 Cleanup 误删源世界）：
+                    // 备份临时目录放 worldContainer 之外的系统临时目录（原 backup/tempDir 在
+                    // worldContainer 内会被拒绝）。zip 由 backup-core 写到临时目录父目录
+                    // （yyyyMMddHHmmss.zip），完成后移回 backup/；临时目录一律清理（防残留被
+                    // walk 扫入下次备份源——BUG-E2E-004 连带教训）。
+                    Path tmpRoot;
+                    try {
+                        tmpRoot = java.nio.file.Files.createTempDirectory("orzmc-backup-");
+                    } catch (java.io.IOException e) {
+                        server.logger().log(Level.SEVERE, "创建备份临时目录失败", e);
+                        callback.accept("地图备份失败");
+                        return;
+                    }
+                    Path output = tmpRoot.resolve("tempDir");
                     callback.accept("地图备份目录：" + worldBackupDir);
-                    runOptimizerJob(true, input, output, tickTimeThreshold, callback);
+                    try {
+                        runOptimizerJob(true, input, output, tickTimeThreshold, callback);
+                        moveBackupZips(tmpRoot, worldBackupDir.toPath());
+                    } finally {
+                        deleteTreeQuietly(tmpRoot);
+                    }
                     pruneOldZipsWithLogger(worldBackupDir, retainCount, server.logger());
                 },
                 null);
+    }
+
+    /** 将临时目录中备份生成的 zip 移动到最终备份目录（backup-core zip 写到 output 的父目录）。 */
+    private void moveBackupZips(Path tmpRoot, Path backupDir) {
+        try (java.util.stream.Stream<Path> stream = java.nio.file.Files.list(tmpRoot)) {
+            stream.filter(p -> p.getFileName().toString().endsWith(".zip")).forEach(zip -> {
+                try {
+                    java.nio.file.Files.move(
+                            zip,
+                            backupDir.resolve(zip.getFileName()),
+                            java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                    server.logger().info("备份文件已就位: " + backupDir.resolve(zip.getFileName()));
+                } catch (java.io.IOException e) {
+                    server.logger().log(Level.SEVERE, "移动备份文件失败: " + zip, e);
+                }
+            });
+        } catch (java.io.IOException e) {
+            server.logger().log(Level.SEVERE, "读取备份临时目录失败: " + tmpRoot, e);
+        }
+    }
+
+    /** 递归删除临时目录（备份成功/失败均清理，防残留被 walk 扫入下次备份源）。 */
+    private void deleteTreeQuietly(Path root) {
+        try {
+            java.nio.file.Files.walk(root)
+                    .sorted(java.util.Comparator.reverseOrder())
+                    .forEach(p -> {
+                        try {
+                            java.nio.file.Files.deleteIfExists(p);
+                        } catch (java.io.IOException ignored) {
+                            // 忽略单文件删除失败，尽力清理
+                        }
+                    });
+        } catch (java.io.IOException e) {
+            server.logger().log(Level.WARNING, "清理备份临时目录失败: " + root, e);
+        }
     }
 
     public void optimize(long tickTimeThreshold, Consumer<String> callback) {

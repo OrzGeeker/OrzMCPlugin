@@ -245,8 +245,8 @@ public class WorldMaintenanceServiceTest extends ServiceTestBase {
         Assertions.assertTrue(sawStartMsg.get(), "应报告服务器地图目录");
         Assertions.assertTrue(sawDirMsg.get(), "应报告地图备份目录");
         Assertions.assertFalse(service.isRunning());
-        // 备份目录应被创建
-        File backupDir = new File(dataDir, "backup");
+        // 备份目录应被创建（服务器核心根目录下，非插件数据目录）
+        File backupDir = new File(worldDir, "backup");
         Assertions.assertTrue(backupDir.exists(), "备份目录应被创建");
     }
 
