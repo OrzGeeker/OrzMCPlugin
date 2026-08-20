@@ -12,8 +12,10 @@ public final class MaintenanceModule implements ServiceModule {
 
     private final WorldMaintenanceService worldMaintenanceService;
     private final ScheduledBackupService scheduledBackupService;
+    private final PlatformModule platform;
 
     public MaintenanceModule(PlatformModule platform, BotModule botModule) {
+        this.platform = platform;
         this.worldMaintenanceService = new WorldMaintenanceService(
                 platform.serverFacade(), platform.configs(), platform.textStyles(), botModule.notifier());
         this.scheduledBackupService =
@@ -23,6 +25,13 @@ public final class MaintenanceModule implements ServiceModule {
     @Override
     public void setup() {
         scheduledBackupService.setup();
+        // 启动清理：崩溃/断电可能导致 backup/tempDir 残留，删除防占用磁盘与污染下次备份
+        org.bukkit.Server server = platform.serverFacade().server();
+        if (server != null && server.getWorldContainer() != null) {
+            WorldMaintenanceService.cleanupStaleBackupTemp(
+                    new java.io.File(server.getWorldContainer(), "backup"),
+                    platform.serverFacade().logger());
+        }
     }
 
     @Override
