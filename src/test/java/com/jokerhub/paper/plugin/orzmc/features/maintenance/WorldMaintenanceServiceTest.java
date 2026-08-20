@@ -262,7 +262,7 @@ public class WorldMaintenanceServiceTest extends ServiceTestBase {
         // 备份目录应被创建（服务器核心根目录下，非插件数据目录）
         File backupDir = new File(worldDir, "backup");
         Assertions.assertTrue(backupDir.exists(), "备份目录应被创建");
-        // 备份 zip 应落盘 backup/（0.3.x zipOutput 模式空世界也产出 22B 最小 zip，经 moveBackupZips 移入）
+        // 备份 zip 应落盘 backup/（0.3.x zipOutput 模式空世界也产出 22B 最小 zip，backup-core 直接写入 backup/）
         File[] zips = backupDir.listFiles(f -> f.isFile() && f.getName().endsWith(".zip"));
         Assertions.assertTrue(zips != null && zips.length >= 1, "备份 zip 应落盘 backup/ 目录");
     }

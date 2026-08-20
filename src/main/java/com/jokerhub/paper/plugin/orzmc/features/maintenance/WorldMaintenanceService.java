@@ -232,6 +232,8 @@ public class WorldMaintenanceService {
             }));
             builder.setRuntime(new RuntimeOptions(cpuParallelism()));
             builder.setHooks(new Hooks(errorHandler(label, callback), null, null));
+            // IOOptions 第三参 syncOnFinalize=true（0.3.0+ API，与默认一致）：跳过 finalize 后
+            // 逐 region fsync（更快）；zip 由 backup-core 写到 output 父目录（backup/）
             builder.setIo(new IOOptions(fs, mcaIOFactory, true));
             return Unit.INSTANCE;
         });
@@ -288,9 +290,9 @@ public class WorldMaintenanceService {
                     // 崩溃/断电残留由启动清理兜底（cleanupStaleBackupTemp）。
                     Path output = worldBackupDir.toPath().resolve("tempDir");
                     callback.accept("地图备份目录：" + worldBackupDir);
-                    long before = countBackupZips(worldBackupDir);
+                    long before = latestBackupZipMtime(worldBackupDir);
                     runOptimizerJob(true, input, output, tickTimeThreshold, callback);
-                    if (countBackupZips(worldBackupDir) <= before) {
+                    if (latestBackupZipMtime(worldBackupDir) <= before) {
                         // backup-core 完成但 backup/ 无新 zip（压缩失败被内部吞掉等）：
                         // 明确报失败且跳过 prune——旧备份是唯一可靠副本，不能误删
                         server.logger().severe("备份文件未落盘: " + worldBackupDir.getAbsolutePath());
@@ -302,21 +304,42 @@ public class WorldMaintenanceService {
                 null);
     }
 
-    /** 世界目录（尊重服务器 level-name 配置；极端情况下回退 worldContainer/world）。 */
+    /** 世界目录（尊重服务器 level-name 配置；极端情况下回退 worldContainer/world）。
+     *  优先选择含 dimensions/ 或 region/ 的真实世界目录（26.2 结构下各维度均在 world/ 内），
+     *  避免 getWorlds() 顺序把非主世界排前导致漏备。 */
     private File worldFolder() {
         java.util.List<org.bukkit.World> worlds = server.server().getWorlds();
         if (worlds != null && !worlds.isEmpty()) {
-            File folder = worlds.get(0).getWorldFolder();
-            if (folder != null && folder.isDirectory()) {
-                return folder;
+            for (org.bukkit.World w : worlds) {
+                File folder = w.getWorldFolder();
+                if (folder != null
+                        && folder.isDirectory()
+                        && (new File(folder, "dimensions").isDirectory() || new File(folder, "region").isDirectory())) {
+                    return folder;
+                }
+            }
+            File first = worlds.get(0).getWorldFolder();
+            if (first != null && first.isDirectory()) {
+                return first;
             }
         }
-        return new File(server.server().getWorldContainer(), "world");
+        File fallback = new File(server.server().getWorldContainer(), "world");
+        if (fallback.isDirectory()) {
+            return fallback;
+        }
+        return server.server().getWorldContainer();
     }
 
-    private static long countBackupZips(File backupDir) {
+    /** backup/ 下最新 zip 的 mtime（无 zip 为 0）。备份成功判定：备份后出现 mtime 更新的 zip。 */
+    private static long latestBackupZipMtime(File backupDir) {
         File[] zips = backupDir.listFiles(f -> f.isFile() && f.getName().endsWith(".zip"));
-        return zips == null ? 0 : zips.length;
+        long latest = 0L;
+        if (zips != null) {
+            for (File z : zips) {
+                latest = Math.max(latest, z.lastModified());
+            }
+        }
+        return latest;
     }
 
     /** 启动清理：崩溃/断电可能导致 backup/tempDir 残留，删除防占用磁盘与污染下次备份。 */
