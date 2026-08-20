@@ -7,20 +7,11 @@ import com.jokerhub.paper.plugin.orzmc.features.maintenance.WorldMaintenanceServ
 import com.jokerhub.paper.plugin.orzmc.features.security.BlacklistService;
 import com.jokerhub.paper.plugin.orzmc.features.security.CommandAuditService;
 import com.jokerhub.paper.plugin.orzmc.features.security.CommandGuardService;
-import com.jokerhub.paper.plugin.orzmc.features.whitelist.WhitelistService;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.BotConfig;
-import com.jokerhub.paper.plugin.orzmc.infra.config.configs.MaintenanceConfig;
-import com.jokerhub.paper.plugin.orzmc.infra.config.configs.WhitelistConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.logging.LogCaptureService;
-import com.jokerhub.paper.plugin.orzmc.infra.paging.Paginator;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Consumer;
-import java.util.logging.Level;
-import org.bukkit.entity.Player;
 
 public final class BotCommandService extends BotCommandContext implements BotInboundHandler {
     private BotCommandListFeedbackService listFeedbackService;
@@ -40,6 +31,14 @@ public final class BotCommandService extends BotCommandContext implements BotInb
     private final PermissionCommandHandler permissionCommandHandler;
     /** $e 控制台命令执行处理器（Supplier 注入 guard/audit/logCapture）。 */
     private final ConsoleCommandHandler consoleCommandHandler;
+    /** $a/$r/$w 白名单命令处理器（Supplier 注入 listFeedbackService，setRankService 后重建）。 */
+    private final WhitelistCommandHandler whitelistCommandHandler;
+    /** $l 在线玩家列表命令处理器（Supplier 注入 listFeedbackService）。 */
+    private final PlayerListCommandHandler playerListCommandHandler;
+    /** $b/$o 地图备份/优化命令处理器（Supplier 注入 maintenanceService）。 */
+    private final MaintenanceCommandHandler maintenanceCommandHandler;
+    /** $d IP 黑名单命令处理器（Supplier 注入 blacklistService）。 */
+    private final BlacklistCommandHandler blacklistCommandHandler;
 
     @FunctionalInterface
     private interface CmdHandler {
@@ -60,17 +59,30 @@ public final class BotCommandService extends BotCommandContext implements BotInb
         this.permissionCommandHandler = new PermissionCommandHandler(server, configs, () -> rankService);
         this.consoleCommandHandler = new ConsoleCommandHandler(
                 server, configs, () -> commandGuardService, () -> commandAuditService, () -> logCaptureService);
+        this.whitelistCommandHandler = new WhitelistCommandHandler(server, configs, () -> listFeedbackService);
+        this.playerListCommandHandler = new PlayerListCommandHandler(server, configs, () -> listFeedbackService);
+        this.maintenanceCommandHandler = new MaintenanceCommandHandler(server, configs, () -> maintenanceService);
+        this.blacklistCommandHandler = new BlacklistCommandHandler(server, configs, () -> blacklistService);
         this.handlers = Map.ofEntries(
-                Map.entry(OrzUserCmd.SHOW_PLAYERS, (c, a, s, cb, r) -> handleShowPlayers(c, a, cb, r)),
-                Map.entry(OrzUserCmd.SHOW_WHITELIST, (c, a, s, cb, r) -> handleShowWhitelist(c, a, cb, r)),
-                Map.entry(OrzUserCmd.SHOW_HELP, (c, a, s, cb, r) -> handleShowHelp(c, a, cb, r)),
-                Map.entry(OrzUserCmd.ADD_PLAYER_TO_WHITELIST, (c, a, s, cb, r) -> handleAddWhitelist(c, a, cb, r)),
+                Map.entry(
+                        OrzUserCmd.SHOW_PLAYERS,
+                        (c, a, s, cb, r) -> playerListCommandHandler.handleShowPlayers(c, a, cb, r)),
+                Map.entry(
+                        OrzUserCmd.SHOW_WHITELIST,
+                        (c, a, s, cb, r) -> whitelistCommandHandler.handleShowWhitelist(c, a, cb, r)),
+                Map.entry(OrzUserCmd.SHOW_HELP, (c, a, s, cb, r) -> emitHelp(cb)),
+                Map.entry(
+                        OrzUserCmd.ADD_PLAYER_TO_WHITELIST,
+                        (c, a, s, cb, r) -> whitelistCommandHandler.handleAddWhitelist(c, a, cb, r)),
                 Map.entry(
                         OrzUserCmd.REMOVE_PLAYER_FROM_WHITELIST,
-                        (c, a, s, cb, r) -> handleRemoveWhitelist(c, a, cb, r)),
-                Map.entry(OrzUserCmd.BACKUP, (c, a, s, cb, r) -> handleBackup(c, a, cb, r)),
-                Map.entry(OrzUserCmd.OPTIMIZE_WORLD, (c, a, s, cb, r) -> handleOptimize(c, a, cb, r)),
-                Map.entry(OrzUserCmd.BLACKLIST, (c, a, s, cb, r) -> handleBlacklist(c, a, cb, r)),
+                        (c, a, s, cb, r) -> whitelistCommandHandler.handleRemoveWhitelist(c, a, cb, r)),
+                Map.entry(OrzUserCmd.BACKUP, (c, a, s, cb, r) -> maintenanceCommandHandler.handleBackup(c, a, cb, r)),
+                Map.entry(
+                        OrzUserCmd.OPTIMIZE_WORLD,
+                        (c, a, s, cb, r) -> maintenanceCommandHandler.handleOptimize(c, a, cb, r)),
+                Map.entry(
+                        OrzUserCmd.BLACKLIST, (c, a, s, cb, r) -> blacklistCommandHandler.handleBlacklist(c, a, cb, r)),
                 Map.entry(OrzUserCmd.REVIEW, (c, a, s, cb, r) -> reviewCommandHandler.handle(c, a, s, cb, r)),
                 Map.entry(OrzUserCmd.PERMISSION, (c, a, s, cb, r) -> permissionCommandHandler.handle(c, a, cb, r)),
                 Map.entry(
@@ -185,185 +197,4 @@ public final class BotCommandService extends BotCommandContext implements BotInb
         if (rawMessage.length() <= prefix.length()) return "";
         return rawMessage.substring(prefix.length()).trim();
     }
-
-    // ---- Command handlers (all follow CmdHandler interface) ----
-
-    private void handleShowPlayers(
-            OrzUserCmd cmd, boolean isAdmin, Consumer<MessageEnvelope> callback, String rawArgs) {
-        server.runAsync(() -> {
-            try {
-                ArrayList<Player> onlinePlayers = listFeedbackService.currentOnlinePlayers();
-                BotCommandListFeedbackService.OnlineList online = listFeedbackService.buildOnlineList(
-                        onlinePlayers, server.server().getMaxPlayers());
-                emit(callback, "command_players", listFeedbackService.onlineVars(online), online.fallback());
-            } catch (Exception e) {
-                server.logger().log(Level.SEVERE, "onlinePlayersInfo 异步任务异常", e);
-            }
-        });
-    }
-
-    private void handleShowWhitelist(
-            OrzUserCmd cmd, boolean isAdmin, Consumer<MessageEnvelope> callback, String rawArgs) {
-        server.runAsync(() -> {
-            try {
-                WhitelistConfig whitelistConfig = configs.whitelist();
-                WhitelistService svc = WhitelistService.defaultImpl(server.plugin());
-                int delayTicks = Math.max(0, whitelistConfig.paginationDelayTicks());
-                Integer page = parsePageArg(rawArgs);
-                if (isAdmin) {
-                    renderWhitelistWithCleanup(callback, page, delayTicks, svc, whitelistConfig);
-                } else {
-                    renderWhitelistPages(callback, page, delayTicks, svc);
-                }
-            } catch (Exception e) {
-                server.logger().log(Level.SEVERE, "whiteListInfo 异步任务异常", e);
-            }
-        });
-    }
-
-    private void handleShowHelp(OrzUserCmd cmd, boolean isAdmin, Consumer<MessageEnvelope> callback, String rawArgs) {
-        String help = feedbackService.helpInfo(botConfig().cmdPromptChar());
-        emit(callback, "command_help", Map.of("help", help), help);
-    }
-
-    private void handleAddWhitelist(
-            OrzUserCmd cmd, boolean isAdmin, Consumer<MessageEnvelope> callback, String rawArgs) {
-        Set<String> userNames = parseArgs(rawArgs);
-        if (!guardWhitelistCommand(cmd, isAdmin, userNames, callback)) return;
-        server.runSync(() -> {
-            WhitelistService svc = WhitelistService.defaultImpl(server.plugin());
-            String message = svc.addPlayers(server.server(), userNames);
-            emit(callback, "command_whitelist_add_result", Map.of("message", message), message);
-        });
-    }
-
-    private void handleRemoveWhitelist(
-            OrzUserCmd cmd, boolean isAdmin, Consumer<MessageEnvelope> callback, String rawArgs) {
-        Set<String> userNames = parseArgs(rawArgs);
-        if (!guardWhitelistCommand(cmd, isAdmin, userNames, callback)) return;
-        server.runSync(() -> {
-            WhitelistService svc = WhitelistService.defaultImpl(server.plugin());
-            String message = svc.removePlayers(server.server(), userNames);
-            emit(callback, "command_whitelist_remove_result", Map.of("message", message), message);
-        });
-    }
-
-    private void handleBackup(OrzUserCmd cmd, boolean isAdmin, Consumer<MessageEnvelope> callback, String rawArgs) {
-        if (!guardAdminCommand(cmd, isAdmin, callback)) return;
-        MaintenanceConfig maintenance = configs.maintenance();
-        long tickTimeThreshold = maintenance.optimizeTickTimeThreshold();
-        int retain = maintenance.backupRetentionCount();
-        if (maintenanceService != null) {
-            maintenanceService.backup(
-                    tickTimeThreshold, retain, msg -> emit(callback, "command_backup", Map.of("message", msg), msg));
-        }
-    }
-
-    private void handleOptimize(OrzUserCmd cmd, boolean isAdmin, Consumer<MessageEnvelope> callback, String rawArgs) {
-        if (!guardAdminCommand(cmd, isAdmin, callback)) return;
-        if (!guardOptimizeEnabled(callback)) return;
-        MaintenanceConfig maintenance = configs.maintenance();
-        long tickTimeThreshold = maintenance.optimizeTickTimeThreshold();
-        if (maintenanceService != null) {
-            maintenanceService.optimize(
-                    tickTimeThreshold, msg -> emit(callback, "command_optimize", Map.of("message", msg), msg));
-        }
-    }
-
-    // ---- Blacklist command ----
-
-    private void handleBlacklist(OrzUserCmd cmd, boolean isAdmin, Consumer<MessageEnvelope> callback, String rawArgs) {
-        if (!guardAdminCommand(cmd, isAdmin, callback)) return;
-        if (blacklistService == null) {
-            emit(callback, "command_blacklist_error", Map.of("message", "黑名单服务不可用"), "黑名单服务不可用");
-            return;
-        }
-        if (rawArgs.isEmpty()) {
-            List<String> patterns = blacklistService.getPatterns();
-            if (patterns.isEmpty()) {
-                emit(callback, "command_blacklist_list", Map.of("patterns", "黑名单为空"), "黑名单为空");
-            } else {
-                emit(
-                        callback,
-                        "command_blacklist_list",
-                        Map.of("patterns", String.join("\n", patterns)),
-                        String.join("\n", patterns));
-            }
-            return;
-        }
-        if (rawArgs.startsWith("-")) {
-            blacklistService.remove(rawArgs.substring(1));
-            emit(
-                    callback,
-                    "command_blacklist_remove",
-                    Map.of("message", "已移除: " + rawArgs.substring(1)),
-                    "已移除: " + rawArgs.substring(1));
-        } else {
-            blacklistService.add(rawArgs);
-            emit(callback, "command_blacklist_add", Map.of("message", "已添加: " + rawArgs), "已添加: " + rawArgs);
-        }
-    }
-
-    // ---- Helper ----
-
-    // ---- Whitelist rendering ----
-
-    private void renderWhitelistWithCleanup(
-            Consumer<MessageEnvelope> callback,
-            Integer page,
-            int delayTicks,
-            WhitelistService svc,
-            WhitelistConfig whitelistConfig) {
-        server.runSync(() -> {
-            Set<String> removed =
-                    svc.cleanupInactivePlayers(server.server(), Math.max(1, whitelistConfig.cleanupInactiveDays()));
-            server.runAsync(() -> {
-                try {
-                    ArrayList<String> updatedLines = new ArrayList<>(svc.buildWhitelistLines(server.server()));
-                    BotCommandListFeedbackService.WhitelistHeader headerInfo =
-                            listFeedbackService.buildWhitelistHeader(updatedLines.size());
-                    if (!removed.isEmpty()) {
-                        BotCommandListFeedbackService.CleanupNotice notice =
-                                listFeedbackService.buildCleanupNotice(removed);
-                        emit(
-                                callback,
-                                "command_whitelist_cleanup",
-                                listFeedbackService.cleanupVars(notice),
-                                notice.fallback());
-                    }
-                    emitWhitelistPages(callback, headerInfo.header(), updatedLines, delayTicks, page);
-                } catch (Exception e) {
-                    server.logger().log(Level.SEVERE, "renderWhitelistWithCleanup 异步任务异常", e);
-                }
-            });
-        });
-    }
-
-    private void renderWhitelistPages(
-            Consumer<MessageEnvelope> callback, Integer page, int delayTicks, WhitelistService svc) {
-        ArrayList<String> lines = new ArrayList<>(svc.buildWhitelistLines(server.server()));
-        BotCommandListFeedbackService.WhitelistHeader headerInfo =
-                listFeedbackService.buildWhitelistHeader(lines.size());
-        emitWhitelistPages(callback, headerInfo.header(), lines, delayTicks, page);
-    }
-
-    private void emitWhitelistPages(
-            Consumer<MessageEnvelope> callback, String header, ArrayList<String> lines, int delayTicks, Integer page) {
-        Paginator.paginatePages(
-                server,
-                (pageIndex, total, headerText, body) -> {
-                    BotCommandListFeedbackService.WhitelistPage pageInfo =
-                            listFeedbackService.buildWhitelistPage(headerText, pageIndex, total, body);
-                    emit(callback, "command_whitelist_page", pageInfo.vars(), pageInfo.fallback());
-                },
-                header,
-                lines,
-                delayTicks,
-                page);
-    }
-
-    // ---- Guards ----
-
-    // ---- Emitters ----
-
 }
