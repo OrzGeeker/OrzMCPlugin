@@ -111,8 +111,8 @@ fi
 TEMPLATE_REPO="$E2E_DIR/../src/main/resources/templates.yml"
 if [ -f "$TEMPLATE_REPO" ]; then
   TEMPLATE_SERVER="$TEST_DIR/plugins/OrzMC/templates.yml"
-  if [ -n "$TEMPLATE_SERVER" ]; then
-    if [ ! -f "$TEMPLATE_SERVER" ]; then
+  # TEST_DIR 已校验非空，TEMPLATE_SERVER 恒非空（无死代码分支）
+  if [ ! -f "$TEMPLATE_SERVER" ]; then
       echo "⚠️ 测试服模板缺失: ${TEMPLATE_SERVER}（插件启动时将从 jar 提取默认，通常与仓库一致）" >&2
     elif ! diff -q "$TEMPLATE_REPO" "$TEMPLATE_SERVER" >/dev/null 2>&1; then
       echo "❌ 模板配置漂移：测试服 templates.yml 与仓库不一致！" >&2
@@ -128,7 +128,6 @@ if [ -f "$TEMPLATE_REPO" ]; then
     else
       echo "✅ 模板一致性检查通过（templates.yml 与仓库一致）"
     fi
-  fi
 fi
 
 # 选择用例（macOS bash 3.2 无 mapfile，用 while read）
