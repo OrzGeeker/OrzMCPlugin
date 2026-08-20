@@ -151,6 +151,14 @@
 
 > 每个任务 = 一个独立 PR。依赖为空即可并行开工。完成标准统一为 §0 约定。
 
+> ⚠️ **进度核对（2026-08-20）**：以下任务已在 PR #204（泄漏/并发/文档/CI 批量修复）与 E3 重构中落地，**无需再做**：
+> P0-01/P0-02（deny-list 绕过）、P1-01（LoginRateLimit sweep）、P1-02（TntEvent cooldown remove）、
+> P1-03（PortalEvent cooldown remove）、P1-04（CooldownRegistry reset）、P1-05（PermissionStore 读锁）、
+> P1-06（RankService 线程守卫）、P1-07（retryCount AtomicInteger）、P1-11（CommandAudit 异步化）、
+> P1-12（$p 日志注入，E3 抽离时已消除）、P1-13（二阶段注入收敛，E3 Step 3）、P2-04（空 catch 日志）。
+> 剩余：**P1-08**（AsyncHttp shutdown，本次已修）、**P1-09**（ServerFacade 单数版一致性，低优先）、
+> **P1-10**（reject 异步化，线程敏感待 Folia 验证）。P2 文档/测试项多数未逐一核对。
+
 ### P0 — 安全防线（立即，最高优先级）
 
 #### P0-01 修复 `/ op`（斜杠后空白）绕过 deny-list
