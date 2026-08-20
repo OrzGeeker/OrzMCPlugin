@@ -13,6 +13,7 @@ import com.jokerhub.paper.plugin.orzmc.infra.health.HealthRegistry;
 import com.jokerhub.paper.plugin.orzmc.infra.logging.LogCaptureService;
 import com.jokerhub.paper.plugin.orzmc.infra.logging.OrzLog4JCaptureAppender;
 import com.jokerhub.paper.plugin.orzmc.infra.logging.ThrottledLogger;
+import com.jokerhub.paper.plugin.orzmc.infra.net.AsyncHttp;
 import com.jokerhub.paper.plugin.orzmc.infra.notify.ThrottledNotifier;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
@@ -72,6 +73,7 @@ public final class PlatformModule implements ServiceModule {
     public void tearDown() {
         detachLogCaptureAppender();
         commandAuditService.shutdown();
+        AsyncHttp.shutdown();
         configService.tearDown();
     }
 
