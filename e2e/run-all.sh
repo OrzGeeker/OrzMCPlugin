@@ -99,7 +99,7 @@ ORZMC_RCON_PORT="${ORZMC_RCON_PORT:-25575}"
 export ORZMC_RCON_PORT
 # 备份目录按核心推断（可 ORZMC_BACKUP_DIR 覆盖；04-maintenance 落盘断言仅 ORZMC_ASSERT_COMPLETE=1 时执行）
 if [ -z "${ORZMC_BACKUP_DIR:-}" ]; then
-  ORZMC_BACKUP_DIR="$TEST_DIR/plugins/OrzMC/backup"
+  ORZMC_BACKUP_DIR="$TEST_DIR/backup"
 fi
 export ORZMC_BACKUP_DIR
 if [ ! -d "$NODE_PATH" ]; then

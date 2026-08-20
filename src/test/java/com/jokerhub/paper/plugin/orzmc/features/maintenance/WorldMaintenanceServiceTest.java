@@ -1,10 +1,13 @@
 package com.jokerhub.paper.plugin.orzmc.features.maintenance;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.jokerhub.paper.plugin.orzmc.core.bot.MessageEnvelope;
 import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
 import com.jokerhub.paper.plugin.orzmc.features.maintenance.WorldMaintenanceService.MaintenanceStage;
 import com.jokerhub.paper.plugin.orzmc.infra.notify.Notifier;
@@ -59,6 +62,11 @@ public class WorldMaintenanceServiceTest extends ServiceTestBase {
         when(bukkitServer.getOnlinePlayers()).thenReturn(List.of());
         when(bukkitServer.getConsoleSender()).thenReturn(mock(ConsoleCommandSender.class));
         when(server.logger()).thenReturn(java.util.logging.Logger.getLogger("wm-test"));
+        // progressHandler 依赖 templateOptions/renderEvent（真实环境由配置加载，mock 需显式提供）
+        when(configs.templateOptions()).thenReturn(defaultTemplateOptions());
+        MessageEnvelope envMock = mock(MessageEnvelope.class);
+        when(envMock.message()).thenReturn("backup progress");
+        when(configs.renderEvent(anyString(), anyMap())).thenReturn(envMock);
 
         // 临时目录
         worldDir = new File(System.getProperty("java.io.tmpdir"), "wm-world-" + System.nanoTime());
@@ -69,6 +77,12 @@ public class WorldMaintenanceServiceTest extends ServiceTestBase {
         when(server.plugin()).thenReturn(plugin);
         when(plugin.getDataFolder()).thenReturn(dataDir);
         when(bukkitServer.getWorldContainer()).thenReturn(worldDir);
+        // 世界目录（backup 的 input）：worldContainer/world，尊重 level-name
+        org.bukkit.World worldMock = mock(org.bukkit.World.class);
+        File worldFolder = new File(worldDir, "world");
+        worldFolder.mkdirs();
+        when(worldMock.getWorldFolder()).thenReturn(worldFolder);
+        when(bukkitServer.getWorlds()).thenReturn(List.of(worldMock));
 
         service = new WorldMaintenanceService(server, configs, mock(OrzTextStyles.class), mock(Notifier.class));
     }
@@ -245,9 +259,12 @@ public class WorldMaintenanceServiceTest extends ServiceTestBase {
         Assertions.assertTrue(sawStartMsg.get(), "应报告服务器地图目录");
         Assertions.assertTrue(sawDirMsg.get(), "应报告地图备份目录");
         Assertions.assertFalse(service.isRunning());
-        // 备份目录应被创建
-        File backupDir = new File(dataDir, "backup");
+        // 备份目录应被创建（服务器核心根目录下，非插件数据目录）
+        File backupDir = new File(worldDir, "backup");
         Assertions.assertTrue(backupDir.exists(), "备份目录应被创建");
+        // 备份 zip 应落盘 backup/（0.3.x zipOutput 模式空世界也产出 22B 最小 zip，backup-core 直接写入 backup/）
+        File[] zips = backupDir.listFiles(f -> f.isFile() && f.getName().endsWith(".zip"));
+        Assertions.assertTrue(zips != null && zips.length >= 1, "备份 zip 应落盘 backup/ 目录");
     }
 
     @Test
