@@ -151,13 +151,15 @@
 
 > 每个任务 = 一个独立 PR。依赖为空即可并行开工。完成标准统一为 §0 约定。
 
-> ⚠️ **进度核对（2026-08-20）**：以下任务已在 PR #204（泄漏/并发/文档/CI 批量修复）与 E3 重构中落地，**无需再做**：
-> P0-01/P0-02（deny-list 绕过）、P1-01（LoginRateLimit sweep）、P1-02（TntEvent cooldown remove）、
-> P1-03（PortalEvent cooldown remove）、P1-04（CooldownRegistry reset）、P1-05（PermissionStore 读锁）、
-> P1-06（RankService 线程守卫）、P1-07（retryCount AtomicInteger）、P1-11（CommandAudit 异步化）、
-> P1-12（$p 日志注入，E3 抽离时已消除）、P1-13（二阶段注入收敛，E3 Step 3）、P2-04（空 catch 日志）。
-> 剩余：**P1-08**（AsyncHttp shutdown，本次已修）、**P1-09**（ServerFacade 单数版一致性，低优先）、
-> **P1-10**（reject 异步化，线程敏感待 Folia 验证）。P2 文档/测试项多数未逐一核对。
+> ⚠️ **进度核对（2026-08-20 全量）**：逐项核对后，§3 绝大多数任务已落地，剩余仅少量低价值项。
+>
+> **已完成（无需再做）**：P0-01/02；P1-01~08、P1-11~13；P2-01~05、P2-11~13、P2-15/16、P2-20、P2-30、P2-32；
+> 文档 D1/D4(README)/D5/D6 等多数已校正。
+>
+> **剩余（低价值，可延后）**：P1-09（ServerFacade 单数版 runSync 一致性）、P2-06（WhitelistService 三处 `defaultImpl` 新建，无状态可忽略）、
+> P2-07（OnlineListFormatter 三实例）、P2-18/19（测试假时钟消 sleep）、P2-21~27 个别文档行、P2-28/29/31（CI）。
+>
+> **需测试服（另起一轮统一处理）**：P1-10（reject 异步化）、E7（32k 扫描扩展）、E8（GeoIP 登录异步）。
 
 ### P0 — 安全防线（立即，最高优先级）
 
