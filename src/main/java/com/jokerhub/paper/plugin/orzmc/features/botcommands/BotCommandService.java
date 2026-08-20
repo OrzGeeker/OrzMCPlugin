@@ -105,11 +105,14 @@ public final class BotCommandService extends BotCommandContext implements BotInb
         this.commandGuardService = deps.commandGuardService();
         this.commandAuditService = deps.commandAuditService();
         this.rankService = deps.rankService();
-        if (deps.rankService() != null) {
-            // 重建列表反馈服务以注入 rankService（在线列表显示权限组）
-            com.jokerhub.paper.plugin.orzmc.infra.player.OnlineListFormatter formatter =
-                    new com.jokerhub.paper.plugin.orzmc.infra.player.OnlineListFormatter();
+        // 优先使用组合根注入的共享 formatter（与上下线广播同一实例，保证格式一致）；
+        // 未注入时按旧路径用 rankService 重建（测试向后兼容）。
+        com.jokerhub.paper.plugin.orzmc.infra.player.OnlineListFormatter formatter = deps.listFormatter();
+        if (formatter == null && deps.rankService() != null) {
+            formatter = new com.jokerhub.paper.plugin.orzmc.infra.player.OnlineListFormatter();
             formatter.setRankService(deps.rankService());
+        }
+        if (formatter != null) {
             this.listFeedbackService = new BotCommandListFeedbackService(server, configs, formatter);
         }
     }

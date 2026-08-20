@@ -22,6 +22,8 @@ import java.util.logging.Level;
 final class WhitelistCommandHandler extends BotCommandContext {
 
     private final Supplier<BotCommandListFeedbackService> listFeedbackService;
+    /** 单例白名单服务（替代每处 defaultImpl 新建，避免无状态对象重复实例化）。 */
+    private final WhitelistService whitelistService;
 
     WhitelistCommandHandler(
             ServerFacade server,
@@ -29,13 +31,14 @@ final class WhitelistCommandHandler extends BotCommandContext {
             Supplier<BotCommandListFeedbackService> listFeedbackService) {
         super(server, configs);
         this.listFeedbackService = listFeedbackService;
+        this.whitelistService = WhitelistService.defaultImpl(server.plugin());
     }
 
     void handleShowWhitelist(OrzUserCmd cmd, boolean isAdmin, Consumer<MessageEnvelope> callback, String rawArgs) {
         server.runAsync(() -> {
             try {
                 WhitelistConfig whitelistConfig = configs.whitelist();
-                WhitelistService svc = WhitelistService.defaultImpl(server.plugin());
+                WhitelistService svc = whitelistService;
                 int delayTicks = Math.max(0, whitelistConfig.paginationDelayTicks());
                 Integer page = parsePageArg(rawArgs);
                 if (isAdmin) {
@@ -53,7 +56,7 @@ final class WhitelistCommandHandler extends BotCommandContext {
         Set<String> userNames = parseArgs(rawArgs);
         if (!guardWhitelistCommand(cmd, isAdmin, userNames, callback)) return;
         server.runSync(() -> {
-            WhitelistService svc = WhitelistService.defaultImpl(server.plugin());
+            WhitelistService svc = whitelistService;
             String message = svc.addPlayers(server.server(), userNames);
             emit(callback, "command_whitelist_add_result", Map.of("message", message), message);
         });
@@ -63,7 +66,7 @@ final class WhitelistCommandHandler extends BotCommandContext {
         Set<String> userNames = parseArgs(rawArgs);
         if (!guardWhitelistCommand(cmd, isAdmin, userNames, callback)) return;
         server.runSync(() -> {
-            WhitelistService svc = WhitelistService.defaultImpl(server.plugin());
+            WhitelistService svc = whitelistService;
             String message = svc.removePlayers(server.server(), userNames);
             emit(callback, "command_whitelist_remove_result", Map.of("message", message), message);
         });

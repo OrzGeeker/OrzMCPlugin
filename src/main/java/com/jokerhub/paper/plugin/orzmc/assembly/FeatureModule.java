@@ -313,6 +313,11 @@ public final class FeatureModule implements ServiceModule {
         return rankService;
     }
 
+    /** 在线列表格式化器（单一事实源，$l/$w 命令与上下线广播共享）。 */
+    public com.jokerhub.paper.plugin.orzmc.infra.player.OnlineListFormatter listFormatter() {
+        return listFormatter;
+    }
+
     // --- Lifecycle ---
 
     /** 禁用/重载时同步冲刷上下线聚合批次，避免最后一个窗口的事件被调度器取消而静默丢弃。 */
