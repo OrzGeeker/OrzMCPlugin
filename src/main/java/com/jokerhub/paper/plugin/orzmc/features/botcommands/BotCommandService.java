@@ -31,7 +31,7 @@ public final class BotCommandService extends BotCommandContext implements BotInb
     private final PermissionCommandHandler permissionCommandHandler;
     /** $e 控制台命令执行处理器（Supplier 注入 guard/audit/logCapture）。 */
     private final ConsoleCommandHandler consoleCommandHandler;
-    /** $a/$r/$w 白名单命令处理器（Supplier 注入 listFeedbackService，setRankService 后重建）。 */
+    /** $a/$r/$w 白名单命令处理器（Supplier 注入 listFeedbackService，rankService 注入后重建）。 */
     private final WhitelistCommandHandler whitelistCommandHandler;
     /** $l 在线玩家列表命令处理器（Supplier 注入 listFeedbackService）。 */
     private final PlayerListCommandHandler playerListCommandHandler;
@@ -90,36 +90,28 @@ public final class BotCommandService extends BotCommandContext implements BotInb
                         (c, a, s, cb, r) -> consoleCommandHandler.handle(c, a, s, cb, r)));
     }
 
-    public void setMaintenanceService(WorldMaintenanceService maintenanceService) {
-        this.maintenanceService = maintenanceService;
-    }
-
-    public void setBlacklistService(BlacklistService blacklistService) {
-        this.blacklistService = blacklistService;
-    }
-
-    public void setReviewService(com.jokerhub.paper.plugin.orzmc.features.review.ReviewService reviewService) {
-        this.reviewService = reviewService;
-    }
-
-    public void setRankService(com.jokerhub.paper.plugin.orzmc.features.rank.RankService rankService) {
-        this.rankService = rankService;
-        // 重建列表反馈服务以注入 rankService（在线列表显示权限组）
-        com.jokerhub.paper.plugin.orzmc.infra.player.OnlineListFormatter formatter =
-                new com.jokerhub.paper.plugin.orzmc.infra.player.OnlineListFormatter();
-        formatter.setRankService(rankService);
-        this.listFeedbackService = new BotCommandListFeedbackService(server, configs, formatter);
-    }
-
-    /** 注入日志窗口收集服务（$e 命令输出兜底）。未注入时 $e 退化为仅返回执行状态。 */
-    public void setLogCaptureService(LogCaptureService logCaptureService) {
-        this.logCaptureService = logCaptureService;
-    }
-
-    /** 注入危险命令 guard 与审计（安全加固 P0-5）。未注入时 $e 按原路径直接执行（测试向后兼容）。 */
-    public void setCommandGuard(CommandGuardService commandGuardService, CommandAuditService commandAuditService) {
-        this.commandGuardService = commandGuardService;
-        this.commandAuditService = commandAuditService;
+    /**
+     * 一次性注入全部跨模块依赖（取代 6 个 {@code setXxxService} 二阶段 setter）。
+     *
+     * <p>组合根须在 {@link BotCommandService} 构造后、WebSocket 连接前调用本方法，消除「先连上、
+     * 后注入」的半初始化窗口。rankService 非空时重建列表反馈服务（在线列表显示权限组）；其余
+     * 依赖可空，未注入时由对应处理器降级处理（见各 Handler 的 Supplier 说明）。</p>
+     */
+    public void injectDependencies(BotCommandDependencies deps) {
+        this.maintenanceService = deps.maintenanceService();
+        this.blacklistService = deps.blacklistService();
+        this.reviewService = deps.reviewService();
+        this.logCaptureService = deps.logCaptureService();
+        this.commandGuardService = deps.commandGuardService();
+        this.commandAuditService = deps.commandAuditService();
+        this.rankService = deps.rankService();
+        if (deps.rankService() != null) {
+            // 重建列表反馈服务以注入 rankService（在线列表显示权限组）
+            com.jokerhub.paper.plugin.orzmc.infra.player.OnlineListFormatter formatter =
+                    new com.jokerhub.paper.plugin.orzmc.infra.player.OnlineListFormatter();
+            formatter.setRankService(deps.rankService());
+            this.listFeedbackService = new BotCommandListFeedbackService(server, configs, formatter);
+        }
     }
 
     @Override

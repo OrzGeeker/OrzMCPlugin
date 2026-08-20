@@ -12,8 +12,8 @@ import java.util.function.Supplier;
 /**
  * $d IP 黑名单命令处理器（从 BotCommandService 抽离）。
  *
- * <p>{@code blacklistService} 通过 {@link Supplier} 注入——组合根在 BotCommandService 构造后经
- * setter 二阶段注入，处理器调用时读取最新值；未注入时提示服务不可用。</p>
+ * <p>{@code blacklistService} 通过 {@link Supplier} 注入——组合根经
+ * {@link BotCommandService#injectDependencies} 一次性注入，处理器调用时读取最新值；未注入时提示服务不可用。</p>
  */
 final class BlacklistCommandHandler extends BotCommandContext {
 

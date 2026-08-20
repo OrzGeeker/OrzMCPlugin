@@ -17,7 +17,7 @@ import java.util.logging.Level;
  * $a/$r/$w 白名单命令处理器（从 BotCommandService 抽离）。
  *
  * <p>{@code listFeedbackService} 通过 {@link Supplier} 注入——其内部 {@code OnlineListFormatter}
- * 需在 rankService 二阶段注入后重建（在线列表显示权限组），处理器调用时读取最新实例，避免陈旧引用。</p>
+ * 需在 rankService 注入后重建（在线列表显示权限组），处理器调用时读取最新实例，避免陈旧引用。</p>
  */
 final class WhitelistCommandHandler extends BotCommandContext {
 

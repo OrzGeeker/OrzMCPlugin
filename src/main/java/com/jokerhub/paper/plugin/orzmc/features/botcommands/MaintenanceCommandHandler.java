@@ -12,8 +12,8 @@ import java.util.function.Supplier;
 /**
  * $b/$o 地图备份/优化命令处理器（从 BotCommandService 抽离）。
  *
- * <p>{@code maintenanceService} 通过 {@link Supplier} 注入——组合根在 BotCommandService 构造后经
- * setter 二阶段注入，处理器调用时读取最新值；未注入时静默忽略（向后兼容测试）。</p>
+ * <p>{@code maintenanceService} 通过 {@link Supplier} 注入——组合根经
+ * {@link BotCommandService#injectDependencies} 一次性注入，处理器调用时读取最新值；未注入时静默忽略（向后兼容测试）。</p>
  */
 final class MaintenanceCommandHandler extends BotCommandContext {
 

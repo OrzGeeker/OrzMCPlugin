@@ -17,8 +17,7 @@ import java.util.function.Supplier;
  * $v 群审核命令处理器（从 BotCommandService 抽离）。
  *
  * <p>依赖 {@code reviewService}/{@code rankService} 通过 {@link Supplier} 注入——二者由组合根
- * 在 BotCommandService 构造之后经 setter 二阶段注入（且 setReviewService 先于 setRankService），
- * 处理器在调用时读取最新值，避免陈旧引用。</p>
+ * 经 {@link BotCommandService#injectDependencies} 一次性注入，处理器在调用时读取最新值，避免陈旧引用。</p>
  */
 final class ReviewCommandHandler extends BotCommandContext {
 

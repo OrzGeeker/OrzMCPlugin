@@ -15,7 +15,7 @@ import java.util.function.Supplier;
  * $e 控制台命令执行处理器（从 BotCommandService 抽离）。
  *
  * <p>{@code commandGuardService}/{@code commandAuditService}/{@code logCaptureService} 通过
- * {@link Supplier} 注入（setter 二阶段注入），调用时读取最新值；未注入时退化为直接执行/无审计
+ * {@link Supplier} 注入（组合根经 {@link BotCommandService#injectDependencies} 一次性注入），调用时读取最新值；未注入时退化为直接执行/无审计
  * （测试向后兼容）。</p>
  */
 final class ConsoleCommandHandler extends BotCommandContext {
