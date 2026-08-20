@@ -405,7 +405,7 @@
 拆分落地时，**同一文件的并发改动会产生 merge 冲突**，需串行或分轮：
 
 - **E1 ↔ §3 的 6 个 Flash 任务**（P2-02 instanceof、P2-03 死字段、P2-07 OnlineListFormatter、P2-08 ReviewType 工厂、P2-09 渲染收敛、P2-10 tearDown）**同改 `FeatureModule.java`** → 二选一顺序：建议**先做 Flash 小改**（低风险、改动小），再做 E1 大重构；或反过来，但**不可并行**。
-- **E2 ↔ E6** **同改 `OrzEasyBot.java`** → E6 是安全补丁（小而急），**先 E6 后 E2**，或 E2 拆完后在协作类上做 E6，**不可并行**。
+- **E2 ↔ E6（均已闭环 ✅ 2026-08-20）**：E2 已把 `OrzEasyBot` 拆为编排 + `InboundEventParser`/`WebSocketLifecycle`/`HttpSender` 协作类（834→229 行）；E6/S8 已由 2026-08-19 决策关闭（网关 `sender.role` 即权威，fail-closed 降级，无需白名单兜底）。
 - **E3 先于 E1（已完成 ✅ 2026-08-20）**：E3 已将 `BotCommandService` 拆为纯分派 + 独立 `$cmd` 处理器，并把 6 个 setter 收敛为 `injectDependencies(BotCommandDependencies)`（组合根在连接 WebSocket 前一次性注入）。E1 现已解耦：接线点从 6 个 setter 变为 1 个 `injectDependencies`，可直接推进。
 - **E4（orzmc-api SDK 化）已立项**：目标与顺序见 §4.3。注意 SDK 化会动主模块 `core/ports`（被 portal/whitelist 等多个 feature 引用），建议在 E1-E3 稳定后启动，且按 §4.3 分阶段、每阶段全测试绿。
 - **E7/E8 是功能改动非重构**：各自独立，但 E8 涉及 netty 线程模型，需测试服真机验证（见 `folia-luckperms-gotchas.md` §6）。
@@ -414,11 +414,11 @@
 
 | # | 主题 | 范围 | 建议拆法（已按实际代码核实） |
 |---|---|---|---|
-| E1 | `FeatureModule` 拆分（993→服务装配 + 命令注册分离） | `assembly/FeatureModule.java` | **Step 0**：把 4 个静态拦截器助手（`requirement`/`guardedExec`/`commandInterceptors`/`adminInterceptors`，行 878-929）+ 3 个渲染方法（`renderReviewResult`/`renderReviewResultAsync`/`renderRankResult`，行 745-779）+ `handlePortal`/`listBlacklist` 抽到 `commands/BrigadierSupport` + `commands/CommandResultRenderer`（纯搬移，零行为变化）；**Step 1**：把 `setupCommandHandlers`（行 315-868，约 550 行）整块抽到 `commands/FeatureCommandRegistrar`，构造注入 ~20 个服务，FeatureModule 只留构造装配 + `enableForceWhitelist` + 生命周期方法 |
-| E2 | `OrzEasyBot` 拆分（834→编排 + 协作类） | `infra/bot/OrzEasyBot.java` | 抽 `InboundEventParser`/`HttpSender`/`BatchResultParser`/`WebSocketLifecycle` 四类，逐步搬移，每步全测试绿 |
+| E1 | `FeatureModule` 拆分（993→服务装配 + 命令注册分离） | `assembly/FeatureModule.java` | ✅ **已完成**（`FeatureModule` 993→354 行：命令注册抽到 `FeatureCommandRegistrar`，拦截器/渲染助手抽到 `BrigadierSupport`，`setupCommandHandlers` 只剩一行委托） |
+| E2 | `OrzEasyBot` 拆分（834→编排 + 协作类） | `infra/bot/OrzEasyBot.java` | ✅ **已完成**（`OrzEasyBot` 834→229 行编排：抽 `WebSocketLifecycle`（连接/对账/监听器）+ `InboundEventParser`（入站解析/校验/分派）；`HttpSender` 承担出站 HTTP + 批量结果解析，`BotInboundDispatcher` 承担业务分派） |
 | E3 | `BotCommandService` 拆分（735→分派 + 策略） | `features/botcommands/` | ✅ **已完成**（2026-08-20，分支 `refactor/botcommand-service` 5 个 commit：Step 0 `BotCommandContext` → Step 1a/1b/c Review/Permission/Console → Step 2 Whitelist/PlayerList/Maintenance/Blacklist → Step 3 `injectDependencies(BotCommandDependencies)`）。`BotCommandService` 735→192 行纯分派，11 个 `$cmd` 全部独立处理器 |
 | E4 | `orzmc-api` SDK 化（原 E4 去 Bukkit 化 + E5 依赖倒置合并） | `orzmc-api/` + 主模块 `core/ports/*` | **已立项**。分 5 阶段推进，详见 §4.3 |
-| E6 | `$e` 群侧 isAdmin 白名单兜底（S8） | `infra/bot/OrzEasyBot.java` 入站鉴权（行 757-769） | 需产品决策：管理员 user_id 白名单来源（配置/数据库）。先与服主确认再设计；**先于 E2 落地** |
+| E6 | `$e` 群侧 isAdmin 白名单兜底（S8） | `infra/bot/InboundEventParser.java` 入站鉴权 | ✅ **已决策关闭（2026-08-19）**：网关 `sender.role` 即权威，fail-closed 降级为非管理员，无需额外白名单兜底（代码注释已记录） |
 | E7 | 32k 属性扫描扩展（S7） | `ExploitHardeningEventService.java` | 对 `InventoryClickEvent`/`Pickup`/末影箱等进物品路径做属性上限清理；需评估性能与误伤 |
 | E8 | GeoIP 登录异步续接（T2） | `PlayerEventService.java:100-121` | 用 `AsyncPlayerPreLoginEvent` 异步续接或先 allow 再异步 disallow；需实测 netty 线程模型 |
 
