@@ -251,13 +251,19 @@ public class WorldMaintenanceServiceTest extends ServiceTestBase {
     public void backup_createsDirAndReportsProgress() {
         AtomicBoolean sawStartMsg = new AtomicBoolean(false);
         AtomicBoolean sawDirMsg = new AtomicBoolean(false);
+        AtomicBoolean inputIsWorldRoot = new AtomicBoolean(false);
         service.backup(300L, 5, msg -> {
-            if (msg.contains("服务器地图目录")) sawStartMsg.set(true);
+            if (msg.contains("服务器地图目录")) {
+                sawStartMsg.set(true);
+                // 世界根 = worldContainer/level-name（默认 world/），而非 26.1+ 的维度数据目录
+                inputIsWorldRoot.set(msg.contains(new File(worldDir, "world").getAbsolutePath()));
+            }
             if (msg.contains("地图备份目录")) sawDirMsg.set(true);
         });
 
         Assertions.assertTrue(sawStartMsg.get(), "应报告服务器地图目录");
         Assertions.assertTrue(sawDirMsg.get(), "应报告地图备份目录");
+        Assertions.assertTrue(inputIsWorldRoot.get(), "input 应为 worldContainer/level-name 世界根目录");
         Assertions.assertFalse(service.isRunning());
         // 备份目录应被创建（服务器核心根目录下，非插件数据目录）
         File backupDir = new File(worldDir, "backup");
@@ -265,6 +271,42 @@ public class WorldMaintenanceServiceTest extends ServiceTestBase {
         // 备份 zip 应落盘 backup/（0.3.x zipOutput 模式空世界也产出 22B 最小 zip，backup-core 直接写入 backup/）
         File[] zips = backupDir.listFiles(f -> f.isFile() && f.getName().endsWith(".zip"));
         Assertions.assertTrue(zips != null && zips.length >= 1, "备份 zip 应落盘 backup/ 目录");
+    }
+
+    @Test
+    public void backup_usesCustomLevelNameFromProperties() throws Exception {
+        // server.properties 自定义 level-name → 世界根取 worldContainer/custom_world
+        File customWorld = new File(worldDir, "custom_world");
+        customWorld.mkdirs();
+        File props = new File(worldDir, "server.properties");
+        try (FileOutputStream fos = new FileOutputStream(props)) {
+            fos.write("level-name=custom_world\n".getBytes());
+        }
+        AtomicBoolean inputIsCustom = new AtomicBoolean(false);
+        service.backup(300L, 5, msg -> {
+            if (msg.contains("服务器地图目录")) {
+                inputIsCustom.set(msg.contains(customWorld.getAbsolutePath()));
+            }
+        });
+        Assertions.assertTrue(inputIsCustom.get(), "自定义 level-name 时 input 应为 worldContainer/custom_world");
+    }
+
+    @Test
+    public void backup_fallsBackToDefaultWorldWhenLevelRootMissing() {
+        // level-name 目录不存在（如 server.properties 指向未生成的目录）→ 回退 worldContainer/world
+        File props = new File(worldDir, "server.properties");
+        try (FileOutputStream fos = new FileOutputStream(props)) {
+            fos.write("level-name=ghost_world\n".getBytes());
+        } catch (java.io.IOException e) {
+            throw new RuntimeException(e);
+        }
+        AtomicBoolean inputIsFallback = new AtomicBoolean(false);
+        service.backup(300L, 5, msg -> {
+            if (msg.contains("服务器地图目录")) {
+                inputIsFallback.set(msg.contains(new File(worldDir, "world").getAbsolutePath()));
+            }
+        });
+        Assertions.assertTrue(inputIsFallback.get(), "level-name 目录缺失应回退 worldContainer/world");
     }
 
     @Test
