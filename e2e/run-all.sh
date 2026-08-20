@@ -56,15 +56,27 @@ if ! nc -z 127.0.0.1 "$ORZMC_TEST_PORT" 2>/dev/null; then
 fi
 # 核心检测：ORZMC_CORE 显式指定 > 进程检测（2026-08-20 端口统一后无法靠端口区分核心）
 # ⚠️ 用 grep -c 而非 grep -q：set -o pipefail 下 grep -q 提前退出触发上游 SIGPIPE(141) → 误判失败
+# ⚠️ 进程检测依赖命令行含 <core>-test/<core>.*jar 路径片段（标准启动脚本满足）；非标准路径启动或
+#    双服同跑时可能误判（共享地图严禁同跑；同跑时固定优先 Folia）——一律可用 ORZMC_CORE 显式覆盖
 detect_core() {
   if [ "$(ps aux | grep -v grep | grep -c '[f]olia-test/folia.*jar')" -gt 0 ]; then echo folia
   elif [ "$(ps aux | grep -v grep | grep -c '[p]apermc-test/paper.*jar')" -gt 0 ]; then echo paper
   else echo ""; fi
 }
-ORZMC_CORE="${ORZMC_CORE:-$(detect_core)}"
+if [ -n "${ORZMC_CORE:-}" ]; then
+  # 显式指定：统一小写（macOS bash 3.2 无 ${var,,} 展开）
+  ORZMC_CORE="$(echo "$ORZMC_CORE" | tr '[:upper:]' '[:lower:]')"
+else
+  ORZMC_CORE="$(detect_core)"
+fi
 if [ -z "$ORZMC_CORE" ]; then
   echo "❌ 无法自动识别测试服核心（folia/paper），用 ORZMC_CORE=folia|paper 显式指定" >&2
   exit 1
+fi
+# 显式指定与实际运行核心不一致 → 警告（日志/备份将指向显式核心的测试服目录，便于快速定位）
+AUTO_CORE="$(detect_core)"
+if [ -n "$AUTO_CORE" ] && [ "$AUTO_CORE" != "$ORZMC_CORE" ]; then
+  echo "⚠️ 显式 ORZMC_CORE=${ORZMC_CORE} 与实际运行核心 ${AUTO_CORE} 不一致（路径将指向 ${ORZMC_CORE} 测试服目录）" >&2
 fi
 echo "✅ 检测到测试服核心: ${ORZMC_CORE}（端口 ${ORZMC_TEST_PORT}）"
 # 测试服目录映射（核心名 → 目录：folia→folia-test，paper→papermc-test，勿拼成 paper-test）
@@ -73,6 +85,10 @@ case "$ORZMC_CORE" in
   paper) TEST_DIR="$HOME/papermc-test" ;;
   *) TEST_DIR="" ;;
 esac
+if [ -z "$TEST_DIR" ] || [ ! -d "$TEST_DIR" ]; then
+  echo "❌ 核心 ${ORZMC_CORE} 对应测试服目录不存在: ${TEST_DIR:-（非法核心名，仅支持 folia|paper）}（可用 ORZMC_CORE=folia|paper）" >&2
+  exit 1
+fi
 # 日志路径按核心推断（可 ORZMC_LOG_PATH 覆盖）
 if [ -z "${ORZMC_LOG_PATH:-}" ]; then
   ORZMC_LOG_PATH="$TEST_DIR/logs/latest.log"
@@ -81,7 +97,7 @@ export ORZMC_LOG_PATH
 # RCON 端口统一 25575（可 ORZMC_RCON_PORT 覆盖）
 ORZMC_RCON_PORT="${ORZMC_RCON_PORT:-25575}"
 export ORZMC_RCON_PORT
-# 备份目录按核心推断（可 ORZMC_BACKUP_DIR 覆盖；04-maintenance 断言用）
+# 备份目录按核心推断（可 ORZMC_BACKUP_DIR 覆盖；04-maintenance 落盘断言仅 ORZMC_ASSERT_COMPLETE=1 时执行）
 if [ -z "${ORZMC_BACKUP_DIR:-}" ]; then
   ORZMC_BACKUP_DIR="$TEST_DIR/plugins/OrzMC/backup"
 fi
