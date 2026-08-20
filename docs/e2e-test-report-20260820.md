@@ -14,8 +14,8 @@
 | 核心 | paper-26.2-112 | folia-26.2-4 |
 | 端口 / RCON | 25565 / 25575（两服统一） | 同左 |
 | 登录插件 | LoginSecurity | SimpleLogin |
-| 世界 | 共享物理地图（17G / 317 万 chunk），`folia-test/world` 为 symlink → `papermc-test/world` | 同左 |
-| 插件版本 | **OrzMC-1.0.19-dev.jar**（sha256 6eff9d51…，backup-core 0.2.2 原依赖） | 同左（功能用例）；walk 修复版 0.3.1-SNAPSHOT 用于备份修复验证 |
+| 世界 | 共享物理地图（已裁剪：17G/317 万 → 2.1G/24.7 万 chunk），`folia-test/world` 为 symlink → `papermc-test/world` | 同左 |
+| 插件版本 | **OrzMC-1.0.19-dev.jar**（sha256 94536e31…，backup-core 0.3.1） | 同左 |
 | CI 门禁 | `./gradlew check`（spotless + 1317 单测 + MockBukkit 集成测试 + shadowJar）全绿 | 同左 |
 
 > ⚠️ **两服共用世界、严禁同跑**（session.lock 互斥）：Paper 验收完成后停服 → 启 Folia → 验收 → 停 Folia → 恢复 Paper。全程无并发冲突。
@@ -81,13 +81,14 @@
 - **背景**：老板确定升级 0.3.1（PR #50 已合并发布）；测试服世界已裁剪（17G → 2.1G，磁盘 28Gi）
 - **插件适配**（最小集，阈值保持原逻辑 300 不动）：
   1. `IOOptions` 补第三参 `syncOnFinalize=true`（0.3.0+ API）
-  2. 备份临时目录移出 worldContainer（0.3.x overlap 校验：output 不得与 input 重叠）→ 系统临时目录
-  3. zip 完成后移回备份目录；临时目录一律清理（防残留被 walk 扫入备份源）
+  2. **input 改为世界目录**（`getWorldFolder()`，优先含 dimensions/region 的真实世界目录）——output=`backup/tempDir` 与世界目录成兄弟路径，天然通过 0.3.x overlap 校验（不再依赖系统临时目录）
+  3. **备份中间目录统一在 `backup/` 内处理**：tempDir 由 backup-core Cleanup 自动删除；zip 直接落 `backup/`（output 父目录）；启动清理兜底崩溃/断电残留（MaintenanceModule.setup 异步清理）
   4. **备份目录迁移：插件数据目录 `plugins/OrzMC/backup/` → 服务器核心根目录 `backup/`**（老板指示，便于快照/迁移整体打包）；E2E 04 用例 + run-all.sh 路径同步
 - **复验结果**（裁剪后世界 2.1G / 246,963 chunk）：
   - Paper：62/62 ✅（01:8 02:10 03:10 04:4 05:11 06:19）
   - Folia：62/62 ✅（02 的 /bot wsOk 正常）
-  - $b 备份：**1分51秒完成、zip 1.3G 落盘根目录 backup/、临时目录零残留**；Folia（symlink 世界）walk 修复生效（246,963/246,963 chunk 全量）
+  - $b 备份：**1分51秒完成、zip 1.3G 落盘根目录 backup/、tempDir 零残留**；Folia（symlink 世界）walk 修复生效（246,963/246,963 chunk 全量）
+  - **$o 优化验收：31 秒完成 190,526/190,526 区块，剔除 5.6 万低活跃区块（22.8%），世界正常加载**
   - EasyBot 网关恢复（之前磁盘爆满致 Docker 崩溃 → 502；重启 Docker 后 22:19 插件 ws 自动重连）——02 首跑失败（Paper 9/10）为环境问题，非回归
 
 ## 六、环境恢复状态

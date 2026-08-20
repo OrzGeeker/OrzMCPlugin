@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.0.19] - 2026-08-20
+
+### 🐛 修复
+- **BUG-E2E-004：symlink 世界备份空跑假完成（backup-core，OrzMCBackup #50/#51）** — Folia 等以符号链接挂载世界目录的场景下，`RealFileSystem.walk` 不跟随符号链接，`$b` 备份静默产出 22B 空 zip（无任何报错）——backup-core 修复（walk 跟随符号链接），双核心复验 246,963/246,963 区块全量备份 ✅
+- **备份失败静默化（0.3.x 适配）** — 备份完成但 zip 未落盘时明确报「地图备份失败」并跳过旧备份清理（防 prune 误删唯一可靠副本）；zip 落盘判定用 mtime（同名覆盖不误判）
+
+### ✨ 新功能
+- **备份目录迁移到服务器核心根目录** — `plugins/OrzMC/backup/` → `<worldContainer>/backup/`（快照/迁移整体打包）
+- **备份中间目录统一在 `backup/` 内处理** — backup-core 临时目录 = `backup/tempDir/`（Cleanup 阶段自动删除），zip 直接落 `backup/`；不再依赖系统临时目录
+- **启动清理** — 崩溃/断电残留的 `backup/tempDir` 启动时异步清理（MaintenanceModule.setup）
+- **备份/优化 input 改为世界目录** — `getWorldFolder()`（尊重 level-name，优先含 dimensions/region 的真实世界目录）——backup-core 0.3.x overlap 校验天然满足，避免误选非主世界漏备
+
+### 📦 依赖
+- backup-core 0.2.2 → **0.3.1**（symlink walk 修复 + 0.3.x API：IOOptions 三参 syncOnFinalize）
+
+### ⚠️ 升级注意
+- 备份目录位置变化：存量 zip 位于 `plugins/OrzMC/backup/` 的服务器，升级后请手动迁移到 `<worldContainer>/backup/`（或从新备份开始）
+- 备份为「优化式备份」（InhabitedTime 阈值 `maintenance.optimize_tick_time_threshold` 默认 300 秒过滤低活跃区块），如需逐字节全量请用外部快照/全量备份工具
+
+---
+
 ## [1.0.18] - 2026-08-19
 
 ### 🐛 修复
