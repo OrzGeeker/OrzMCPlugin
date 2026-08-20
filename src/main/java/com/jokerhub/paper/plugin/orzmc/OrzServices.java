@@ -68,6 +68,7 @@ public final class OrzServices {
                         .blacklistService(feature.blacklistService())
                         .reviewService(feature.reviewService())
                         .rankService(feature.rankService())
+                        .listFormatter(feature.listFormatter())
                         .logCaptureService(platform.logCaptureService())
                         .commandGuardService(platform.commandGuardService())
                         .commandAuditService(platform.commandAuditService()));

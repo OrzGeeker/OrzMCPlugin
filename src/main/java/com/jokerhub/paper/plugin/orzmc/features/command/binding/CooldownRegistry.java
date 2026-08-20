@@ -1,15 +1,18 @@
 package com.jokerhub.paper.plugin.orzmc.features.command.binding;
 
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.LongSupplier;
 
 public final class CooldownRegistry {
     private static final ConcurrentHashMap<String, Long> lastInvoke = new ConcurrentHashMap<>();
+    /** 测试用：注入假时钟避免真实 sleep；生产默认系统时钟。 */
+    static LongSupplier clock = System::currentTimeMillis;
 
     private CooldownRegistry() {}
 
     public static boolean isCoolingDown(String key, int seconds) {
         if (seconds <= 0) return false;
-        long now = System.currentTimeMillis();
+        long now = clock.getAsLong();
         Long prev = lastInvoke.get(key);
         if (prev == null || now - prev >= seconds * 1000L) {
             lastInvoke.put(key, now);

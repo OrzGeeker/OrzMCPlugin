@@ -7,6 +7,7 @@ import com.jokerhub.paper.plugin.orzmc.features.security.BlacklistService;
 import com.jokerhub.paper.plugin.orzmc.features.security.CommandAuditService;
 import com.jokerhub.paper.plugin.orzmc.features.security.CommandGuardService;
 import com.jokerhub.paper.plugin.orzmc.infra.logging.LogCaptureService;
+import com.jokerhub.paper.plugin.orzmc.infra.player.OnlineListFormatter;
 
 /**
  * {@link BotCommandService} 的跨模块依赖集合（六边形边界处的一次性批量注入）。
@@ -24,6 +25,7 @@ public final class BotCommandDependencies {
     private LogCaptureService logCaptureService;
     private CommandGuardService commandGuardService;
     private CommandAuditService commandAuditService;
+    private OnlineListFormatter listFormatter;
 
     public BotCommandDependencies maintenanceService(WorldMaintenanceService maintenanceService) {
         this.maintenanceService = maintenanceService;
@@ -60,6 +62,11 @@ public final class BotCommandDependencies {
         return this;
     }
 
+    public BotCommandDependencies listFormatter(OnlineListFormatter listFormatter) {
+        this.listFormatter = listFormatter;
+        return this;
+    }
+
     WorldMaintenanceService maintenanceService() {
         return maintenanceService;
     }
@@ -86,5 +93,9 @@ public final class BotCommandDependencies {
 
     CommandAuditService commandAuditService() {
         return commandAuditService;
+    }
+
+    OnlineListFormatter listFormatter() {
+        return listFormatter;
     }
 }

@@ -7,12 +7,20 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 public class CooldownRegistryTest {
     @Test
-    public void testCooldownFlow() throws Exception {
+    public void testCooldownFlow() {
         String key = "tpbow|tester";
-        Assertions.assertFalse(CooldownRegistry.isCoolingDown(key, 1));
-        Assertions.assertTrue(CooldownRegistry.isCoolingDown(key, 1));
-        Thread.sleep(1000L);
-        Assertions.assertFalse(CooldownRegistry.isCoolingDown(key, 1));
+        java.util.concurrent.atomic.AtomicLong now = new java.util.concurrent.atomic.AtomicLong(0);
+        java.util.function.LongSupplier original = CooldownRegistry.clock;
+        CooldownRegistry.clock = now::get;
+        CooldownRegistry.reset();
+        try {
+            Assertions.assertFalse(CooldownRegistry.isCoolingDown(key, 1));
+            Assertions.assertTrue(CooldownRegistry.isCoolingDown(key, 1));
+            now.set(1000); // 假时钟推进 1s，冷却过期
+            Assertions.assertFalse(CooldownRegistry.isCoolingDown(key, 1));
+        } finally {
+            CooldownRegistry.clock = original;
+        }
     }
 
     @ParameterizedTest
