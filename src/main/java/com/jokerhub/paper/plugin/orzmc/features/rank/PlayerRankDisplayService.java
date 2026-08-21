@@ -24,7 +24,8 @@ import org.bukkit.scoreboard.Team;
  * 只能用真实名着色（与 vanilla+EssentialsX 自身行为一致）。</p>
  *
  * <p>{@code nametag_enabled} / {@code tab_enabled} 可独立开关头顶名牌与 Tab 着色
- * （默认均开）；关闭时该界面还原 displayName 纯文本，聊天着色不受影响。</p>
+ * （默认均开）；关闭时该界面还原服务器原 displayName 组件（保留昵称及格式），
+ * 聊天着色不受影响。</p>
  *
  * <p>OP 与四级权限是独立体系：{@code player.isOp()} 优先显示 {@code op_color}，与等级组无关。</p>
  *
@@ -83,7 +84,8 @@ public final class PlayerRankDisplayService {
      * 重设某在线玩家的头顶名牌队伍 + Tab 名（幂等）。必须在调度线程调用。
      *
      * <p>关闭 {@code enabled} 时清理队伍并还原 Tab 名；{@code tab_enabled} 关闭时仅
-     * 还原 Tab 名（保留头顶/聊天着色）。还原均用 displayName 纯文本（保留 EssentialsX 昵称）。</p>
+     * 还原 Tab 名（保留头顶/聊天着色）。还原均用服务器原 displayName 组件
+     * （保留 EssentialsX 昵称及其格式），即恢复 OrzMC 介入前的显示策略。</p>
      */
     public void applyTo(Player player) {
         if (player == null || !player.isOnline()) {
@@ -92,16 +94,16 @@ public final class PlayerRankDisplayService {
         RankColorsConfig config = configSupplier.get();
         if (!config.enabled()) {
             removeFor(player);
-            // 还原用 displayName 文本而非真实名：避免丢掉 EssentialsX /nick 昵称
-            player.playerListName(plainTabName(player));
+            // 还原服务器原显示策略：displayName 原组件（保留 EssentialsX /nick 昵称及格式）
+            player.playerListName(restoredTabName(player));
             return;
         }
         boolean op = player.isOp();
         // OP 时等级组不参与颜色与队伍命名，跳过 LP 查询（微优化）
         String group = op ? null : currentGroupOf(player.getUniqueId());
         NamedTextColor color = op ? config.opColor() : colorFor(config, group);
-        // Tab 名组件：tab_enabled 关闭时还原 displayName 纯文本（保留昵称），仅头顶/聊天着色
-        Component tabName = config.tabEnabled() ? coloredTabName(player, color) : plainTabName(player);
+        // Tab 名组件：tab_enabled 关闭时还原服务器原 displayName 组件（保留昵称及格式），仅头顶/聊天着色
+        Component tabName = config.tabEnabled() ? coloredTabName(player, color) : restoredTabName(player);
         if (!config.nametagEnabled()) {
             // 只关头顶名牌：不建/不碰队伍；Tab 按 tab_enabled 着色或还原（避让占用计分板队伍的插件时用）
             removeFor(player);
@@ -185,9 +187,18 @@ public final class PlayerRankDisplayService {
         return Component.text(displayNameText(player)).color(color);
     }
 
-    /** Tab 名组件：displayName 纯文本（保留昵称），不强制颜色（tab_enabled 关闭时还原用）。 */
-    private static Component plainTabName(Player player) {
-        return Component.text(displayNameText(player));
+    /**
+     * Tab 名还原组件：服务器原 displayName 原组件（保留 EssentialsX /nick 昵称及其格式），
+     * 不强制任何颜色——即恢复 OrzMC 介入前的显示策略（tab_enabled / 总开关关闭时用）。
+     * displayName 为 null/空文本时回退真实名组件。
+     */
+    private static Component restoredTabName(Player player) {
+        Component displayName = player.displayName();
+        if (displayName == null) {
+            return Component.text(player.getName());
+        }
+        String text = PlainTextComponentSerializer.plainText().serialize(displayName);
+        return text.isBlank() ? Component.text(player.getName()) : displayName;
     }
 
     /** displayName 纯文本；为 null/空则回退真实名（Paper 默认 displayName 即真实名）。 */

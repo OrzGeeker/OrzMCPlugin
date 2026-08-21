@@ -204,7 +204,7 @@ class PlayerRankDisplayServiceTest {
     }
 
     @Test
-    void applyTo_tabDisabled_colorsNametagButPlainTab() {
+    void applyTo_tabDisabled_colorsNametagRestoresTab() {
         Player p = mockPlayer("Steve", false);
         when(rankService.currentGroup(p.getUniqueId())).thenReturn("member");
         when(board.getEntryTeam("Steve")).thenReturn(null);
@@ -215,16 +215,17 @@ class PlayerRankDisplayServiceTest {
 
         service(cfg).applyTo(p);
 
-        // 只关 Tab：头顶队伍仍着色，Tab 名还原纯文本
+        // 只关 Tab：头顶队伍仍着色，Tab 名恢复服务器原 displayName（无强制色）
         verify(team).color(NamedTextColor.AQUA);
         verify(team).addEntry("Steve");
         verify(p).playerListName(Component.text("Steve"));
     }
 
     @Test
-    void applyTo_tabDisabled_preservesDisplayNameNickInPlainTab() {
+    void applyTo_tabDisabled_restoresDisplayNameNickAndFormatting() {
         Player p = mockPlayer("Steve", false);
-        when(p.displayName()).thenReturn(Component.text("CoolGuy")); // EssentialsX /nick 昵称
+        // 服务器原 displayName：昵称 + 自有格式（如 EssentialsX /nick 带色）——还原时必须原样保留
+        when(p.displayName()).thenReturn(Component.text("CoolGuy").color(NamedTextColor.YELLOW));
         when(rankService.currentGroup(p.getUniqueId())).thenReturn("member");
         when(board.getEntryTeam("Steve")).thenReturn(null);
         when(board.getTeam("orzmc-member")).thenReturn(null);
@@ -234,13 +235,16 @@ class PlayerRankDisplayServiceTest {
 
         service(cfg).applyTo(p);
 
-        // Tab 关闭还原时仍保留昵称（displayName 文本），头顶队伍 entry 用真实名
-        verify(p).playerListName(Component.text("CoolGuy"));
+        // Tab 恢复为服务器原 displayName 组件：昵称与格式都保留，不被剥成纯文本
+        ArgumentCaptor<Component> cap = ArgumentCaptor.forClass(Component.class);
+        verify(p).playerListName(cap.capture());
+        assertEquals("CoolGuy", PlainTextComponentSerializer.plainText().serialize(cap.getValue()));
+        assertEquals(NamedTextColor.YELLOW, cap.getValue().color());
         verify(team).addEntry("Steve");
     }
 
     @Test
-    void applyTo_tabDisabled_nametagDisabled_plainTabNoTeam() {
+    void applyTo_tabDisabled_nametagDisabled_restoresTabNoTeam() {
         Player p = mockPlayer("Steve", false);
         when(rankService.currentGroup(p.getUniqueId())).thenReturn("member");
         when(board.getEntryTeam("Steve")).thenReturn(null);
@@ -248,13 +252,13 @@ class PlayerRankDisplayServiceTest {
 
         service(cfg).applyTo(p);
 
-        // 头顶+Tab 都关：不建/不碰队伍，Tab 还原纯文本（聊天由 colorFor 独立着色）
+        // 头顶+Tab 都关：不建/不碰队伍，Tab 恢复服务器原 displayName（聊天由 colorFor 独立着色）
         verify(p).playerListName(Component.text("Steve"));
         verify(board, never()).registerNewTeam(anyString());
     }
 
     @Test
-    void applyTo_disabled_cleansTeamAndResetsPlainTab() {
+    void applyTo_disabled_cleansTeamAndRestoresTab() {
         Player p = mockPlayer("Steve", false);
         RankColorsConfig disabled =
                 new RankColorsConfig(false, true, true, NamedTextColor.GOLD, RankColorsConfig.DEFAULTS);
@@ -269,7 +273,7 @@ class PlayerRankDisplayServiceTest {
     }
 
     @Test
-    void applyTo_disabled_preservesDisplayNameNickInTab() {
+    void applyTo_disabled_restoresDisplayNameNickInTab() {
         Player p = mockPlayer("Steve", false);
         when(p.displayName()).thenReturn(Component.text("CoolGuy")); // EssentialsX /nick 昵称
         RankColorsConfig disabled =
@@ -277,7 +281,7 @@ class PlayerRankDisplayServiceTest {
 
         service(disabled).applyTo(p);
 
-        // 禁用还原时保留昵称（displayName 文本），而非还原真实名丢掉 /nick
+        // 禁用还原时保留昵称（displayName 组件），而非还原真实名丢掉 /nick
         verify(p).playerListName(Component.text("CoolGuy"));
     }
 
