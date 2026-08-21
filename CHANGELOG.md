@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.0.23] - 2026-08-21
+
+### ✨ 新功能
+- **Tab 着色独立开关 `rank_colors.tab_enabled`（#221）** — 与 `nametag_enabled` 对等，单独控制 Tab 列表是否权限着色：
+  - `tab_enabled: true`（默认）：Tab 名按等级/OP 着色，与头顶/聊天三处统一
+  - `tab_enabled: false`：Tab 名 `playerListName` 置空，恢复服务器原计分板队伍/vanilla 渲染（**team 前缀 + 真实名**），仅头顶+聊天着色
+  - **总开关 `enabled: false` 同样置空**：三处着色全停，Tab 一并恢复服务器原显示策略
+  - `/orzmc config set/reset rank_colors.*` 改动后经调度线程立即对所有在线玩家热生效（消除原最长 ~60s 周期自愈延迟）
+  - 旧服升级自动回填 `rank_colors.tab_enabled` 键（`/orzmc config get` 不再显示 `<null>`）
+
+### ⚠️ 升级注意
+- `rank_colors.tab_enabled` 默认 `true`（行为与 1.0.22 一致，Tab 继续着色）。若希望 Tab 恢复服务器原 team 前缀显示，设 `rank_colors.tab_enabled: false`。
+- **已知固有交互**：`tab_enabled: false` 且 `nametag_enabled: true` 时，玩家仍处于 orzmc 计分板队伍（头顶着色所需），Tab 回退渲染会沿用该队伍 rank 色——计分板 team 机制决定，无法避免；三处全关或仅聊天着色请设 `nametag_enabled: false` 一并恢复。
+- **昵称取舍**：置空后 Tab 显示真实名 + 原 team 前缀，EssentialsX `/nick` 昵称不再体现在 Tab（头顶名牌/聊天仍保留昵称）。
+
+---
+
 ## [1.0.22] - 2026-08-21
 
 ### ✨ 新功能
