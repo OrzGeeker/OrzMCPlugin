@@ -24,8 +24,9 @@ import org.bukkit.scoreboard.Team;
  * 只能用真实名着色（与 vanilla+EssentialsX 自身行为一致）。</p>
  *
  * <p>{@code nametag_enabled} / {@code tab_enabled} 可独立开关头顶名牌与 Tab 着色
- * （默认均开）；关闭时 Tab 名 {@code playerListName} 置空，交由 client 计分板队伍/vanilla
- * 渲染（恢复原 team 前缀），聊天着色不受影响。</p>
+ * （默认均开）；{@code tab_enabled} 关闭时 Tab 名 {@code playerListName} 置空，交由 client
+ * 计分板队伍/vanilla 渲染（恢复原 team 前缀），聊天着色不受影响。总开关关闭时还原
+ * displayName 文本（保留昵称）。</p>
  *
  * <p>OP 与四级权限是独立体系：{@code player.isOp()} 优先显示 {@code op_color}，与等级组无关。</p>
  *
@@ -83,10 +84,11 @@ public final class PlayerRankDisplayService {
     /**
      * 重设某在线玩家的头顶名牌队伍 + Tab 名（幂等）。必须在调度线程调用。
      *
-     * <p>关闭 {@code enabled} 时清理队伍并还原 Tab 名；{@code tab_enabled} 关闭时仅
-     * 还原 Tab 名（保留头顶/聊天着色）。还原即 {@code playerListName} 置空，交由 client
-     * 的计分板队伍/vanilla 渲染（恢复原 team 前缀+名字）；若 {@code nametag_enabled} 开着
-     * 玩家仍在 orzmc 队伍，Tab 回退会沿用该队伍色——team 机制固有交互。</p>
+     * <p>关闭 {@code enabled} 时清理队伍并还原 Tab 名（displayName 文本，保留昵称）；
+     * {@code tab_enabled} 关闭时仅还原 Tab 名（保留头顶/聊天着色）——{@code playerListName}
+     * 置空交由 client 计分板队伍/vanilla 渲染（恢复原 team 前缀+名字）；若
+     * {@code nametag_enabled} 开着玩家仍在 orzmc 队伍，Tab 回退会沿用该队伍色——team 机制
+     * 固有交互。</p>
      */
     public void applyTo(Player player) {
         if (player == null || !player.isOnline()) {
@@ -95,9 +97,8 @@ public final class PlayerRankDisplayService {
         RankColorsConfig config = configSupplier.get();
         if (!config.enabled()) {
             removeFor(player);
-            // 还原服务器原显示策略：playerListName 置空，交由 client 的计分板队伍/vanilla 渲染
-            // （恢复原 team 前缀+名字；置空是唯一能让 client 走 team 回退路径的方式）
-            player.playerListName(null);
+            // 总开关关闭：还原 displayName 文本（保留 EssentialsX /nick 昵称），与 1.0.22 既有行为一致
+            player.playerListName(Component.text(displayNameText(player)));
             return;
         }
         boolean op = player.isOp();
