@@ -85,7 +85,7 @@ class OrzRankDisplayEventTest {
         PlayerRankDisplayService disabled = new PlayerRankDisplayService(
                 serverFacade,
                 rankService,
-                () -> new RankColorsConfig(false, true, NamedTextColor.GOLD, RankColorsConfig.DEFAULTS));
+                () -> new RankColorsConfig(false, true, true, NamedTextColor.GOLD, RankColorsConfig.DEFAULTS));
 
         new OrzRankDisplayEvent(plugin, disabled).onAsyncChat(event);
 

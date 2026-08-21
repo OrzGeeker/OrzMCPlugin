@@ -23,6 +23,11 @@ import org.bukkit.scoreboard.Team;
  * EssentialsX {@code /nick} 等昵称）强制 rank 色；头顶名牌受计分板 team entry 限制
  * 只能用真实名着色（与 vanilla+EssentialsX 自身行为一致）。</p>
  *
+ * <p>{@code nametag_enabled} / {@code tab_enabled} 可独立开关头顶名牌与 Tab 着色
+ * （默认均开）；总开关 {@code enabled} 或 {@code tab_enabled} 关闭时 Tab 名
+ * {@code playerListName} 置空，交由 client 计分板队伍/vanilla 渲染（恢复原 team 前缀、
+ * 真实名），聊天着色不受影响。</p>
+ *
  * <p>OP 与四级权限是独立体系：{@code player.isOp()} 优先显示 {@code op_color}，与等级组无关。</p>
  *
  * <p><b>冲突感知（只动自家队伍）</b>：只创建/管理 {@code orzmc-*} 队伍，绝不删改外部队伍；
@@ -79,8 +84,10 @@ public final class PlayerRankDisplayService {
     /**
      * 重设某在线玩家的头顶名牌队伍 + Tab 名（幂等）。必须在调度线程调用。
      *
-     * <p>关闭 {@code enabled}/{@code nametag_enabled} 时清理队伍并还原 Tab 名
-     * （还原为 displayName 纯文本，保留 EssentialsX 昵称）。</p>
+     * <p>关闭 {@code enabled} 或 {@code tab_enabled} 时 Tab 名均 {@code playerListName} 置空，
+     * 交由 client 计分板队伍/vanilla 渲染（恢复原 team 前缀+真实名）；{@code tab_enabled}
+     * 关闭时保留头顶/聊天着色。若 {@code nametag_enabled} 开着玩家仍在 orzmc 队伍，Tab 回退
+     * 会沿用该队伍色——team 机制固有交互。</p>
      */
     public void applyTo(Player player) {
         if (player == null || !player.isOnline()) {
@@ -89,18 +96,20 @@ public final class PlayerRankDisplayService {
         RankColorsConfig config = configSupplier.get();
         if (!config.enabled()) {
             removeFor(player);
-            // 还原用 displayName 文本而非真实名：避免丢掉 EssentialsX /nick 昵称
-            player.playerListName(Component.text(displayNameText(player)));
+            // 总开关关闭同样置空：恢复服务器原显示策略（client 走计分板队伍/vanilla 渲染，含原 team 前缀）
+            player.playerListName(null);
             return;
         }
         boolean op = player.isOp();
         // OP 时等级组不参与颜色与队伍命名，跳过 LP 查询（微优化）
         String group = op ? null : currentGroupOf(player.getUniqueId());
         NamedTextColor color = op ? config.opColor() : colorFor(config, group);
+        // Tab 名组件：tab_enabled 关闭时置空（恢复服务器原显示策略，保留原 team 前缀），仅头顶/聊天着色
+        Component tabName = config.tabEnabled() ? coloredTabName(player, color) : null;
         if (!config.nametagEnabled()) {
-            // 只关头顶名牌：聊天+Tab 仍着色（避让占用计分板队伍的插件时用）
+            // 只关头顶名牌：不建/不碰队伍；Tab 按 tab_enabled 着色或还原（避让占用计分板队伍的插件时用）
             removeFor(player);
-            player.playerListName(coloredTabName(player, color));
+            player.playerListName(tabName);
             return;
         }
         Scoreboard board = mainScoreboard();
@@ -115,7 +124,7 @@ public final class PlayerRankDisplayService {
         Team existing = board.getEntryTeam(entry);
         if (existing != null && !existing.getName().startsWith(TEAM_PREFIX)) {
             LOGGER.fine("玩家 " + entry + " 头顶队伍已被其它插件接管(" + existing.getName() + ")，让位跳过头顶着色");
-            player.playerListName(coloredTabName(player, color));
+            player.playerListName(tabName);
             return;
         }
         if (existing != null) {
@@ -123,14 +132,14 @@ public final class PlayerRankDisplayService {
         }
         Team team = ensureTeam(board, displayKey, color);
         if (team == null) {
-            // 队伍名超协议上限（自定义超长 track 组名）→ 跳过头顶着色，Tab 仍着色
-            player.playerListName(coloredTabName(player, color));
+            // 队伍名超协议上限（自定义超长 track 组名）→ 跳过头顶着色，Tab 按开关着色/还原
+            player.playerListName(tabName);
             return;
         }
         // 强制刷新：removeEntry+addEntry 重发队伍包，让客户端重绘头顶名（规避 Paper 已知刷新遗漏）
         team.removeEntry(entry);
         team.addEntry(entry);
-        player.playerListName(coloredTabName(player, color));
+        player.playerListName(tabName);
     }
 
     /** 从 orzmc-* 队伍移除玩家 entry（退出/禁用时）。必须在调度线程调用。 */

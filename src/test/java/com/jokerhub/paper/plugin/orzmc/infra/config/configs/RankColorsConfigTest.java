@@ -15,6 +15,7 @@ class RankColorsConfigTest {
         RankColorsConfig cfg = RankColorsConfig.from(null);
         assertTrue(cfg.enabled());
         assertTrue(cfg.nametagEnabled());
+        assertTrue(cfg.tabEnabled());
         assertEquals(NamedTextColor.GOLD, cfg.opColor());
         assertEquals(NamedTextColor.GRAY, cfg.colors().get("default"));
         assertEquals(NamedTextColor.AQUA, cfg.colors().get("member"));
@@ -32,12 +33,14 @@ class RankColorsConfigTest {
         ConfigurationSection cfg = mock(ConfigurationSection.class);
         when(cfg.getBoolean("enabled", true)).thenReturn(false);
         when(cfg.getBoolean("nametag_enabled", true)).thenReturn(false);
+        when(cfg.getBoolean("tab_enabled", true)).thenReturn(false);
         when(cfg.getString("op_color")).thenReturn("gold");
         when(cfg.getConfigurationSection("colors")).thenReturn(colors);
 
         RankColorsConfig parsed = RankColorsConfig.from(cfg);
         assertFalse(parsed.enabled());
         assertFalse(parsed.nametagEnabled());
+        assertFalse(parsed.tabEnabled());
         assertEquals(NamedTextColor.GOLD, parsed.opColor());
         assertEquals(NamedTextColor.RED, parsed.colors().get("admin"));
         assertEquals(NamedTextColor.GREEN, parsed.colors().get("builder"));
@@ -55,6 +58,7 @@ class RankColorsConfigTest {
         ConfigurationSection cfg = mock(ConfigurationSection.class);
         when(cfg.getBoolean("enabled", true)).thenReturn(true);
         when(cfg.getBoolean("nametag_enabled", true)).thenReturn(true);
+        when(cfg.getBoolean("tab_enabled", true)).thenReturn(true);
         when(cfg.getString("op_color")).thenReturn(null);
         when(cfg.getConfigurationSection("colors")).thenReturn(colors);
 
@@ -76,6 +80,7 @@ class RankColorsConfigTest {
         ConfigurationSection cfg = mock(ConfigurationSection.class);
         when(cfg.getBoolean("enabled", true)).thenReturn(true);
         when(cfg.getBoolean("nametag_enabled", true)).thenReturn(true);
+        when(cfg.getBoolean("tab_enabled", true)).thenReturn(true);
         when(cfg.getString("op_color")).thenReturn("not-a-color");
         when(cfg.getConfigurationSection("colors")).thenReturn(colors);
 
