@@ -90,6 +90,7 @@ public final class ConfigPath {
         // rank_colors (config.yml)
         reg(map, "config", "rank_colors.enabled", Boolean.class, true, "玩家名颜色总开关");
         reg(map, "config", "rank_colors.nametag_enabled", Boolean.class, true, "头顶名牌着色开关");
+        reg(map, "config", "rank_colors.tab_enabled", Boolean.class, true, "Tab列表着色开关");
         reg(map, "config", "rank_colors.op_color", String.class, "gold", "OP 玩家名颜色(命名色)");
         reg(map, "config", "rank_colors.colors.admin", String.class, "red", "管理员名颜色(命名色)");
         reg(map, "config", "rank_colors.colors.builder", String.class, "green", "建造者名颜色(命名色)");

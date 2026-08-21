@@ -289,8 +289,12 @@ public final class FeatureModule implements ServiceModule {
             new com.jokerhub.paper.plugin.orzmc.events.OrzRankDisplayEvent(plugin, rankDisplayService)
         };
         EventBinder.bind(plugin, Arrays.asList(eventListeners));
-        // 周期自愈：约 60s 重刷一次在线玩家颜色（兜底 Paper 头顶名刷新遗漏 + /config reload 热生效）
+        // 周期自愈：约 60s 重刷一次在线玩家颜色（兜底 Paper 头顶名刷新遗漏 + 配置改动兜底生效）
         rankDisplayService.startPeriodicRefresh();
+        // rank_colors.* 运行时改动（/orzmc config set/reset/reload）→ 立即重刷在线玩家，消除最长 ~60s 生效延迟；
+        // 命令线程 → 调度线程（Folia 区域线程安全，PlayerRankDisplayService 的 applyTo 必须在调度线程执行）
+        orzConfigCommand.setRankColorsReload(
+                () -> platform.serverFacade().runSync(rankDisplayService::refreshAllOnline));
     }
 
     // --- Command Registration ---

@@ -72,7 +72,8 @@ class PlayerRankDisplayServiceTest {
     @Test
     void colorFor_disabled_returnsNull() {
         Player p = mockPlayer("Steve", false);
-        RankColorsConfig disabled = new RankColorsConfig(false, true, NamedTextColor.GOLD, RankColorsConfig.DEFAULTS);
+        RankColorsConfig disabled =
+                new RankColorsConfig(false, true, true, NamedTextColor.GOLD, RankColorsConfig.DEFAULTS);
         assertNull(service(disabled).colorFor(p));
     }
 
@@ -193,7 +194,7 @@ class PlayerRankDisplayServiceTest {
         Player p = mockPlayer("Steve", false);
         when(rankService.currentGroup(p.getUniqueId())).thenReturn("member");
         when(board.getEntryTeam("Steve")).thenReturn(null);
-        RankColorsConfig cfg = new RankColorsConfig(true, false, NamedTextColor.GOLD, RankColorsConfig.DEFAULTS);
+        RankColorsConfig cfg = new RankColorsConfig(true, false, true, NamedTextColor.GOLD, RankColorsConfig.DEFAULTS);
 
         service(cfg).applyTo(p);
 
@@ -203,9 +204,60 @@ class PlayerRankDisplayServiceTest {
     }
 
     @Test
+    void applyTo_tabDisabled_colorsNametagButPlainTab() {
+        Player p = mockPlayer("Steve", false);
+        when(rankService.currentGroup(p.getUniqueId())).thenReturn("member");
+        when(board.getEntryTeam("Steve")).thenReturn(null);
+        when(board.getTeam("orzmc-member")).thenReturn(null);
+        Team team = mock(Team.class);
+        when(board.registerNewTeam("orzmc-member")).thenReturn(team);
+        RankColorsConfig cfg = new RankColorsConfig(true, true, false, NamedTextColor.GOLD, RankColorsConfig.DEFAULTS);
+
+        service(cfg).applyTo(p);
+
+        // 只关 Tab：头顶队伍仍着色，Tab 名还原纯文本
+        verify(team).color(NamedTextColor.AQUA);
+        verify(team).addEntry("Steve");
+        verify(p).playerListName(Component.text("Steve"));
+    }
+
+    @Test
+    void applyTo_tabDisabled_preservesDisplayNameNickInPlainTab() {
+        Player p = mockPlayer("Steve", false);
+        when(p.displayName()).thenReturn(Component.text("CoolGuy")); // EssentialsX /nick 昵称
+        when(rankService.currentGroup(p.getUniqueId())).thenReturn("member");
+        when(board.getEntryTeam("Steve")).thenReturn(null);
+        when(board.getTeam("orzmc-member")).thenReturn(null);
+        Team team = mock(Team.class);
+        when(board.registerNewTeam("orzmc-member")).thenReturn(team);
+        RankColorsConfig cfg = new RankColorsConfig(true, true, false, NamedTextColor.GOLD, RankColorsConfig.DEFAULTS);
+
+        service(cfg).applyTo(p);
+
+        // Tab 关闭还原时仍保留昵称（displayName 文本），头顶队伍 entry 用真实名
+        verify(p).playerListName(Component.text("CoolGuy"));
+        verify(team).addEntry("Steve");
+    }
+
+    @Test
+    void applyTo_tabDisabled_nametagDisabled_plainTabNoTeam() {
+        Player p = mockPlayer("Steve", false);
+        when(rankService.currentGroup(p.getUniqueId())).thenReturn("member");
+        when(board.getEntryTeam("Steve")).thenReturn(null);
+        RankColorsConfig cfg = new RankColorsConfig(true, false, false, NamedTextColor.GOLD, RankColorsConfig.DEFAULTS);
+
+        service(cfg).applyTo(p);
+
+        // 头顶+Tab 都关：不建/不碰队伍，Tab 还原纯文本（聊天由 colorFor 独立着色）
+        verify(p).playerListName(Component.text("Steve"));
+        verify(board, never()).registerNewTeam(anyString());
+    }
+
+    @Test
     void applyTo_disabled_cleansTeamAndResetsPlainTab() {
         Player p = mockPlayer("Steve", false);
-        RankColorsConfig disabled = new RankColorsConfig(false, true, NamedTextColor.GOLD, RankColorsConfig.DEFAULTS);
+        RankColorsConfig disabled =
+                new RankColorsConfig(false, true, true, NamedTextColor.GOLD, RankColorsConfig.DEFAULTS);
         Team orzmc = mock(Team.class);
         when(orzmc.getName()).thenReturn("orzmc-default");
         when(board.getEntryTeam("Steve")).thenReturn(orzmc);
@@ -220,7 +272,8 @@ class PlayerRankDisplayServiceTest {
     void applyTo_disabled_preservesDisplayNameNickInTab() {
         Player p = mockPlayer("Steve", false);
         when(p.displayName()).thenReturn(Component.text("CoolGuy")); // EssentialsX /nick 昵称
-        RankColorsConfig disabled = new RankColorsConfig(false, true, NamedTextColor.GOLD, RankColorsConfig.DEFAULTS);
+        RankColorsConfig disabled =
+                new RankColorsConfig(false, true, true, NamedTextColor.GOLD, RankColorsConfig.DEFAULTS);
 
         service(disabled).applyTo(p);
 
