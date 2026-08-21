@@ -86,16 +86,31 @@ player_notify:
 # ==================================================
 #              实体传送策略（2026-08-09）
 # ==================================================
-# 实体传送开关：true = 允许所有实体正常传送（默认，兼容原版行为，
-# 如村民/动物过下界传送门）。false = 仅白名单内实体可传送：
+# 实体传送开关：true = 允许命令/插件传送所有实体。
+# false = 仅白名单内实体可被命令/插件传送（默认，防 @e 选择器误用把海量实体传送到虚空/岩浆造成地图灾难）。
+# 下界传送门穿越（EntityPortalEvent）始终放行，不受此开关影响（掉落物/矿车/船/生物照常过门）。
 #   - 白名单项：大写 EntityType 名（如 VILLAGER），或特殊键
 #     TAMEABLE / ENDERMAN / ARMOR_STAND / SHULKER
-entity_teleport_enabled: true
+#   - TAMEABLE 按接口判定，已覆盖猫/狗/鹦鹉 + 全部马科（马/驴/骡/羊驼/骆驼），无需重复列出
+#   - 白名单默认只含常见被动/友好实体（村民/牲畜/友好水生/傀儡等），敌对生物不在内
+entity_teleport_enabled: false
 entity_teleport_whitelist:
   - TAMEABLE
   - ENDERMAN
   - ARMOR_STAND
   - SHULKER
+  - VILLAGER
+  - WANDERING_TRADER
+  - COW
+  - PIG
+  - SHEEP
+  - CHICKEN
+  - RABBIT
+  - GOAT
+  - MOOSHROOM
+  - AXOLOTL
+  - BEE
+  - IRON_GOLEM
 
 # ==================================================
 #              命令策略
