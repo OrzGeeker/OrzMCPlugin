@@ -216,6 +216,31 @@ class PlayerRankDisplayServiceTest {
         verify(p).playerListName(Component.text("Steve"));
     }
 
+    @Test
+    void applyTo_disabled_preservesDisplayNameNickInTab() {
+        Player p = mockPlayer("Steve", false);
+        when(p.displayName()).thenReturn(Component.text("CoolGuy")); // EssentialsX /nick 昵称
+        RankColorsConfig disabled = new RankColorsConfig(false, true, NamedTextColor.GOLD, RankColorsConfig.DEFAULTS);
+
+        service(disabled).applyTo(p);
+
+        // 禁用还原时保留昵称（displayName 文本），而非还原真实名丢掉 /nick
+        verify(p).playerListName(Component.text("CoolGuy"));
+    }
+
+    @Test
+    void applyTo_overlongGroupName_skipsNametagButColorsTab() {
+        Player p = mockPlayer("Steve", false);
+        // 自定义超长 track 组名 → orzmc-<组> 超 16 协议上限：降级为只 Tab 着色，不建队伍
+        when(rankService.currentGroup(p.getUniqueId())).thenReturn("super-long-group-name");
+        when(board.getEntryTeam("Steve")).thenReturn(null);
+
+        service().applyTo(p);
+
+        verify(board, never()).registerNewTeam(anyString());
+        verify(p).playerListName(Component.text("Steve").color(NamedTextColor.GRAY));
+    }
+
     // ---- removeFor ----
 
     @Test

@@ -79,7 +79,8 @@ public final class PlayerRankDisplayService {
     /**
      * 重设某在线玩家的头顶名牌队伍 + Tab 名（幂等）。必须在调度线程调用。
      *
-     * <p>关闭 {@code enabled}/{@code nametag_enabled} 时清理队伍并还原纯名 Tab。</p>
+     * <p>关闭 {@code enabled}/{@code nametag_enabled} 时清理队伍并还原 Tab 名
+     * （还原为 displayName 纯文本，保留 EssentialsX 昵称）。</p>
      */
     public void applyTo(Player player) {
         if (player == null || !player.isOnline()) {
@@ -88,7 +89,8 @@ public final class PlayerRankDisplayService {
         RankColorsConfig config = configSupplier.get();
         if (!config.enabled()) {
             removeFor(player);
-            player.playerListName(Component.text(player.getName()));
+            // 还原用 displayName 文本而非真实名：避免丢掉 EssentialsX /nick 昵称
+            player.playerListName(Component.text(displayNameText(player)));
             return;
         }
         boolean op = player.isOp();
@@ -120,6 +122,11 @@ public final class PlayerRankDisplayService {
             existing.removeEntry(entry);
         }
         Team team = ensureTeam(board, displayKey, color);
+        if (team == null) {
+            // 队伍名超协议上限（自定义超长 track 组名）→ 跳过头顶着色，Tab 仍着色
+            player.playerListName(coloredTabName(player, color));
+            return;
+        }
         // 强制刷新：removeEntry+addEntry 重发队伍包，让客户端重绘头顶名（规避 Paper 已知刷新遗漏）
         team.removeEntry(entry);
         team.addEntry(entry);
@@ -189,9 +196,18 @@ public final class PlayerRankDisplayService {
         return manager == null ? null : manager.getMainScoreboard();
     }
 
-    /** 取或建 orzmc-<displayKey> 队伍，并（总是）重设队伍颜色以热生效配置变更。 */
+    /**
+     * 取或建 orzmc-<displayKey> 队伍，并（总是）重设队伍颜色以热生效配置变更。
+     *
+     * <p>队伍名超协议上限（{@code orzmc-} + 自定义超长 track 组名 &gt; 16）时返回 null——
+     * 调用方降级为「跳过头顶着色、只 Tab 着色」，避免 registerNewTeam 在调度线程抛异常。</p>
+     */
     private Team ensureTeam(Scoreboard board, String displayKey, NamedTextColor color) {
         String teamName = TEAM_PREFIX + displayKey;
+        if (teamName.length() > 16) {
+            LOGGER.fine("队伍名超长(" + teamName + ")，跳过头顶着色，仅 Tab/聊天着色");
+            return null;
+        }
         Team team = board.getTeam(teamName);
         if (team == null) {
             team = board.registerNewTeam(teamName);
