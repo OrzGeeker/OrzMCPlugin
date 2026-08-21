@@ -256,7 +256,7 @@ class PlayerRankDisplayServiceTest {
     }
 
     @Test
-    void applyTo_disabled_cleansTeamAndRestoresDisplayNameTab() {
+    void applyTo_disabled_cleansTeamAndNullsTab() {
         Player p = mockPlayer("Steve", false);
         RankColorsConfig disabled =
                 new RankColorsConfig(false, true, true, NamedTextColor.GOLD, RankColorsConfig.DEFAULTS);
@@ -267,12 +267,12 @@ class PlayerRankDisplayServiceTest {
         service(disabled).applyTo(p);
 
         verify(orzmc).removeEntry("Steve");
-        // 总开关关闭：还原 displayName 文本（与 1.0.22 既有行为一致，保昵称）
-        verify(p).playerListName(Component.text("Steve"));
+        // 总开关关闭同样置空：恢复服务器原显示策略（team/vanilla 渲染，含原 team 前缀）
+        verify(p).playerListName(null);
     }
 
     @Test
-    void applyTo_disabled_preservesDisplayNameNickInTab() {
+    void applyTo_disabled_nullsTabRegardlessOfNick() {
         Player p = mockPlayer("Steve", false);
         when(p.displayName()).thenReturn(Component.text("CoolGuy")); // EssentialsX /nick 昵称
         RankColorsConfig disabled =
@@ -280,8 +280,8 @@ class PlayerRankDisplayServiceTest {
 
         service(disabled).applyTo(p);
 
-        // 总开关关闭还原时保留昵称（displayName 文本），而非还原真实名丢掉 /nick
-        verify(p).playerListName(Component.text("CoolGuy"));
+        // 置空优先于保留昵称：恢复服务器原策略（真实名 + team 前缀），昵称不强行写进 Tab
+        verify(p).playerListName(null);
     }
 
     @Test

@@ -231,7 +231,7 @@ exploit_hardening:
 # 头顶名牌受计分板限制只能用真实名着色。若存在其它聊天格式化插件（如 EssentialsChat），
 # 聊天颜色自动让位给该插件，rank 色仍体现在 Tab + 头顶名牌。
 rank_colors:
-  # 总开关：关闭后三处着色全部停用（头顶名/聊天/Tab 还原默认）
+  # 总开关：关闭后三处着色全部停用（Tab 名置空，恢复服务器原计分板队伍/vanilla 渲染，保留 team 前缀）
   enabled: true
   # 头顶名牌着色开关：关闭后仅聊天+Tab 着色（避让占用计分板队伍的其它插件时可关）
   nametag_enabled: true
