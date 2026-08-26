@@ -24,11 +24,17 @@ public final class AccessRuleService {
     private static final String PLAYER_NAME_PATH = "player_name_rules";
 
     private final ConfigService configService;
+    private final java.util.logging.Logger logger;
     private volatile List<String> ipPatterns = List.of();
     private volatile List<PlayerNameRule> playerNameRules = List.of();
 
     public AccessRuleService(ConfigService configService) {
+        this(configService, java.util.logging.Logger.getLogger("OrzMC"));
+    }
+
+    public AccessRuleService(ConfigService configService, java.util.logging.Logger logger) {
         this.configService = configService;
+        this.logger = logger;
         reload();
     }
 
@@ -180,7 +186,7 @@ public final class AccessRuleService {
      * 本方法自身也 synchronized，保证对同一 {@code access_rules} 的多次变更串行化。</p>
      */
     private synchronized void persist() {
-        configService.updateConfig(CONFIG_NAME, cfg -> {
+        boolean saved = configService.updateConfig(CONFIG_NAME, cfg -> {
             cfg.set(IP_PATH, new ArrayList<>(ipPatterns));
             List<Map<String, String>> serialized = new ArrayList<>();
             for (PlayerNameRule rule : playerNameRules) {
@@ -191,6 +197,10 @@ public final class AccessRuleService {
             }
             cfg.set(PLAYER_NAME_PATH, serialized);
         });
+        if (!saved) {
+            // 内存规则已生效但未落盘：下次 reload 会静默消失，须显式告警
+            logger.warning("访问规则落盘失败：access_rules 配置未注册或写入失败，规则仅存于内存");
+        }
     }
 
     private static String stringValue(Object value) {

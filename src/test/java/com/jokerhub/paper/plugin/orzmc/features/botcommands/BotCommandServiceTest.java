@@ -738,4 +738,55 @@ class BotCommandServiceTest {
         verify(accessRuleService, never()).removeIpPattern(anyString());
         verify(callback).accept(any(MessageEnvelope.class));
     }
+
+    @Test
+    void parse_blacklistPlayerRule_uppercaseKeyword_addsNameRuleNotIp() {
+        // P2：玩家名关键字大小写不敏感——$d Player exact foo 不得被当成 IP 规则误加
+        AccessRuleService accessRuleService = mock(AccessRuleService.class);
+        service.injectDependencies(new BotCommandDependencies().accessRuleService(accessRuleService));
+
+        service.parse("$d Player exact foo", true, callback);
+
+        verify(accessRuleService).addPlayerNameRule(PlayerNameRule.MatchType.EXACT, "foo");
+        verify(accessRuleService, never()).addIpPattern(anyString());
+    }
+
+    @Test
+    void parse_blacklistRemovePlayerRule_uppercaseKeyword_removesNameRuleNotIp() {
+        // P2：$d -PLAYER ... 同样大小写不敏感
+        AccessRuleService accessRuleService = mock(AccessRuleService.class);
+        service.injectDependencies(new BotCommandDependencies().accessRuleService(accessRuleService));
+
+        service.parse("$d -PLAYER suffix _test", true, callback);
+
+        verify(accessRuleService).removePlayerNameRule(PlayerNameRule.MatchType.SUFFIX, "_test");
+        verify(accessRuleService, never()).removeIpPattern(anyString());
+    }
+
+    @Test
+    void parse_blacklistUppercasePlayerList_listsNameRules() {
+        // P2：$d Player List 命中列表分支而非 IP 简写
+        AccessRuleService accessRuleService = mock(AccessRuleService.class);
+        service.injectDependencies(new BotCommandDependencies().accessRuleService(accessRuleService));
+
+        service.parse("$d Player List", true, callback);
+
+        verify(accessRuleService, never()).addIpPattern(anyString());
+        verify(accessRuleService, never()).removeIpPattern(anyString());
+        verify(callback).accept(any(MessageEnvelope.class));
+    }
+
+    @Test
+    void parse_blacklistMixedCaseMalformedPlayer_emitsUsageNotIpRemoval() {
+        // P2：$d PlayerX 大小写归一后命中 player 前缀分支 → 用法错误，绝不误加 IP "PlayerX"
+        AccessRuleService accessRuleService = mock(AccessRuleService.class);
+        service.injectDependencies(new BotCommandDependencies().accessRuleService(accessRuleService));
+
+        service.parse("$d PlayerX", true, callback);
+
+        verify(accessRuleService, never()).addIpPattern(anyString());
+        var captor = org.mockito.ArgumentCaptor.forClass(MessageEnvelope.class);
+        verify(callback).accept(captor.capture());
+        assertEquals("用法: $d player <type> <value>", captor.getValue().message());
+    }
 }

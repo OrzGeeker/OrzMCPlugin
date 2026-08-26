@@ -199,6 +199,19 @@ class AccessRuleServiceTest {
         assertTrue(svc.isIpBlocked("10.0.0.5"));
     }
 
+    @Test
+    void persistFailure_logsWarning_ruleStillInMemory() {
+        // P3-3：updateConfig 返回 false（配置未注册或写入失败）→ 显式告警，内存规则仍生效
+        java.util.logging.Logger logger = mock(java.util.logging.Logger.class);
+        when(configService.updateConfig(eq("access_rules"), any())).thenReturn(false);
+        AccessRuleService svc = new AccessRuleService(configService, logger);
+
+        svc.addIpPattern("9.9.9.9");
+
+        assertTrue(svc.isIpBlocked("9.9.9.9")); // 内存规则已生效
+        verify(logger).warning(anyString()); // 落盘失败已告警
+    }
+
     // ---- player name rules ----
 
     @Test

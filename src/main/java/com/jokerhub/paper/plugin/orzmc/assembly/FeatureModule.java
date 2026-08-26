@@ -119,7 +119,8 @@ public final class FeatureModule implements ServiceModule {
         this.mainConfig = MainConfig.from(platform.configService().getConfig("config"));
         // Feature services
         this.geoIpAccessService = new GeoIpAccessService(platform.configs());
-        this.accessRuleService = new AccessRuleService(platform.configService());
+        this.accessRuleService = new AccessRuleService(
+                platform.configService(), platform.serverFacade().logger());
         // 命令审计 + 危险命令判定核心：由平台模块统一持有（$e 与事件共享同一实例）
         this.commandAuditService = platform.commandAuditService();
         // 危险命令拦截：纯判定核心 + 事件编排；guard 每次读取最新配置（Supplier），/config reload 生效

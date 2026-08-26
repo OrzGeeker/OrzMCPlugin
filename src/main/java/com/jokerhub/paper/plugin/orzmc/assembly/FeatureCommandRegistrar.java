@@ -33,6 +33,7 @@ import io.papermc.paper.command.brigadier.Commands;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -363,12 +364,13 @@ final class FeatureCommandRegistrar {
                         .then(argument("input", StringArgumentType.greedyString())
                                 .executes(guardedExec("blacklist", interceptors, ctx -> {
                                     String input = ctx.getArgument("input", String.class);
-                                    // player 玩家名规则绝不落入 IP 简写分支（对齐 bot $d 语义）
-                                    if (input.equals("player") || input.equals("player list")) {
+                                    // player 玩家名规则绝不落入 IP 简写分支（对齐 bot $d 语义），大小写不敏感
+                                    String lower = input.toLowerCase(Locale.ROOT);
+                                    if (lower.equals("player") || lower.equals("player list")) {
                                         listPlayerRules(ctx.getSource().getSender(), svc, styles);
                                         return 1;
                                     }
-                                    if (input.startsWith("player") || input.startsWith("-player")) {
+                                    if (lower.startsWith("player") || lower.startsWith("-player")) {
                                         ctx.getSource()
                                                 .getSender()
                                                 .sendMessage(styles.error(

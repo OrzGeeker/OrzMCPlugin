@@ -62,18 +62,19 @@ public final class LoginAccessControlService {
         // 跳过 IP/GeoIP 检查，玩家名规则仍照常生效。
         java.net.InetAddress address = event.getAddress();
         String ipAddress = address == null ? "" : address.getHostAddress();
-        String playerName = playerName(event); // 可能为 null（离线模式 profile 未上报名称）
-        String displayName = playerName == null ? "未知玩家" : playerName;
+        String playerName = playerName(event); // 可能为 null / 空串（离线模式 profile 未上报名称）
+        String displayName = (playerName == null || playerName.isEmpty()) ? "未知玩家" : playerName;
         String matchedPattern = accessRuleService.matchedIpPattern(ipAddress);
         if (matchedPattern != null) {
             event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_OTHER, styles.error("你的IP已被禁止访问"));
             notifyBanHit(displayName, ipAddress, matchedPattern);
             return;
         }
-        // 名称未上报时跳过玩家名规则匹配：否则「未知玩家」会命中过宽规则（如 contains:"a"）
+        // 名称未上报（null/空串）时跳过玩家名规则匹配：否则「未知玩家」会命中过宽规则（如 contains:"a"）
         // 而误封合法玩家；通知仍用 displayName 展示占位。
-        PlayerNameRule matchedNameRule =
-                playerName == null ? null : accessRuleService.matchedPlayerNameRule(playerName);
+        PlayerNameRule matchedNameRule = (playerName == null || playerName.isEmpty())
+                ? null
+                : accessRuleService.matchedPlayerNameRule(playerName);
         if (matchedNameRule != null) {
             event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_OTHER, styles.error("你的玩家名不符合服务器访问规则"));
             notifyPlayerNameBlocked(displayName, matchedNameRule);

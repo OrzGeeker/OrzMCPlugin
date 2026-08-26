@@ -25,6 +25,10 @@
 - **`/blacklist` 玩家名规则不被 IP 简写吞掉（审查发现 P1-2）**：`/blacklist player <type> <value>` / `-player` 不再误入 IP 添加/移除分支；`/blacklist player` 单独列出玩家名规则（对齐 `$d player` 语义）
 - **名称未上报时跳过玩家名规则匹配（审查发现 P2-2）**：离线模式 profile 未上报名称时不再用「未知玩家」占位符参与匹配，避免命中过宽规则（如 `contains:a`）误封合法玩家；通知与 GeoIP 仍用占位名展示
 - **玩家名规则解析抽公共入口（审查发现 P3-1）**：`PlayerNameRule.parse` 统一解析/校验（类型 + 正则合法性），bot `$d` 与游戏内 `/blacklist` 共用，消除两处重复
+- **玩家名关键字大小写不敏感（审查发现 P2）**：`$d Player exact foo` 之前会被当成 IP 规则静默误加并回复「已添加」造成错误安全感；现 `player` / `-player` / `player list` 关键字大小写不敏感，`$d PlayerX` 等畸形输入落入用法错误而非 IP 分支
+- **`$d` 访问规则命令异常兜底（审查发现 P3-1）**：`runSync` 派发后异常不再被 InboundEventParser 捕获，现包一层 `handleBlacklistSafely` 恢复服务端日志 + 群内错误反馈
+- **落盘失败显式告警（审查发现 P3-3）**：`AccessRuleService.persist` 消费 `updateConfig` 返回结果，写入失败（配置未注册等）时 `logger.warning` 显式告警，避免规则静默仅存内存、reload 后消失
+- **空串玩家名同样跳过名称规则匹配（审查发现 P3-4）**：profile 上报空串（离线模式变体）与 null 等价处理，均不参与玩家名规则匹配
 
 ### ⚠️ 升级注意
 - **旧 `ip_blacklist.yml` 不再读取**：本版本起 IP 黑名单与玩家名规则统一存于 `access_rules.yml`，存量封禁数据不自动导入，升级前请将旧规则手动迁移到 `access_rules.yml`

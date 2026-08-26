@@ -7,6 +7,7 @@ import com.jokerhub.paper.plugin.orzmc.features.security.PlayerNameRule;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -30,7 +31,26 @@ final class BlacklistCommandHandler extends BotCommandContext {
     void handleBlacklist(OrzUserCmd cmd, boolean isAdmin, Consumer<MessageEnvelope> callback, String rawArgs) {
         // 访问规则命令统一调度到全局线程：① persist 的同步磁盘 I/O 不阻塞 WS reader 线程；
         // ② $d 间按到达顺序 FIFO 串行，保证「添加后立刻 list」读到最新规则。
-        server.runSync(() -> handleBlacklistOnServerThread(cmd, isAdmin, callback, rawArgs));
+        server.runSync(() -> handleBlacklistSafely(cmd, isAdmin, callback, rawArgs));
+    }
+
+    /** 全局线程兜底：异常不再被 InboundEventParser 的 try/catch 捕获，恢复日志并给群内错误反馈。 */
+    private void handleBlacklistSafely(
+            OrzUserCmd cmd, boolean isAdmin, Consumer<MessageEnvelope> callback, String rawArgs) {
+        try {
+            handleBlacklistOnServerThread(cmd, isAdmin, callback, rawArgs);
+        } catch (Exception e) {
+            server.logger().warning("$d 访问规则命令执行异常: " + e);
+            try {
+                emit(
+                        callback,
+                        "command_blacklist_error",
+                        Map.of("message", "执行出错: " + e.getMessage()),
+                        "执行出错，请查看服务端日志");
+            } catch (Exception ignored) {
+                // renderTemplate 本身异常时不再二次抛出
+            }
+        }
     }
 
     private void handleBlacklistOnServerThread(
@@ -41,15 +61,17 @@ final class BlacklistCommandHandler extends BotCommandContext {
             emit(callback, "command_blacklist_error", Map.of("message", "黑名单服务不可用"), "黑名单服务不可用");
             return;
         }
+        // 玩家名子命令大小写不敏感（$d Player exact foo 不应被当成 IP 规则误加）
+        String lower = rawArgs.toLowerCase(Locale.ROOT);
         if (rawArgs.isEmpty()) {
             listAccessRules(callback, svc);
             return;
         }
-        if ("player".equals(rawArgs) || "player list".equals(rawArgs)) {
+        if ("player".equals(lower) || "player list".equals(lower)) {
             listPlayerRules(callback, svc);
             return;
         }
-        if (rawArgs.startsWith("-player")) {
+        if (lower.startsWith("-player")) {
             String rest = rawArgs.substring("-player".length());
             if (!rest.isEmpty() && !rest.startsWith(" ")) {
                 emit(
@@ -62,7 +84,7 @@ final class BlacklistCommandHandler extends BotCommandContext {
             handlePlayerRule(callback, svc, true, rest.trim());
             return;
         }
-        if (rawArgs.startsWith("player")) {
+        if (lower.startsWith("player")) {
             String rest = rawArgs.substring("player".length());
             if (!rest.isEmpty() && !rest.startsWith(" ")) {
                 emit(
