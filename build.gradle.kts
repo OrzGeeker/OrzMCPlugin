@@ -78,7 +78,7 @@ configurations.getByName("integrationTestRuntimeOnly").extendsFrom(
 )
 
 dependencies {
-    add("integrationTestImplementation", "org.mockbukkit.mockbukkit:mockbukkit-v26.1.2:4.115.0")
+    add("integrationTestImplementation", "org.mockbukkit.mockbukkit:mockbukkit-v26.2:4.116.1")
 }
 
 // 项目编译时插件添加
