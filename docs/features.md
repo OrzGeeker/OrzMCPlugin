@@ -61,7 +61,7 @@ WebSocket 向插件推送入站消息，插件通过 HTTP API 发送回复和服
 | `$e` | 执行控制台命令，输出完整回传群聊（含异步输出，日志窗口捕获 + 噪音过滤 + 30 行截断） | 管理员 |
 | `$v` | 查看/处理审核申请（`$v l` 列表 / `$v y <玩家>` 通过 / `$v n <玩家>` 拒绝） | 管理员 |
 | `$p` | 权限升降级（`$p u <玩家>` 升级 / `$p d <玩家>` 降级） | 管理员 |
-| `$d` | 访问规则管理（IP 黑名单 + 玩家名规则） | 管理员 |
+| `$d` | 访问规则管理（`$d <IP>` / `$d -<IP>` 黑名单；`$d player <type> <value>` 加 / `$d -player <type> <value>` 删玩家名规则；type: `exact`/`prefix`/`suffix`/`contains`/`glob`/`regex`） | 管理员 |
 
 ### 2.3 通知系统
 
@@ -224,7 +224,7 @@ PUBLIC；异常告警（含 GeoIP 上游异常私信）与维护失败事件走 
 - 玩家名匹配默认大小写不敏感；离线模式下玩家名由客户端上报，名称规则适合反滥用/风控，不能替代 UUID 或 IP 作为强安全边界
 - 管理方式：
   - 游戏内命令：`/blacklist list|add|remove <pattern>`，玩家名规则为 `/blacklist add|remove player <type> <value>`（别名 `/bl`）
-  - Bot 命令：`$d <IP>` / `$d -<IP>`，玩家名规则为 `$d player <type> <value>` / `$d -player <type> <value>`
+  - Bot 命令：`$d <IP>` / `$d -<IP>`，玩家名规则为 `$d player <type> <value>` / `$d -player <type> <value>`（`<type>` 支持 `exact`/`prefix`/`suffix`/`contains`/`glob`/`regex`，示例见上方）
 
 ### 5.3 登录验证集成
 - 反射调用 LoginSecurity API

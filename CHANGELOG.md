@@ -37,6 +37,7 @@
 - **`$d -` / `/blacklist -` 简写 trim 收紧（审查发现 P3）**：`-` 简写去破折号后 `trim()`——`$d -` / `/blacklist -`（空模式）回用法提示；`$d - exact foo`（破折号后带空格）不再因首词空串绕过玩家名规则守卫，`$d - 1.2.3.4` 空格变体现在也能正常移除 IP
 - **玩家名规则增删反馈抽公共构建器（审查发现 P3）**：新增 `PlayerNameRuleFeedback.feedback`（解析 + 合法/非法 + 增删与已移除/未找到反馈）供 bot `$d` 与游戏内 `/blacklist` 共用，消除两处实现漂移并为游戏侧反馈逻辑补上单元测试
 - **玩家名规则「未找到」改用 error 模板键（审查发现 P3）**：bot 侧移除不存在的玩家名规则由 `command_blacklist_remove` 键改用 `command_blacklist_error` 键，与 IP「未找到」一致（模板均纯文本渲染 message，无展示差异）
+- **Bot 命令帮助补全使用示例**：`$d ?` 补齐玩家名规则 6 种匹配类型（`exact`/`prefix`/`suffix`/`contains`/`glob`/`regex`）清单与全类型示例；`$v ?` 补充 `yes`/`no` 别名与同玩家多类型申请用 `$v y <typeId> <玩家>`；`$p ?` 补充 `up`/`down` 别名。仓库文档（`docs/features.md` / `docs/architecture.md`）同步 `$d` 示例
 
 ### ⚠️ 升级注意
 - **GeoIP 失败策略默认改为 fail-close**：此前 GeoIP 查询失败一律放行（fail-open），现默认拒绝进入（安全优先）；依赖旧行为的服务器请在 config.yml `geoip:` 段显式设 `fail_open: true`
