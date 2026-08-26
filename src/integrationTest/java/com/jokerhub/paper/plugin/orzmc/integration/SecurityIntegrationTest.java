@@ -2,7 +2,7 @@ package com.jokerhub.paper.plugin.orzmc.integration;
 
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
 import com.jokerhub.paper.plugin.orzmc.core.bot.MessageEnvelope;
-import com.jokerhub.paper.plugin.orzmc.features.security.BlacklistService;
+import com.jokerhub.paper.plugin.orzmc.features.security.AccessRuleService;
 import com.jokerhub.paper.plugin.orzmc.infra.config.ConfigService;
 import com.jokerhub.paper.plugin.orzmc.infra.notify.NotifierSink;
 import java.util.ArrayList;
@@ -67,26 +67,34 @@ public class SecurityIntegrationTest {
     }
 
     @Test
-    public void testBlacklistServiceDirectly() {
-        // Access BlacklistService through its public API
+    public void testAccessRuleServiceDirectly() {
+        // Access AccessRuleService through its public API
         ConfigService configService = new ConfigService(plugin);
-        BlacklistService blacklistService = new BlacklistService(configService);
-        Assertions.assertNotNull(blacklistService);
-        Assertions.assertTrue(blacklistService.getPatterns().isEmpty(), "Blacklist should start empty");
+        AccessRuleService accessRuleService = new AccessRuleService(configService);
+        Assertions.assertNotNull(accessRuleService);
+        Assertions.assertTrue(accessRuleService.getIpPatterns().isEmpty(), "Blacklist should start empty");
 
         // Test add
-        blacklistService.add("10.0.0.1");
-        Assertions.assertEquals(1, blacklistService.getPatterns().size());
-        Assertions.assertTrue(blacklistService.isBlocked("10.0.0.1"));
+        accessRuleService.addIpPattern("10.0.0.1");
+        Assertions.assertEquals(1, accessRuleService.getIpPatterns().size());
+        Assertions.assertTrue(accessRuleService.isIpBlocked("10.0.0.1"));
 
         // Test remove
-        blacklistService.remove("10.0.0.1");
-        Assertions.assertTrue(blacklistService.getPatterns().isEmpty());
+        accessRuleService.removeIpPattern("10.0.0.1");
+        Assertions.assertTrue(accessRuleService.getIpPatterns().isEmpty());
 
         // Test IP matching
-        blacklistService.add("192.168.1.*");
-        Assertions.assertTrue(blacklistService.isBlocked("192.168.1.100"));
-        Assertions.assertFalse(blacklistService.isBlocked("192.168.2.100"));
+        accessRuleService.addIpPattern("192.168.1.*");
+        Assertions.assertTrue(accessRuleService.isIpBlocked("192.168.1.100"));
+        Assertions.assertFalse(accessRuleService.isIpBlocked("192.168.2.100"));
+    }
+
+    @Test
+    public void testPlayerNameRuleViaBotCommand() {
+        AtomicReference<MessageEnvelope> got = new AtomicReference<>();
+        plugin.services().botModule().botInboundHandler().handleMessage("$d player prefix bot_", true, got::set);
+        server.getScheduler().performOneTick();
+        Assertions.assertNotNull(got.get(), "Player rule add should produce response");
     }
 
     @Test

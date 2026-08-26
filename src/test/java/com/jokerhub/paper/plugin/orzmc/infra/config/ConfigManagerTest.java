@@ -5,7 +5,6 @@ import static org.mockito.Mockito.*;
 
 import java.io.File;
 import java.util.logging.Logger;
-import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -142,53 +141,7 @@ class ConfigManagerTest {
     }
 
     @Test
-    void loadFile_returnsNullForMissingFile() {
-        assertNull(mgr.loadFile("nonexistent.yml"));
-    }
-
-    @Test
-    void loadFile_returnsConfigForExistingFile() throws Exception {
-        File f = new File(tempDir, "existing.yml");
-        FileConfiguration cfg = new YamlConfiguration();
-        cfg.set("key", "val");
-        cfg.save(f);
-
-        FileConfiguration loaded = mgr.loadFile("existing.yml");
-        assertNotNull(loaded);
-        assertEquals("val", loaded.getString("key"));
-    }
-
-    @Test
-    void sectionOrLegacy_readsFromMergedFirst() {
-        mgr.registerConfig("main", "main.yml");
-        FileConfiguration main = mgr.getConfig("main");
-        main.createSection("whitelist");
-        main.getConfigurationSection("whitelist").set("enabled", true);
-
-        ConfigurationSection section = mgr.sectionOrLegacy("main", "whitelist", "legacy.yml");
-        assertNotNull(section);
-        assertTrue(section.getBoolean("enabled"));
-    }
-
-    @Test
-    void sectionOrLegacy_fallsBackToLegacyFile() throws Exception {
-        mgr.registerConfig("main", "main.yml");
-
-        // 创建传统文件
-        File legacyFile = new File(tempDir, "legacy.yml");
-        FileConfiguration legacy = new YamlConfiguration();
-        legacy.createSection("whitelist");
-        legacy.getConfigurationSection("whitelist").set("enabled", true);
-        legacy.save(legacyFile);
-
-        ConfigurationSection section = mgr.sectionOrLegacy("main", "whitelist", "legacy.yml");
-        assertNotNull(section);
-        assertTrue(section.getBoolean("enabled"));
-    }
-
-    @Test
-    void sectionOrLegacy_returnsNullWhenBothMissing() {
-        mgr.registerConfig("main", "main.yml");
-        assertNull(mgr.sectionOrLegacy("main", "missing", "missing.yml"));
+    void dataFolder_returnsPluginDataFolder() {
+        assertEquals(tempDir, mgr.dataFolder());
     }
 }

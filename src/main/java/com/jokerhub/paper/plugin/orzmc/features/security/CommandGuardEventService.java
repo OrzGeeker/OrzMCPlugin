@@ -92,16 +92,20 @@ public final class CommandGuardEventService {
             }
             case WARN -> {
                 audit.record(auditSource(sender), sender.getName(), commandLine, false);
-                // 日志节流：命令方块循环注入等高频来源 5 秒最多 1 条 warning（防日志刷屏），
-                // 其余降级为 fine；审计记录不受影响（audit.record 写文件不刷日志）
-                if (logThrottle.shouldRun("command_guard_warn_log", 5000)) {
-                    logger.warning("[OrzMC] 危险命令放行（未限定目标选择器）: "
-                            + commandLine
-                            + "（来源: " + sourceLabel(sender) + "，发送者: " + sender.getName() + "）");
-                } else {
-                    logger.fine("[OrzMC] 危险命令放行（节流，详见审计）: "
-                            + commandLine
-                            + "（来源: " + sourceLabel(sender) + "，发送者: " + sender.getName() + "）");
+                // 审计开启时控制台不再重复 warning：细节由 command_audit.log 承载，
+                // 避免管理员查看问题时被高频 WARN 刷屏。
+                if (!configs.securityGuard().auditEnabled()) {
+                    // 日志节流：命令方块循环注入等高频来源 5 秒最多 1 条 warning（防日志刷屏），
+                    // 其余降级为 fine；审计记录不受影响。
+                    if (logThrottle.shouldRun("command_guard_warn_log", 5000)) {
+                        logger.warning("[OrzMC] 危险命令放行（未限定目标选择器）: "
+                                + commandLine
+                                + "（来源: " + sourceLabel(sender) + "，发送者: " + sender.getName() + "）");
+                    } else {
+                        logger.fine("[OrzMC] 危险命令放行（节流，详见审计）: "
+                                + commandLine
+                                + "（来源: " + sourceLabel(sender) + "，发送者: " + sender.getName() + "）");
+                    }
                 }
             }
             case ALLOW -> {

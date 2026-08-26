@@ -29,6 +29,7 @@ public class OrzConfigCommand implements CommandExecutor {
     private final Map<String, ConfigPath> registry;
     private final Runnable easyBotConfigReload;
     private Runnable rankColorsReload = () -> {};
+    private Runnable accessRulesReload = () -> {};
 
     public OrzConfigCommand(ConfigService configService, OrzTextStyles textStyles) {
         this(configService, textStyles, () -> {});
@@ -47,6 +48,14 @@ public class OrzConfigCommand implements CommandExecutor {
      */
     public void setRankColorsReload(Runnable rankColorsReload) {
         this.rankColorsReload = rankColorsReload == null ? () -> {} : rankColorsReload;
+    }
+
+    /**
+     * 注册 access_rules 配置改动后的回调（组合根注入：{@code /orzmc config reload} 后
+     * 刷新 {@code AccessRuleService} 内存缓存，手动编辑 access_rules.yml 即改即生效）。
+     */
+    public void setAccessRulesReload(Runnable accessRulesReload) {
+        this.accessRulesReload = accessRulesReload == null ? () -> {} : accessRulesReload;
     }
 
     @Override
@@ -198,6 +207,7 @@ public class OrzConfigCommand implements CommandExecutor {
             configService.reloadAll();
             easyBotConfigReload.run();
             rankColorsReload.run();
+            accessRulesReload.run();
             sender.sendMessage(textStyles.success("所有配置文件已重新加载"));
         }
     }
@@ -211,12 +221,14 @@ public class OrzConfigCommand implements CommandExecutor {
         }
     }
 
-    /** 按配置文件名派发改动后回调：easybot → 连接协调；config.yml（含 rank_colors）→ 重刷在线玩家着色。 */
+    /** 按配置文件名派发改动后回调：easybot → 连接协调；config.yml（含 rank_colors）→ 重刷在线玩家着色；access_rules → 刷新访问规则缓存。 */
     private void notifyConfigNameReload(String configName) {
         if ("easybot".equalsIgnoreCase(configName)) {
             easyBotConfigReload.run();
         } else if ("config".equalsIgnoreCase(configName)) {
             rankColorsReload.run();
+        } else if ("access_rules".equalsIgnoreCase(configName)) {
+            accessRulesReload.run();
         }
     }
 

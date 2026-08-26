@@ -17,7 +17,8 @@ import com.jokerhub.paper.plugin.orzmc.features.portal.PortalCommandService;
 import com.jokerhub.paper.plugin.orzmc.features.rank.RankCommandService;
 import com.jokerhub.paper.plugin.orzmc.features.rank.RankService;
 import com.jokerhub.paper.plugin.orzmc.features.review.ReviewCommandService;
-import com.jokerhub.paper.plugin.orzmc.features.security.BlacklistService;
+import com.jokerhub.paper.plugin.orzmc.features.security.AccessRuleService;
+import com.jokerhub.paper.plugin.orzmc.features.security.PlayerNameRule;
 import com.jokerhub.paper.plugin.orzmc.features.teleport.TeleportBowService;
 import com.jokerhub.paper.plugin.orzmc.infra.config.ConfigPath;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.CommandPolicies;
@@ -36,8 +37,6 @@ import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import org.bukkit.command.CommandSender;
-import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 
 /**
@@ -54,7 +53,7 @@ final class FeatureCommandRegistrar {
     private final MenuCommandService menuCommandService;
     private final TeleportBowService teleportBowService;
     private final PortalCommandService portalCommandService;
-    private final BlacklistService blacklistService;
+    private final AccessRuleService accessRuleService;
     private final ReviewCommandService reviewCommandService;
     private final RankCommandService rankCommandService;
     private final RankService rankService;
@@ -67,7 +66,7 @@ final class FeatureCommandRegistrar {
             MenuCommandService menuCommandService,
             TeleportBowService teleportBowService,
             PortalCommandService portalCommandService,
-            BlacklistService blacklistService,
+            AccessRuleService accessRuleService,
             ReviewCommandService reviewCommandService,
             RankCommandService rankCommandService,
             RankService rankService,
@@ -78,7 +77,7 @@ final class FeatureCommandRegistrar {
         this.menuCommandService = menuCommandService;
         this.teleportBowService = teleportBowService;
         this.portalCommandService = portalCommandService;
-        this.blacklistService = blacklistService;
+        this.accessRuleService = accessRuleService;
         this.reviewCommandService = reviewCommandService;
         this.rankCommandService = rankCommandService;
         this.rankService = rankService;
@@ -95,13 +94,8 @@ final class FeatureCommandRegistrar {
             Commands commands = event.registrar();
 
             // Re-read command policies on each fire (supports reload)
-            ConfigurationSection cmdSection =
-                    platform.configService().getConfig("config").getConfigurationSection("command_policies");
-            if (cmdSection == null) {
-                FileConfiguration legacy = platform.configService().loadFile("commands.yml");
-                cmdSection = legacy != null ? legacy.getConfigurationSection("commands") : null;
-            }
-            CommandPolicies cp = CommandPolicies.from(cmdSection);
+            CommandPolicies cp = CommandPolicies.from(
+                    platform.configService().getConfig("config").getConfigurationSection("command_policies"));
 
             // ---- No-argument commands (clean literals, no [args] in help) ----
             registerSimple(
@@ -294,35 +288,72 @@ final class FeatureCommandRegistrar {
         return 1;
     }
 
-    /** Blacklist: /blacklist list|add|remove <pattern> */
+    /** Blacklist: /blacklist list|add|remove <pattern>，并支持 player 玩家名规则子命令。 */
     private void registerBlacklist(Commands commands, CommandPolicies cp) {
         List<CommandInterceptor> interceptors = adminInterceptors("blacklist");
         Predicate<CommandSourceStack> req = requirement(interceptors);
-        BlacklistService svc = blacklistService;
+        AccessRuleService svc = accessRuleService;
         OrzTextStyles styles = platform.textStyles();
 
         commands.register(
                 literal("blacklist")
                         .requires(req)
-                        .then(literal("list").executes(guardedExec("blacklist", interceptors, ctx -> {
-                            listBlacklist(ctx.getSource().getSender(), svc, styles);
-                            return 1;
-                        })))
+                        .then(literal("list")
+                                .executes(guardedExec("blacklist", interceptors, ctx -> {
+                                    listAccessRules(ctx.getSource().getSender(), svc, styles);
+                                    return 1;
+                                }))
+                                .then(literal("player").executes(guardedExec("blacklist", interceptors, ctx -> {
+                                    listPlayerRules(ctx.getSource().getSender(), svc, styles);
+                                    return 1;
+                                }))))
                         .then(literal("add")
+                                .then(literal("player")
+                                        .then(argument("type", StringArgumentType.word())
+                                                .then(argument("value", StringArgumentType.greedyString())
+                                                        .executes(guardedExec("blacklist", interceptors, ctx -> {
+                                                            String type = ctx.getArgument("type", String.class);
+                                                            String value = ctx.getArgument("value", String.class);
+                                                            handlePlayerRule(
+                                                                    ctx.getSource()
+                                                                            .getSender(),
+                                                                    svc,
+                                                                    styles,
+                                                                    false,
+                                                                    type,
+                                                                    value);
+                                                            return 1;
+                                                        })))))
                                 .then(argument("pattern", StringArgumentType.greedyString())
                                         .executes(guardedExec("blacklist", interceptors, ctx -> {
                                             String pattern = ctx.getArgument("pattern", String.class);
-                                            svc.add(pattern);
+                                            svc.addIpPattern(pattern);
                                             ctx.getSource()
                                                     .getSender()
                                                     .sendMessage(styles.success("已添加黑名单: " + pattern));
                                             return 1;
                                         }))))
                         .then(literal("remove")
+                                .then(literal("player")
+                                        .then(argument("type", StringArgumentType.word())
+                                                .then(argument("value", StringArgumentType.greedyString())
+                                                        .executes(guardedExec("blacklist", interceptors, ctx -> {
+                                                            String type = ctx.getArgument("type", String.class);
+                                                            String value = ctx.getArgument("value", String.class);
+                                                            handlePlayerRule(
+                                                                    ctx.getSource()
+                                                                            .getSender(),
+                                                                    svc,
+                                                                    styles,
+                                                                    true,
+                                                                    type,
+                                                                    value);
+                                                            return 1;
+                                                        })))))
                                 .then(argument("pattern", StringArgumentType.greedyString())
                                         .executes(guardedExec("blacklist", interceptors, ctx -> {
                                             String pattern = ctx.getArgument("pattern", String.class);
-                                            svc.remove(pattern);
+                                            svc.removeIpPattern(pattern);
                                             ctx.getSource()
                                                     .getSender()
                                                     .sendMessage(styles.success("已从黑名单移除: " + pattern));
@@ -333,22 +364,22 @@ final class FeatureCommandRegistrar {
                                 .executes(guardedExec("blacklist", interceptors, ctx -> {
                                     String input = ctx.getArgument("input", String.class);
                                     if (input.startsWith("-")) {
-                                        svc.remove(input.substring(1));
+                                        svc.removeIpPattern(input.substring(1));
                                         ctx.getSource()
                                                 .getSender()
                                                 .sendMessage(styles.success("已从黑名单移除: " + input.substring(1)));
                                     } else {
-                                        svc.add(input);
+                                        svc.addIpPattern(input);
                                         ctx.getSource().getSender().sendMessage(styles.success("已添加黑名单: " + input));
                                     }
                                     return 1;
                                 })))
                         .executes(guardedExec("blacklist", interceptors, ctx -> {
-                            listBlacklist(ctx.getSource().getSender(), svc, styles);
+                            listAccessRules(ctx.getSource().getSender(), svc, styles);
                             return 1;
                         }))
                         .build(),
-                "IP黑名单管理",
+                "IP黑名单与玩家名规则管理",
                 List.of("bl"));
     }
 
@@ -533,15 +564,63 @@ final class FeatureCommandRegistrar {
         }
     }
 
-    private static void listBlacklist(CommandSender sender, BlacklistService svc, OrzTextStyles styles) {
-        List<String> patterns = svc.getPatterns();
-        if (patterns.isEmpty()) {
-            sender.sendMessage(styles.info("黑名单为空"));
-        } else {
-            sender.sendMessage(styles.info("当前黑名单:"));
-            for (String p : patterns) {
-                sender.sendMessage(styles.info("  " + p));
+    private static void listAccessRules(CommandSender sender, AccessRuleService svc, OrzTextStyles styles) {
+        List<String> patterns = svc.getIpPatterns();
+        List<PlayerNameRule> rules = svc.getPlayerNameRules();
+        if (patterns.isEmpty() && rules.isEmpty()) {
+            sender.sendMessage(styles.info("访问规则为空"));
+            return;
+        }
+        sender.sendMessage(styles.info("当前访问规则:"));
+        if (!patterns.isEmpty()) {
+            sender.sendMessage(styles.info("  IP黑名单:"));
+            for (String pattern : patterns) {
+                sender.sendMessage(styles.info("    " + pattern));
             }
+        }
+        if (!rules.isEmpty()) {
+            sender.sendMessage(styles.info("  玩家名规则:"));
+            for (PlayerNameRule rule : rules) {
+                sender.sendMessage(styles.info("    " + rule.display()));
+            }
+        }
+    }
+
+    private static void listPlayerRules(CommandSender sender, AccessRuleService svc, OrzTextStyles styles) {
+        List<PlayerNameRule> rules = svc.getPlayerNameRules();
+        if (rules.isEmpty()) {
+            sender.sendMessage(styles.info("玩家名规则为空"));
+            return;
+        }
+        sender.sendMessage(styles.info("当前玩家名规则:"));
+        for (PlayerNameRule rule : rules) {
+            sender.sendMessage(styles.info("  " + rule.display()));
+        }
+    }
+
+    private static void handlePlayerRule(
+            CommandSender sender,
+            AccessRuleService svc,
+            OrzTextStyles styles,
+            boolean remove,
+            String typeRaw,
+            String value) {
+        PlayerNameRule.MatchType type = PlayerNameRule.MatchType.from(typeRaw);
+        if (type == null) {
+            sender.sendMessage(styles.error("无效匹配类型: " + typeRaw + "（支持 exact/prefix/suffix/contains/glob/regex）"));
+            return;
+        }
+        PlayerNameRule rule = PlayerNameRule.of(type, value);
+        if (!rule.isValid()) {
+            sender.sendMessage(styles.error("无效的正则表达式: " + value));
+            return;
+        }
+        if (remove) {
+            svc.removePlayerNameRule(type, value);
+            sender.sendMessage(styles.success("已移除玩家名规则: " + rule.display()));
+        } else {
+            svc.addPlayerNameRule(type, value);
+            sender.sendMessage(styles.success("已添加玩家名规则: " + rule.display()));
         }
     }
 

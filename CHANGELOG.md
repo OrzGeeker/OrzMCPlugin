@@ -1,5 +1,31 @@
 # Changelog
 
+## [Unreleased]
+
+### ✨ 新功能
+- **访问规则统一（IP 黑名单 + 玩家名规则）** — 新增 `AccessRuleService` 统一管理登录访问规则：
+  - IP 黑名单继续支持精确 IP / CIDR / 通配符
+  - 玩家名新增 `exact / prefix / suffix / contains / glob / regex` 六种匹配方式，默认大小写不敏感
+  - prelogin 顺序固定为维护模式 → IP 黑名单 → 玩家名规则 → GeoIP
+  - `$d` 与 `/blacklist` 保持旧 IP 语法兼容，并新增 `player <type> <value>` 子命令管理玩家名规则
+  - 运行时规则持久化到 `access_rules.yml`（取代旧 `ip_blacklist.yml`）
+
+### ⚙️ 配置默认值调整
+- `rank_colors.tab_enabled` 默认改为 `false`（Tab 不再默认按权限着色）
+- `login_rate_limit.max_login_attempts_per_minute` 默认改为 `20`，`max_concurrent_per_ip` 默认改为 `5`
+- `chat.max_messages_per_minute` 默认改为 `20`
+- `player_notify.window_ms` 默认改为 `1000`
+- `guard.audit_enabled=true` 时，危险命令 WARN 不再重复刷控制台，细节由 `audit/command_audit.log` 承载
+
+### ⚠️ 升级注意
+- **旧 `ip_blacklist.yml` 不再读取**：本版本起 IP 黑名单与玩家名规则统一存于 `access_rules.yml`，存量封禁数据不自动导入，升级前请将旧规则手动迁移到 `access_rules.yml`
+- **旧独立配置文件不再读取**：配置统一从 `config.yml`（已含 `command_policies` / `rank_colors` 等全部分段）与 `templates.yml` 读取，不再自动 fallback 到旧 `maintenance.yml` / `whitelist.yml` / `tnt.yml` / `player_notify.yml` / `ip_whitelist.yml` / `guard.yml` / `chat.yml` / `login_rate_limit.yml` / `exploit_hardening.yml` / `rank_colors.yml` / `styles.yml` / `commands.yml`。这些旧文件中的自定义值请迁移到 `config.yml` 对应分段；`config-version` 过旧提醒已随旧文件读取一并移除
+
+### 📦 依赖与测试
+- Paper API 升级到最新稳定版 `26.2.build.119-stable`，MockBukkit 同步升级到 `mockbukkit-v26.2:4.116.1`
+- `ServerMock.getWorldContainer()` 仍未实现（官方 PR #1618 跟踪中），插件启动清理改为获取失败时跳过并告警，避免集成测试被静默 SKIPPED
+- E2E Mineflayer 固定 `4.37.1` + `minecraft-data@3.113.2`，连接协议固定 `1.21.11`（Paper 26.2 兼容）
+
 ## [1.0.23] - 2026-08-21
 
 ### ✨ 新功能

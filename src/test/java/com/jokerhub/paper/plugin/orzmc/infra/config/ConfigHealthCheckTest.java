@@ -18,6 +18,7 @@ class ConfigHealthCheckTest {
     private YamlConfiguration templates;
     private YamlConfiguration portals;
     private YamlConfiguration easybot;
+    private YamlConfiguration accessRules;
     private Function<String, FileConfiguration> provider;
 
     @BeforeEach
@@ -27,12 +28,14 @@ class ConfigHealthCheckTest {
         templates = new YamlConfiguration();
         portals = new YamlConfiguration();
         easybot = new YamlConfiguration();
+        accessRules = new YamlConfiguration();
         provider = name -> switch (name) {
             case "config" -> config;
             case "bot" -> bot;
             case "templates" -> templates;
             case "portals" -> portals;
             case "easybot" -> easybot;
+            case "access_rules" -> accessRules;
             default -> null;
         };
     }
@@ -80,7 +83,7 @@ class ConfigHealthCheckTest {
         config.getConfigurationSection("player_notify").set("enabled_join", true);
         config.getConfigurationSection("player_notify").set("enabled_quit", true);
         config.getConfigurationSection("player_notify").set("enabled_kick", true);
-        config.getConfigurationSection("player_notify").set("window_ms", 3000L);
+        config.getConfigurationSection("player_notify").set("window_ms", 1000L);
         config.getConfigurationSection("player_notify").set("max_list_items", 6);
     }
 
@@ -99,7 +102,7 @@ class ConfigHealthCheckTest {
     private void addFullValidConfig_chat() {
         config.createSection("chat");
         config.getConfigurationSection("chat").set("enabled", true);
-        config.getConfigurationSection("chat").set("max_messages_per_minute", 6);
+        config.getConfigurationSection("chat").set("max_messages_per_minute", 20);
         config.getConfigurationSection("chat").set("detect_links", true);
         config.getConfigurationSection("chat").set("detect_repeat", true);
         config.getConfigurationSection("chat").set("message", "请勿刷屏或发送广告");
@@ -121,8 +124,8 @@ class ConfigHealthCheckTest {
     private void addFullValidConfig_loginRateLimit() {
         config.createSection("login_rate_limit");
         config.getConfigurationSection("login_rate_limit").set("enabled", true);
-        config.getConfigurationSection("login_rate_limit").set("max_login_attempts_per_minute", 5);
-        config.getConfigurationSection("login_rate_limit").set("max_concurrent_per_ip", 3);
+        config.getConfigurationSection("login_rate_limit").set("max_login_attempts_per_minute", 20);
+        config.getConfigurationSection("login_rate_limit").set("max_concurrent_per_ip", 5);
         config.getConfigurationSection("login_rate_limit").set("notify_admins", true);
         config.getConfigurationSection("login_rate_limit").set("message", "登录过于频繁，请稍后再试");
     }
@@ -136,6 +139,11 @@ class ConfigHealthCheckTest {
         config.getConfigurationSection("command_policies")
                 .getConfigurationSection("tpbow")
                 .set("admin_only", false);
+    }
+
+    private void addFullValidConfig_accessRules() {
+        accessRules.set("ip_blacklist", List.of());
+        accessRules.set("player_name_rules", List.of());
     }
 
     private void addFullValidConfig_bot() {
@@ -272,8 +280,29 @@ class ConfigHealthCheckTest {
         addFullValidConfig_exploitHardening();
         addFullValidConfig_bot();
         addFullValidConfig_templates();
+        addFullValidConfig_accessRules();
         List<String> issues = runValidate();
         assertTrue(issues.isEmpty(), "预期无问题，实际: " + issues);
+    }
+
+    @Test
+    void accessRules_invalidPlayerRuleType_reportsIssue() {
+        addFullValidConfig_accessRules();
+        accessRules.set("player_name_rules", List.of(java.util.Map.of("type", "unknown", "value", "bot_")));
+
+        List<String> issues = runValidate();
+
+        assertTrue(issues.contains("非法: access_rules.player_name_rules.type 'unknown' 不在支持范围"), "实际问题: " + issues);
+    }
+
+    @Test
+    void accessRules_invalidRegex_reportsIssue() {
+        addFullValidConfig_accessRules();
+        accessRules.set("player_name_rules", List.of(java.util.Map.of("type", "regex", "value", "[")));
+
+        List<String> issues = runValidate();
+
+        assertTrue(issues.stream().anyMatch(line -> line.contains("正则无法编译")), "实际问题: " + issues);
     }
 
     // ================================================================
@@ -571,7 +600,7 @@ class ConfigHealthCheckTest {
         addFullValidConfig_bot();
         addMinimalValidConfig_templates();
         List<String> issues = runValidate();
-        assertTrue(issues.contains("建议: config.yml 缺失 player_notify 配置段，将使用默认配置（窗口 3000ms，三类通知启用）"));
+        assertTrue(issues.contains("建议: config.yml 缺失 player_notify 配置段，将使用默认配置（窗口 1000ms，三类通知启用）"));
     }
 
     @Test
@@ -586,7 +615,7 @@ class ConfigHealthCheckTest {
         addFullValidConfig_bot();
         addMinimalValidConfig_templates();
         List<String> issues = runValidate();
-        assertTrue(issues.contains("非法: player_notify.window_ms 必须为正数（≤0 会回退默认 3000ms，静默关闭防刷屏）"));
+        assertTrue(issues.contains("非法: player_notify.window_ms 必须为正数（≤0 会回退默认 1000ms，静默关闭防刷屏）"));
     }
 
     @Test

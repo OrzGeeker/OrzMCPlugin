@@ -9,8 +9,10 @@ import com.jokerhub.paper.plugin.orzmc.core.bot.MessageEnvelope.Format;
 import com.jokerhub.paper.plugin.orzmc.core.bot.MessageEnvelope.TargetType;
 import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
 import com.jokerhub.paper.plugin.orzmc.features.rank.RankService;
+import com.jokerhub.paper.plugin.orzmc.features.security.AccessRuleService;
 import com.jokerhub.paper.plugin.orzmc.features.security.CommandAuditService;
 import com.jokerhub.paper.plugin.orzmc.features.security.CommandGuardService;
+import com.jokerhub.paper.plugin.orzmc.features.security.PlayerNameRule;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.BotConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.SecurityGuardConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.WhitelistConfig;
@@ -689,5 +691,51 @@ class BotCommandServiceTest {
 
         service.parse("$e ?list", true, callback);
         verify(serverFacade).executeConsoleCommand("?list");
+    }
+
+    @Test
+    void parse_blacklistPlayerRule_callsAccessRuleService() {
+        AccessRuleService accessRuleService = mock(AccessRuleService.class);
+        service.injectDependencies(new BotCommandDependencies().accessRuleService(accessRuleService));
+
+        service.parse("$d player prefix bot_", true, callback);
+
+        verify(accessRuleService).addPlayerNameRule(PlayerNameRule.MatchType.PREFIX, "bot_");
+    }
+
+    @Test
+    void parse_blacklistRemovePlayerRule_callsAccessRuleService() {
+        AccessRuleService accessRuleService = mock(AccessRuleService.class);
+        service.injectDependencies(new BotCommandDependencies().accessRuleService(accessRuleService));
+
+        service.parse("$d -player suffix _test", true, callback);
+
+        verify(accessRuleService).removePlayerNameRule(PlayerNameRule.MatchType.SUFFIX, "_test");
+    }
+
+    @Test
+    void parse_blacklistBareRemovePlayer_emitsUsageNotIpRemoval() {
+        // $d -player 缺参 → 用法错误，绝不把 "player" 当 IP 黑名单移除
+        AccessRuleService accessRuleService = mock(AccessRuleService.class);
+        service.injectDependencies(new BotCommandDependencies().accessRuleService(accessRuleService));
+
+        service.parse("$d -player", true, callback);
+
+        verify(accessRuleService, never()).removeIpPattern(anyString());
+        var captor = org.mockito.ArgumentCaptor.forClass(MessageEnvelope.class);
+        verify(callback).accept(captor.capture());
+        assertEquals("用法: $d -player <type> <value>", captor.getValue().message());
+    }
+
+    @Test
+    void parse_blacklistMalformedPlayerPrefix_emitsUsageNotIpRemoval() {
+        // $d -playerX / $d playerX 是畸形玩家名规则命令，不应落入 IP 黑名单分支
+        AccessRuleService accessRuleService = mock(AccessRuleService.class);
+        service.injectDependencies(new BotCommandDependencies().accessRuleService(accessRuleService));
+
+        service.parse("$d -playerX", true, callback);
+
+        verify(accessRuleService, never()).removeIpPattern(anyString());
+        verify(callback).accept(any(MessageEnvelope.class));
     }
 }
