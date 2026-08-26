@@ -67,6 +67,20 @@ public final class PlayerNameRule {
     /** 玩家名规则的解析结果：{@code valid()} 为 false 表示参数不合法（类型未知或正则非法）。 */
     public record ParsedRule(MatchType type, PlayerNameRule rule, boolean valid) {}
 
+    /**
+     * 判断输入是否看起来像玩家名规则命令（player/-player 前缀，或首词是六种匹配类型之一）。
+     *
+     * <p>供 bot {@code $d} 与游戏内 {@code /blacklist} 在把字符串当 IP 规则添加/移除前拦截误输入，
+     * 避免把 {@code prefix bot_} 之类静默当成永不匹配的 IP 条目并回复假成功。</p>
+     */
+    public static boolean looksLikePlayerRuleSyntax(String raw) {
+        if (raw == null || raw.isEmpty()) return false;
+        String lower = raw.toLowerCase(Locale.ROOT);
+        if (lower.startsWith("player") || lower.startsWith("-player")) return true;
+        String firstToken = lower.split("\\s+", 2)[0];
+        return MatchType.from(firstToken) != null;
+    }
+
     public MatchType type() {
         return type;
     }

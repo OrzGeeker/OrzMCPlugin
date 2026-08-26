@@ -789,4 +789,77 @@ class BotCommandServiceTest {
         verify(callback).accept(captor.capture());
         assertEquals("用法: $d player <type> <value>", captor.getValue().message());
     }
+
+    @Test
+    void parse_blacklistIpShorthand_matchTypeKeyword_emitsUsageNotIpAddition() {
+        // P2：$d prefix bot_ 首词是匹配类型 → 提示玩家名规则用法，绝不把 "prefix bot_" 当 IP 误加
+        AccessRuleService accessRuleService = mock(AccessRuleService.class);
+        service.injectDependencies(new BotCommandDependencies().accessRuleService(accessRuleService));
+
+        service.parse("$d prefix bot_", true, callback);
+
+        verify(accessRuleService, never()).addIpPattern(anyString());
+        var captor = org.mockito.ArgumentCaptor.forClass(MessageEnvelope.class);
+        verify(callback).accept(captor.capture());
+        assertEquals("玩家名规则请使用: $d player <type> <value>", captor.getValue().message());
+    }
+
+    @Test
+    void parse_blacklistIpRemoveShorthand_matchTypeKeyword_emitsUsageNotIpRemoval() {
+        // P2：$d -exact Steve 同理不落入 IP 移除分支
+        AccessRuleService accessRuleService = mock(AccessRuleService.class);
+        service.injectDependencies(new BotCommandDependencies().accessRuleService(accessRuleService));
+
+        service.parse("$d -exact Steve", true, callback);
+
+        verify(accessRuleService, never()).removeIpPattern(anyString());
+        var captor = org.mockito.ArgumentCaptor.forClass(MessageEnvelope.class);
+        verify(callback).accept(captor.capture());
+        assertEquals("玩家名规则请使用: $d -player <type> <value>", captor.getValue().message());
+    }
+
+    @Test
+    void parse_blacklistIpRemove_missing_emitsNotFoundNotRemoved() {
+        // P3：移除不存在的 IP → 回「未找到」，不再假报「已移除」
+        AccessRuleService accessRuleService = mock(AccessRuleService.class);
+        when(accessRuleService.removeIpPattern("1.2.3.4")).thenReturn(false);
+        service.injectDependencies(new BotCommandDependencies().accessRuleService(accessRuleService));
+
+        service.parse("$d -1.2.3.4", true, callback);
+
+        verify(accessRuleService).removeIpPattern("1.2.3.4");
+        var captor = org.mockito.ArgumentCaptor.forClass(MessageEnvelope.class);
+        verify(callback).accept(captor.capture());
+        assertEquals("未在黑名单中找到: 1.2.3.4", captor.getValue().message());
+    }
+
+    @Test
+    void parse_blacklistIpRemove_present_emitsRemoved() {
+        // P3：确实移除 → 仍报「已移除」
+        AccessRuleService accessRuleService = mock(AccessRuleService.class);
+        when(accessRuleService.removeIpPattern("1.2.3.4")).thenReturn(true);
+        service.injectDependencies(new BotCommandDependencies().accessRuleService(accessRuleService));
+
+        service.parse("$d -1.2.3.4", true, callback);
+
+        var captor = org.mockito.ArgumentCaptor.forClass(MessageEnvelope.class);
+        verify(callback).accept(captor.capture());
+        assertEquals("已移除: 1.2.3.4", captor.getValue().message());
+    }
+
+    @Test
+    void parse_blacklistRemovePlayerRule_missing_emitsNotFound() {
+        // P3：移除不存在的玩家名规则 → 回「未找到」，不再无条件报「已移除」
+        AccessRuleService accessRuleService = mock(AccessRuleService.class);
+        when(accessRuleService.removePlayerNameRule(PlayerNameRule.MatchType.EXACT, "foo"))
+                .thenReturn(false);
+        service.injectDependencies(new BotCommandDependencies().accessRuleService(accessRuleService));
+
+        service.parse("$d -player exact foo", true, callback);
+
+        verify(accessRuleService).removePlayerNameRule(PlayerNameRule.MatchType.EXACT, "foo");
+        var captor = org.mockito.ArgumentCaptor.forClass(MessageEnvelope.class);
+        verify(callback).accept(captor.capture());
+        assertEquals("未找到该玩家名规则: exact:foo", captor.getValue().message());
+    }
 }

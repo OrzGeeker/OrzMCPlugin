@@ -171,6 +171,28 @@ class AccessRuleServiceTest {
     }
 
     @Test
+    void removeIpPattern_present_returnsTrue() {
+        // P3：移除确实存在 → 返回 true，供命令侧报「已移除」
+        setupIpPatterns("10.0.0.0/8");
+        assertTrue(service.removeIpPattern("10.0.0.0/8"));
+        assertFalse(service.isIpBlocked("10.0.0.5"));
+    }
+
+    @Test
+    void removeIpPattern_missing_returnsFalse() {
+        // P3：移除不存在 → 返回 false，供命令侧报「未找到」而非假成功
+        setupIpPatterns("10.0.0.0/8");
+        assertFalse(service.removeIpPattern("1.2.3.4"));
+        assertFalse(service.getIpPatterns().isEmpty());
+    }
+
+    @Test
+    void removeIpPattern_nullOrEmpty_returnsFalse() {
+        assertFalse(service.removeIpPattern(null));
+        assertFalse(service.removeIpPattern(""));
+    }
+
+    @Test
     void addNullIpPattern_noChange() {
         service.addIpPattern(null);
         service.addIpPattern("");
@@ -268,6 +290,22 @@ class AccessRuleServiceTest {
         assertEquals(1, service.getPlayerNameRules().size());
         service.removePlayerNameRule(PlayerNameRule.MatchType.PREFIX, "BOT_");
         assertTrue(service.getPlayerNameRules().isEmpty());
+    }
+
+    @Test
+    void removePlayerNameRule_present_returnsTrue() {
+        // P3：按类型+值移除，大小写不敏感命中 → 返回 true
+        service.addPlayerNameRule(PlayerNameRule.MatchType.PREFIX, "bot_");
+        assertTrue(service.removePlayerNameRule(PlayerNameRule.MatchType.PREFIX, "BOT_"));
+        assertTrue(service.getPlayerNameRules().isEmpty());
+    }
+
+    @Test
+    void removePlayerNameRule_missing_returnsFalse() {
+        // P3：不存在 → 返回 false，不改变现有规则
+        service.addPlayerNameRule(PlayerNameRule.MatchType.PREFIX, "bot_");
+        assertFalse(service.removePlayerNameRule(PlayerNameRule.MatchType.SUFFIX, "_alt"));
+        assertEquals(1, service.getPlayerNameRules().size());
     }
 
     @Test

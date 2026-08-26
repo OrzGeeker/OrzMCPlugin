@@ -29,6 +29,10 @@
 - **`$d` 访问规则命令异常兜底（审查发现 P3-1）**：`runSync` 派发后异常不再被 InboundEventParser 捕获，现包一层 `handleBlacklistSafely` 恢复服务端日志 + 群内错误反馈
 - **落盘失败显式告警（审查发现 P3-3）**：`AccessRuleService.persist` 消费 `updateConfig` 返回结果，写入失败（配置未注册等）时 `logger.warning` 显式告警，避免规则静默仅存内存、reload 后消失
 - **空串玩家名同样跳过名称规则匹配（审查发现 P3-4）**：profile 上报空串（离线模式变体）与 null 等价处理，均不参与玩家名规则匹配
+- **`/blacklist` 玩家名规则首词误当 IP（审查发现 P2）**：`/blacklist add|remove <pattern>` 与 `/blacklist -<pattern>` 简写在落入 IP 分支前增加玩家名语法守卫——`player` 前缀或首词为六种匹配类型之一（如 `prefix bot_`）时提示玩家名规则用法，不再静默把该串当 IP 添加/移除并回假成功；`$d` 简写同步收紧
+- **移除假成功改真实反馈（审查发现 P3）**：`AccessRuleService.removeIpPattern` / `removePlayerNameRule` 返回是否确有移除；`$d -<IP>`、`/blacklist remove <IP>` 与玩家名规则移除对不存在目标回「未找到」而非无条件「已移除」；游戏侧玩家名规则值空串时提示用法而非假成功
+- **`rank_colors` 配置健康检查（审查发现 P3）**：新增 `rank_colors` 段校验（enabled/nametag_enabled/tab_enabled 布尔类型 + op_color/colors.* 合法命名色或 `#RRGGBB`），非法配置在 `/orzmc config validate` 显式提示
+- **`command_policies` 改动即时生效（审查发现 P3，pre-existing）**：命令拦截器改为惰性读取 `command_policies`，`/orzmc config set command_policies.*` 后冷却与 admin-only 立即生效，无需重启或 reload（此前在 `minecraft:reload` 前仍沿用旧值）
 
 ### ⚠️ 升级注意
 - **旧 `ip_blacklist.yml` 不再读取**：本版本起 IP 黑名单与玩家名规则统一存于 `access_rules.yml`，存量封禁数据不自动导入，升级前请将旧规则手动迁移到 `access_rules.yml`

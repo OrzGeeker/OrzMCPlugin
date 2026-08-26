@@ -66,13 +66,16 @@ public final class AccessRuleService {
         persist();
     }
 
-    public synchronized void removeIpPattern(String pattern) {
-        if (pattern == null || pattern.isEmpty()) return;
+    /** 移除 IP 规则；返回 {@code true} 表示确有规则被移除（供命令侧区分「已移除」与「未找到」）。 */
+    public synchronized boolean removeIpPattern(String pattern) {
+        if (pattern == null || pattern.isEmpty()) return false;
         List<String> updated = new ArrayList<>(ipPatterns);
         if (updated.remove(pattern)) {
             this.ipPatterns = Collections.unmodifiableList(updated);
             persist();
+            return true;
         }
+        return false;
     }
 
     public List<String> getIpPatterns() {
@@ -105,14 +108,17 @@ public final class AccessRuleService {
         persist();
     }
 
-    public synchronized void removePlayerNameRule(PlayerNameRule.MatchType type, String value) {
-        if (type == null || value == null || value.isEmpty()) return;
+    /** 移除玩家名规则；返回 {@code true} 表示确有规则被移除（供命令侧区分「已移除」与「未找到」）。 */
+    public synchronized boolean removePlayerNameRule(PlayerNameRule.MatchType type, String value) {
+        if (type == null || value == null || value.isEmpty()) return false;
         PlayerNameRule target = PlayerNameRule.of(type, value);
         List<PlayerNameRule> updated = new ArrayList<>(playerNameRules);
         if (updated.removeIf(existing -> sameRule(existing, target))) {
             this.playerNameRules = Collections.unmodifiableList(updated);
             persist();
+            return true;
         }
+        return false;
     }
 
     public List<PlayerNameRule> getPlayerNameRules() {

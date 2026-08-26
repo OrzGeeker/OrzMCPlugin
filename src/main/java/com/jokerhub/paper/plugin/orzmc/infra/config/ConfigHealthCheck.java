@@ -8,6 +8,8 @@ import java.util.Locale;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 
@@ -44,6 +46,40 @@ public final class ConfigHealthCheck {
         validateChatSection(cfg.getConfigurationSection("chat"), issues);
         validateLoginRateLimitSection(cfg.getConfigurationSection("login_rate_limit"), issues);
         validateExploitHardeningSection(cfg.getConfigurationSection("exploit_hardening"), issues);
+        validateRankColorsSection(cfg.getConfigurationSection("rank_colors"), issues);
+    }
+
+    private static void validateRankColorsSection(ConfigurationSection section, List<String> issues) {
+        if (section == null) {
+            issues.add("建议: config.yml 缺失 rank_colors 配置段，将使用默认配置（Tab 着色默认关闭）");
+            return;
+        }
+        Object en = section.get("enabled");
+        if (en != null && !(en instanceof Boolean)) issues.add("类型错误: rank_colors.enabled 需为布尔值");
+        Object nt = section.get("nametag_enabled");
+        if (nt != null && !(nt instanceof Boolean)) issues.add("类型错误: rank_colors.nametag_enabled 需为布尔值");
+        Object tab = section.get("tab_enabled");
+        if (tab != null && !(tab instanceof Boolean)) issues.add("类型错误: rank_colors.tab_enabled 需为布尔值");
+        String opColor = section.getString("op_color", "");
+        if (!opColor.isBlank() && !isValidRankColor(opColor)) {
+            issues.add("非法: rank_colors.op_color '" + opColor + "' 不是合法命名色或 #RRGGBB");
+        }
+        ConfigurationSection colorsSection = section.getConfigurationSection("colors");
+        if (colorsSection != null) {
+            for (String key : colorsSection.getKeys(false)) {
+                String raw = colorsSection.getString(key, "");
+                if (!raw.isBlank() && !isValidRankColor(raw)) {
+                    issues.add("非法: rank_colors.colors." + key + " '" + raw + "' 不是合法命名色或 #RRGGBB");
+                }
+            }
+        }
+    }
+
+    /** 与 {@code RankColorsConfig.parseColor} 同一接受范围：命名色或 CSS hex（含 #RRGGBB）。 */
+    private static boolean isValidRankColor(String raw) {
+        String trimmed = raw.trim();
+        return NamedTextColor.NAMES.value(trimmed.toLowerCase(Locale.ROOT)) != null
+                || TextColor.fromCSSHexString(trimmed) != null;
     }
 
     private static void validateWhitelistSection(ConfigurationSection section, List<String> issues) {

@@ -98,13 +98,33 @@ final class BlacklistCommandHandler extends BotCommandContext {
             return;
         }
         if (rawArgs.startsWith("-")) {
-            svc.removeIpPattern(rawArgs.substring(1));
-            emit(
-                    callback,
-                    "command_blacklist_remove",
-                    Map.of("message", "已移除: " + rawArgs.substring(1)),
-                    "已移除: " + rawArgs.substring(1));
+            String pattern = rawArgs.substring(1);
+            if (PlayerNameRule.looksLikePlayerRuleSyntax(pattern)) {
+                emit(
+                        callback,
+                        "command_blacklist_error",
+                        Map.of("message", "玩家名规则请使用: $d -player <type> <value>"),
+                        "玩家名规则请使用: $d -player <type> <value>");
+                return;
+            }
+            if (svc.removeIpPattern(pattern)) {
+                emit(callback, "command_blacklist_remove", Map.of("message", "已移除: " + pattern), "已移除: " + pattern);
+            } else {
+                emit(
+                        callback,
+                        "command_blacklist_error",
+                        Map.of("message", "未在黑名单中找到: " + pattern),
+                        "未在黑名单中找到: " + pattern);
+            }
         } else {
+            if (PlayerNameRule.looksLikePlayerRuleSyntax(rawArgs)) {
+                emit(
+                        callback,
+                        "command_blacklist_error",
+                        Map.of("message", "玩家名规则请使用: $d player <type> <value>"),
+                        "玩家名规则请使用: $d player <type> <value>");
+                return;
+            }
             svc.addIpPattern(rawArgs);
             emit(callback, "command_blacklist_add", Map.of("message", "已添加: " + rawArgs), "已添加: " + rawArgs);
         }
@@ -171,11 +191,12 @@ final class BlacklistCommandHandler extends BotCommandContext {
             }
             return;
         }
-        String message = (remove ? "已移除玩家名规则: " : "已添加玩家名规则: ") + parsed.rule().display();
         if (remove) {
-            svc.removePlayerNameRule(parsed.type(), parts[1]);
+            String removed = svc.removePlayerNameRule(parsed.type(), parts[1]) ? "已移除玩家名规则: " : "未找到该玩家名规则: ";
+            String message = removed + parsed.rule().display();
             emit(callback, "command_blacklist_remove", Map.of("message", message), message);
         } else {
+            String message = "已添加玩家名规则: " + parsed.rule().display();
             svc.addPlayerNameRule(parsed.type(), parts[1]);
             emit(callback, "command_blacklist_add", Map.of("message", message), message);
         }

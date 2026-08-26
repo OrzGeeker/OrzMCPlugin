@@ -22,7 +22,6 @@ import com.jokerhub.paper.plugin.orzmc.features.security.PlayerNameRule;
 import com.jokerhub.paper.plugin.orzmc.features.teleport.TeleportBowService;
 import com.jokerhub.paper.plugin.orzmc.infra.config.ConfigPath;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.CommandPolicies;
-import com.jokerhub.paper.plugin.orzmc.infra.config.configs.CommandPolicy;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -37,6 +36,7 @@ import java.util.Locale;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
@@ -94,8 +94,9 @@ final class FeatureCommandRegistrar {
         plugin.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {
             Commands commands = event.registrar();
 
-            // Re-read command policies on each fire (supports reload)
-            CommandPolicies cp = CommandPolicies.from(
+            // 惰性读取 command_policies：AdminOnly/Cooldown 拦截器每次判断时重新取值，
+            // /orzmc config set command_policies.* 改动即时生效（无需重启或 reload）。
+            Supplier<CommandPolicies> cpSupplier = () -> CommandPolicies.from(
                     platform.configService().getConfig("config").getConfigurationSection("command_policies"));
 
             // ---- No-argument commands (clean literals, no [args] in help) ----
@@ -104,32 +105,39 @@ final class FeatureCommandRegistrar {
                     "guide",
                     "获取新手教程，更快的熟悉服务器",
                     List.of(),
-                    cp,
+                    cpSupplier,
                     false,
                     player -> guideService.openGuide(player));
-            registerSimple(commands, "menu", "菜单展示", List.of(), cp, false, player -> menuCommandService.handle(player));
+            registerSimple(
+                    commands,
+                    "menu",
+                    "菜单展示",
+                    List.of(),
+                    cpSupplier,
+                    false,
+                    player -> menuCommandService.handle(player));
             registerSimple(
                     commands,
                     "tpbow",
                     "传送弓，射出的箭落地时会把自己传送到箭落地的位置",
                     List.of("tpb"),
-                    cp,
+                    cpSupplier,
                     false,
                     player -> teleportBowService.giveAndEquip(player));
             // ---- Bot 健康状态：/bot 显示最简状态，/bot http、/bot ws 查看详情 ----
-            registerBotStatus(commands, cp);
+            registerBotStatus(commands, cpSupplier);
 
             // ---- Portal: /portal [remove] <host> [port] ----
-            registerPortal(commands, cp);
+            registerPortal(commands, cpSupplier);
 
             // ---- Blacklist: /blacklist list|add|remove <pattern> ----
-            registerBlacklist(commands, cp);
+            registerBlacklist(commands, cpSupplier);
 
             // ---- Rank: /apply（申请）/ /review（审核）/ /rank（查询）----
-            registerRank(commands, cp);
+            registerRank(commands, cpSupplier);
 
             // ---- Config: /config list|get|set|reset|dump|reload ----
-            registerConfig(commands, cp);
+            registerConfig(commands, cpSupplier);
 
             // ---- Debug: /orzdebug <bot-command> 模拟群里用户发 Bot 命令 ----
             // 注：Paper 26 中 Brigadier 命令不触发 ServerCommandEvent，OrzDebugEvent
@@ -175,10 +183,10 @@ final class FeatureCommandRegistrar {
             String name,
             String description,
             List<String> aliases,
-            CommandPolicies cp,
+            Supplier<CommandPolicies> cpSupplier,
             boolean skipPlayerOnly,
             Consumer<Player> action) {
-        List<CommandInterceptor> interceptors = commandInterceptors(name, cp, skipPlayerOnly);
+        List<CommandInterceptor> interceptors = commandInterceptors(name, cpSupplier, skipPlayerOnly);
         commands.register(
                 literal(name)
                         .requires(requirement(interceptors))
@@ -198,11 +206,11 @@ final class FeatureCommandRegistrar {
     }
 
     /** Bot 健康状态：/bot 显示 enabled/http/websocket 三个彩色状态词，/bot http、/bot ws 查看对应详情。 */
-    private void registerBotStatus(Commands commands, CommandPolicies cp) {
-        List<CommandInterceptor> rootInterceptors = commandInterceptors("bot", cp, true);
-        // 详情子命令由点击触发，不套用冷却，避免紧跟 /bot 后点击被冷却拦截
-        CommandPolicy botPolicy = cp.policies().getOrDefault("bot", new CommandPolicy(0, false));
-        List<CommandInterceptor> detailInterceptors = List.of(new AdminOnlyInterceptor(botPolicy.adminOnly()));
+    private void registerBotStatus(Commands commands, Supplier<CommandPolicies> cpSupplier) {
+        List<CommandInterceptor> rootInterceptors = commandInterceptors("bot", cpSupplier, true);
+        // 详情子命令由点击触发，不套用冷却，避免紧跟 /bot 后点击被冷却拦截；adminOnly 惰性读取以热生效
+        List<CommandInterceptor> detailInterceptors =
+                List.of(new AdminOnlyInterceptor(BrigadierSupport.policyFor("bot", cpSupplier)));
         Predicate<CommandSourceStack> req = requirement(rootInterceptors);
         commands.register(
                 literal("bot")
@@ -232,8 +240,8 @@ final class FeatureCommandRegistrar {
     }
 
     /** Portal: /portal [remove] <host> [port] */
-    private void registerPortal(Commands commands, CommandPolicies cp) {
-        List<CommandInterceptor> interceptors = commandInterceptors("portal", cp, false);
+    private void registerPortal(Commands commands, Supplier<CommandPolicies> cpSupplier) {
+        List<CommandInterceptor> interceptors = commandInterceptors("portal", cpSupplier, false);
         Predicate<CommandSourceStack> req = requirement(interceptors);
         OrzTextStyles styles = platform.textStyles();
         PortalCommandService svc = portalCommandService;
@@ -290,7 +298,7 @@ final class FeatureCommandRegistrar {
     }
 
     /** Blacklist: /blacklist list|add|remove <pattern>，并支持 player 玩家名规则子命令。 */
-    private void registerBlacklist(Commands commands, CommandPolicies cp) {
+    private void registerBlacklist(Commands commands, Supplier<CommandPolicies> cpSupplier) {
         List<CommandInterceptor> interceptors = adminInterceptors("blacklist");
         Predicate<CommandSourceStack> req = requirement(interceptors);
         AccessRuleService svc = accessRuleService;
@@ -328,6 +336,13 @@ final class FeatureCommandRegistrar {
                                 .then(argument("pattern", StringArgumentType.greedyString())
                                         .executes(guardedExec("blacklist", interceptors, ctx -> {
                                             String pattern = ctx.getArgument("pattern", String.class);
+                                            if (PlayerNameRule.looksLikePlayerRuleSyntax(pattern)) {
+                                                ctx.getSource()
+                                                        .getSender()
+                                                        .sendMessage(styles.error(
+                                                                "玩家名规则请使用: /blacklist add player <type> <value>"));
+                                                return 1;
+                                            }
                                             svc.addIpPattern(pattern);
                                             ctx.getSource()
                                                     .getSender()
@@ -354,10 +369,22 @@ final class FeatureCommandRegistrar {
                                 .then(argument("pattern", StringArgumentType.greedyString())
                                         .executes(guardedExec("blacklist", interceptors, ctx -> {
                                             String pattern = ctx.getArgument("pattern", String.class);
-                                            svc.removeIpPattern(pattern);
-                                            ctx.getSource()
-                                                    .getSender()
-                                                    .sendMessage(styles.success("已从黑名单移除: " + pattern));
+                                            if (PlayerNameRule.looksLikePlayerRuleSyntax(pattern)) {
+                                                ctx.getSource()
+                                                        .getSender()
+                                                        .sendMessage(styles.error(
+                                                                "玩家名规则请使用: /blacklist remove player <type> <value>"));
+                                                return 1;
+                                            }
+                                            if (svc.removeIpPattern(pattern)) {
+                                                ctx.getSource()
+                                                        .getSender()
+                                                        .sendMessage(styles.success("已从黑名单移除: " + pattern));
+                                            } else {
+                                                ctx.getSource()
+                                                        .getSender()
+                                                        .sendMessage(styles.error("未在黑名单中找到: " + pattern));
+                                            }
                                             return 1;
                                         }))))
                         // Shorthand: /blacklist <pattern> → add
@@ -378,11 +405,31 @@ final class FeatureCommandRegistrar {
                                         return 1;
                                     }
                                     if (input.startsWith("-")) {
-                                        svc.removeIpPattern(input.substring(1));
-                                        ctx.getSource()
-                                                .getSender()
-                                                .sendMessage(styles.success("已从黑名单移除: " + input.substring(1)));
+                                        String pattern = input.substring(1);
+                                        if (PlayerNameRule.looksLikePlayerRuleSyntax(pattern)) {
+                                            ctx.getSource()
+                                                    .getSender()
+                                                    .sendMessage(styles.error(
+                                                            "玩家名规则请使用: /blacklist remove player <type> <value>"));
+                                            return 1;
+                                        }
+                                        if (svc.removeIpPattern(pattern)) {
+                                            ctx.getSource()
+                                                    .getSender()
+                                                    .sendMessage(styles.success("已从黑名单移除: " + pattern));
+                                        } else {
+                                            ctx.getSource()
+                                                    .getSender()
+                                                    .sendMessage(styles.error("未在黑名单中找到: " + pattern));
+                                        }
                                     } else {
+                                        if (PlayerNameRule.looksLikePlayerRuleSyntax(input)) {
+                                            ctx.getSource()
+                                                    .getSender()
+                                                    .sendMessage(styles.error(
+                                                            "玩家名规则请使用: /blacklist add player <type> <value>"));
+                                            return 1;
+                                        }
                                         svc.addIpPattern(input);
                                         ctx.getSource().getSender().sendMessage(styles.success("已添加黑名单: " + input));
                                     }
@@ -409,11 +456,11 @@ final class FeatureCommandRegistrar {
      *   <li>/rank &lt;玩家&gt; — admin 查指定玩家</li>
      * </ul>
      */
-    private void registerRank(Commands commands, CommandPolicies cp) {
+    private void registerRank(Commands commands, Supplier<CommandPolicies> cpSupplier) {
         OrzTextStyles styles = platform.textStyles();
 
         // ---- /apply 通用申请命令 ----
-        List<CommandInterceptor> applyInterceptors = commandInterceptors("apply", cp, false);
+        List<CommandInterceptor> applyInterceptors = commandInterceptors("apply", cpSupplier, false);
         commands.register(
                 literal("apply")
                         .requires(requirement(applyInterceptors))
@@ -515,7 +562,7 @@ final class FeatureCommandRegistrar {
                 List.of("review"));
 
         // ---- /rank — 查询自己 / /rank <玩家> — admin 查指定玩家 ----
-        List<CommandInterceptor> rankInterceptors = commandInterceptors("rank", cp, false);
+        List<CommandInterceptor> rankInterceptors = commandInterceptors("rank", cpSupplier, false);
         List<CommandInterceptor> adminRankInterceptors = adminInterceptors("rank");
         commands.register(
                 literal("rank")
@@ -619,6 +666,11 @@ final class FeatureCommandRegistrar {
             boolean remove,
             String typeRaw,
             String value) {
+        if (value == null || value.isBlank()) {
+            sender.sendMessage(
+                    styles.error("玩家名规则值不能为空: /blacklist " + (remove ? "remove" : "add") + " player <type> <value>"));
+            return;
+        }
         PlayerNameRule.ParsedRule parsed = PlayerNameRule.parse(typeRaw, value);
         if (!parsed.valid()) {
             if (parsed.type() == null) {
@@ -629,8 +681,11 @@ final class FeatureCommandRegistrar {
             return;
         }
         if (remove) {
-            svc.removePlayerNameRule(parsed.type(), value);
-            sender.sendMessage(styles.success("已移除玩家名规则: " + parsed.rule().display()));
+            if (svc.removePlayerNameRule(parsed.type(), value)) {
+                sender.sendMessage(styles.success("已移除玩家名规则: " + parsed.rule().display()));
+            } else {
+                sender.sendMessage(styles.error("未找到该玩家名规则: " + parsed.rule().display()));
+            }
         } else {
             svc.addPlayerNameRule(parsed.type(), value);
             sender.sendMessage(styles.success("已添加玩家名规则: " + parsed.rule().display()));
@@ -638,7 +693,7 @@ final class FeatureCommandRegistrar {
     }
 
     /** Config: /config list|get|set|reset|dump|reload */
-    private void registerConfig(Commands commands, CommandPolicies cp) {
+    private void registerConfig(Commands commands, Supplier<CommandPolicies> cpSupplier) {
         List<CommandInterceptor> interceptors = adminInterceptors("config");
         Predicate<CommandSourceStack> req = requirement(interceptors);
         OrzConfigCommand cfgCmd = orzConfigCommand;

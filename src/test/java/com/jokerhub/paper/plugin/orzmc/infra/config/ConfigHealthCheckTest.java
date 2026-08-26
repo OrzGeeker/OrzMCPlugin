@@ -141,6 +141,27 @@ class ConfigHealthCheckTest {
                 .set("admin_only", false);
     }
 
+    private void addFullValidConfig_rankColors() {
+        config.createSection("rank_colors");
+        config.getConfigurationSection("rank_colors").set("enabled", true);
+        config.getConfigurationSection("rank_colors").set("nametag_enabled", true);
+        config.getConfigurationSection("rank_colors").set("tab_enabled", false);
+        config.getConfigurationSection("rank_colors").set("op_color", "gold");
+        config.getConfigurationSection("rank_colors").createSection("colors");
+        config.getConfigurationSection("rank_colors")
+                .getConfigurationSection("colors")
+                .set("default", "gray");
+        config.getConfigurationSection("rank_colors")
+                .getConfigurationSection("colors")
+                .set("member", "aqua");
+        config.getConfigurationSection("rank_colors")
+                .getConfigurationSection("colors")
+                .set("builder", "green");
+        config.getConfigurationSection("rank_colors")
+                .getConfigurationSection("colors")
+                .set("admin", "red");
+    }
+
     private void addFullValidConfig_accessRules() {
         accessRules.set("ip_blacklist", List.of());
         accessRules.set("player_name_rules", List.of());
@@ -278,6 +299,7 @@ class ConfigHealthCheckTest {
         addFullValidConfig_chat();
         addFullValidConfig_loginRateLimit();
         addFullValidConfig_exploitHardening();
+        addFullValidConfig_rankColors();
         addFullValidConfig_bot();
         addFullValidConfig_templates();
         addFullValidConfig_accessRules();
@@ -303,6 +325,61 @@ class ConfigHealthCheckTest {
         List<String> issues = runValidate();
 
         assertTrue(issues.stream().anyMatch(line -> line.contains("正则无法编译")), "实际问题: " + issues);
+    }
+
+    // ================================================================
+    // rank_colors
+    // ================================================================
+
+    @Test
+    void rankColors_missingSection_reportsSuggestion() {
+        List<String> issues = runValidate();
+
+        assertTrue(issues.contains("建议: config.yml 缺失 rank_colors 配置段，将使用默认配置（Tab 着色默认关闭）"), "实际问题: " + issues);
+    }
+
+    @Test
+    void rankColors_enabledWrongType_reportsIssue() {
+        config.createSection("rank_colors");
+        config.getConfigurationSection("rank_colors").set("enabled", "yes");
+
+        List<String> issues = runValidate();
+
+        assertTrue(issues.contains("类型错误: rank_colors.enabled 需为布尔值"), "实际问题: " + issues);
+    }
+
+    @Test
+    void rankColors_invalidOpColor_reportsIssue() {
+        config.createSection("rank_colors");
+        config.getConfigurationSection("rank_colors").set("op_color", "notacolor");
+
+        List<String> issues = runValidate();
+
+        assertTrue(issues.stream().anyMatch(line -> line.startsWith("非法: rank_colors.op_color")), "实际问题: " + issues);
+    }
+
+    @Test
+    void rankColors_invalidNamedColor_reportsIssue() {
+        config.createSection("rank_colors");
+        config.getConfigurationSection("rank_colors").createSection("colors");
+        config.getConfigurationSection("rank_colors")
+                .getConfigurationSection("colors")
+                .set("default", "#zzz");
+
+        List<String> issues = runValidate();
+
+        assertTrue(
+                issues.stream().anyMatch(line -> line.startsWith("非法: rank_colors.colors.default")), "实际问题: " + issues);
+    }
+
+    @Test
+    void rankColors_validHexAndNamedColors_accepted() {
+        addFullValidConfig_rankColors();
+        config.getConfigurationSection("rank_colors").set("op_color", "#ffaa00");
+
+        List<String> issues = runValidate();
+
+        assertFalse(issues.stream().anyMatch(line -> line.startsWith("非法: rank_colors")), "实际问题: " + issues);
     }
 
     // ================================================================
