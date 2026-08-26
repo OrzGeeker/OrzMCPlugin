@@ -78,7 +78,12 @@ public final class PlayerNameRule {
         String lower = raw.toLowerCase(Locale.ROOT);
         if (lower.startsWith("player") || lower.startsWith("-player")) return true;
         String firstToken = lower.split("\\s+", 2)[0];
-        return MatchType.from(firstToken) != null;
+        if (MatchType.from(firstToken) != null) return true;
+        // 冒号/粘连形式（exact:foo、prefix_bot）首词带类型词也是玩家名规则语法，
+        // 防 `$d exact:foo` / `/blacklist add exact:foo` 落入 IP 添加、存一条永不命中的死规则并假「已添加」。
+        // 真实 IPv6 字面量（2001:db8::1）冒号前缀是数字，MatchType.from 为 null，不受影响。
+        int colon = firstToken.indexOf(':');
+        return colon > 0 && MatchType.from(firstToken.substring(0, colon)) != null;
     }
 
     public MatchType type() {
@@ -93,6 +98,11 @@ public final class PlayerNameRule {
         return type != MatchType.REGEX || pattern != null;
     }
 
+    /**
+     * 匹配玩家名。REGEX 用 {@code find()}（未锚定的正则即「包含」语义：{@code regex admin} 命中
+     * 名字含 admin 的玩家；需要整名匹配时显式写 {@code ^admin$}），GLOB 保持 ^...$ 整名锚定
+     * （{@code glob bot_*} 命中以 bot_ 开头的名字）。
+     */
     public boolean matches(String name) {
         if (name == null || value == null || value.isEmpty()) return false;
         return switch (type) {
@@ -103,7 +113,8 @@ public final class PlayerNameRule {
                 yield start >= 0 && name.regionMatches(true, start, value, 0, value.length());
             }
             case CONTAINS -> containsIgnoreCase(name, value);
-            case GLOB, REGEX -> pattern != null && pattern.matcher(name).matches();
+            case REGEX -> pattern != null && pattern.matcher(name).find();
+            case GLOB -> pattern != null && pattern.matcher(name).matches();
         };
     }
 
@@ -115,12 +126,15 @@ public final class PlayerNameRule {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof PlayerNameRule other)) return false;
-        return type == other.type && Objects.equals(value, other.value);
+        if (type != other.type) return false;
+        // 与 AccessRuleService.sameRule（equalsIgnoreCase 去重）口径一致，避免
+        // equals/hashCode 与去重判定对仅大小写不同的规则给出互相矛盾的结果。
+        return value == null ? other.value == null : value.equalsIgnoreCase(other.value);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(type, value);
+        return Objects.hash(type, value == null ? null : value.toLowerCase(Locale.ROOT));
     }
 
     @Override

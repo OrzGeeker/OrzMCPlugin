@@ -13,12 +13,45 @@ class PlayerNameRuleFeedbackTest {
 
     @Test
     void add_success_returnsAddedMessage() {
+        when(svc.addPlayerNameRule(PlayerNameRule.MatchType.EXACT, "foo")).thenReturn(true);
+
         Outcome o = PlayerNameRuleFeedback.feedback(svc, "exact", "foo", false);
 
         assertTrue(o.success());
         assertEquals("已添加玩家名规则: exact:foo", o.message());
         verify(svc).addPlayerNameRule(PlayerNameRule.MatchType.EXACT, "foo");
         verify(svc, never()).removePlayerNameRule(any(), any());
+    }
+
+    @Test
+    void add_duplicate_returnsAlreadyExists() {
+        when(svc.addPlayerNameRule(PlayerNameRule.MatchType.EXACT, "foo")).thenReturn(false);
+
+        Outcome o = PlayerNameRuleFeedback.feedback(svc, "exact", "foo", false);
+
+        assertTrue(o.success());
+        assertEquals("玩家名规则已存在，未重复添加: exact:foo", o.message());
+        verify(svc).addPlayerNameRule(PlayerNameRule.MatchType.EXACT, "foo");
+    }
+
+    @Test
+    void add_blankValue_returnsEmptyValueError_andDoesNotTouchService() {
+        Outcome o = PlayerNameRuleFeedback.feedback(svc, "exact", "   ", false);
+
+        assertFalse(o.success());
+        assertEquals("规则值不能为空", o.message());
+        verifyNoInteractions(svc);
+    }
+
+    @Test
+    void add_trimsTrailingSpace_beforeAddAndDisplay() {
+        when(svc.addPlayerNameRule(PlayerNameRule.MatchType.EXACT, "foo")).thenReturn(true);
+
+        Outcome o = PlayerNameRuleFeedback.feedback(svc, "exact", "foo  ", false);
+
+        assertTrue(o.success());
+        assertEquals("已添加玩家名规则: exact:foo", o.message());
+        verify(svc).addPlayerNameRule(PlayerNameRule.MatchType.EXACT, "foo");
     }
 
     @Test

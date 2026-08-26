@@ -103,6 +103,15 @@ class AccessRuleServiceTest {
         assertFalse(service.isIpBlocked("10.5.1.2"));
     }
 
+    @Test
+    void ipWildcardMatch_ipv4MappedIpv6_blocks() {
+        // 双栈服务器 prelogin 常见 ::ffff:a.b.c.d 形态：还原 IPv4 后按通配匹配，
+        // 与 exact/CIDR（InetAddress 规范化命中）口径一致，避免 mapped 形式静默绕过通配黑名单。
+        setupIpPatterns("192.168.1.*");
+        assertTrue(service.isIpBlocked("::ffff:192.168.1.50"));
+        assertFalse(service.isIpBlocked("::ffff:192.168.2.50"));
+    }
+
     // ---- IPv6 ----
 
     @Test
@@ -159,6 +168,58 @@ class AccessRuleServiceTest {
         assertTrue(service.isIpBlocked("10.0.0.5"));
         service.addIpPattern("10.0.0.0/8");
         assertEquals(1, service.getIpPatterns().size());
+    }
+
+    @Test
+    void addIpPattern_returnsTrue_whenAdded() {
+        assertTrue(service.addIpPattern("10.0.0.0/8"));
+    }
+
+    @Test
+    void addIpPattern_duplicate_returnsFalse() {
+        assertTrue(service.addIpPattern("10.0.0.0/8"));
+        assertFalse(service.addIpPattern("10.0.0.0/8"));
+        assertEquals(1, service.getIpPatterns().size());
+    }
+
+    @Test
+    void addIpPattern_nullOrBlank_returnsFalse() {
+        assertFalse(service.addIpPattern(null));
+        assertFalse(service.addIpPattern(""));
+        assertFalse(service.addIpPattern("   "));
+        assertTrue(service.getIpPatterns().isEmpty());
+    }
+
+    @Test
+    void addIpPattern_trimsTrailingSpace() {
+        // greedyString 保留尾随空格：服务层归一化后入库，避免带空格规则永不命中
+        assertTrue(service.addIpPattern("1.2.3.4 "));
+        assertEquals(List.of("1.2.3.4"), service.getIpPatterns());
+        assertTrue(service.isIpBlocked("1.2.3.4"));
+    }
+
+    @Test
+    void removeIpPattern_trimsTrailingSpace() {
+        service.addIpPattern("1.2.3.4");
+        assertTrue(service.removeIpPattern(" 1.2.3.4 "));
+        assertTrue(service.getIpPatterns().isEmpty());
+    }
+
+    @Test
+    void addIpPattern_ipv6CanonicalVariant_dedups() {
+        assertTrue(service.addIpPattern("2001:db8::1"));
+        // 规范等价变体（大小写/前导零/压缩）视为同一条，不再重复入库
+        assertFalse(service.addIpPattern("2001:0db8:0:0:0:0:0:1"));
+        assertFalse(service.addIpPattern("2001:DB8::1"));
+        assertEquals(1, service.getIpPatterns().size());
+    }
+
+    @Test
+    void removeIpPattern_ipv6CanonicalVariant_removes() {
+        service.addIpPattern("2001:db8::1");
+        assertTrue(service.removeIpPattern("2001:0db8:0:0:0:0:0:1"));
+        assertTrue(service.getIpPatterns().isEmpty());
+        assertFalse(service.isIpBlocked("2001:db8::1"));
     }
 
     @Test
@@ -289,6 +350,41 @@ class AccessRuleServiceTest {
         service.addPlayerNameRule(PlayerNameRule.MatchType.PREFIX, "BOT_");
         assertEquals(1, service.getPlayerNameRules().size());
         service.removePlayerNameRule(PlayerNameRule.MatchType.PREFIX, "BOT_");
+        assertTrue(service.getPlayerNameRules().isEmpty());
+    }
+
+    @Test
+    void addPlayerNameRule_returnsTrue_whenAdded() {
+        assertTrue(service.addPlayerNameRule(PlayerNameRule.MatchType.PREFIX, "bot_"));
+    }
+
+    @Test
+    void addPlayerNameRule_duplicate_returnsFalse() {
+        assertTrue(service.addPlayerNameRule(PlayerNameRule.MatchType.PREFIX, "bot_"));
+        // 大小写不敏感去重 → 未新增，返回 false（供命令侧区分「已添加」与「已存在」）
+        assertFalse(service.addPlayerNameRule(PlayerNameRule.MatchType.PREFIX, "BOT_"));
+        assertEquals(1, service.getPlayerNameRules().size());
+    }
+
+    @Test
+    void addPlayerNameRule_nullOrBlank_returnsFalse() {
+        assertFalse(service.addPlayerNameRule(null, "bot_"));
+        assertFalse(service.addPlayerNameRule(PlayerNameRule.MatchType.PREFIX, null));
+        assertFalse(service.addPlayerNameRule(PlayerNameRule.MatchType.PREFIX, "  "));
+        assertTrue(service.getPlayerNameRules().isEmpty());
+    }
+
+    @Test
+    void addPlayerNameRule_trimsValue() {
+        service.addPlayerNameRule(PlayerNameRule.MatchType.PREFIX, " bot_ ");
+        PlayerNameRule rule = service.getPlayerNameRules().get(0);
+        assertEquals("bot_", rule.value());
+    }
+
+    @Test
+    void removePlayerNameRule_trimsValue() {
+        service.addPlayerNameRule(PlayerNameRule.MatchType.PREFIX, "bot_");
+        assertTrue(service.removePlayerNameRule(PlayerNameRule.MatchType.PREFIX, " BOT_ "));
         assertTrue(service.getPlayerNameRules().isEmpty());
     }
 

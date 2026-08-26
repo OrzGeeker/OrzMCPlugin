@@ -127,7 +127,9 @@ final class BlacklistCommandHandler extends BotCommandContext {
                         "未在黑名单中找到: " + pattern);
             }
         } else {
-            if (PlayerNameRule.looksLikePlayerRuleSyntax(rawArgs)) {
+            // trim：与 AccessRuleService 归一化口径一致（greedyString 保留尾随空格，群消息亦可能带空格）
+            String pattern = rawArgs.trim();
+            if (PlayerNameRule.looksLikePlayerRuleSyntax(pattern)) {
                 emit(
                         callback,
                         "command_blacklist_error",
@@ -135,8 +137,11 @@ final class BlacklistCommandHandler extends BotCommandContext {
                         "玩家名规则请使用: $d player <type> <value>");
                 return;
             }
-            svc.addIpPattern(rawArgs);
-            emit(callback, "command_blacklist_add", Map.of("message", "已添加: " + rawArgs), "已添加: " + rawArgs);
+            if (svc.addIpPattern(pattern)) {
+                emit(callback, "command_blacklist_add", Map.of("message", "已添加: " + pattern), "已添加: " + pattern);
+            } else {
+                emit(callback, "command_blacklist_add", Map.of("message", "黑名单已存在: " + pattern), "黑名单已存在: " + pattern);
+            }
         }
     }
 

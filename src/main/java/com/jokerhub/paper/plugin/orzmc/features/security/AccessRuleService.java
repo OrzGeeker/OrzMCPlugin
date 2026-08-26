@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -55,22 +56,37 @@ public final class AccessRuleService {
         return null;
     }
 
-    public synchronized void addIpPattern(String pattern) {
-        if (pattern == null || pattern.isEmpty()) return;
+    /**
+     * 添加 IP 规则；返回 {@code true} 表示确有新规则加入，{@code false} 表示参数非法或已存在（去重）。
+     *
+     * <p>入口 trim：游戏侧 Brigadier {@code greedyString} 保留尾随空格，bot 侧会 trim，
+     * 统一在服务层归一化可避免「带空格规则加不进、删不掉」的分叉。去重按
+     * {@link #samePattern} 判定——IPv6 规范等价变体（大小写/前导零/压缩）视为同一条。</p>
+     */
+    public synchronized boolean addIpPattern(String pattern) {
+        if (pattern == null) return false;
+        String trimmed = pattern.trim();
+        if (trimmed.isEmpty()) return false;
         for (String existing : ipPatterns) {
-            if (existing.equals(pattern)) return;
+            if (samePattern(existing, trimmed)) return false;
         }
         List<String> updated = new ArrayList<>(ipPatterns);
-        updated.add(pattern);
+        updated.add(trimmed);
         this.ipPatterns = Collections.unmodifiableList(updated);
         persist();
+        return true;
     }
 
-    /** 移除 IP 规则；返回 {@code true} 表示确有规则被移除（供命令侧区分「已移除」与「未找到」）。 */
+    /**
+     * 移除 IP 规则；返回 {@code true} 表示确有规则被移除（供命令侧区分「已移除」与「未找到」）。
+     * 同样按 {@link #samePattern} 命中，IPv6 规范等价变体可正常移除。
+     */
     public synchronized boolean removeIpPattern(String pattern) {
-        if (pattern == null || pattern.isEmpty()) return false;
+        if (pattern == null) return false;
+        String trimmed = pattern.trim();
+        if (trimmed.isEmpty()) return false;
         List<String> updated = new ArrayList<>(ipPatterns);
-        if (updated.remove(pattern)) {
+        if (updated.removeIf(existing -> samePattern(existing, trimmed))) {
             this.ipPatterns = Collections.unmodifiableList(updated);
             persist();
             return true;
@@ -97,21 +113,32 @@ public final class AccessRuleService {
         return null;
     }
 
-    public synchronized void addPlayerNameRule(PlayerNameRule.MatchType type, String value) {
-        if (type == null || value == null || value.isEmpty()) return;
-        PlayerNameRule rule = PlayerNameRule.of(type, value);
-        if (!rule.isValid()) return;
-        if (containsRule(playerNameRules, rule)) return;
+    /**
+     * 添加玩家名规则；返回 {@code true} 表示确有新规则加入，{@code false} 表示参数非法或已存在（去重）。
+     *
+     * <p>入口 trim 规则值：与 IP 规则同理，两端命令输入归一化后持久化，避免带尾随空格的
+     * 规则永不命中且无法移除。</p>
+     */
+    public synchronized boolean addPlayerNameRule(PlayerNameRule.MatchType type, String value) {
+        if (type == null || value == null) return false;
+        String trimmed = value.trim();
+        if (trimmed.isEmpty()) return false;
+        PlayerNameRule rule = PlayerNameRule.of(type, trimmed);
+        if (!rule.isValid()) return false;
+        if (containsRule(playerNameRules, rule)) return false;
         List<PlayerNameRule> updated = new ArrayList<>(playerNameRules);
         updated.add(rule);
         this.playerNameRules = Collections.unmodifiableList(updated);
         persist();
+        return true;
     }
 
     /** 移除玩家名规则；返回 {@code true} 表示确有规则被移除（供命令侧区分「已移除」与「未找到」）。 */
     public synchronized boolean removePlayerNameRule(PlayerNameRule.MatchType type, String value) {
-        if (type == null || value == null || value.isEmpty()) return false;
-        PlayerNameRule target = PlayerNameRule.of(type, value);
+        if (type == null || value == null) return false;
+        String trimmed = value.trim();
+        if (trimmed.isEmpty()) return false;
+        PlayerNameRule target = PlayerNameRule.of(type, trimmed);
         List<PlayerNameRule> updated = new ArrayList<>(playerNameRules);
         if (updated.removeIf(existing -> sameRule(existing, target))) {
             this.playerNameRules = Collections.unmodifiableList(updated);
@@ -221,6 +248,26 @@ public final class AccessRuleService {
         return exactMatches(ip, pattern);
     }
 
+    /**
+     * 规则等价判定（去重/移除用）：字符串相等，或两者都是合法 IP 且规范字节相等。
+     *
+     * <p>仅当任一侧含 {@code ':'}（IPv6）才尝试 InetAddress 规范化——IPv6 有大小写/
+     * 前导零/压缩等书写变体，IPv4 无此问题且可避免对 {@code 10.*} 等非 IP 模式触发
+     * 解析。语义与 {@link #exactMatches} 一致。</p>
+     */
+    private static boolean samePattern(String a, String b) {
+        if (a == null || b == null) return a == b;
+        if (a.equals(b)) return true;
+        if (a.indexOf(':') < 0 && b.indexOf(':') < 0) return false;
+        try {
+            return Arrays.equals(
+                    InetAddress.getByName(a).getAddress(),
+                    InetAddress.getByName(b).getAddress());
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     private static boolean exactMatches(String ip, String pattern) {
         if (ip.equals(pattern)) return true;
         if (ip.indexOf(':') < 0 && pattern.indexOf(':') < 0) return false;
@@ -274,7 +321,11 @@ public final class AccessRuleService {
         // IPv4 专用通配：* 匹配 1 个或多个剩余网段。IPv6 请使用 CIDR。
         // 严格校验：IP 必须是恰好 4 段、每段 0-255 的合法 IPv4，
         // 拒绝非法 octet（如 10.999.999）与超 4 段的畸形地址（如 10.1.2.3.4）。
-        String[] ipOctets = ip.split("\\.", -1);
+        // IPv4-mapped IPv6（::ffff:a.b.c.d，双栈服务器 prelogin 常见形态）先还原为 IPv4 再按通配匹配，
+        // 与 exact/CIDR（InetAddress 规范化后命中）口径一致，避免通配黑名单被 mapped 形式静默绕过。
+        String candidate = ipv4MappedToIpv4(ip);
+        if (candidate == null) return false;
+        String[] ipOctets = candidate.split("\\.", -1);
         if (ipOctets.length != 4) return false;
         for (String octet : ipOctets) {
             if (!isValidIpv4Octet(octet)) return false;
@@ -284,6 +335,16 @@ public final class AccessRuleService {
             if (segment.isEmpty()) return false; // 拒绝 "10." / "10..*" 等畸形模式
         }
         return matchWildcardSegments(segments, 0, ipOctets, 0);
+    }
+
+    /** 把 IPv4-mapped IPv6（::ffff:a.b.c.d，与 {@code isPrivateIp} 的识别口径一致）还原为 IPv4 串；
+     * 非 mapped 形式原样返回；null 表示无法得到可用的 IPv4 字面量。 */
+    private static String ipv4MappedToIpv4(String ip) {
+        if (ip == null) return null;
+        String lower = ip.toLowerCase(Locale.ROOT);
+        if (!lower.startsWith("::ffff:")) return ip;
+        String v4 = ip.substring("::ffff:".length());
+        return v4.isEmpty() ? null : v4;
     }
 
     /** 逐段匹配：{@code *} 匹配 1 个或多个剩余网段，字面段与 IP 段严格相等。 */

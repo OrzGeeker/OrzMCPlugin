@@ -67,6 +67,10 @@ geoip:
   # 填写大写两位 ISO 国家码，例如：
   #   allow_country_code: [CN, JP, TW]
   allow_country_code: []
+  # GeoIP 查询失败/超时/无法定位国家码时的登录策略（默认 fail-close，安全优先）：
+  #   false = fail-close：无法验证地区 → 拒绝进入，防绕过地区白名单
+  #   true  = fail-open ：无法验证地区 → 放行并告警管理员，防误拦（可用性优先）
+  fail_open: false
 
 # ==================================================
 #             玩家上下线通知（2026-08-16）

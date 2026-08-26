@@ -11,6 +11,7 @@ import com.jokerhub.paper.plugin.orzmc.features.security.AccessRuleService;
 import com.jokerhub.paper.plugin.orzmc.features.security.GeoIpAccessService;
 import com.jokerhub.paper.plugin.orzmc.features.security.PlayerNameRule;
 import com.jokerhub.paper.plugin.orzmc.infra.notify.Notifier;
+import com.jokerhub.paper.plugin.orzmc.infra.notify.ThrottledNotifier;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
 import com.jokerhub.paper.plugin.orzmc.testutil.ServiceTestBase;
@@ -54,6 +55,9 @@ class LoginAccessControlServiceTest extends ServiceTestBase {
     private Logger logger;
 
     @Mock
+    private ThrottledNotifier blockNotifier;
+
+    @Mock
     private AsyncPlayerPreLoginEvent event;
 
     @Mock
@@ -75,6 +79,7 @@ class LoginAccessControlServiceTest extends ServiceTestBase {
         when(server.logger()).thenReturn(logger);
         when(styles.warn(anyString())).thenReturn(Component.text("warn"));
         when(styles.error(anyString())).thenReturn(Component.text("error"));
+        when(blockNotifier.shouldRun(anyString(), anyLong())).thenReturn(true);
 
         service = new LoginAccessControlService(
                 maintenanceService,
@@ -84,7 +89,8 @@ class LoginAccessControlServiceTest extends ServiceTestBase {
                 notifier,
                 configs,
                 styles,
-                server);
+                server,
+                blockNotifier);
     }
 
     @Test
@@ -145,6 +151,32 @@ class LoginAccessControlServiceTest extends ServiceTestBase {
         verify(configs).renderTemplate(eq("player_name_block"), anyMap(), anyString());
         verify(logger).warning(anyString());
         verifyNoInteractions(geoIpAccessService, playerEventService);
+    }
+
+    @Test
+    void handlePreLogin_blacklistNotificationThrottled_skipsDmButLogs() {
+        // 限频器抑制 → 私信跳过，但控制台日志每次保留（防重连刷屏打爆 QQ 频控，日志不失明）
+        when(accessRuleService.matchedIpPattern("1.2.3.4")).thenReturn("1.2.3.4");
+        when(blockNotifier.shouldRun("ip_blacklist_block", 5000)).thenReturn(false);
+
+        service.handlePreLogin(event);
+
+        verify(event).disallow(eq(AsyncPlayerPreLoginEvent.Result.KICK_OTHER), any(Component.class));
+        verify(notifier, never()).event(eq("ip_blacklist_block"), any(MessageEnvelope.class));
+        verify(logger).warning(anyString());
+    }
+
+    @Test
+    void handlePreLogin_playerNameBlockThrottled_skipsDmButLogs() {
+        when(accessRuleService.matchedPlayerNameRule("player1"))
+                .thenReturn(PlayerNameRule.of(PlayerNameRule.MatchType.PREFIX, "bot_"));
+        when(blockNotifier.shouldRun("player_name_block", 5000)).thenReturn(false);
+
+        service.handlePreLogin(event);
+
+        verify(event).disallow(eq(AsyncPlayerPreLoginEvent.Result.KICK_OTHER), any(Component.class));
+        verify(notifier, never()).event(eq("player_name_block"), any(MessageEnvelope.class));
+        verify(logger).warning(anyString());
     }
 
     @Test

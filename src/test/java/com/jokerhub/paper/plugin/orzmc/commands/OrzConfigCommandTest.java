@@ -302,6 +302,41 @@ class OrzConfigCommandTest {
     }
 
     @Test
+    void set_commandPoliciesPath_notifiesCommandPoliciesReload() {
+        when(configService.saveConfig("config")).thenReturn(true);
+        when(configService.reloadConfig("config")).thenReturn(true);
+        AtomicInteger policyReloads = new AtomicInteger();
+        cmd.setCommandPoliciesReload(policyReloads::incrementAndGet);
+
+        cmd.onCommand(sender, command, "orzmc", new String[] {"set", "command_policies.tpbow.admin_only", "true"});
+
+        assertEquals(1, policyReloads.get());
+    }
+
+    @Test
+    void set_nonCommandPoliciesPath_doesNotNotifyCommandPoliciesReload() {
+        when(configService.saveConfig("config")).thenReturn(true);
+        when(configService.reloadConfig("config")).thenReturn(true);
+        AtomicInteger policyReloads = new AtomicInteger();
+        cmd.setCommandPoliciesReload(policyReloads::incrementAndGet);
+
+        cmd.onCommand(sender, command, "orzmc", new String[] {"set", "tnt.enable", "false"});
+
+        assertEquals(0, policyReloads.get());
+    }
+
+    @Test
+    void reload_config_notifiesCommandPoliciesReload() {
+        when(configService.reloadConfig("config")).thenReturn(true);
+        AtomicInteger policyReloads = new AtomicInteger();
+        cmd.setCommandPoliciesReload(policyReloads::incrementAndGet);
+
+        cmd.onCommand(sender, command, "orzmc", new String[] {"reload", "config"});
+
+        assertEquals(1, policyReloads.get());
+    }
+
+    @Test
     void reset_rankColorPath_notifiesRankColorsReload() {
         when(configService.saveConfig("config")).thenReturn(true);
         when(configService.reloadConfig("config")).thenReturn(true);

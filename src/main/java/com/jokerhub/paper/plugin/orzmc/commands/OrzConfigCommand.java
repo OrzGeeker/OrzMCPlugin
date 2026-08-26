@@ -30,6 +30,7 @@ public class OrzConfigCommand implements CommandExecutor {
     private final Runnable easyBotConfigReload;
     private Runnable rankColorsReload = () -> {};
     private Runnable accessRulesReload = () -> {};
+    private Runnable commandPoliciesReload = () -> {};
 
     public OrzConfigCommand(ConfigService configService, OrzTextStyles textStyles) {
         this(configService, textStyles, () -> {});
@@ -56,6 +57,14 @@ public class OrzConfigCommand implements CommandExecutor {
      */
     public void setAccessRulesReload(Runnable accessRulesReload) {
         this.accessRulesReload = accessRulesReload == null ? () -> {} : accessRulesReload;
+    }
+
+    /**
+     * 注册 command_policies.* 配置改动后的回调（组合根注入：{@code /orzmc config} 改完即
+     * 刷新命令拦截器的策略快照缓存，消除热路径每次全量重解析，同时保持即改即生效）。
+     */
+    public void setCommandPoliciesReload(Runnable commandPoliciesReload) {
+        this.commandPoliciesReload = commandPoliciesReload == null ? () -> {} : commandPoliciesReload;
     }
 
     @Override
@@ -208,25 +217,29 @@ public class OrzConfigCommand implements CommandExecutor {
             easyBotConfigReload.run();
             rankColorsReload.run();
             accessRulesReload.run();
+            commandPoliciesReload.run();
             sender.sendMessage(textStyles.success("所有配置文件已重新加载"));
         }
     }
 
-    /** 按配置路径派发改动后回调：easybot → 连接协调；rank_colors.* → 重刷在线玩家着色。 */
+    /** 按配置路径派发改动后回调：easybot → 连接协调；rank_colors.* → 重刷在线玩家着色；command_policies.* → 刷新命令策略缓存。 */
     private void notifyConfigReload(ConfigPath cp) {
         if ("easybot".equalsIgnoreCase(cp.configName())) {
             easyBotConfigReload.run();
         } else if (cp.path().startsWith("rank_colors.")) {
             rankColorsReload.run();
+        } else if (cp.path().startsWith("command_policies.")) {
+            commandPoliciesReload.run();
         }
     }
 
-    /** 按配置文件名派发改动后回调：easybot → 连接协调；config.yml（含 rank_colors）→ 重刷在线玩家着色；access_rules → 刷新访问规则缓存。 */
+    /** 按配置文件名派发改动后回调：easybot → 连接协调；config.yml（含 rank_colors/command_policies）→ 重刷在线玩家着色 + 命令策略缓存；access_rules → 刷新访问规则缓存。 */
     private void notifyConfigNameReload(String configName) {
         if ("easybot".equalsIgnoreCase(configName)) {
             easyBotConfigReload.run();
         } else if ("config".equalsIgnoreCase(configName)) {
             rankColorsReload.run();
+            commandPoliciesReload.run();
         } else if ("access_rules".equalsIgnoreCase(configName)) {
             accessRulesReload.run();
         }

@@ -327,6 +327,28 @@ class ConfigHealthCheckTest {
         assertTrue(issues.stream().anyMatch(line -> line.contains("正则无法编译")), "实际问题: " + issues);
     }
 
+    @Test
+    void accessRules_trailingSpaceType_notReportedAsInvalid() {
+        // 运行时 MatchType.from() 对 type trim 后解析，校验同样 trim——带尾随空格的类型不误报
+        addFullValidConfig_accessRules();
+        accessRules.set("player_name_rules", List.of(java.util.Map.of("type", "prefix ", "value", "bot_")));
+
+        List<String> issues = runValidate();
+
+        assertTrue(issues.stream().noneMatch(line -> line.contains("不在支持范围")), "实际问题: " + issues);
+    }
+
+    @Test
+    void accessRules_whitespaceOnlyValue_reportsMissingValue() {
+        // 运行时 isBlank 丢弃纯空白值，校验同口径视为缺值——避免「校验通过但规则无效」的假安全感
+        addFullValidConfig_accessRules();
+        accessRules.set("player_name_rules", List.of(java.util.Map.of("type", "prefix", "value", "   ")));
+
+        List<String> issues = runValidate();
+
+        assertTrue(issues.contains("非法: access_rules.player_name_rules 条目缺少 type/value"), "实际问题: " + issues);
+    }
+
     // ================================================================
     // rank_colors
     // ================================================================

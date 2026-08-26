@@ -16,6 +16,7 @@
 - `chat.max_messages_per_minute` 默认改为 `20`
 - `player_notify.window_ms` 默认改为 `1000`
 - `guard.audit_enabled=true` 时，危险命令 WARN 不再重复刷控制台，细节由 `audit/command_audit.log` 承载
+- `geoip.fail_open` 新增（默认 `false` = fail-close）：GeoIP 查询失败（上游异常/超时/空国家码）时默认拒绝进入，需放行时手动设 `true`（fail-open）
 
 ### 🐛 修复
 - **访问规则并发与线程安全（审查发现 P1-1/P2-1）**：
@@ -38,6 +39,7 @@
 - **玩家名规则「未找到」改用 error 模板键（审查发现 P3）**：bot 侧移除不存在的玩家名规则由 `command_blacklist_remove` 键改用 `command_blacklist_error` 键，与 IP「未找到」一致（模板均纯文本渲染 message，无展示差异）
 
 ### ⚠️ 升级注意
+- **GeoIP 失败策略默认改为 fail-close**：此前 GeoIP 查询失败一律放行（fail-open），现默认拒绝进入（安全优先）；依赖旧行为的服务器请在 config.yml `geoip:` 段显式设 `fail_open: true`
 - **旧 `ip_blacklist.yml` 不再读取**：本版本起 IP 黑名单与玩家名规则统一存于 `access_rules.yml`，存量封禁数据不自动导入，升级前请将旧规则手动迁移到 `access_rules.yml`
 - **旧独立配置文件不再读取**：配置统一从 `config.yml`（已含 `command_policies` / `rank_colors` 等全部分段）与 `templates.yml` 读取，不再自动 fallback 到旧 `maintenance.yml` / `whitelist.yml` / `tnt.yml` / `player_notify.yml` / `ip_whitelist.yml` / `guard.yml` / `chat.yml` / `login_rate_limit.yml` / `exploit_hardening.yml` / `rank_colors.yml` / `styles.yml` / `commands.yml`。这些旧文件中的自定义值请迁移到 `config.yml` 对应分段；`config-version` 过旧提醒已随旧文件读取一并移除
 

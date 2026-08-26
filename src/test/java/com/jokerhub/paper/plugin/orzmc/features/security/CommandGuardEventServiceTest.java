@@ -147,7 +147,9 @@ class CommandGuardEventServiceTest {
     // ---- WARN：放行 + 审计/日志 ----
 
     @Test
-    void warn_auditEnabled_suppressesConsoleWarning() {
+    void warn_auditEnabled_suppressesConsoleWarning_keepsFineTrace() {
+        // audit_enabled 时控制台不写 WARN（细节由 command_audit.log 承载，避免高频刷屏噪声）；
+        // 仅留一条 fine 级踪迹——审计文件异常时事件不至于完全不可见
         withConfig(new SecurityGuardConfig(true, SecurityGuardConfig.DEFAULT_BLOCKED_COMMANDS, true, true));
         Player player = mock(Player.class);
         when(player.getName()).thenReturn("steve");
@@ -160,7 +162,7 @@ class CommandGuardEventServiceTest {
         verify(audit).record(CommandAuditService.SOURCE_GAME, "steve", "/kill @e", false);
         verify(notifier, never()).event(anyString(), any(MessageEnvelope.class));
         verify(logger, never()).warning(anyString());
-        verify(logger, never()).fine(anyString());
+        verify(logger).fine(contains("kill @e"));
     }
 
     @Test

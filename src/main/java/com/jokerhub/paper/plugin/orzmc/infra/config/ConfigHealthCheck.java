@@ -219,11 +219,13 @@ public final class ConfigHealthCheck {
                     value = text.substring(colon + 1);
                 }
             }
-            if (type == null || value == null || value.isEmpty()) {
+            if (type == null || value == null || value.isBlank()) {
                 issues.add("非法: access_rules.player_name_rules 条目缺少 type/value");
                 continue;
             }
-            String normalizedType = type.toLowerCase(Locale.ROOT);
+            // trim 后校验：运行时 MatchType.from() 也是 trim 后解析，口径一致避免「运行时生效、
+            // 校验误报非法」；纯空白值（isBlank）运行时会被丢弃，此处同样视为缺值
+            String normalizedType = type.trim().toLowerCase(Locale.ROOT);
             if (!validTypes.contains(normalizedType)) {
                 issues.add("非法: access_rules.player_name_rules.type '" + type + "' 不在支持范围");
                 continue;

@@ -1,7 +1,9 @@
 package com.jokerhub.paper.plugin.orzmc.infra.config;
 
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 import org.bukkit.configuration.file.FileConfiguration;
 
@@ -44,12 +46,72 @@ public final class ConfigService {
         configManager.getOrSetDefault("config", "rank_colors.colors.member", "aqua");
         configManager.getOrSetDefault("config", "rank_colors.colors.default", "gray");
 
+        // 升级提示（审查 D 组）：默认值已调整的键只对新装服生效，存量 config.yml 已写入的旧值
+        // 不会被覆盖。仅当存量值仍是旧默认时才提示，避免对已手动调整的服务器产生噪声。
+        warnStaleDefaults();
+        // 升级提示（审查 D 组）：遗留的按功能拆分 YAML 不再读取，全部合并到 config.yml。
+        // 文件仍在磁盘时配置会静默失效，须显式告警。
+        warnLegacyConfigFiles();
+
         List<String> issues = ConfigHealthCheck.validateAll(configManager);
         if (!issues.isEmpty()) {
             plugin.getLogger().warning("配置健康检查发现问题:");
             for (String s : issues) {
                 plugin.getLogger().warning(" - " + s);
             }
+        }
+    }
+
+    /** 旧默认值已调整的键（键 → 旧默认值）：存量服务器值仍等于旧默认时提示手动迁移。 */
+    private void warnStaleDefaults() {
+        FileConfiguration cfg = configManager.getConfig("config");
+        if (cfg == null) return;
+        Map<String, String> flipped = Map.of(
+                "rank_colors.tab_enabled", "true",
+                "chat.max_messages_per_minute", "6",
+                "login_rate_limit.max_login_attempts_per_minute", "5",
+                "login_rate_limit.max_concurrent_per_ip", "3",
+                "player_notify.window_ms", "3000");
+        List<String> stale = new ArrayList<>();
+        for (Map.Entry<String, String> e : flipped.entrySet()) {
+            Object v = cfg.get(e.getKey());
+            if (v != null && String.valueOf(v).equals(e.getValue())) {
+                stale.add(e.getKey() + "（旧值 " + e.getValue() + "）");
+            }
+        }
+        if (!stale.isEmpty()) {
+            plugin.getLogger().warning("检测到配置项仍为旧默认值（新默认见 CHANGELOG，代码不覆盖已有配置）:");
+            for (String s : stale) {
+                plugin.getLogger().warning(" - " + s + " —— 如需应用新默认请在 config.yml 手动修改");
+            }
+        }
+    }
+
+    /** 已废弃的按功能拆分配置文件名：存在即提示迁移到 config.yml 对应分段。 */
+    private void warnLegacyConfigFiles() {
+        String[] legacy = {
+            "maintenance.yml",
+            "whitelist.yml",
+            "tnt.yml",
+            "player_notify.yml",
+            "ip_whitelist.yml",
+            "guard.yml",
+            "chat.yml",
+            "login_rate_limit.yml",
+            "exploit_hardening.yml",
+            "rank_colors.yml"
+        };
+        java.io.File dir = configManager.dataFolder();
+        if (dir == null) return;
+        List<String> found = new ArrayList<>();
+        for (String name : legacy) {
+            if (new java.io.File(dir, name).exists()) {
+                found.add(name);
+            }
+        }
+        if (!found.isEmpty()) {
+            plugin.getLogger().warning("检测到已废弃的按功能拆分配置文件（新版已全部合并到 config.yml，这些文件不再读取）: " + String.join(", ", found));
+            plugin.getLogger().warning("请将其中仍需要的配置迁移到 config.yml 对应分段后删除，避免配置静默失效。");
         }
     }
 

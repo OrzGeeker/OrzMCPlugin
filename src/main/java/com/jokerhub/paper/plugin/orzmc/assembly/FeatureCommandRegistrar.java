@@ -61,6 +61,10 @@ final class FeatureCommandRegistrar {
     private final RankService rankService;
     private final OrzConfigCommand orzConfigCommand;
 
+    /** command_policies 快照缓存：拦截器每次判断读 volatile 缓存，避免热路径（每次执行/补全）
+     * 全量重解析整张策略表；配置改动经 {@link #refreshCommandPolicies()} 刷新缓存。 */
+    private volatile CommandPolicies commandPolicies = CommandPolicies.from(null);
+
     FeatureCommandRegistrar(
             PlatformModule platform,
             BotModule botModule,
@@ -95,10 +99,11 @@ final class FeatureCommandRegistrar {
         plugin.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {
             Commands commands = event.registrar();
 
-            // 惰性读取 command_policies：AdminOnly/Cooldown 拦截器每次判断时重新取值，
-            // /orzmc config set command_policies.* 改动即时生效（无需重启或 reload）。
-            Supplier<CommandPolicies> cpSupplier = () -> CommandPolicies.from(
-                    platform.configService().getConfig("config").getConfigurationSection("command_policies"));
+            // command_policies 读缓存快照：拦截器每次判断读 volatile 缓存而非全量重解析。
+            // /orzmc config set/reset/reload 经 refreshCommandPolicies() 刷新（沿用 rankColors/
+            // accessRules reload 回调模式），改动即时生效。
+            refreshCommandPolicies();
+            Supplier<CommandPolicies> cpSupplier = () -> commandPolicies;
 
             // ---- No-argument commands (clean literals, no [args] in help) ----
             registerSimple(
@@ -177,6 +182,12 @@ final class FeatureCommandRegistrar {
                     "模拟群里用户发 Bot 命令（调试用）",
                     List.of());
         });
+    }
+
+    /** 从 config.yml 重读 command_policies 刷新缓存（/orzmc config set/reset/reload 后由组合根调用）。 */
+    void refreshCommandPolicies() {
+        this.commandPolicies = CommandPolicies.from(
+                platform.configService().getConfig("config").getConfigurationSection("command_policies"));
     }
 
     private void registerSimple(
@@ -336,7 +347,15 @@ final class FeatureCommandRegistrar {
                                                         })))))
                                 .then(argument("pattern", StringArgumentType.greedyString())
                                         .executes(guardedExec("blacklist", interceptors, ctx -> {
-                                            String pattern = ctx.getArgument("pattern", String.class);
+                                            // greedyString 保留尾随空格：trim 后再判语法/入库，避免带空格的规则永不命中
+                                            String pattern = ctx.getArgument("pattern", String.class)
+                                                    .trim();
+                                            if (pattern.isEmpty()) {
+                                                ctx.getSource()
+                                                        .getSender()
+                                                        .sendMessage(styles.error("用法: /blacklist add <IP>"));
+                                                return 1;
+                                            }
                                             if (PlayerNameRule.looksLikePlayerRuleSyntax(pattern)) {
                                                 ctx.getSource()
                                                         .getSender()
@@ -344,10 +363,15 @@ final class FeatureCommandRegistrar {
                                                                 "玩家名规则请使用: /blacklist add player <type> <value>"));
                                                 return 1;
                                             }
-                                            svc.addIpPattern(pattern);
-                                            ctx.getSource()
-                                                    .getSender()
-                                                    .sendMessage(styles.success("已添加黑名单: " + pattern));
+                                            if (svc.addIpPattern(pattern)) {
+                                                ctx.getSource()
+                                                        .getSender()
+                                                        .sendMessage(styles.success("已添加黑名单: " + pattern));
+                                            } else {
+                                                ctx.getSource()
+                                                        .getSender()
+                                                        .sendMessage(styles.success("黑名单已存在: " + pattern));
+                                            }
                                             return 1;
                                         }))))
                         .then(literal("remove")
@@ -369,7 +393,14 @@ final class FeatureCommandRegistrar {
                                                         })))))
                                 .then(argument("pattern", StringArgumentType.greedyString())
                                         .executes(guardedExec("blacklist", interceptors, ctx -> {
-                                            String pattern = ctx.getArgument("pattern", String.class);
+                                            String pattern = ctx.getArgument("pattern", String.class)
+                                                    .trim();
+                                            if (pattern.isEmpty()) {
+                                                ctx.getSource()
+                                                        .getSender()
+                                                        .sendMessage(styles.error("用法: /blacklist remove <IP>"));
+                                                return 1;
+                                            }
                                             if (PlayerNameRule.looksLikePlayerRuleSyntax(pattern)) {
                                                 ctx.getSource()
                                                         .getSender()
@@ -396,6 +427,18 @@ final class FeatureCommandRegistrar {
                                     String lower = input.toLowerCase(Locale.ROOT);
                                     if (lower.equals("player") || lower.equals("player list")) {
                                         listPlayerRules(ctx.getSource().getSender(), svc, styles);
+                                        return 1;
+                                    }
+                                    // 简写玩家名规则增删（对齐 bot $d 语义，大小写不敏感）：
+                                    // /blacklist -player <type> <value> 移除、/blacklist player <type> <value> 添加
+                                    if (lower.startsWith("-player")) {
+                                        handlePlayerRuleShorthand(
+                                                ctx.getSource().getSender(), svc, styles, true, input);
+                                        return 1;
+                                    }
+                                    if (lower.startsWith("player ")) {
+                                        handlePlayerRuleShorthand(
+                                                ctx.getSource().getSender(), svc, styles, false, input);
                                         return 1;
                                     }
                                     if (lower.startsWith("player") || lower.startsWith("-player")) {
@@ -431,15 +474,23 @@ final class FeatureCommandRegistrar {
                                                     .sendMessage(styles.error("未在黑名单中找到: " + pattern));
                                         }
                                     } else {
-                                        if (PlayerNameRule.looksLikePlayerRuleSyntax(input)) {
+                                        String pattern = input.trim();
+                                        if (PlayerNameRule.looksLikePlayerRuleSyntax(pattern)) {
                                             ctx.getSource()
                                                     .getSender()
                                                     .sendMessage(styles.error(
                                                             "玩家名规则请使用: /blacklist add player <type> <value>"));
                                             return 1;
                                         }
-                                        svc.addIpPattern(input);
-                                        ctx.getSource().getSender().sendMessage(styles.success("已添加黑名单: " + input));
+                                        if (svc.addIpPattern(pattern)) {
+                                            ctx.getSource()
+                                                    .getSender()
+                                                    .sendMessage(styles.success("已添加黑名单: " + pattern));
+                                        } else {
+                                            ctx.getSource()
+                                                    .getSender()
+                                                    .sendMessage(styles.success("黑名单已存在: " + pattern));
+                                        }
                                     }
                                     return 1;
                                 })))
@@ -682,6 +733,23 @@ final class FeatureCommandRegistrar {
         // 反馈统一走 PlayerNameRuleFeedback（与 bot $d 共用，避免两边实现漂移）
         PlayerNameRuleFeedback.Outcome outcome = PlayerNameRuleFeedback.feedback(svc, typeRaw, value, remove);
         sender.sendMessage(outcome.success() ? styles.success(outcome.message()) : styles.error(outcome.message()));
+    }
+
+    /** 游戏侧简写解析（镜像 bot $d）：{@code /blacklist [-player|player] <type> <value>}。 */
+    private static void handlePlayerRuleShorthand(
+            CommandSender sender, AccessRuleService svc, OrzTextStyles styles, boolean remove, String input) {
+        String prefix = remove ? "-player" : "player";
+        String rest = input.substring(prefix.length());
+        if (rest.isEmpty() || !rest.startsWith(" ")) {
+            sender.sendMessage(styles.error("用法: /blacklist " + (remove ? "-" : "") + "player <type> <value>"));
+            return;
+        }
+        String[] parts = rest.trim().split("\\s+", 2);
+        if (parts.length != 2 || parts[0].isBlank() || parts[1].isBlank()) {
+            sender.sendMessage(styles.error("用法: /blacklist " + (remove ? "-" : "") + "player <type> <value>"));
+            return;
+        }
+        handlePlayerRule(sender, svc, styles, remove, parts[0], parts[1]);
     }
 
     /** Config: /config list|get|set|reset|dump|reload */

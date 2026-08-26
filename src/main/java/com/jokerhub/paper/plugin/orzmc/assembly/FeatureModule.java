@@ -149,7 +149,8 @@ public final class FeatureModule implements ServiceModule {
                 botModule.notifier(),
                 platform.configs(),
                 platform.textStyles(),
-                platform.serverFacade());
+                platform.serverFacade(),
+                platform.throttledNotifier()); // IP 黑名单/玩家名规则拦截私信限频（防重连刷屏打爆 QQ 频控）
         this.tntEventService = new TntEventService(
                 platform.configs(), platform.textStyles(), botModule.notifier(), platform.serverScheduler());
         this.whitelistEventService = new WhitelistEventService(
@@ -303,6 +304,9 @@ public final class FeatureModule implements ServiceModule {
         // access_rules 运行时改动（/orzmc config reload）→ 刷新 AccessRuleService 内存缓存，
         // 手动编辑 access_rules.yml 后即改即生效（无需重启）
         orzConfigCommand.setAccessRulesReload(accessRuleService::reload);
+        // command_policies.* 运行时改动（/orzmc config set/reset/reload）→ 刷新命令拦截器策略快照，
+        // 即改即生效且热路径不再全量重解析
+        orzConfigCommand.setCommandPoliciesReload(commandRegistrar::refreshCommandPolicies);
     }
 
     // --- Command Registration ---

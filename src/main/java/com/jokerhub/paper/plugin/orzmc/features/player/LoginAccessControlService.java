@@ -9,6 +9,7 @@ import com.jokerhub.paper.plugin.orzmc.features.security.GeoIpAccessService;
 import com.jokerhub.paper.plugin.orzmc.features.security.PlayerNameRule;
 import com.jokerhub.paper.plugin.orzmc.infra.config.TemplateKeys;
 import com.jokerhub.paper.plugin.orzmc.infra.notify.Notifier;
+import com.jokerhub.paper.plugin.orzmc.infra.notify.ThrottledNotifier;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
 import java.util.Map;
@@ -22,6 +23,11 @@ import org.bukkit.event.player.AsyncPlayerPreLoginEvent;
  */
 public final class LoginAccessControlService {
 
+    /** prelogin 拦截通知限频周期（毫秒）：被拦截的客户端会自动重连，每次 prelogin 都触发
+     * 拦截——高频重试不节流会重复私信管理员（对照 whitelist_block 曾 48 次打爆 QQ 频控
+     * 40034100 的事故）。控制台 warning 不受限频，保持每次可查。 */
+    private static final long ACCESS_RULE_BLOCK_THROTTLE_MS = 5000L;
+
     private final WorldMaintenanceService maintenanceService;
     private final AccessRuleService accessRuleService;
     private final GeoIpAccessService geoIpAccessService;
@@ -30,6 +36,7 @@ public final class LoginAccessControlService {
     private final TypedConfigProvider configs;
     private final OrzTextStyles styles;
     private final ServerFacade server;
+    private final ThrottledNotifier blockNotifier;
 
     public LoginAccessControlService(
             WorldMaintenanceService maintenanceService,
@@ -39,7 +46,8 @@ public final class LoginAccessControlService {
             Notifier notifier,
             TypedConfigProvider configs,
             OrzTextStyles styles,
-            ServerFacade server) {
+            ServerFacade server,
+            ThrottledNotifier blockNotifier) {
         this.maintenanceService = maintenanceService;
         this.accessRuleService = accessRuleService;
         this.geoIpAccessService = geoIpAccessService;
@@ -48,6 +56,7 @@ public final class LoginAccessControlService {
         this.configs = configs;
         this.styles = styles;
         this.server = server;
+        this.blockNotifier = blockNotifier;
     }
 
     public void handlePreLogin(AsyncPlayerPreLoginEvent event) {
@@ -93,12 +102,14 @@ public final class LoginAccessControlService {
                 GeoIpAccessService.DECISION_TIMEOUT_MS);
     }
 
-    /** 封禁命中（安全加固 P2-4）：PRIVATE 私信管理员 + 服务端日志。 */
+    /** 封禁命中（安全加固 P2-4）：PRIVATE 私信管理员 + 服务端日志。私信限频防重连刷屏，日志每次保留。 */
     private void notifyBanHit(String player, String ip, String pattern) {
         String fallback = "⚠ IP 黑名单拦截\n玩家: " + player + "\nIP: " + ip + "\n命中规则: " + pattern;
         MessageEnvelope env = configs.renderTemplate(
                 TemplateKeys.IP_BLACKLIST_BLOCK, Map.of("player", player, "ip", ip, "pattern", pattern), fallback);
-        notifier.event(TemplateKeys.IP_BLACKLIST_BLOCK, env);
+        if (blockNotifier.shouldRun("ip_blacklist_block", ACCESS_RULE_BLOCK_THROTTLE_MS)) {
+            notifier.event(TemplateKeys.IP_BLACKLIST_BLOCK, env);
+        }
         server.logger().warning("黑名单拦截: " + player + " (" + ip + ") 命中规则 " + pattern);
     }
 
@@ -106,7 +117,9 @@ public final class LoginAccessControlService {
         String fallback = "⚠ 玩家名规则拦截\n玩家: " + player + "\n命中规则: " + rule.display();
         MessageEnvelope env = configs.renderTemplate(
                 TemplateKeys.PLAYER_NAME_BLOCK, Map.of("player", player, "rule", rule.display()), fallback);
-        notifier.event(TemplateKeys.PLAYER_NAME_BLOCK, env);
+        if (blockNotifier.shouldRun("player_name_block", ACCESS_RULE_BLOCK_THROTTLE_MS)) {
+            notifier.event(TemplateKeys.PLAYER_NAME_BLOCK, env);
+        }
         server.logger().warning("玩家名规则拦截: " + player + " 命中规则 " + rule.display());
     }
 
