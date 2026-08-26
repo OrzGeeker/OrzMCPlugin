@@ -337,6 +337,28 @@ class OrzConfigCommandTest {
         assertEquals(1, rankReloads.get());
     }
 
+    @Test
+    void reload_accessRules_notifiesAccessRulesReload() {
+        when(configService.reloadConfig("access_rules")).thenReturn(true);
+        AtomicInteger accessReloads = new AtomicInteger();
+        cmd.setAccessRulesReload(accessReloads::incrementAndGet);
+
+        cmd.onCommand(sender, command, "orzmc", new String[] {"reload", "access_rules"});
+
+        assertEquals(1, accessReloads.get());
+        verify(textStyles).success(contains("access_rules"));
+    }
+
+    @Test
+    void reload_all_notifiesAccessRulesReload() {
+        AtomicInteger accessReloads = new AtomicInteger();
+        cmd.setAccessRulesReload(accessReloads::incrementAndGet);
+
+        cmd.onCommand(sender, command, "orzmc", new String[] {"reload"});
+
+        assertEquals(1, accessReloads.get());
+    }
+
     // ---------------------------------------------------------------
     // parseValue
     // ---------------------------------------------------------------

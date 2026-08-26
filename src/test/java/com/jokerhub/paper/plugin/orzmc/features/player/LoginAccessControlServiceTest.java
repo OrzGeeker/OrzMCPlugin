@@ -162,6 +162,26 @@ class LoginAccessControlServiceTest extends ServiceTestBase {
     }
 
     @Test
+    void handlePreLogin_nullPlayerName_skipsNameRuleMatching() throws Exception {
+        // P2-2：名称未上报时跳过玩家名规则匹配——即使存在过宽规则（本应命中任意名）也不误封
+        when(profile.getName()).thenReturn(null);
+        when(accessRuleService.matchedPlayerNameRule(anyString()))
+                .thenReturn(PlayerNameRule.of(PlayerNameRule.MatchType.CONTAINS, "a"));
+        when(geoIpAccessService.decide("1.2.3.4"))
+                .thenReturn(CompletableFuture.completedFuture(
+                        new GeoIpAccessService.Decision(true, "CN", List.of("CN"), "{}")));
+
+        service.handlePreLogin(event);
+
+        verify(accessRuleService, never()).matchedPlayerNameRule(anyString());
+        verify(event, never()).disallow(eq(AsyncPlayerPreLoginEvent.Result.KICK_OTHER), any(Component.class));
+        // 名称规则跳过后仍正常走 GeoIP（展示名用占位）
+        verify(playerEventService)
+                .handleGeoIpPreLogin(
+                        eq(event), eq("未知玩家"), eq("1.2.3.4"), any(), eq(GeoIpAccessService.DECISION_TIMEOUT_MS));
+    }
+
+    @Test
     void handlePreLogin_emptyIp_skipsGeoIp() {
         InetAddress emptyAddr = mock(InetAddress.class);
         when(emptyAddr.getHostAddress()).thenReturn("");

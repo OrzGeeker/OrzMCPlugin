@@ -363,6 +363,18 @@ final class FeatureCommandRegistrar {
                         .then(argument("input", StringArgumentType.greedyString())
                                 .executes(guardedExec("blacklist", interceptors, ctx -> {
                                     String input = ctx.getArgument("input", String.class);
+                                    // player 玩家名规则绝不落入 IP 简写分支（对齐 bot $d 语义）
+                                    if (input.equals("player") || input.equals("player list")) {
+                                        listPlayerRules(ctx.getSource().getSender(), svc, styles);
+                                        return 1;
+                                    }
+                                    if (input.startsWith("player") || input.startsWith("-player")) {
+                                        ctx.getSource()
+                                                .getSender()
+                                                .sendMessage(styles.error(
+                                                        "玩家名规则请使用: /blacklist add|remove player <type> <value>"));
+                                        return 1;
+                                    }
                                     if (input.startsWith("-")) {
                                         svc.removeIpPattern(input.substring(1));
                                         ctx.getSource()
@@ -605,22 +617,21 @@ final class FeatureCommandRegistrar {
             boolean remove,
             String typeRaw,
             String value) {
-        PlayerNameRule.MatchType type = PlayerNameRule.MatchType.from(typeRaw);
-        if (type == null) {
-            sender.sendMessage(styles.error("无效匹配类型: " + typeRaw + "（支持 exact/prefix/suffix/contains/glob/regex）"));
-            return;
-        }
-        PlayerNameRule rule = PlayerNameRule.of(type, value);
-        if (!rule.isValid()) {
-            sender.sendMessage(styles.error("无效的正则表达式: " + value));
+        PlayerNameRule.ParsedRule parsed = PlayerNameRule.parse(typeRaw, value);
+        if (!parsed.valid()) {
+            if (parsed.type() == null) {
+                sender.sendMessage(styles.error("无效匹配类型: " + typeRaw + "（支持 exact/prefix/suffix/contains/glob/regex）"));
+            } else {
+                sender.sendMessage(styles.error("无效的正则表达式: " + value));
+            }
             return;
         }
         if (remove) {
-            svc.removePlayerNameRule(type, value);
-            sender.sendMessage(styles.success("已移除玩家名规则: " + rule.display()));
+            svc.removePlayerNameRule(parsed.type(), value);
+            sender.sendMessage(styles.success("已移除玩家名规则: " + parsed.rule().display()));
         } else {
-            svc.addPlayerNameRule(type, value);
-            sender.sendMessage(styles.success("已添加玩家名规则: " + rule.display()));
+            svc.addPlayerNameRule(parsed.type(), value);
+            sender.sendMessage(styles.success("已添加玩家名规则: " + parsed.rule().display()));
         }
     }
 

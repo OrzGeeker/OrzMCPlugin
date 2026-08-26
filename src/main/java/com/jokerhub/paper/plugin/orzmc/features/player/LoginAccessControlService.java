@@ -62,17 +62,21 @@ public final class LoginAccessControlService {
         // 跳过 IP/GeoIP 检查，玩家名规则仍照常生效。
         java.net.InetAddress address = event.getAddress();
         String ipAddress = address == null ? "" : address.getHostAddress();
+        String playerName = playerName(event); // 可能为 null（离线模式 profile 未上报名称）
+        String displayName = playerName == null ? "未知玩家" : playerName;
         String matchedPattern = accessRuleService.matchedIpPattern(ipAddress);
         if (matchedPattern != null) {
             event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_OTHER, styles.error("你的IP已被禁止访问"));
-            notifyBanHit(playerName(event), ipAddress, matchedPattern);
+            notifyBanHit(displayName, ipAddress, matchedPattern);
             return;
         }
-        String playerName = playerName(event);
-        PlayerNameRule matchedNameRule = accessRuleService.matchedPlayerNameRule(playerName);
+        // 名称未上报时跳过玩家名规则匹配：否则「未知玩家」会命中过宽规则（如 contains:"a"）
+        // 而误封合法玩家；通知仍用 displayName 展示占位。
+        PlayerNameRule matchedNameRule =
+                playerName == null ? null : accessRuleService.matchedPlayerNameRule(playerName);
         if (matchedNameRule != null) {
             event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_OTHER, styles.error("你的玩家名不符合服务器访问规则"));
-            notifyPlayerNameBlocked(playerName, matchedNameRule);
+            notifyPlayerNameBlocked(displayName, matchedNameRule);
             return;
         }
         if (ipAddress.isEmpty()) {
@@ -82,7 +86,7 @@ public final class LoginAccessControlService {
         // 超时/异常由 handleGeoIpPreLogin 内部按 fail-open 放行并告警。
         playerEventService.handleGeoIpPreLogin(
                 event,
-                playerName,
+                displayName,
                 ipAddress,
                 geoIpAccessService.decide(ipAddress),
                 GeoIpAccessService.DECISION_TIMEOUT_MS);
@@ -105,8 +109,9 @@ public final class LoginAccessControlService {
         server.logger().warning("玩家名规则拦截: " + player + " 命中规则 " + rule.display());
     }
 
+    /** 返回 profile 上报的玩家名；未上报（离线模式防御）时返回 null，由调用方决定是否参与名称规则匹配。 */
     private static String playerName(AsyncPlayerPreLoginEvent event) {
         PlayerProfile profile = event.getPlayerProfile();
-        return profile != null && profile.getName() != null ? profile.getName() : "未知玩家";
+        return profile == null ? null : profile.getName();
     }
 }

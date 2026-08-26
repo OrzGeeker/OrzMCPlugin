@@ -49,6 +49,24 @@ public final class PlayerNameRule {
         return new PlayerNameRule(type, value);
     }
 
+    /**
+     * 解析并校验玩家名规则参数（bot {@code $d} 与游戏内 {@code /blacklist} 共用，消除重复）。
+     *
+     * <p>{@code valid()} 为 true 时 {@code rule()} 非 null；{@code valid()} 为 false 时
+     * 若 {@code type()} 为 null 表示匹配类型未知，否则表示正则非法。</p>
+     */
+    public static ParsedRule parse(String typeRaw, String value) {
+        MatchType type = MatchType.from(typeRaw);
+        if (type == null) {
+            return new ParsedRule(null, null, false);
+        }
+        PlayerNameRule rule = of(type, value);
+        return new ParsedRule(type, rule, rule.isValid());
+    }
+
+    /** 玩家名规则的解析结果：{@code valid()} 为 false 表示参数不合法（类型未知或正则非法）。 */
+    public record ParsedRule(MatchType type, PlayerNameRule rule, boolean valid) {}
+
     public MatchType type() {
         return type;
     }

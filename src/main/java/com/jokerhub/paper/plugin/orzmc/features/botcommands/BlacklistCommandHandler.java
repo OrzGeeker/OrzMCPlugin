@@ -28,6 +28,13 @@ final class BlacklistCommandHandler extends BotCommandContext {
     }
 
     void handleBlacklist(OrzUserCmd cmd, boolean isAdmin, Consumer<MessageEnvelope> callback, String rawArgs) {
+        // 访问规则命令统一调度到全局线程：① persist 的同步磁盘 I/O 不阻塞 WS reader 线程；
+        // ② $d 间按到达顺序 FIFO 串行，保证「添加后立刻 list」读到最新规则。
+        server.runSync(() -> handleBlacklistOnServerThread(cmd, isAdmin, callback, rawArgs));
+    }
+
+    private void handleBlacklistOnServerThread(
+            OrzUserCmd cmd, boolean isAdmin, Consumer<MessageEnvelope> callback, String rawArgs) {
         if (!guardAdminCommand(cmd, isAdmin, callback)) return;
         AccessRuleService svc = accessRuleService.get();
         if (svc == null) {
@@ -125,30 +132,29 @@ final class BlacklistCommandHandler extends BotCommandContext {
                     "用法: $d " + (remove ? "-" : "") + "player <type> <value>");
             return;
         }
-        PlayerNameRule.MatchType type = PlayerNameRule.MatchType.from(parts[0]);
-        if (type == null) {
-            emit(
-                    callback,
-                    "command_blacklist_error",
-                    Map.of("message", "无效匹配类型: " + parts[0] + "（支持 exact/prefix/suffix/contains/glob/regex）"),
-                    "无效匹配类型: " + parts[0] + "（支持 exact/prefix/suffix/contains/glob/regex）");
+        PlayerNameRule.ParsedRule parsed = PlayerNameRule.parse(parts[0], parts[1]);
+        if (!parsed.valid()) {
+            if (parsed.type() == null) {
+                emit(
+                        callback,
+                        "command_blacklist_error",
+                        Map.of("message", "无效匹配类型: " + parts[0] + "（支持 exact/prefix/suffix/contains/glob/regex）"),
+                        "无效匹配类型: " + parts[0] + "（支持 exact/prefix/suffix/contains/glob/regex）");
+            } else {
+                emit(
+                        callback,
+                        "command_blacklist_error",
+                        Map.of("message", "无效的正则表达式: " + parts[1]),
+                        "无效的正则表达式: " + parts[1]);
+            }
             return;
         }
-        PlayerNameRule rule = PlayerNameRule.of(type, parts[1]);
-        if (!rule.isValid()) {
-            emit(
-                    callback,
-                    "command_blacklist_error",
-                    Map.of("message", "无效的正则表达式: " + parts[1]),
-                    "无效的正则表达式: " + parts[1]);
-            return;
-        }
-        String message = (remove ? "已移除玩家名规则: " : "已添加玩家名规则: ") + rule.display();
+        String message = (remove ? "已移除玩家名规则: " : "已添加玩家名规则: ") + parsed.rule().display();
         if (remove) {
-            svc.removePlayerNameRule(type, parts[1]);
+            svc.removePlayerNameRule(parsed.type(), parts[1]);
             emit(callback, "command_blacklist_remove", Map.of("message", message), message);
         } else {
-            svc.addPlayerNameRule(type, parts[1]);
+            svc.addPlayerNameRule(parsed.type(), parts[1]);
             emit(callback, "command_blacklist_add", Map.of("message", message), message);
         }
     }

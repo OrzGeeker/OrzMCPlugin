@@ -17,6 +17,15 @@
 - `player_notify.window_ms` 默认改为 `1000`
 - `guard.audit_enabled=true` 时，危险命令 WARN 不再重复刷控制台，细节由 `audit/command_audit.log` 承载
 
+### 🐛 修复
+- **访问规则并发与线程安全（审查发现 P1-1/P2-1）**：
+  - `AccessRuleService.reload()` 加 synchronized，与 add/remove 互斥，避免「重载读旧快照」在变更间隙覆盖刚提交的内存规则
+  - 落盘改经 `ConfigManager.updateConfig` 原子完成 set→save，与 `reloadConfig` 互斥，消除「get/set 间隙实例被替换导致写丢失」
+  - `$d` 访问规则命令统一调度到全局线程执行：persist 的同步磁盘 I/O 不再阻塞 WS reader 线程，`$d` 间按到达顺序 FIFO 串行（添加后立刻 list 读最新）
+- **`/blacklist` 玩家名规则不被 IP 简写吞掉（审查发现 P1-2）**：`/blacklist player <type> <value>` / `-player` 不再误入 IP 添加/移除分支；`/blacklist player` 单独列出玩家名规则（对齐 `$d player` 语义）
+- **名称未上报时跳过玩家名规则匹配（审查发现 P2-2）**：离线模式 profile 未上报名称时不再用「未知玩家」占位符参与匹配，避免命中过宽规则（如 `contains:a`）误封合法玩家；通知与 GeoIP 仍用占位名展示
+- **玩家名规则解析抽公共入口（审查发现 P3-1）**：`PlayerNameRule.parse` 统一解析/校验（类型 + 正则合法性），bot `$d` 与游戏内 `/blacklist` 共用，消除两处重复
+
 ### ⚠️ 升级注意
 - **旧 `ip_blacklist.yml` 不再读取**：本版本起 IP 黑名单与玩家名规则统一存于 `access_rules.yml`，存量封禁数据不自动导入，升级前请将旧规则手动迁移到 `access_rules.yml`
 - **旧独立配置文件不再读取**：配置统一从 `config.yml`（已含 `command_policies` / `rank_colors` 等全部分段）与 `templates.yml` 读取，不再自动 fallback 到旧 `maintenance.yml` / `whitelist.yml` / `tnt.yml` / `player_notify.yml` / `ip_whitelist.yml` / `guard.yml` / `chat.yml` / `login_rate_limit.yml` / `exploit_hardening.yml` / `rank_colors.yml` / `styles.yml` / `commands.yml`。这些旧文件中的自定义值请迁移到 `config.yml` 对应分段；`config-version` 过旧提醒已随旧文件读取一并移除

@@ -100,6 +100,21 @@ class ConfigManagerTest {
     }
 
     @Test
+    void updateConfig_appliesAndSaves() throws Exception {
+        mgr.registerConfig("test");
+        boolean updated = mgr.updateConfig("test", cfg -> cfg.set("key", "value"));
+        assertTrue(updated);
+        // 已落盘：重载后仍能读到更新值
+        mgr.reloadConfig("test");
+        assertEquals("value", mgr.getConfig("test").getString("key"));
+    }
+
+    @Test
+    void updateConfig_returnsFalseForUnregistered() {
+        assertFalse(mgr.updateConfig("nonexistent", cfg -> cfg.set("key", "value")));
+    }
+
+    @Test
     void configExists_returnsTrueForRegistered() {
         mgr.registerConfig("test");
         assertTrue(mgr.configExists("test"));

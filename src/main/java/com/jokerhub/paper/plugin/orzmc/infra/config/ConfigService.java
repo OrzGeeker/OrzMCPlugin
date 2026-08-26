@@ -2,6 +2,7 @@ package com.jokerhub.paper.plugin.orzmc.infra.config;
 
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
 import java.util.List;
+import java.util.function.Consumer;
 import org.bukkit.configuration.file.FileConfiguration;
 
 public final class ConfigService {
@@ -77,6 +78,14 @@ public final class ConfigService {
 
     public boolean saveConfig(String name) {
         return configManager.saveConfig(name);
+    }
+
+    /**
+     * 原子地「取配置→变更→落盘」并与并发写/重载互斥（见 {@link ConfigManager#updateConfig}）。
+     * 返回是否成功落盘。
+     */
+    public boolean updateConfig(String name, Consumer<FileConfiguration> updater) {
+        return configManager.updateConfig(name, updater);
     }
 
     /** 插件数据目录。 */

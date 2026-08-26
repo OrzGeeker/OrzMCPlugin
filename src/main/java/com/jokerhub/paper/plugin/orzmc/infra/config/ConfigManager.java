@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -71,7 +72,22 @@ public class ConfigManager {
         }
     }
 
-    public boolean reloadConfig(String name) {
+    /**
+     * 在同步块内原子地「取配置→变更→落盘」，与其他并发写/重载互斥。
+     *
+     * <p>若调用方先 {@link #getConfig(String)} 拿到实例、在 get/set 间隙另一线程
+     * {@link #reloadConfig(String)} 替换了实例，set 会写进已废弃对象而丢失——
+     * 因此 set+save 必须整体放进本方法的同步块内。返回是否成功落盘。</p>
+     */
+    public synchronized boolean updateConfig(String name, Consumer<FileConfiguration> updater) {
+        if (!configs.containsKey(name) || !configFiles.containsKey(name)) {
+            return false;
+        }
+        updater.accept(configs.get(name));
+        return saveConfig(name);
+    }
+
+    public synchronized boolean reloadConfig(String name) {
         if (!configFiles.containsKey(name)) {
             return false;
         }

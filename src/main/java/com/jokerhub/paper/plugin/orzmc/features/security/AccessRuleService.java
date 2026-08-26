@@ -126,7 +126,11 @@ public final class AccessRuleService {
 
     // ---- persistence ----
 
-    public void reload() {
+    /**
+     * 从磁盘重载规则。synchronized 与 add/remove 互斥，避免「重载读旧快照」在变更间隙
+     * 覆盖刚提交的内存规则（并发丢失更新）。
+     */
+    public synchronized void reload() {
         this.ipPatterns = loadIpPatterns();
         this.playerNameRules = loadPlayerNameRules();
     }
@@ -168,19 +172,25 @@ public final class AccessRuleService {
         return Collections.unmodifiableList(rules);
     }
 
-    private void persist() {
-        FileConfiguration cfg = configService.getConfig(CONFIG_NAME);
-        if (cfg == null) return;
-        cfg.set(IP_PATH, new ArrayList<>(ipPatterns));
-        List<Map<String, String>> serialized = new ArrayList<>();
-        for (PlayerNameRule rule : playerNameRules) {
-            Map<String, String> entry = new LinkedHashMap<>();
-            entry.put("type", rule.type().display());
-            entry.put("value", rule.value());
-            serialized.add(entry);
-        }
-        cfg.set(PLAYER_NAME_PATH, serialized);
-        configService.saveConfig(CONFIG_NAME);
+    /**
+     * 原子落盘：经 {@link ConfigService#updateConfig} 在同步块内完成 set→save。
+     *
+     * <p>若先 {@code getConfig} 拿实例、在 get/set 间隙被 {@code reloadConfig} 替换实例，
+     * set 会写进已废弃对象而丢失——因此 set+save 必须整体放入 updateConfig 的同步块。
+     * 本方法自身也 synchronized，保证对同一 {@code access_rules} 的多次变更串行化。</p>
+     */
+    private synchronized void persist() {
+        configService.updateConfig(CONFIG_NAME, cfg -> {
+            cfg.set(IP_PATH, new ArrayList<>(ipPatterns));
+            List<Map<String, String>> serialized = new ArrayList<>();
+            for (PlayerNameRule rule : playerNameRules) {
+                Map<String, String> entry = new LinkedHashMap<>();
+                entry.put("type", rule.type().display());
+                entry.put("value", rule.value());
+                serialized.add(entry);
+            }
+            cfg.set(PLAYER_NAME_PATH, serialized);
+        });
     }
 
     private static String stringValue(Object value) {

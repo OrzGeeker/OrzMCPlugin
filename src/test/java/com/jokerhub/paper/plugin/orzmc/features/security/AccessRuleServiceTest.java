@@ -6,7 +6,9 @@ import static org.mockito.Mockito.*;
 import com.jokerhub.paper.plugin.orzmc.infra.config.ConfigService;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -26,6 +28,11 @@ class AccessRuleServiceTest {
         when(configService.getConfig("access_rules")).thenReturn(fileConfig);
         when(fileConfig.getStringList("ip_blacklist")).thenReturn(List.of());
         doReturn(List.of()).when(fileConfig).getList("player_name_rules");
+        // persist 现在经 updateConfig 原子落盘：模拟同步块内对 fileConfig 执行 set
+        when(configService.updateConfig(eq("access_rules"), any())).thenAnswer(inv -> {
+            inv.getArgument(1, Consumer.class).accept(fileConfig);
+            return true;
+        });
 
         service = new AccessRuleService(configService);
     }
@@ -172,10 +179,24 @@ class AccessRuleServiceTest {
 
     @Test
     void addIpPattern_persists() {
-        when(fileConfig.get("ip_blacklist")).thenReturn(null);
         service.addIpPattern("1.2.3.4");
         verify(fileConfig).set(eq("ip_blacklist"), anyList());
-        verify(configService).saveConfig("access_rules");
+        verify(configService).updateConfig(eq("access_rules"), any());
+    }
+
+    @Test
+    void reloadAfterAdd_keepsPersistedRule() {
+        // 真实 YamlConfiguration 走通「add → persist → reload」回环：证明 add 与 reload 不互失更新
+        YamlConfiguration real = new YamlConfiguration();
+        when(configService.getConfig("access_rules")).thenReturn(real);
+        when(configService.updateConfig(eq("access_rules"), any())).thenAnswer(inv -> {
+            inv.getArgument(1, Consumer.class).accept(real);
+            return true;
+        });
+        AccessRuleService svc = new AccessRuleService(configService);
+        svc.addIpPattern("10.0.0.0/8");
+        svc.reload();
+        assertTrue(svc.isIpBlocked("10.0.0.5"));
     }
 
     // ---- player name rules ----
@@ -240,7 +261,7 @@ class AccessRuleServiceTest {
     void playerNameRule_persists() {
         service.addPlayerNameRule(PlayerNameRule.MatchType.SUFFIX, "_alt");
         verify(fileConfig).set(eq("player_name_rules"), anyList());
-        verify(configService).saveConfig("access_rules");
+        verify(configService).updateConfig(eq("access_rules"), any());
     }
 
     @Test
