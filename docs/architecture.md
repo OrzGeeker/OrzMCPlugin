@@ -332,8 +332,8 @@ command_policies:
 | `$o` | 管理员 | 地图优化 |
 | `$e <命令>` | 管理员 | 执行控制台命令 |
 | `$d <IP>` / `$d -<IP>` / `$d player <type> <value>` / `$d -player <type> <value>`（type: `exact`/`prefix`/`suffix`/`contains`/`glob`/`regex`） | 管理员 | 添加/移除/查看 IP 黑名单与玩家名规则 |
-| `$v [l|y|n] <玩家>` | 管理员 | 查看/处理审核申请（`$v l` / `$v y` / `$v n`） |
-| `$p [u|d] <玩家>` | 管理员 | 权限升级/降级 |
+| `$v [l|y|n] <玩家>` | 管理员 | 查看/处理审核申请（`$v l` 列表 / `$v y`/`yes` 通过 / `$v n`/`no` 拒绝；同名多类型申请用 `$v y <typeId> <玩家>`） |
+| `$p u|up / d|down <玩家>` | 管理员 | 权限升级（default→member→builder→admin）/ 降级（admin→builder→member→default） |
 | `$l` | 通用 | 查看在线玩家 |
 | `$w [页码]` | 通用 | 查看白名单玩家 |
 | `$h` | 通用 | 查看帮助信息 |
