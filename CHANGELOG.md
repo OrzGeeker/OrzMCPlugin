@@ -33,6 +33,9 @@
 - **移除假成功改真实反馈（审查发现 P3）**：`AccessRuleService.removeIpPattern` / `removePlayerNameRule` 返回是否确有移除；`$d -<IP>`、`/blacklist remove <IP>` 与玩家名规则移除对不存在目标回「未找到」而非无条件「已移除」；游戏侧玩家名规则值空串时提示用法而非假成功
 - **`rank_colors` 配置健康检查（审查发现 P3）**：新增 `rank_colors` 段校验（enabled/nametag_enabled/tab_enabled 布尔类型 + op_color/colors.* 合法命名色或 `#RRGGBB`），非法配置在 `/orzmc config validate` 显式提示
 - **`command_policies` 改动即时生效（审查发现 P3，pre-existing）**：命令拦截器改为惰性读取 `command_policies`，`/orzmc config set command_policies.*` 后冷却与 admin-only 立即生效，无需重启或 reload（此前在 `minecraft:reload` 前仍沿用旧值）
+- **`$d -` / `/blacklist -` 简写 trim 收紧（审查发现 P3）**：`-` 简写去破折号后 `trim()`——`$d -` / `/blacklist -`（空模式）回用法提示；`$d - exact foo`（破折号后带空格）不再因首词空串绕过玩家名规则守卫，`$d - 1.2.3.4` 空格变体现在也能正常移除 IP
+- **玩家名规则增删反馈抽公共构建器（审查发现 P3）**：新增 `PlayerNameRuleFeedback.feedback`（解析 + 合法/非法 + 增删与已移除/未找到反馈）供 bot `$d` 与游戏内 `/blacklist` 共用，消除两处实现漂移并为游戏侧反馈逻辑补上单元测试
+- **玩家名规则「未找到」改用 error 模板键（审查发现 P3）**：bot 侧移除不存在的玩家名规则由 `command_blacklist_remove` 键改用 `command_blacklist_error` 键，与 IP「未找到」一致（模板均纯文本渲染 message，无展示差异）
 
 ### ⚠️ 升级注意
 - **旧 `ip_blacklist.yml` 不再读取**：本版本起 IP 黑名单与玩家名规则统一存于 `access_rules.yml`，存量封禁数据不自动导入，升级前请将旧规则手动迁移到 `access_rules.yml`

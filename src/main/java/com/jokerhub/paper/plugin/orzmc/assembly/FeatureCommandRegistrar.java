@@ -19,6 +19,7 @@ import com.jokerhub.paper.plugin.orzmc.features.rank.RankService;
 import com.jokerhub.paper.plugin.orzmc.features.review.ReviewCommandService;
 import com.jokerhub.paper.plugin.orzmc.features.security.AccessRuleService;
 import com.jokerhub.paper.plugin.orzmc.features.security.PlayerNameRule;
+import com.jokerhub.paper.plugin.orzmc.features.security.PlayerNameRuleFeedback;
 import com.jokerhub.paper.plugin.orzmc.features.teleport.TeleportBowService;
 import com.jokerhub.paper.plugin.orzmc.infra.config.ConfigPath;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.CommandPolicies;
@@ -131,13 +132,13 @@ final class FeatureCommandRegistrar {
             registerPortal(commands, cpSupplier);
 
             // ---- Blacklist: /blacklist list|add|remove <pattern> ----
-            registerBlacklist(commands, cpSupplier);
+            registerBlacklist(commands);
 
             // ---- Rank: /apply（申请）/ /review（审核）/ /rank（查询）----
             registerRank(commands, cpSupplier);
 
             // ---- Config: /config list|get|set|reset|dump|reload ----
-            registerConfig(commands, cpSupplier);
+            registerConfig(commands);
 
             // ---- Debug: /orzdebug <bot-command> 模拟群里用户发 Bot 命令 ----
             // 注：Paper 26 中 Brigadier 命令不触发 ServerCommandEvent，OrzDebugEvent
@@ -298,7 +299,7 @@ final class FeatureCommandRegistrar {
     }
 
     /** Blacklist: /blacklist list|add|remove <pattern>，并支持 player 玩家名规则子命令。 */
-    private void registerBlacklist(Commands commands, Supplier<CommandPolicies> cpSupplier) {
+    private void registerBlacklist(Commands commands) {
         List<CommandInterceptor> interceptors = adminInterceptors("blacklist");
         Predicate<CommandSourceStack> req = requirement(interceptors);
         AccessRuleService svc = accessRuleService;
@@ -405,7 +406,14 @@ final class FeatureCommandRegistrar {
                                         return 1;
                                     }
                                     if (input.startsWith("-")) {
-                                        String pattern = input.substring(1);
+                                        // trim：`/blacklist - exact foo` 破折号后带空格时，去掉空格再判玩家名规则语法
+                                        String pattern = input.substring(1).trim();
+                                        if (pattern.isEmpty()) {
+                                            ctx.getSource()
+                                                    .getSender()
+                                                    .sendMessage(styles.error("用法: /blacklist remove <IP>"));
+                                            return 1;
+                                        }
                                         if (PlayerNameRule.looksLikePlayerRuleSyntax(pattern)) {
                                             ctx.getSource()
                                                     .getSender()
@@ -671,29 +679,13 @@ final class FeatureCommandRegistrar {
                     styles.error("玩家名规则值不能为空: /blacklist " + (remove ? "remove" : "add") + " player <type> <value>"));
             return;
         }
-        PlayerNameRule.ParsedRule parsed = PlayerNameRule.parse(typeRaw, value);
-        if (!parsed.valid()) {
-            if (parsed.type() == null) {
-                sender.sendMessage(styles.error("无效匹配类型: " + typeRaw + "（支持 exact/prefix/suffix/contains/glob/regex）"));
-            } else {
-                sender.sendMessage(styles.error("无效的正则表达式: " + value));
-            }
-            return;
-        }
-        if (remove) {
-            if (svc.removePlayerNameRule(parsed.type(), value)) {
-                sender.sendMessage(styles.success("已移除玩家名规则: " + parsed.rule().display()));
-            } else {
-                sender.sendMessage(styles.error("未找到该玩家名规则: " + parsed.rule().display()));
-            }
-        } else {
-            svc.addPlayerNameRule(parsed.type(), value);
-            sender.sendMessage(styles.success("已添加玩家名规则: " + parsed.rule().display()));
-        }
+        // 反馈统一走 PlayerNameRuleFeedback（与 bot $d 共用，避免两边实现漂移）
+        PlayerNameRuleFeedback.Outcome outcome = PlayerNameRuleFeedback.feedback(svc, typeRaw, value, remove);
+        sender.sendMessage(outcome.success() ? styles.success(outcome.message()) : styles.error(outcome.message()));
     }
 
     /** Config: /config list|get|set|reset|dump|reload */
-    private void registerConfig(Commands commands, Supplier<CommandPolicies> cpSupplier) {
+    private void registerConfig(Commands commands) {
         List<CommandInterceptor> interceptors = adminInterceptors("config");
         Predicate<CommandSourceStack> req = requirement(interceptors);
         OrzConfigCommand cfgCmd = orzConfigCommand;

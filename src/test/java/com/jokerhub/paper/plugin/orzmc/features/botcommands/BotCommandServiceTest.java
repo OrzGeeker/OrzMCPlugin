@@ -819,6 +819,51 @@ class BotCommandServiceTest {
     }
 
     @Test
+    void parse_blacklistDashEmpty_emitsUsageNotRemoval() {
+        // P3：$d - 空模式 → 用法提示，不执行任何移除
+        AccessRuleService accessRuleService = mock(AccessRuleService.class);
+        service.injectDependencies(new BotCommandDependencies().accessRuleService(accessRuleService));
+
+        service.parse("$d -", true, callback);
+
+        verify(accessRuleService, never()).removeIpPattern(anyString());
+        var captor = org.mockito.ArgumentCaptor.forClass(MessageEnvelope.class);
+        verify(callback).accept(captor.capture());
+        assertTrue(
+                captor.getValue().message().contains("用法"),
+                "Expected usage hint, got: " + captor.getValue().message());
+    }
+
+    @Test
+    void parse_blacklistDashSpaceMatchType_emitsUsageNotIpRemoval() {
+        // P3：$d - exact foo（破折号后带空格）trim 后首词是匹配类型 → 玩家名规则提示，不落入 IP 移除
+        AccessRuleService accessRuleService = mock(AccessRuleService.class);
+        service.injectDependencies(new BotCommandDependencies().accessRuleService(accessRuleService));
+
+        service.parse("$d - exact foo", true, callback);
+
+        verify(accessRuleService, never()).removeIpPattern(anyString());
+        var captor = org.mockito.ArgumentCaptor.forClass(MessageEnvelope.class);
+        verify(callback).accept(captor.capture());
+        assertEquals("玩家名规则请使用: $d -player <type> <value>", captor.getValue().message());
+    }
+
+    @Test
+    void parse_blacklistDashSpaceIp_removes() {
+        // P3：$d - 1.2.3.4（破折号后带空格）trim 后正常移除 IP
+        AccessRuleService accessRuleService = mock(AccessRuleService.class);
+        when(accessRuleService.removeIpPattern("1.2.3.4")).thenReturn(true);
+        service.injectDependencies(new BotCommandDependencies().accessRuleService(accessRuleService));
+
+        service.parse("$d - 1.2.3.4", true, callback);
+
+        verify(accessRuleService).removeIpPattern("1.2.3.4");
+        var captor = org.mockito.ArgumentCaptor.forClass(MessageEnvelope.class);
+        verify(callback).accept(captor.capture());
+        assertEquals("已移除: 1.2.3.4", captor.getValue().message());
+    }
+
+    @Test
     void parse_blacklistIpRemove_missing_emitsNotFoundNotRemoved() {
         // P3：移除不存在的 IP → 回「未找到」，不再假报「已移除」
         AccessRuleService accessRuleService = mock(AccessRuleService.class);

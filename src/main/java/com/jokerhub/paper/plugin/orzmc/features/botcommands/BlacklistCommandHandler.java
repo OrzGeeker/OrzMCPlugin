@@ -4,6 +4,7 @@ import com.jokerhub.paper.plugin.orzmc.core.bot.MessageEnvelope;
 import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
 import com.jokerhub.paper.plugin.orzmc.features.security.AccessRuleService;
 import com.jokerhub.paper.plugin.orzmc.features.security.PlayerNameRule;
+import com.jokerhub.paper.plugin.orzmc.features.security.PlayerNameRuleFeedback;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import java.util.ArrayList;
 import java.util.List;
@@ -98,7 +99,16 @@ final class BlacklistCommandHandler extends BotCommandContext {
             return;
         }
         if (rawArgs.startsWith("-")) {
-            String pattern = rawArgs.substring(1);
+            // trim：`$d - exact foo` 破折号后带空格时，去掉空格再判玩家名规则语法，避免首词空串绕过守卫
+            String pattern = rawArgs.substring(1).trim();
+            if (pattern.isEmpty()) {
+                emit(
+                        callback,
+                        "command_blacklist_error",
+                        Map.of("message", "用法: $d -<IP>（移除 IP）/ $d -player <type> <value>（移除玩家名规则）"),
+                        "用法: $d -<IP>（移除 IP）/ $d -player <type> <value>（移除玩家名规则）");
+                return;
+            }
             if (PlayerNameRule.looksLikePlayerRuleSyntax(pattern)) {
                 emit(
                         callback,
@@ -174,31 +184,11 @@ final class BlacklistCommandHandler extends BotCommandContext {
                     "用法: $d " + (remove ? "-" : "") + "player <type> <value>");
             return;
         }
-        PlayerNameRule.ParsedRule parsed = PlayerNameRule.parse(parts[0], parts[1]);
-        if (!parsed.valid()) {
-            if (parsed.type() == null) {
-                emit(
-                        callback,
-                        "command_blacklist_error",
-                        Map.of("message", "无效匹配类型: " + parts[0] + "（支持 exact/prefix/suffix/contains/glob/regex）"),
-                        "无效匹配类型: " + parts[0] + "（支持 exact/prefix/suffix/contains/glob/regex）");
-            } else {
-                emit(
-                        callback,
-                        "command_blacklist_error",
-                        Map.of("message", "无效的正则表达式: " + parts[1]),
-                        "无效的正则表达式: " + parts[1]);
-            }
-            return;
-        }
-        if (remove) {
-            String removed = svc.removePlayerNameRule(parsed.type(), parts[1]) ? "已移除玩家名规则: " : "未找到该玩家名规则: ";
-            String message = removed + parsed.rule().display();
-            emit(callback, "command_blacklist_remove", Map.of("message", message), message);
-        } else {
-            String message = "已添加玩家名规则: " + parsed.rule().display();
-            svc.addPlayerNameRule(parsed.type(), parts[1]);
-            emit(callback, "command_blacklist_add", Map.of("message", message), message);
-        }
+        // 反馈统一走 PlayerNameRuleFeedback（与游戏 /blacklist 共用）；未找到用 error 键而非 remove 键
+        PlayerNameRuleFeedback.Outcome outcome = PlayerNameRuleFeedback.feedback(svc, parts[0], parts[1], remove);
+        String key = outcome.success()
+                ? (remove ? "command_blacklist_remove" : "command_blacklist_add")
+                : "command_blacklist_error";
+        emit(callback, key, Map.of("message", outcome.message()), outcome.message());
     }
 }
