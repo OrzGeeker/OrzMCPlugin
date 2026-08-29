@@ -2,8 +2,6 @@ package com.jokerhub.paper.plugin.orzmc.events;
 
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
 import com.jokerhub.paper.plugin.orzmc.features.rank.GamemodeCorrectionService;
-import java.util.UUID;
-import java.util.logging.Level;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.player.PlayerJoinEvent;
 
@@ -28,15 +26,12 @@ public final class OrzGamemodeCorrectionEvent extends OrzBaseListener {
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
-        UUID playerId = event.getPlayer().getUniqueId();
+        org.bukkit.entity.Player player = event.getPlayer();
         serverFacade()
                 .runLater(
                         () -> {
-                            try {
-                                correctionService.correctIfNeeded(playerId);
-                            } catch (RuntimeException e) {
-                                plugin.getLogger().log(Level.WARNING, "登录后游戏模式矫正异常: " + playerId, e);
-                            }
+                            // correctAsync 经玩家实体调度器投递（Folia 实体操作线程约束）
+                            correctionService.correctAsync(player);
                         },
                         JOIN_DELAY_TICKS);
     }

@@ -207,7 +207,7 @@ public final class FeatureModule implements ServiceModule {
         var playerLookup = new com.jokerhub.paper.plugin.orzmc.infra.player.BukkitPlayerLookup();
         // 游戏模式矫正：权限组变化后把已无权限的模式切回生存（config 经 Supplier 热重载）
         this.gamemodeCorrectionService = new com.jokerhub.paper.plugin.orzmc.features.rank.GamemodeCorrectionService(
-                () -> platform.configs().gamemodeCorrection(), platform.textStyles());
+                platform.serverFacade().plugin(), () -> platform.configs().gamemodeCorrection(), platform.textStyles());
         this.rankService = new com.jokerhub.paper.plugin.orzmc.features.rank.RankService(
                 permissionStore,
                 rankPromoter,
@@ -258,14 +258,9 @@ public final class FeatureModule implements ServiceModule {
         platform.serverFacade()
                 .runTaskTimer(
                         () -> {
-                            java.util.logging.Logger logger =
-                                    java.util.logging.Logger.getLogger("OrzMC.GamemodeCorrection");
                             for (org.bukkit.entity.Player player : org.bukkit.Bukkit.getOnlinePlayers()) {
-                                try {
-                                    gamemodeCorrectionService.correctIfNeeded(player);
-                                } catch (RuntimeException e) {
-                                    logger.log(java.util.logging.Level.WARNING, "周期矫正失败: " + player.getUniqueId(), e);
-                                }
+                                // correctAsync 经玩家实体调度器投递到其 region 线程（Folia 实体操作线程约束）
+                                gamemodeCorrectionService.correctAsync(player);
                             }
                         },
                         30 * 20L,

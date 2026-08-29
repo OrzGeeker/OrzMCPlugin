@@ -45,14 +45,38 @@ public final class GamemodeCorrectionService {
     /** 矫正成功后的玩家提示文案。 */
     public static final String FIX_MESSAGE = "你的权限组已变化，游戏模式已切换为生存模式。";
 
+    private final org.bukkit.plugin.java.JavaPlugin plugin;
     private final Supplier<GamemodeCorrectionConfig> configSupplier;
     private final OrzTextStyles styles;
     /** 玩家 UUID → 上次矫正时间戳（防抖，compute 原子更新）。 */
     private final Map<UUID, Long> lastCorrected = new ConcurrentHashMap<>();
 
-    public GamemodeCorrectionService(Supplier<GamemodeCorrectionConfig> configSupplier, OrzTextStyles styles) {
+    public GamemodeCorrectionService(
+            org.bukkit.plugin.java.JavaPlugin plugin,
+            Supplier<GamemodeCorrectionConfig> configSupplier,
+            OrzTextStyles styles) {
+        this.plugin = plugin;
         this.configSupplier = configSupplier;
         this.styles = styles;
+    }
+
+    /** 异步矫正：经玩家所属实体调度器投递（Folia 实体操作必须在该实体 region 线程），线程无关可安全从任意上下文调用。 */
+    public void correctAsync(Player player) {
+        if (player == null || !player.isOnline()) {
+            return;
+        }
+        player.getScheduler()
+                .execute(
+                        plugin,
+                        () -> {
+                            try {
+                                correctIfNeeded(player);
+                            } catch (RuntimeException e) {
+                                LOGGER.log(Level.WARNING, "异步游戏模式矫正失败: " + player.getUniqueId(), e);
+                            }
+                        },
+                        () -> {},
+                        0L);
     }
 
     /** 矫正指定玩家；返回是否发生了矫正。必须在同步调度线程调用；玩家离线/无效则跳过。 */

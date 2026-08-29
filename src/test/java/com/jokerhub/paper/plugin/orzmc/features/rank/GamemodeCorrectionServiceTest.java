@@ -34,11 +34,13 @@ class GamemodeCorrectionServiceTest {
     private OrzTextStyles styles;
     private GamemodeCorrectionConfig config;
     private Player player;
+    private org.bukkit.plugin.java.JavaPlugin mockPlugin;
 
     @BeforeEach
     void setUp() {
         styles = mock(OrzTextStyles.class);
         when(styles.info(anyString())).thenReturn(Component.text(GamemodeCorrectionService.FIX_MESSAGE));
+        mockPlugin = mock(org.bukkit.plugin.java.JavaPlugin.class);
         config = new GamemodeCorrectionConfig(true, 2000L, true);
         player = mock(Player.class);
         when(player.getUniqueId()).thenReturn(PLAYER_ID);
@@ -46,7 +48,7 @@ class GamemodeCorrectionServiceTest {
     }
 
     private GamemodeCorrectionService service() {
-        return new GamemodeCorrectionService(() -> config, styles);
+        return new GamemodeCorrectionService(mockPlugin, () -> config, styles);
     }
 
     // ---- CREATIVE ----
@@ -265,7 +267,7 @@ class GamemodeCorrectionServiceTest {
         when(player.getGameMode()).thenReturn(GameMode.CREATIVE);
         when(player.hasPermission(PERM_CREATIVE)).thenReturn(false);
 
-        GamemodeCorrectionService svc = new GamemodeCorrectionService(() -> null, styles);
+        GamemodeCorrectionService svc = new GamemodeCorrectionService(mockPlugin, () -> null, styles);
         boolean corrected = svc.correctIfNeeded(player);
 
         assertFalse(corrected);

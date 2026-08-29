@@ -3,7 +3,6 @@ package com.jokerhub.paper.plugin.orzmc.features.rank;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import java.util.List;
 import java.util.UUID;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.luckperms.api.LuckPerms;
 import net.luckperms.api.event.EventSubscription;
@@ -55,12 +54,7 @@ public final class GamemodeCorrectionLpBridge {
     }
 
     private static void handle(ServerFacade serverFacade, GamemodeCorrectionService correctionService, UUID playerId) {
-        serverFacade.runSync(() -> {
-            try {
-                correctionService.correctIfNeeded(playerId);
-            } catch (RuntimeException e) {
-                LOGGER.log(Level.WARNING, "权限组变化后游戏模式矫正失败: " + playerId, e);
-            }
-        });
+        // LP 事件可发自异步线程；correctAsync 经玩家实体调度器投递到其 region 线程（Folia 兼容）
+        correctionService.correctAsync(org.bukkit.Bukkit.getPlayer(playerId));
     }
 }

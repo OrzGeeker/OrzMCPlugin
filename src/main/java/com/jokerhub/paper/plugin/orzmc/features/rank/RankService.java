@@ -83,16 +83,12 @@ public final class RankService {
         }
     }
 
-    /** 升降级后矫正游戏模式：LP 操作在非服务器线程，矫正须回同步调度线程（无执行器则内联，单测）。 */
+    /** 升降级后矫正游戏模式：correctAsync 经玩家实体调度器投递到其 region 线程（Folia 兼容），线程无关。 */
     private void correctGamemode(UUID playerId) {
         if (gamemodeCorrection == null) {
             return;
         }
-        if (syncExecutor != null) {
-            syncExecutor.execute(() -> gamemodeCorrection.correctIfNeeded(playerId));
-        } else {
-            gamemodeCorrection.correctIfNeeded(playerId);
-        }
+        gamemodeCorrection.correctAsync(org.bukkit.Bukkit.getPlayer(playerId));
     }
 
     /** 检查玩家是否达到自动晋升条件（default→member）。

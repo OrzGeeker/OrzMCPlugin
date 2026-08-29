@@ -363,9 +363,9 @@ public final class ReviewService {
                 }
                 deferred.complete(finalizeStatus(request, ReviewRequest.Status.APPROVED, reviewerName, type));
                 // 权限组变化后矫正游戏模式（审核通过多为晋升，授予权限通常无需矫正；
-                // 为降级型审核兜底，无权限的模式被切回生存）。此处已在同步调度线程。
+                // 为降级型审核兜底，无权限的模式被切回生存）。correctAsync 经实体调度器投递（Folia 兼容）。
                 if (gamemodeCorrection != null) {
-                    gamemodeCorrection.correctIfNeeded(request.applicantId());
+                    gamemodeCorrection.correctAsync(org.bukkit.Bukkit.getPlayer(request.applicantId()));
                 }
             } catch (Throwable t) {
                 LOGGER.warning("审核通过后落状态失败，申请保持待审: " + request.id() + " - " + t.getMessage());
