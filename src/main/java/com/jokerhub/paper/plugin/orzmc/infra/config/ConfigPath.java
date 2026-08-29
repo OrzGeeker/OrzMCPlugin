@@ -96,6 +96,16 @@ public final class ConfigPath {
         reg(map, "config", "rank_colors.colors.builder", String.class, "green", "建造者名颜色(命名色)");
         reg(map, "config", "rank_colors.colors.member", String.class, "aqua", "成员名颜色(命名色)");
         reg(map, "config", "rank_colors.colors.default", String.class, "gray", "访客名颜色(命名色)");
+        // gamemode correction (config.yml)
+        reg(map, "config", "gamemode-correction.enabled", Boolean.class, true, "游戏模式矫正开关");
+        reg(map, "config", "gamemode-correction.debounce-ms", Long.class, 2000L, "矫正防抖窗口(毫秒)");
+        reg(
+                map,
+                "config",
+                "gamemode-correction.teleport-to-spawn-on-spectator-fix",
+                Boolean.class,
+                true,
+                "观察模式矫正前回出生点");
         return Collections.unmodifiableMap(map);
     }
 

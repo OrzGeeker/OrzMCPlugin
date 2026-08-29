@@ -4,6 +4,7 @@ import com.jokerhub.paper.plugin.orzmc.features.review.ReviewNotifier;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.logging.Logger;
 
 /**
@@ -31,6 +32,10 @@ public final class RankService {
     private final RankPromoter promoter;
     private final int memberThresholdHours;
     private final ReviewNotifier notifier;
+    /** 回同步调度线程执行游戏模式矫正的执行器（Paper 主线程 / Folia global region 线程）；未注入则内联（单测）。 */
+    private final Executor syncExecutor;
+    /** 升降级后的游戏模式矫正（可空：不注入则跳过）。 */
+    private final GamemodeCorrectionService gamemodeCorrection;
 
     public RankService(RankStore store, RankPromoter promoter) {
         this(store, promoter, DEFAULT_MEMBER_THRESHOLD_HOURS, null);
@@ -41,10 +46,27 @@ public final class RankService {
     }
 
     public RankService(RankStore store, RankPromoter promoter, int memberThresholdHours, ReviewNotifier notifier) {
+        this(store, promoter, memberThresholdHours, notifier, null, null);
+    }
+
+    /**
+     * @param syncExecutor      回同步调度线程执行游戏模式矫正（promote/demote 的 LP 操作在
+     *     非服务器线程，矫正需切回同步线程）；生产传入 {@code serverFacade::runSync}。
+     * @param gamemodeCorrection 升降级后的游戏模式矫正（可空；不注入则跳过）。
+     */
+    public RankService(
+            RankStore store,
+            RankPromoter promoter,
+            int memberThresholdHours,
+            ReviewNotifier notifier,
+            Executor syncExecutor,
+            GamemodeCorrectionService gamemodeCorrection) {
         this.store = store;
         this.promoter = promoter;
         this.memberThresholdHours = memberThresholdHours;
         this.notifier = notifier;
+        this.syncExecutor = syncExecutor;
+        this.gamemodeCorrection = gamemodeCorrection;
     }
 
     /** 玩家在线则发游戏内消息；通知端口未注入或玩家离线时静默。 */
@@ -59,6 +81,14 @@ public final class RankService {
         if (notifier != null) {
             notifier.groupEvent(templateKey, vars);
         }
+    }
+
+    /** 升降级后矫正游戏模式：correctAsync 经玩家实体调度器投递到其 region 线程（Folia 兼容），线程无关。 */
+    private void correctGamemode(UUID playerId) {
+        if (gamemodeCorrection == null) {
+            return;
+        }
+        gamemodeCorrection.correctAsync(org.bukkit.Bukkit.getPlayer(playerId));
     }
 
     /** 检查玩家是否达到自动晋升条件（default→member）。
@@ -142,6 +172,7 @@ public final class RankService {
                     Map.of(
                             "player", promoter.playerName(playerId).orElse(playerId.toString()),
                             "group", groupDisplayName(to)));
+            correctGamemode(playerId);
             return to;
         });
     }
@@ -179,6 +210,7 @@ public final class RankService {
                     Map.of(
                             "player", promoter.playerName(playerId).orElse(playerId.toString()),
                             "group", groupDisplayName(to)));
+            correctGamemode(playerId);
             return to;
         });
     }

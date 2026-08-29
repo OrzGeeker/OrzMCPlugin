@@ -5,6 +5,7 @@ import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.BotConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.ChatConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.ExploitHardeningConfig;
+import com.jokerhub.paper.plugin.orzmc.infra.config.configs.GamemodeCorrectionConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.IpWhitelist;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.LoginRateLimitConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.MaintenanceConfig;
@@ -97,6 +98,11 @@ public final class DefaultTypedConfigProvider implements TypedConfigProvider {
     @Override
     public RankColorsConfig rankColors() {
         return RankColorsConfig.from(section("rank_colors"));
+    }
+
+    @Override
+    public GamemodeCorrectionConfig gamemodeCorrection() {
+        return GamemodeCorrectionConfig.from(section("gamemode-correction"));
     }
 
     @Override

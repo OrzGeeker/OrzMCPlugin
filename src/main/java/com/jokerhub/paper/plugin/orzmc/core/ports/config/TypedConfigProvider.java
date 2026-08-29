@@ -48,6 +48,9 @@ public interface TypedConfigProvider {
     /** 玩家名颜色（按权限等级）配置。 */
     RankColorsConfig rankColors();
 
+    /** 游戏模式矫正（权限组变化后）配置。 */
+    com.jokerhub.paper.plugin.orzmc.infra.config.configs.GamemodeCorrectionConfig gamemodeCorrection();
+
     MessageEnvelope renderEvent(String eventKey, Map<String, String> vars);
 
     MessageEnvelope renderTemplate(String templateKey, Map<String, String> vars, String fallback);
