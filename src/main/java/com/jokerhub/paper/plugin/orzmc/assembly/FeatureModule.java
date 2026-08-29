@@ -103,6 +103,10 @@ public final class FeatureModule implements ServiceModule {
     private final com.jokerhub.paper.plugin.orzmc.features.rank.PlayerRankDisplayService rankDisplayService;
     /** 等级变更 → 颜色实时刷新桥（LP 启用时非 null，软依赖条件实例化）。 */
     private final com.jokerhub.paper.plugin.orzmc.features.rank.RankDisplayLpBridge rankDisplayLpBridge;
+    /** 游戏模式矫正（权限组变化后，升降级/审核/登录/LP 重算兜底）。 */
+    private final com.jokerhub.paper.plugin.orzmc.features.rank.GamemodeCorrectionService gamemodeCorrectionService;
+    /** 权限重算 → 游戏模式矫正桥（LP 启用时非 null，软依赖条件实例化；覆盖手动 lp 命令改组）。 */
+    private final com.jokerhub.paper.plugin.orzmc.features.rank.GamemodeCorrectionLpBridge gamemodeCorrectionLpBridge;
 
     // 模块引用（供事件/命令注册使用）
     private final PlatformModule platform;
@@ -201,12 +205,24 @@ public final class FeatureModule implements ServiceModule {
         var reviewNotifier = new com.jokerhub.paper.plugin.orzmc.infra.notify.ReviewNotifierAdapter(
                 platform.configs(), botModule.notifier());
         var playerLookup = new com.jokerhub.paper.plugin.orzmc.infra.player.BukkitPlayerLookup();
+        // 游戏模式矫正：权限组变化后把已无权限的模式切回生存（config 经 Supplier 热重载）
+        this.gamemodeCorrectionService = new com.jokerhub.paper.plugin.orzmc.features.rank.GamemodeCorrectionService(
+                () -> platform.configs().gamemodeCorrection(), platform.textStyles());
         this.rankService = new com.jokerhub.paper.plugin.orzmc.features.rank.RankService(
-                permissionStore, rankPromoter, permissionStore.memberThresholdHours(), reviewNotifier);
+                permissionStore,
+                rankPromoter,
+                permissionStore.memberThresholdHours(),
+                reviewNotifier,
+                platform.serverFacade()::runSync,
+                gamemodeCorrectionService);
         // 在线列表格式化注入权限组解析（$l 命令与上下线广播共用，一次注入两处生效）
         this.listFormatter.setRankService(this.rankService);
         this.reviewService = new com.jokerhub.paper.plugin.orzmc.features.review.ReviewService(
-                permissionStore, reviewNotifier, playerLookup, platform.serverFacade()::runSync);
+                permissionStore,
+                reviewNotifier,
+                playerLookup,
+                platform.serverFacade()::runSync,
+                gamemodeCorrectionService);
         // 注册审核类型：handler 由 rank 模块注入（LP 授权），框架零 LP 依赖。
         // 审核通过 = track 升一级；异步授权（LP 操作在非服务器线程），结果 null/异常 视为
         // 授权失败 → 保持 PENDING 不落 APPROVED（避免「已通过但未生效」漂移）。
@@ -227,6 +243,33 @@ public final class FeatureModule implements ServiceModule {
                         net.luckperms.api.LuckPermsProvider.get(),
                         rankDisplayService)
                 : null;
+        // 三元短路：仅 LP 启用时才求值 LuckPermsProvider.get()，LP 缺失时 gamemodeCorrectionLpBridge 为 null
+        this.gamemodeCorrectionLpBridge = rankPromoter.isAvailable()
+                ? new com.jokerhub.paper.plugin.orzmc.features.rank.GamemodeCorrectionLpBridge(
+                        platform.serverFacade().plugin(),
+                        platform.serverFacade(),
+                        net.luckperms.api.LuckPermsProvider.get(),
+                        gamemodeCorrectionService)
+                : null;
+
+        // 周期扫描兜底（第 4 通道）：手动 lp user X parent add/remove/set 等非 track 改组不触发
+        // Promote/Demote 事件，靠 30s 全服扫描实时矫正（correctIfNeeded 幂等 + 防抖，成本极低）；
+        // 任务绑定 plugin 生命周期，插件禁用自动停止。
+        platform.serverFacade()
+                .runTaskTimer(
+                        () -> {
+                            java.util.logging.Logger logger =
+                                    java.util.logging.Logger.getLogger("OrzMC.GamemodeCorrection");
+                            for (org.bukkit.entity.Player player : org.bukkit.Bukkit.getOnlinePlayers()) {
+                                try {
+                                    gamemodeCorrectionService.correctIfNeeded(player);
+                                } catch (RuntimeException e) {
+                                    logger.log(java.util.logging.Level.WARNING, "周期矫正失败: " + player.getUniqueId(), e);
+                                }
+                            }
+                        },
+                        30 * 20L,
+                        30 * 20L);
 
         // 保留模块引用（供事件/命令注册使用）
         this.platform = platform;
@@ -292,7 +335,9 @@ public final class FeatureModule implements ServiceModule {
             new OrzDebugEvent(plugin, botModule.botInboundHandler()),
             new OrzPortalEvent(plugin, portalEventService),
             new com.jokerhub.paper.plugin.orzmc.events.OrzRankEvent(plugin, rankService),
-            new com.jokerhub.paper.plugin.orzmc.events.OrzRankDisplayEvent(plugin, rankDisplayService)
+            new com.jokerhub.paper.plugin.orzmc.events.OrzRankDisplayEvent(plugin, rankDisplayService),
+            // 登录兜底：上线后延迟 ~1s 矫正一次（覆盖离线期间被改组的场景）
+            new com.jokerhub.paper.plugin.orzmc.events.OrzGamemodeCorrectionEvent(plugin, gamemodeCorrectionService)
         };
         EventBinder.bind(plugin, Arrays.asList(eventListeners));
         // 周期自愈：约 60s 重刷一次在线玩家颜色（兜底 Paper 头顶名刷新遗漏 + 配置改动兜底生效）
