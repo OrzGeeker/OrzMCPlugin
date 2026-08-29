@@ -121,6 +121,7 @@
 | `essentials.ban` | `/ban <玩家>` | Essentials 封禁 |
 | `essentials.unban` | `/unban <玩家>` | Essentials 解封 |
 | `essentials.gamemode` | `/gamemode creative <玩家>` | 改他人模式 |
+| `essentials.gamemode.spectator` | `/gamemode spectator` | 自身切观察模式（2026-08-29 实测补：builder 继承只有 creative/survival，admin 需显式 spectator） |
 | `essentials.give` | `/give <玩家> stone 1` | 发放物品 |
 | `essentials.tp` | `/tp <玩家>` | 传送他人 |
 | `essentials.time` | `/time` | 时间基础 |
