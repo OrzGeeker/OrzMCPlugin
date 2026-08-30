@@ -12,7 +12,7 @@
 3. **不含管理侧**：任何组的通配符都避开管理分支（worldedit.reload、worldguard.region.bypass、essentials.gamemode.others 等）
 4. **权限组内其它细节由线上自管**：本表只保证「定位功能可用」，不覆盖线上自定义
 
-## L0 default（访客）— 生存基础体验（13 项）
+## L0 default（访客）— 生存基础体验（23 项）
 
 | 权限节点 | 验证指令 | 预期 |
 |:--|:--|:--|
@@ -29,10 +29,20 @@
 | `ezshops.shop.buy` | 商店点购买 | 购买成功 |
 | `ezshops.shop.sell` | 商店点出售 | 出售成功 |
 | `ezshops.playershop.browse` | `/playershops` | 浏览玩家商店 |
+| `essentials.rules` | `/rules` | 显示服务器规则（2026-08-30 新增） |
+| `essentials.motd` | `/motd` | 显示欢迎语（2026-08-30 新增） |
+| `essentials.list` | `/list` | 在线玩家列表（2026-08-30 新增） |
+| `essentials.depth` | `/depth` | 显示当前深度（2026-08-30 新增） |
+| `essentials.compass` | `/compass` | 指南针指向出生点（2026-08-30 新增） |
+| `essentials.getpos` | `/getpos` | 显示当前坐标（2026-08-30 新增） |
+| `essentials.recipe` | `/recipe stone` | 显示合成配方（2026-08-30 新增） |
+| `essentials.hat` | `/hat` | 手持物品戴头上（2026-08-30 新增） |
+| `essentials.near` | `/near` | 显示附近玩家（2026-08-30 新增） |
+| `essentials.seen` | `/seen <玩家>` | 查看玩家最后在线时间（2026-08-30 新增） |
 
-> 剔除项：`getmehome.user`（家功能属 member，default 不给）、`deathchest.command.report`（管理命令，位于 DeathChest admin 包）、`essentials.reply`（无此权限，/reply 随 /msg）。
+> 剔除项：`getmehome.user`（家功能属 member，default 不给——**2026-08-30 决策：保持插件默认可用**，如需收紧再显式 false）、`deathchest.command.report`（管理命令，位于 DeathChest admin 包）、`essentials.reply`（无此权限，/reply 随 /msg）。**`essentials.nick` 不授予任何组**（2026-08-30 决策：离线服昵称=身份混淆风险，不开放）。
 
-## L1 member（成员）— 完整玩家功能（14 项）
+## L1 member（成员）— 完整玩家功能（19 项）
 
 | 权限节点 | 验证指令 | 预期 |
 |:--|:--|:--|
@@ -40,20 +50,25 @@
 | `essentials.tpa` | `/tpa <玩家>` | 传送请求发出 |
 | `essentials.tpaccept` | `/tpaccept` | 接受传送请求（2026-08-18 补：漏配导致「没有授受传送请求的权限」——tpa 发送时 Essentials 检查目标玩家 tpaccept 权限） |
 | `essentials.tpahere` | `/tpahere <玩家>` | 邀请对方 |
+| `essentials.tpdeny` | `/tpdeny` | 拒绝传送请求（2026-08-30 新增：有 tpa 必须有拒绝） |
+| `essentials.tpacancel` | `/tpacancel` | 取消发出的传送请求（2026-08-30 新增） |
 | `essentials.warp` | `/warp test` | 传送到传送点 |
 | `essentials.warp.list` | `/warp` | 列出传送点（2026-08-08 验收补：/warp 无参需 list） |
 | `essentials.kit` | `/kit` | 显示可用补给包 |
 | `essentials.mail` | `/mail` | 邮件基础 |
 | `essentials.mail.send` | `/mail send <玩家> hi` | 发送成功（2026-08-08 验收补：send 为独立子权限） |
+| `essentials.ptime` | `/ptime day` | 设置个人时间（2026-08-30 新增） |
+| `essentials.pweather` | `/pweather clear` | 设置个人天气（2026-08-30 新增） |
 | `griefprevention.createclaims` | 木铲圈地 | 成功圈地 |
+| `griefprevention.abandonclaim` | `/abandonclaim` | 放弃单个领地（2026-08-30 新增；plugin.yml 无此节点，GP 默认 claims 含弃地） |
 | `griefprevention.trapped` | `/trapped` | 触发卡死传送 |
 | `ezshops.playershop.create` | 牌子创建商店 | 创建成功 |
 | `ezshops.playershop.buy` | 玩家商店购买 | 购买成功 |
 | `ezshops.playershop.sell` | 玩家商店出售 | 出售成功 |
 
-> 剔除项：`essentials.spawn`（继承自 default，不重复列）；5 个 `getmehome.command.*` 分列节点 → 合并为 `getmehome.user`（省 5 项）。
+> 剔除项：`essentials.spawn`（继承自 default，不重复列）；5 个 `getmehome.command.*` 分列节点 → 合并为 `getmehome.user`（省 5 项）。**`/kit` 维持 member 专属**（2026-08-30 决策：default 不发基础 kit）。
 
-## L2 builder（建造者）— WE/WG 裁剪子集 + 建造便利 + Litematica 投影（33 项）
+## L2 builder（建造者）— WE/WG 裁剪子集 + 建造便利 + Litematica 投影（35 项）
 
 | 权限节点 | 验证指令 | 预期 |
 |:--|:--|:--|
@@ -84,9 +99,11 @@
 | `essentials.gamemode.survival` | `/gamemode survival` | 切回生存 |
 | `essentials.gamemode.others` | `/gamemode creative NoSuchPlayer` | ⚠️ **显式 false（08-12 实测：父权限含 .others，必须显式拒绝防改他人模式）** |
 | `essentials.fly` | `/fly` | 飞行开启 |
+| `essentials.speed` | `/speed 3` | 设置飞行/行走速度（2026-08-30 新增，配合 /fly） |
 | `essentials.heal` | `/heal` | 恢复满血（无 heal.others） |
 | `essentials.workbench` | `/workbench` | 打开随身工作台（含 /craft 别名） |
 | `essentials.top` | `/top` | 传送到地表 |
+| `f3f4perms.use` | F3+F4 热键 | 切换游戏模式（2026-08-30 新增：builder 开放热键，配合 /gamemode 命令双路径） |
 | `minecraft.command.setblock` | `/setblock ~ ~ ~ stone` | 放置成功（**Litematica 粘贴核心**） |
 | `minecraft.command.fill` | `/fill ~ ~ ~ ~5 ~ ~5 stone` | 填充成功（Litematica 连续区域） |
 | `minecraft.command.data` | `/data get block ~ ~ ~` | 读取方块 NBT（Litematica NBT 恢复） |
@@ -99,7 +116,7 @@
 > - 安全前置：三端 `enable-command-block=false`（命令方块禁用）→ 无法借 /setblock 放置可执行命令方块，无权限提升风险
 > - 合并说明：`worldguard.region.claim` + `claim.own` → `claim.*`（省 1）；`essentials.craft` 无此权限（/craft 是 /workbench 别名，已剔除）；**fly/gamemode 归属 builder（增量原则）——admin 经继承自动获得**。
 
-## L3 admin（管理员）— 管理命令（32 项，**无 `*`、无 luckperms.\*、无 op**）
+## L3 admin（管理员）— 管理命令（37 项，**无 `*`、无 luckperms.\*、无 op**）
 
 | 权限节点 | 验证指令 | 预期 |
 |:--|:--|:--|
@@ -136,8 +153,27 @@
 | `ezshops.playershop.admin` | 管理他人商店 | 成功 |
 | `deathchest.admin` | `/deathchest` 管理命令 | 成功 |
 | `bod.bypass` | 死亡回档豁免 | 成功 |
+| `essentials.mute` | `/mute <玩家>` | 禁言（2026-08-30 新增：含 /unmute 解禁，Essentials 复用同一权限） |
+| `essentials.tempban` | `/tempban <玩家> 1h` | 临时封禁（2026-08-30 新增） |
+| `essentials.banip` | `/ban-ip <IP>` | IP 封禁（2026-08-30 新增） |
+| `essentials.unbanip` | `/unban-ip <IP>` | IP 解封（2026-08-30 新增） |
 
-> 剔除项：`essentials.teleport`（无此权限，/tp 已含）、`essentials.unbanip` 等未列（无功能需求）。
+> 剔除项：`essentials.teleport`（无此权限，/tp 已含）。
+
+## 2026-08-30 重规划决策记录（老板审核通过）
+
+基于全量插件清单（references/plugin-inventory.md，21 插件）重规划，老板拍板 6 项：
+
+| # | 决策点 | 结论 |
+|:--|:--|:--|
+| 1 | /nick 昵称 | **不开放**（离线服身份混淆风险），`essentials.nick` 不授予任何组 |
+| 2 | /kit 归属 | **维持 member** 专属 |
+| 3 | admin 运营工具 | **补 /mute /unmute（复用 mute 权限）/tempban /ban-ip /unban-ip** |
+| 4 | GP siege（攻城）| **保持默认开**（现状） |
+| 5 | GetMeHome 家功能 default 可用 | **保持默认**（现状），如需收紧再显式 false |
+| 6 | F3F4Perms 热键 | **builder 开放** `f3f4perms.use`（F3+F4 切模式双路径） |
+
+本次新增汇总：L0 +10（rules/motd/list/depth/compass/getpos/recipe/hat/near/seen）、L1 +5（tpdeny/tpacancel/ptime/pweather/abandonclaim）、L2 +2（speed/f3f4perms.use）、L3 +4（mute/tempban/banip/unbanip）。维持不授：worldedit.limit（100 万硬上限）、luckperms.*、worldedit.setnbt（仅 admin）。
 
 **高危节点（明确不授予任何组）**：`*`、`luckperms.*`、`minecraft.command.op`、`bukkit.command.op`、`essentials.stop`、`essentials.reload`。
 
