@@ -85,6 +85,14 @@ PaperMC provides an `update/` directory inside the plugin directory. Put the
 new plugin JAR there; on the next server restart it is moved into `plugins/`
 automatically, completing the update.
 
+> **Configuration files** (`config.yml` / `templates.yml` / `easybot.yml`) are
+> migrated **automatically on startup**: the previous file is kept as `*.bak`,
+> missing default keys are merged in (existing values are never overwritten),
+> and documented old defaults are flipped only when they were left untouched.
+> No manual delete-and-regenerate is needed. Do not edit `config-version` by
+> hand. See [config schema governance](./docs/dev/config-schema-governance.md)
+> for the full rules and boundaries.
+
 ## Feedback
 
 If you run into any issues, we'd love to hear from you — please open an
@@ -97,4 +105,5 @@ You can also join our QQ channel for feedback:<br/>
 
 - [Contribution guide](CONTRIBUTING.md) (development notes and iteration conventions)
 - [Plugin architecture](./docs/architecture.md)
+- [Config schema governance](./docs/dev/config-schema-governance.md)
 - [Changelog](./CHANGELOG.md)

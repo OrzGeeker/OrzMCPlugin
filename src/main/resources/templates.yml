@@ -2,6 +2,10 @@
 #             配置消息模板
 # ==================================================
 
+# 模板 schema 版本：插件启动时若磁盘版本低于内置版本，会自动补齐缺失模板键并升级
+# （原文件备份为 templates.yml.bak）。版本号由插件维护，无需手动修改。
+config-version: 10
+
 templates:
   format:
     tnt_alert: CODE_BLOCK

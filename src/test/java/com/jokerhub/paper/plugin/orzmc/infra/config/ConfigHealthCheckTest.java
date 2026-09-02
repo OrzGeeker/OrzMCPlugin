@@ -195,54 +195,10 @@ class ConfigHealthCheckTest {
         templates.set("templates.world_alias.world_nether", "下界");
         templates.set("templates.world_alias.world_the_end", "末地");
 
-        // Required command templates
-        String[] requiredCmds = {
-            "command_output",
-            "command_help",
-            "command_players",
-            "command_whitelist_header",
-            "command_whitelist_page",
-            "command_whitelist_cleanup",
-            "command_whitelist_add_result",
-            "command_whitelist_remove_result",
-            "command_blacklist_list",
-            "command_blacklist_add",
-            "command_blacklist_remove",
-            "command_blacklist_error",
-            "command_admin_required",
-            "command_usage",
-            "command_backup",
-            "command_optimize",
-            "command_optimize_disabled",
-            "server_load",
-            "server_stop",
-            "whitelist_block",
-            "whitelist_toggle_alert",
-            "exception_alert",
-            "geoip_block",
-            "geoip_unverifiable",
-            "tnt_alert",
-            "maintenance_backup_stage",
-            "maintenance_backup_done",
-            "maintenance_backup_error",
-            "maintenance_optimize_stage",
-            "maintenance_optimize_done",
-            "maintenance_optimize_error",
-            "review_submitted",
-            "review_cancelled",
-            "review_approved",
-            "review_rejected",
-            "rank_promoted",
-            "rank_demoted",
-            "rank_status",
-            "command_review_list",
-            "command_review_list_empty",
-            "command_review_result",
-            "command_review_error",
-            "player_digest"
-        };
-        for (String cmd : requiredCmds) {
-            templates.set("templates." + cmd, "x");
+        // 全部模板事件 key 由 ConfigHealthCheck 全量校验（TemplateKeys.ALL 为唯一事实源），
+        // 故「健康」夹具直接遍历 ALL 填充，避免与 ALL 扩展脱节后误报缺失。
+        for (String key : TemplateKeys.ALL) {
+            templates.set("templates." + key, "x");
         }
 
         templates.createSection("styles").createSection("colors");
@@ -1274,53 +1230,8 @@ class ConfigHealthCheckTest {
         templates.set("templates.progress_units.eta", "ms");
         templates.set("templates.locale", "zh-CN");
 
-        String[] requiredCmds = {
-            "command_output",
-            "command_help",
-            "command_players",
-            "command_whitelist_header",
-            "command_whitelist_page",
-            "command_whitelist_cleanup",
-            "command_whitelist_add_result",
-            "command_whitelist_remove_result",
-            "command_blacklist_list",
-            "command_blacklist_add",
-            "command_blacklist_remove",
-            "command_blacklist_error",
-            "command_admin_required",
-            "command_usage",
-            "command_backup",
-            "command_optimize",
-            "command_optimize_disabled",
-            "server_load",
-            "server_stop",
-            "whitelist_block",
-            "whitelist_toggle_alert",
-            "exception_alert",
-            "geoip_block",
-            "geoip_unverifiable",
-            "tnt_alert",
-            "maintenance_backup_stage",
-            "maintenance_backup_done",
-            "maintenance_backup_error",
-            "maintenance_optimize_stage",
-            "maintenance_optimize_done",
-            "maintenance_optimize_error",
-            "review_submitted",
-            "review_cancelled",
-            "review_approved",
-            "review_rejected",
-            "rank_promoted",
-            "rank_demoted",
-            "rank_status",
-            "command_review_list",
-            "command_review_list_empty",
-            "command_review_result",
-            "command_review_error",
-            "player_digest"
-        };
-        for (String cmd : requiredCmds) {
-            templates.set("templates." + cmd, "x");
+        for (String key : TemplateKeys.ALL) {
+            templates.set("templates." + key, "x");
         }
 
         templates.createSection("styles").createSection("colors");
