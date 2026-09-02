@@ -83,7 +83,6 @@ public final class ConfigPath {
         reg(map, "easybot", "discord_server_link", String.class, null, "Discord邀请链接");
         reg(map, "easybot", "qq_group_id", String.class, null, "QQ群号");
         // templates (templates.yml)
-        reg(map, "templates", "templates.locale", String.class, "zh-CN", "本地化语言");
         reg(map, "templates", "templates.coord.scale", Double.class, 1.0, "坐标缩放比例");
         reg(map, "templates", "templates.coord.precision", Integer.class, 2, "坐标小数位数");
         reg(map, "templates", "templates.coord.unit_label", String.class, "block", "坐标单位标签");

@@ -150,25 +150,4 @@ public final class TemplateKeys {
         COMMAND_REVIEW_ERROR,
         EXCEPTION_ALERT,
     };
-
-    /** 命令模板 key 子集（用于 i18n 校验）。 */
-    public static final String[] COMMAND_KEYS = {
-        COMMAND_OUTPUT,
-        COMMAND_HELP,
-        COMMAND_PLAYERS,
-        COMMAND_WHITELIST_HEADER,
-        COMMAND_WHITELIST_PAGE,
-        COMMAND_WHITELIST_CLEANUP,
-        COMMAND_WHITELIST_ADD_RESULT,
-        COMMAND_WHITELIST_REMOVE_RESULT,
-        COMMAND_ADMIN_REQUIRED,
-        COMMAND_USAGE,
-        COMMAND_BACKUP,
-        COMMAND_OPTIMIZE,
-        COMMAND_OPTIMIZE_DISABLED,
-        COMMAND_BLACKLIST_LIST,
-        COMMAND_BLACKLIST_ADD,
-        COMMAND_BLACKLIST_REMOVE,
-        COMMAND_BLACKLIST_ERROR,
-    };
 }
