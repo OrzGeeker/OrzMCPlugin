@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
+import com.jokerhub.paper.plugin.orzmc.features.maintenance.MaintenanceModeService;
+import com.jokerhub.paper.plugin.orzmc.features.maintenance.MaintenanceModeService.MaintenanceReason;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.BotConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.MaintenanceConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
@@ -35,7 +37,7 @@ class ServerFeedbackServiceTest extends ServiceTestBase {
 
     @BeforeEach
     void setUp() {
-        service = new ServerFeedbackService(server, configs, styles);
+        service = new ServerFeedbackService(server, configs, styles, new MaintenanceModeService());
     }
 
     @Test
@@ -74,7 +76,7 @@ class ServerFeedbackServiceTest extends ServiceTestBase {
 
     @Test
     void buildMaintenanceMotd_containsMaintenanceWarn() {
-        MaintenanceConfig maint = new MaintenanceConfig(true, 300L, 5, "维护中请稍后", 0L);
+        MaintenanceConfig maint = new MaintenanceConfig(true, 300L, 5, "维护中请稍后", "优化中", "手动维护中", 0L);
         BotConfig bot = new BotConfig("$", null, null);
         when(configs.maintenance()).thenReturn(maint);
         when(configs.bot()).thenReturn(bot);
@@ -89,7 +91,7 @@ class ServerFeedbackServiceTest extends ServiceTestBase {
 
     @Test
     void buildMaintenanceMotd_withDiscord() {
-        MaintenanceConfig maint = new MaintenanceConfig(true, 300L, 5, "维护公告", 0L);
+        MaintenanceConfig maint = new MaintenanceConfig(true, 300L, 5, "维护公告", "优化中", "手动维护中", 0L);
         BotConfig bot = new BotConfig("$", "https://discord.gg/test", null);
         when(configs.maintenance()).thenReturn(maint);
         when(configs.bot()).thenReturn(bot);
@@ -100,5 +102,66 @@ class ServerFeedbackServiceTest extends ServiceTestBase {
         String plain = PlainTextComponentSerializer.plainText().serialize(result);
         assertTrue(plain.contains("维护中"), "should contain warn text: " + plain);
         assertTrue(plain.contains("discord.gg/test"), "should contain discord link: " + plain);
+    }
+
+    @Test
+    void buildMaintenanceMotd_withoutPlaceholders_appendsProgressLine() {
+        // 纯场景文案（不含 {stage}/{percent}/{eta}）+ 有进度 → 追加独立进度行
+        MaintenanceConfig maint = new MaintenanceConfig(true, 300L, 5, "备份中", "优化中", "手动维护中", 0L);
+        BotConfig bot = new BotConfig("$", null, null);
+        when(configs.maintenance()).thenReturn(maint);
+        when(configs.bot()).thenReturn(bot);
+        when(styles.warn(anyString())).thenReturn(Component.text("⚠ 维护中"));
+        when(styles.info(anyString())).then(i -> Component.text((String) i.getArgument(0)));
+
+        MaintenanceModeService mode = new MaintenanceModeService();
+        mode.enter(MaintenanceReason.BACKUP);
+        mode.updateProgress("区块", 45, 35);
+        ServerFeedbackService svc = new ServerFeedbackService(server, configs, styles, mode);
+
+        Component result = svc.buildMaintenanceMotd();
+        String plain = PlainTextComponentSerializer.plainText().serialize(result);
+        assertEquals("⚠ 维护中\n备份中\n进度：区块 45% 预计剩余 35秒", plain);
+    }
+
+    @Test
+    void buildMaintenanceMotd_manual_noProgress_omitsProgressLine() {
+        MaintenanceConfig maint = new MaintenanceConfig(true, 300L, 5, "备份中", "优化中", "手动维护中", 0L);
+        BotConfig bot = new BotConfig("$", null, null);
+        when(configs.maintenance()).thenReturn(maint);
+        when(configs.bot()).thenReturn(bot);
+        when(styles.warn(anyString())).thenReturn(Component.text("⚠ 维护中"));
+        when(styles.info(anyString())).then(i -> Component.text((String) i.getArgument(0)));
+
+        MaintenanceModeService mode = new MaintenanceModeService();
+        mode.enter(MaintenanceReason.MANUAL);
+        ServerFeedbackService svc = new ServerFeedbackService(server, configs, styles, mode);
+
+        Component result = svc.buildMaintenanceMotd();
+        String plain = PlainTextComponentSerializer.plainText().serialize(result);
+        assertTrue(plain.contains("手动维护中"), "manual MOTD 文案: " + plain);
+        assertFalse(plain.contains("进度"), "手动维护无进度时不应渲染进度行: " + plain);
+    }
+
+    @Test
+    void buildMaintenanceMotd_withPlaceholders_noSeparateProgressLine() {
+        // 场景模板含 {stage}/{percent}/{eta} → 占位符替换进场景文案，不再追加独立进度行（防重复）
+        MaintenanceConfig maint =
+                new MaintenanceConfig(true, 300L, 5, "备份 {stage} {percent}% {eta}秒", "优化中", "手动维护中", 0L);
+        BotConfig bot = new BotConfig("$", null, null);
+        when(configs.maintenance()).thenReturn(maint);
+        when(configs.bot()).thenReturn(bot);
+        when(styles.warn(anyString())).thenReturn(Component.text("⚠ 维护中"));
+        when(styles.info(anyString())).then(i -> Component.text((String) i.getArgument(0)));
+
+        MaintenanceModeService mode = new MaintenanceModeService();
+        mode.enter(MaintenanceReason.BACKUP);
+        mode.updateProgress("区块", 45, 35);
+        ServerFeedbackService svc = new ServerFeedbackService(server, configs, styles, mode);
+
+        Component result = svc.buildMaintenanceMotd();
+        String plain = PlainTextComponentSerializer.plainText().serialize(result);
+        // 精确断言：只有场景文案一行（占位符已被替换），无第二行「进度：区块 45% 预计剩余 35秒」重复
+        assertEquals("⚠ 维护中\n备份 区块 45% 35秒", plain);
     }
 }

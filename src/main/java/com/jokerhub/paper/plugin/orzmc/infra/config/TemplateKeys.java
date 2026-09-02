@@ -38,6 +38,7 @@ public final class TemplateKeys {
 
     // ---- 安全事件 ----
     public static final String GEOIP_BLOCK = "geoip_block";
+    public static final String GEOIP_UNVERIFIABLE = "geoip_unverifiable";
     public static final String WHITELIST_BLOCK = "whitelist_block";
     public static final String WHITELIST_TOGGLE_ALERT = "whitelist_toggle_alert";
     public static final String COMMAND_GUARD_BLOCKED = "command_guard_blocked";
@@ -70,6 +71,10 @@ public final class TemplateKeys {
     public static final String RANK_PROMOTED = "rank_promoted";
     public static final String RANK_DEMOTED = "rank_demoted";
     public static final String COMMAND_RANK_STATUS = "rank_status";
+
+    // ---- 坐牢事件（prison，2026-09-02）----
+    public static final String PRISON_IMPRISONED = "prison_imprisoned";
+    public static final String PRISON_RELEASED = "prison_released";
     public static final String COMMAND_REVIEW_LIST = "command_review_list";
     public static final String COMMAND_REVIEW_LIST_EMPTY = "command_review_list_empty";
     public static final String COMMAND_REVIEW_RESULT = "command_review_result";
@@ -88,13 +93,14 @@ public final class TemplateKeys {
      * 所有已知的模板事件 key。用于 {@link ConfigHealthCheck} 校验。
      *
      * <p>不含 {@link #PLAYER_DIGEST}、{@link #COMMAND_GUARD_BLOCKED}、{@link #SECURITY_AUDIT}、
-     * {@link #LOGIN_RATE_LIMIT_ALERT}、{@link #EXPLOIT_BLOCKED}、{@link #IP_BLACKLIST_BLOCK} 与
-     * {@link #PLAYER_NAME_BLOCK}：
+     * {@link #LOGIN_RATE_LIMIT_ALERT}、{@link #EXPLOIT_BLOCKED}、{@link #IP_BLACKLIST_BLOCK}、
+     * {@link #PLAYER_NAME_BLOCK}、{@link #PRISON_IMPRISONED} 与 {@link #PRISON_RELEASED}：
      * 调用方始终传入 fallback 兜底文案（PLAYER_DIGEST 在 {@code Templates} 中有完整 Java 默认模板，
      * COMMAND_GUARD_BLOCKED 在 {@code CommandGuardEventService}、SECURITY_AUDIT 在
      * {@code StartupSecurityAuditService}、LOGIN_RATE_LIMIT_ALERT 在 {@code LoginRateLimitEventService}、
      * EXPLOIT_BLOCKED 在 {@code ExploitHardeningEventService}、IP_BLACKLIST_BLOCK/PLAYER_NAME_BLOCK 在
-     * {@code LoginAccessControlService} 中内联兜底），升级安装（templates.yml 已存在故未复制新默认值）不携带
+     * {@code LoginAccessControlService}、PRISON_IMPRISONED/PRISON_RELEASED 在
+     * {@code ReviewNotifierAdapter} 中内联兜底），升级安装（templates.yml 已存在故未复制新默认值）不携带
      * 该键即可正常工作；纳入 ALL 会要求模板文件提供该键，造成升级后每次启动的持久「缺失」告警。</p>
      */
     public static final String[] ALL = {
@@ -119,6 +125,7 @@ public final class TemplateKeys {
         COMMAND_BLACKLIST_REMOVE,
         COMMAND_BLACKLIST_ERROR,
         GEOIP_BLOCK,
+        GEOIP_UNVERIFIABLE,
         WHITELIST_BLOCK,
         WHITELIST_TOGGLE_ALERT,
         TNT_ALERT,

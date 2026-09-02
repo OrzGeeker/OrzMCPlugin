@@ -1,15 +1,19 @@
 package com.jokerhub.paper.plugin.orzmc.features.player;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import com.destroystokyo.paper.profile.PlayerProfile;
 import com.jokerhub.paper.plugin.orzmc.core.bot.MessageEnvelope;
 import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
-import com.jokerhub.paper.plugin.orzmc.features.maintenance.WorldMaintenanceService;
+import com.jokerhub.paper.plugin.orzmc.features.maintenance.MaintenanceModeService;
+import com.jokerhub.paper.plugin.orzmc.features.maintenance.MaintenanceModeService.MaintenanceProgress;
+import com.jokerhub.paper.plugin.orzmc.features.maintenance.MaintenanceModeService.MaintenanceReason;
 import com.jokerhub.paper.plugin.orzmc.features.security.AccessRuleService;
 import com.jokerhub.paper.plugin.orzmc.features.security.GeoIpAccessService;
 import com.jokerhub.paper.plugin.orzmc.features.security.PlayerNameRule;
+import com.jokerhub.paper.plugin.orzmc.infra.config.configs.MaintenanceConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.notify.Notifier;
 import com.jokerhub.paper.plugin.orzmc.infra.notify.ThrottledNotifier;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
@@ -20,15 +24,17 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.Logger;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.event.player.AsyncPlayerPreLoginEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
 class LoginAccessControlServiceTest extends ServiceTestBase {
 
     @Mock
-    private WorldMaintenanceService maintenanceService;
+    private MaintenanceModeService maintenanceModeService;
 
     @Mock
     private AccessRuleService accessRuleService;
@@ -71,18 +77,18 @@ class LoginAccessControlServiceTest extends ServiceTestBase {
         when(event.getAddress()).thenReturn(InetAddress.getByName("1.2.3.4"));
         when(event.getPlayerProfile()).thenReturn(profile);
         when(profile.getName()).thenReturn("player1");
-        when(maintenanceService.isRunning()).thenReturn(false);
+        when(maintenanceModeService.isActive()).thenReturn(false);
         when(accessRuleService.matchedIpPattern(anyString())).thenReturn(null);
         when(accessRuleService.matchedPlayerNameRule(anyString())).thenReturn(null);
         when(configs.renderTemplate(anyString(), anyMap(), anyString()))
                 .thenReturn(MessageEnvelope.publicMessage("ip_blacklist_block"));
         when(server.logger()).thenReturn(logger);
-        when(styles.warn(anyString())).thenReturn(Component.text("warn"));
+        when(styles.warn(anyString())).thenAnswer(i -> Component.text((String) i.getArgument(0)));
         when(styles.error(anyString())).thenReturn(Component.text("error"));
         when(blockNotifier.shouldRun(anyString(), anyLong())).thenReturn(true);
 
         service = new LoginAccessControlService(
-                maintenanceService,
+                maintenanceModeService,
                 accessRuleService,
                 geoIpAccessService,
                 playerEventService,
@@ -95,12 +101,83 @@ class LoginAccessControlServiceTest extends ServiceTestBase {
 
     @Test
     void handlePreLogin_maintenance_disallowsAndSkipsChecks() {
-        when(maintenanceService.isRunning()).thenReturn(true);
+        when(maintenanceModeService.isActive()).thenReturn(true);
 
         service.handlePreLogin(event);
 
         verify(event).disallow(eq(AsyncPlayerPreLoginEvent.Result.KICK_OTHER), any(Component.class));
         verifyNoInteractions(accessRuleService, geoIpAccessService, playerEventService);
+    }
+
+    private String disallowedText() {
+        ArgumentCaptor<Component> captor = ArgumentCaptor.forClass(Component.class);
+        verify(event).disallow(eq(AsyncPlayerPreLoginEvent.Result.KICK_OTHER), captor.capture());
+        return PlainTextComponentSerializer.plainText().serialize(captor.getValue());
+    }
+
+    @Test
+    void handlePreLogin_maintenance_backup_usesBackupMotdAndSkipsChecks() {
+        when(maintenanceModeService.isActive()).thenReturn(true);
+        when(maintenanceModeService.reason()).thenReturn(MaintenanceReason.BACKUP);
+        when(configs.maintenance())
+                .thenReturn(new MaintenanceConfig(true, 300L, 5, "服务器地图备份中，请稍后再试", "优化中", "手动维护中", 0L));
+
+        service.handlePreLogin(event);
+
+        assertTrue(disallowedText().contains("服务器地图备份中，请稍后再试"));
+        verifyNoInteractions(accessRuleService, geoIpAccessService, playerEventService);
+    }
+
+    @Test
+    void handlePreLogin_maintenance_optimize_usesOptimizeMotd() {
+        when(maintenanceModeService.isActive()).thenReturn(true);
+        when(maintenanceModeService.reason()).thenReturn(MaintenanceReason.OPTIMIZE);
+        when(configs.maintenance())
+                .thenReturn(new MaintenanceConfig(true, 300L, 5, "备份中", "服务器地图优化中，请稍后再试", "手动维护中", 0L));
+
+        service.handlePreLogin(event);
+
+        assertTrue(disallowedText().contains("服务器地图优化中，请稍后再试"));
+    }
+
+    @Test
+    void handlePreLogin_maintenance_manual_usesManualMotd() {
+        when(maintenanceModeService.isActive()).thenReturn(true);
+        when(maintenanceModeService.reason()).thenReturn(MaintenanceReason.MANUAL);
+        when(configs.maintenance()).thenReturn(new MaintenanceConfig(true, 300L, 5, "备份中", "优化中", "服务器维护中，请稍后再试", 0L));
+
+        service.handlePreLogin(event);
+
+        assertTrue(disallowedText().contains("服务器维护中，请稍后再试"));
+    }
+
+    @Test
+    void handlePreLogin_maintenance_withEta_appendsEstimatedSeconds() {
+        when(maintenanceModeService.isActive()).thenReturn(true);
+        when(maintenanceModeService.reason()).thenReturn(MaintenanceReason.BACKUP);
+        when(configs.maintenance())
+                .thenReturn(new MaintenanceConfig(true, 300L, 5, "服务器地图备份中，请稍后再试", "优化中", "手动维护中", 0L));
+        when(maintenanceModeService.progress()).thenReturn(new MaintenanceProgress("区块", 35, 30, "进度：区块 35% 预计剩余 30秒"));
+
+        service.handlePreLogin(event);
+
+        String text = disallowedText();
+        assertTrue(text.contains("服务器地图备份中，请稍后再试"));
+        assertTrue(text.contains("预计剩余 30 秒"), "未用 {eta} 占位符时应追加预计剩余: " + text);
+    }
+
+    @Test
+    void handlePreLogin_maintenance_withEtaPlaceholder_replacesPlaceholders() {
+        when(maintenanceModeService.isActive()).thenReturn(true);
+        when(maintenanceModeService.reason()).thenReturn(MaintenanceReason.BACKUP);
+        when(configs.maintenance())
+                .thenReturn(new MaintenanceConfig(true, 300L, 5, "备份 {stage} {percent}% {eta}秒", "优化中", "手动维护中", 0L));
+        when(maintenanceModeService.progress()).thenReturn(new MaintenanceProgress("区块", 35, 30, "进度：区块 35% 预计剩余 30秒"));
+
+        service.handlePreLogin(event);
+
+        String text = disallowedText();
+        assertTrue(text.contains("备份 区块 35% 30秒"), "应替换 {stage}/{percent}/{eta}: " + text);
     }
 
     @Test

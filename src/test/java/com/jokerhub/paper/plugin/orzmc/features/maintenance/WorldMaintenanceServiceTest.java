@@ -7,6 +7,8 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.jokerhub.orzmc.world.ProgressEvent;
+import com.jokerhub.orzmc.world.ProgressStage;
 import com.jokerhub.paper.plugin.orzmc.core.bot.MessageEnvelope;
 import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
 import com.jokerhub.paper.plugin.orzmc.features.maintenance.WorldMaintenanceService.MaintenanceStage;
@@ -21,6 +23,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 import org.bukkit.Server;
 import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -90,7 +93,8 @@ public class WorldMaintenanceServiceTest extends ServiceTestBase {
         when(worldMock.getWorldPath()).thenReturn(dimensionFolder.toPath());
         when(bukkitServer.getWorlds()).thenReturn(List.of(worldMock));
 
-        service = new WorldMaintenanceService(server, configs, mock(OrzTextStyles.class), mock(Notifier.class));
+        service = new WorldMaintenanceService(
+                server, configs, mock(OrzTextStyles.class), mock(Notifier.class), new MaintenanceModeService());
     }
 
     // ===== 静态方法（原有） =====
@@ -164,7 +168,8 @@ public class WorldMaintenanceServiceTest extends ServiceTestBase {
         AtomicBoolean asyncRan = new AtomicBoolean(false);
         AtomicBoolean finallyRan = new AtomicBoolean(false);
 
-        service.runExclusive("维护中", () -> asyncRan.set(true), () -> finallyRan.set(true));
+        service.runExclusive(
+                MaintenanceModeService.MaintenanceReason.BACKUP, () -> asyncRan.set(true), () -> finallyRan.set(true));
 
         Assertions.assertTrue(asyncRan.get(), "asyncWork 应执行");
         Assertions.assertTrue(finallyRan.get(), "finallyWork 应执行");
@@ -176,13 +181,13 @@ public class WorldMaintenanceServiceTest extends ServiceTestBase {
         // 专用 mock：runAsync 不执行 → 模拟异步任务进行中（running 保持 true）
         WorldMaintenanceService runningSvc = serviceWithHeldAsync();
 
-        runningSvc.runExclusive("维护中", () -> {}, null);
+        runningSvc.runExclusive(MaintenanceModeService.MaintenanceReason.BACKUP, () -> {}, null);
         Assertions.assertTrue(runningSvc.isRunning(), "异步进行中 isRunning=true");
         int afterFirst = heldRunSyncCount.get();
         Assertions.assertTrue(afterFirst >= 2, "第一次进入：外层 runSync + save-off 至少 2 次，实际 " + afterFirst);
 
         // 第二次调用应被互斥跳过：runSync 计数不增长
-        runningSvc.runExclusive("维护中", () -> {}, null);
+        runningSvc.runExclusive(MaintenanceModeService.MaintenanceReason.BACKUP, () -> {}, null);
         Assertions.assertEquals(afterFirst, heldRunSyncCount.get(), "互斥：第二次不触发 runSync");
     }
 
@@ -203,7 +208,8 @@ public class WorldMaintenanceServiceTest extends ServiceTestBase {
         JavaPlugin heldPlugin = server.plugin(); // 先取值，避免 stubbing 中调用 mock
         when(held.plugin()).thenReturn(heldPlugin);
         heldServer = held;
-        return new WorldMaintenanceService(held, configs, mock(OrzTextStyles.class), mock(Notifier.class));
+        return new WorldMaintenanceService(
+                held, configs, mock(OrzTextStyles.class), mock(Notifier.class), new MaintenanceModeService());
     }
 
     @Test
@@ -211,7 +217,7 @@ public class WorldMaintenanceServiceTest extends ServiceTestBase {
         AtomicBoolean finallyRan = new AtomicBoolean(false);
 
         service.runExclusive(
-                "维护中",
+                MaintenanceModeService.MaintenanceReason.BACKUP,
                 () -> {
                     throw new IllegalStateException("模拟异步任务异常");
                 },
@@ -225,7 +231,8 @@ public class WorldMaintenanceServiceTest extends ServiceTestBase {
     public void runExclusive_isRunningFlagDuringExecution() {
         AtomicBoolean observedDuring = new AtomicBoolean(false);
 
-        service.runExclusive("维护中", () -> observedDuring.set(service.isRunning()), null);
+        service.runExclusive(
+                MaintenanceModeService.MaintenanceReason.BACKUP, () -> observedDuring.set(service.isRunning()), null);
 
         Assertions.assertTrue(observedDuring.get(), "asyncWork 执行期间 isRunning=true");
         Assertions.assertFalse(service.isRunning());
@@ -247,10 +254,73 @@ public class WorldMaintenanceServiceTest extends ServiceTestBase {
                 (java.util.concurrent.atomic.AtomicBoolean) fatalField.get(service);
         fatal.set(true);
 
-        service.runExclusive("维护中", () -> {}, null);
+        service.runExclusive(MaintenanceModeService.MaintenanceReason.BACKUP, () -> {}, null);
 
         Assertions.assertEquals(0, chunk.get(), "chunkErrorCount 应在每次 run 入口复位");
         Assertions.assertFalse(fatal.get(), "fatalErrorReported 应在每次 run 入口复位");
+    }
+
+    // ===== 维护模式状态机驱动（runExclusive → enter/updateProgress/exit） =====
+
+    @Test
+    public void runExclusive_drivesMaintenanceModeEnterAndExit() {
+        MaintenanceModeService mode = new MaintenanceModeService();
+        WorldMaintenanceService svc =
+                new WorldMaintenanceService(server, configs, mock(OrzTextStyles.class), mock(Notifier.class), mode);
+        AtomicBoolean sawActiveDuring = new AtomicBoolean(false);
+        MaintenanceModeService.MaintenanceReason[] reasonDuring = new MaintenanceModeService.MaintenanceReason[1];
+
+        svc.runExclusive(
+                MaintenanceModeService.MaintenanceReason.BACKUP,
+                () -> {
+                    sawActiveDuring.set(mode.isActive());
+                    reasonDuring[0] = mode.reason();
+                },
+                null);
+
+        Assertions.assertTrue(sawActiveDuring.get(), "asyncWork 期间维护模式应激活");
+        Assertions.assertEquals(MaintenanceModeService.MaintenanceReason.BACKUP, reasonDuring[0]);
+        Assertions.assertFalse(mode.isActive(), "任务结束后应退出维护模式");
+    }
+
+    @Test
+    public void runExclusive_restoresManualAfterBackup() {
+        // 手动维护期间备份照常执行：reason 被 BACKUP 覆盖，结束后恢复 MANUAL（wasManual 还原）
+        MaintenanceModeService mode = new MaintenanceModeService();
+        WorldMaintenanceService svc =
+                new WorldMaintenanceService(server, configs, mock(OrzTextStyles.class), mock(Notifier.class), mode);
+        mode.enter(MaintenanceModeService.MaintenanceReason.MANUAL);
+
+        svc.runExclusive(MaintenanceModeService.MaintenanceReason.BACKUP, () -> {}, null);
+
+        Assertions.assertTrue(mode.isActive(), "手动维护期间备份结束后应恢复手动维护");
+        Assertions.assertEquals(MaintenanceModeService.MaintenanceReason.MANUAL, mode.reason());
+    }
+
+    @Test
+    public void progressHandler_updatesMaintenanceModeProgress() throws Exception {
+        MaintenanceModeService mode = new MaintenanceModeService();
+        WorldMaintenanceService svc =
+                new WorldMaintenanceService(server, configs, mock(OrzTextStyles.class), mock(Notifier.class), mode);
+        // 反射取私有 progressHandler，用 mock ProgressEvent 驱动进度同步（真实备份链路已由 backup_* 覆盖）
+        java.lang.reflect.Method m =
+                WorldMaintenanceService.class.getDeclaredMethod("progressHandler", String.class, Consumer.class);
+        m.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        kotlin.jvm.functions.Function1<ProgressEvent, kotlin.Unit> handler =
+                (kotlin.jvm.functions.Function1<ProgressEvent, kotlin.Unit>)
+                        m.invoke(svc, "备份", (Consumer<String>) msg -> {});
+        ProgressEvent evt = mock(ProgressEvent.class);
+        when(evt.getCurrent()).thenReturn(50L);
+        when(evt.getTotal()).thenReturn(100L);
+        when(evt.getStage()).thenReturn(ProgressStage.CopyMisc);
+
+        handler.invoke(evt);
+
+        MaintenanceModeService.MaintenanceProgress progress = mode.progress();
+        Assertions.assertNotNull(progress, "progressHandler 应同步进度到维护模式状态机");
+        Assertions.assertEquals("进行中", progress.stage());
+        Assertions.assertEquals(50, progress.percent());
     }
 
     @Test
@@ -392,7 +462,7 @@ public class WorldMaintenanceServiceTest extends ServiceTestBase {
         // backup 内部走 runExclusive：进行中时第二次 backup 不叠加执行
         WorldMaintenanceService runningSvc = serviceWithHeldAsync();
 
-        runningSvc.runExclusive("维护中", () -> {}, null);
+        runningSvc.runExclusive(MaintenanceModeService.MaintenanceReason.BACKUP, () -> {}, null);
         Assertions.assertTrue(runningSvc.isRunning());
         int afterFirst = heldRunSyncCount.get();
 

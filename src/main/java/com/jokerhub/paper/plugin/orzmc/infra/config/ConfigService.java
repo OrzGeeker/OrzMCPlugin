@@ -51,6 +51,9 @@ public final class ConfigService {
         configManager.getOrSetDefault("config", "gamemode-correction.debounce-ms", 2000L);
         configManager.getOrSetDefault("config", "gamemode-correction.teleport-to-spawn-on-spectator-fix", true);
 
+        // 坐牢（prison）：仅缺失键写入默认值，不覆盖管理员修改（幂等）
+        configManager.getOrSetDefault("config", "prison.cell_location", "world,0,100,0,0,0");
+
         // 升级提示（审查 D 组）：默认值已调整的键只对新装服生效，存量 config.yml 已写入的旧值
         // 不会被覆盖。仅当存量值仍是旧默认时才提示，避免对已手动调整的服务器产生噪声。
         warnStaleDefaults();
