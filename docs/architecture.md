@@ -147,7 +147,7 @@ UpdateModule
 
 - 依赖 PlatformModule（ServerFacade / TypedConfigProvider）；装配于 MaintenanceModule 之后、FeatureModule 之前
 - 版本比对用「发布串 + 构建时间」，与 Hangar 通道 `release`/`beta` 对齐；调度链走 global region，网络/文件 IO 走异步线程，Folia 安全
-- 下载目标 `plugins/update/OrzMC.jar`（sha256 通过后原子落盘），重启后 Paper 自动完成替换
+- 下载目标 `plugins/update/`，文件名保持平台原名（`Hangar fileInfo.name`，如 `OrzMC-1.0.24.jar`）；sha256 通过后原子落盘，重启后 Paper 按插件元数据 name 匹配完成替换
 
 ### 5. FeatureModule — 功能模块（依赖所有其他模块）
 

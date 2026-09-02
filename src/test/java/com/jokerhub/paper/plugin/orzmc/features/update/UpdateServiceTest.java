@@ -28,7 +28,8 @@ import org.mockito.MockedStatic;
 
 /**
  * {@link UpdateService} 测试：版本判定（新/旧/同/已暂存/未知本地）与下载闭环
- * （sha256 校验 → 原子落盘 plugins/update → 二次调用幂等）。全部 mock 网络层，无真实外呼。
+ * （sha256 校验 → 按平台文件名原子落盘 plugins/update → 二次调用幂等 → 新版本文件名变化时
+ * 清理旧暂存）。全部 mock 网络层，无真实外呼。
  */
 class UpdateServiceTest {
 
@@ -55,12 +56,18 @@ class UpdateServiceTest {
                 hangar, config, currentVersion, buildTime, new File(tempDir, "update"), mock(Logger.class));
     }
 
+    private File updateDir() {
+        return new File(tempDir, "update");
+    }
+
     private void stubLatest(LatestVersion latest) {
         when(hangar.latest("release")).thenReturn(CompletableFuture.completedFuture(Optional.ofNullable(latest)));
     }
 
+    /** 模拟平台发布：文件名 = OrzMC-{version}.jar（与 CI 产物命名一致）。 */
     private LatestVersion remote(String version, Instant publishedAt) {
-        return new LatestVersion(version, publishedAt, "https://cdn.example.com/OrzMC.jar", "stub-sha");
+        return new LatestVersion(
+                version, publishedAt, "OrzMC-" + version + ".jar", "https://cdn.example.com/OrzMC.jar", "stub-sha");
     }
 
     /** 在 AsyncHttp.getBytes 桩生效期间执行 action（MockedStatic 作用域须覆盖真实调用点）。 */
@@ -150,29 +157,46 @@ class UpdateServiceTest {
     }
 
     @Test
-    void downloadNow_newer_downloadAndStage_writesStagedFile() throws Exception {
+    void downloadNow_newer_downloadAndStage_writesPlatformFileName() throws Exception {
         byte[] jar = fakeJarBytes();
         String sha = sha256Hex(jar);
-        LatestVersion newer =
-                new LatestVersion("1.0.24-dev.361", BUILD_TIME.plusSeconds(3600), "https://cdn/x.jar", sha);
+        LatestVersion newer = new LatestVersion(
+                "1.0.24-dev.361", BUILD_TIME.plusSeconds(3600), "OrzMC-1.0.24-dev.361.jar", "https://cdn/x.jar", sha);
         stubLatest(newer);
 
         UpdateService.DownloadOutcome outcome =
                 withStubbedDownload(jar, () -> service.downloadNow().join());
 
         assertEquals(UpdateService.DownloadState.DOWNLOADED, outcome.state());
-        File staged = new File(new File(tempDir, "update"), UpdateService.STAGED_FILE);
-        assertTrue(staged.isFile(), "校验通过后应落盘 plugins/update/OrzMC.jar");
+        File staged = new File(updateDir(), "OrzMC-1.0.24-dev.361.jar");
+        assertTrue(staged.isFile(), "落盘文件名应保持与平台 fileInfo.name 一致");
         assertArrayEquals(jar, Files.readAllBytes(staged.toPath()));
         assertEquals("1.0.24-dev.361", service.stagedVersion());
+        assertEquals(staged, service.stagedFile());
+    }
+
+    @Test
+    void downloadNow_remoteFileNameMissing_fallsBackToDefaultName() throws Exception {
+        byte[] jar = fakeJarBytes();
+        String sha = sha256Hex(jar);
+        LatestVersion newer =
+                new LatestVersion("1.0.24-dev.361", BUILD_TIME.plusSeconds(3600), null, "https://cdn/x.jar", sha);
+        stubLatest(newer);
+
+        UpdateService.DownloadOutcome outcome =
+                withStubbedDownload(jar, () -> service.downloadNow().join());
+
+        assertEquals(UpdateService.DownloadState.DOWNLOADED, outcome.state());
+        File staged = new File(updateDir(), "OrzMC.jar");
+        assertTrue(staged.isFile(), "平台未返回文件名时应回退默认名 OrzMC.jar");
     }
 
     @Test
     void downloadNow_afterStaging_secondCallAlreadyDownloaded() throws Exception {
         byte[] jar = fakeJarBytes();
         String sha = sha256Hex(jar);
-        LatestVersion newer =
-                new LatestVersion("1.0.24-dev.361", BUILD_TIME.plusSeconds(3600), "https://cdn/x.jar", sha);
+        LatestVersion newer = new LatestVersion(
+                "1.0.24-dev.361", BUILD_TIME.plusSeconds(3600), "OrzMC-1.0.24-dev.361.jar", "https://cdn/x.jar", sha);
         stubLatest(newer);
 
         UpdateService.DownloadOutcome first =
@@ -187,10 +211,50 @@ class UpdateServiceTest {
     }
 
     @Test
+    void downloadNow_newVersionDifferentFileName_removesPreviouslyStagedFile() throws Exception {
+        byte[] jarV1 = fakeJarBytes();
+        byte[] jarV2 = fakeJarBytes("PK fake jar v2 content");
+        String shaV1 = sha256Hex(jarV1);
+        String shaV2 = sha256Hex(jarV2);
+        LatestVersion v1 = new LatestVersion(
+                "1.0.24-dev.361",
+                BUILD_TIME.plusSeconds(3600),
+                "OrzMC-1.0.24-dev.361.jar",
+                "https://cdn/x-361.jar",
+                shaV1);
+        LatestVersion v2 = new LatestVersion(
+                "1.0.24-dev.362",
+                BUILD_TIME.plusSeconds(7200),
+                "OrzMC-1.0.24-dev.362.jar",
+                "https://cdn/x-362.jar",
+                shaV2);
+        stubLatest(v1);
+        assertEquals(
+                UpdateService.DownloadState.DOWNLOADED,
+                withStubbedDownload(jarV1, () -> service.downloadNow().join()).state());
+        assertTrue(new File(updateDir(), "OrzMC-1.0.24-dev.361.jar").isFile());
+
+        // 新版平台文件名变化（版本化名）：落盘新名并清理旧暂存，避免同插件多 jar 并存
+        stubLatest(v2);
+        assertEquals(
+                UpdateService.DownloadState.DOWNLOADED,
+                withStubbedDownload(jarV2, () -> service.downloadNow().join()).state());
+
+        assertFalse(new File(updateDir(), "OrzMC-1.0.24-dev.361.jar").exists(), "旧版本暂存文件应被清理");
+        assertTrue(new File(updateDir(), "OrzMC-1.0.24-dev.362.jar").isFile(), "新版本按平台文件名落盘");
+        assertEquals(1, updateDir().listFiles().length, "plugins/update 内同一插件只保留最新一个暂存");
+        assertEquals("1.0.24-dev.362", service.stagedVersion());
+    }
+
+    @Test
     void downloadNow_shaMismatch_failedAndNoFileLeft() throws Exception {
         byte[] jar = fakeJarBytes();
-        LatestVersion newer =
-                new LatestVersion("1.0.24-dev.361", BUILD_TIME.plusSeconds(3600), "https://cdn/x.jar", "wrong-sha");
+        LatestVersion newer = new LatestVersion(
+                "1.0.24-dev.361",
+                BUILD_TIME.plusSeconds(3600),
+                "OrzMC-1.0.24-dev.361.jar",
+                "https://cdn/x.jar",
+                "wrong-sha");
         stubLatest(newer);
 
         UpdateService.DownloadOutcome outcome =
@@ -199,10 +263,41 @@ class UpdateServiceTest {
         assertEquals(UpdateService.DownloadState.FAILED, outcome.state());
         assertTrue(outcome.detail().contains("sha256 校验失败"), "失败原因应指向 sha256 校验，实际: " + outcome.detail());
         assertNull(service.stagedVersion());
-        File updateDir = new File(tempDir, "update");
-        if (updateDir.exists()) {
-            assertEquals(0, updateDir.listFiles().length, "校验失败后不得留下任何文件（含 .part 临时文件）");
+        assertNull(service.stagedFile());
+        if (updateDir().exists()) {
+            assertEquals(0, updateDir().listFiles().length, "校验失败后不得留下任何文件（含 .part 临时文件）");
         }
+    }
+
+    @Test
+    void downloadNow_shaMismatch_keepsPreviouslyStagedFile() throws Exception {
+        byte[] goodJar = fakeJarBytes();
+        String goodSha = sha256Hex(goodJar);
+        LatestVersion v1 = new LatestVersion(
+                "1.0.24-dev.361",
+                BUILD_TIME.plusSeconds(3600),
+                "OrzMC-1.0.24-dev.361.jar",
+                "https://cdn/x-361.jar",
+                goodSha);
+        stubLatest(v1);
+        assertEquals(
+                UpdateService.DownloadState.DOWNLOADED,
+                withStubbedDownload(goodJar, () -> service.downloadNow().join()).state());
+
+        // 更新的版本 sha 校验失败：不得误删此前已就绪的暂存
+        LatestVersion bad = new LatestVersion(
+                "1.0.24-dev.362",
+                BUILD_TIME.plusSeconds(7200),
+                "OrzMC-1.0.24-dev.362.jar",
+                "https://cdn/x-362.jar",
+                "wrong-sha");
+        stubLatest(bad);
+        UpdateService.DownloadOutcome outcome =
+                withStubbedDownload(goodJar, () -> service.downloadNow().join());
+
+        assertEquals(UpdateService.DownloadState.FAILED, outcome.state());
+        assertTrue(new File(updateDir(), "OrzMC-1.0.24-dev.361.jar").isFile(), "sha 校验失败不得清理已就绪的旧暂存");
+        assertEquals("1.0.24-dev.361", service.stagedVersion());
     }
 
     @Test
@@ -230,8 +325,8 @@ class UpdateServiceTest {
     void downloadNow_concurrentSecondCall_busy() throws Exception {
         byte[] jar = fakeJarBytes();
         String sha = sha256Hex(jar);
-        LatestVersion newer =
-                new LatestVersion("1.0.24-dev.361", BUILD_TIME.plusSeconds(3600), "https://cdn/x.jar", sha);
+        LatestVersion newer = new LatestVersion(
+                "1.0.24-dev.361", BUILD_TIME.plusSeconds(3600), "OrzMC-1.0.24-dev.361.jar", "https://cdn/x.jar", sha);
         stubLatest(newer);
         // 第一个下载的 HTTP future 挂起，制造"下载中"窗口
         CompletableFuture<HttpResponse<byte[]>> pendingBytes = new CompletableFuture<>();
@@ -250,14 +345,18 @@ class UpdateServiceTest {
             pendingBytes.complete(httpBytes(jar));
             assertEquals(UpdateService.DownloadState.DOWNLOADED, first.join().state());
         }
-        File staged = new File(new File(tempDir, "update"), UpdateService.STAGED_FILE);
+        File staged = new File(updateDir(), "OrzMC-1.0.24-dev.361.jar");
         assertTrue(staged.isFile(), "第一单完成后应落盘");
     }
 
     // ---- helpers ----
 
     private static byte[] fakeJarBytes() {
-        return "PK fake jar content for sha256 test".getBytes(StandardCharsets.UTF_8);
+        return fakeJarBytes("PK fake jar content for sha256 test");
+    }
+
+    private static byte[] fakeJarBytes(String content) {
+        return content.getBytes(StandardCharsets.UTF_8);
     }
 
     private static HttpResponse<byte[]> httpBytes(byte[] body) {

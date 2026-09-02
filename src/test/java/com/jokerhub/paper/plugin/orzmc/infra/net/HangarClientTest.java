@@ -50,7 +50,7 @@ class HangarClientTest {
     @Test
     void parseLatest_fullPayload_readsAllFields() {
         String body = "{\"result\":[{\"name\":\"1.0.24-dev.360\",\"createdAt\":\"2026-08-20T10:00:00Z\","
-                + "\"downloads\":{\"PAPER\":{\"fileInfo\":{\"name\":\"OrzMC.jar\",\"sha256Hash\":\"abc123\"},"
+                + "\"downloads\":{\"PAPER\":{\"fileInfo\":{\"name\":\"OrzMC-1.0.24-dev.360.jar\",\"sha256Hash\":\"abc123\"},"
                 + "\"externalUrl\":\"https://cdn.example.com/OrzMC.jar\",\"downloadUrl\":\"fallback\"}}}]}";
 
         Optional<HangarClient.LatestVersion> result =
@@ -60,6 +60,7 @@ class HangarClientTest {
         HangarClient.LatestVersion v = result.get();
         assertEquals("1.0.24-dev.360", v.version());
         assertEquals(Instant.parse("2026-08-20T10:00:00Z"), v.publishedAt());
+        assertEquals("OrzMC-1.0.24-dev.360.jar", v.fileName(), "落盘须保持与平台 fileInfo.name 一致");
         assertEquals("https://cdn.example.com/OrzMC.jar", v.downloadUrl(), "externalUrl（CDN 直链）优先于 downloadUrl");
         assertEquals("abc123", v.sha256());
     }
@@ -87,6 +88,7 @@ class HangarClientTest {
         assertTrue(result.isPresent());
         HangarClient.LatestVersion v = result.get();
         assertNull(v.publishedAt(), "createdAt 缺失/非法 → publishedAt 为 null");
+        assertNull(v.fileName(), "fileInfo 缺失 → fileName 为 null（落盘兜底默认名）");
         assertNull(v.sha256(), "fileInfo 缺失 → sha256 为 null（调用方在下载前兜底）");
     }
 

@@ -42,8 +42,17 @@ public final class HangarClient {
         this.baseUrl = baseUrl == null || baseUrl.isBlank() ? API_BASE : baseUrl;
     }
 
-    /** 通道内最新版本（无版本时为空）。 */
-    public record LatestVersion(String version, Instant publishedAt, String downloadUrl, String sha256) {}
+    /**
+     * 通道内最新版本（无版本时为空）。
+     *
+     * @param version 版本串（与 CI 发布名一致，如 1.0.24-dev.360）
+     * @param publishedAt 发布时间（供新旧比对）
+     * @param fileName 平台原始文件名（fileInfo.name，如 OrzMC-1.0.24.jar；落盘须保持该名）
+     * @param downloadUrl CDN 下载直链
+     * @param sha256 下载内容的 sha256（落盘前校验）
+     */
+    public record LatestVersion(
+            String version, Instant publishedAt, String fileName, String downloadUrl, String sha256) {}
 
     /** 查询指定通道最新版本。网络/解析失败以 {@link CompletionException} 抛出（调用方兜底）。 */
     public CompletableFuture<Optional<LatestVersion>> latest(String channel) {
@@ -84,12 +93,16 @@ public final class HangarClient {
                         : paper.has("downloadUrl") && !paper.get("downloadUrl").isJsonNull()
                                 ? paper.get("downloadUrl").getAsString()
                                 : null;
+        String fileName = null;
         String sha256 = null;
         if (paper.has("fileInfo") && !paper.get("fileInfo").isJsonNull()) {
             JsonObject fileInfo = paper.getAsJsonObject("fileInfo");
+            fileName = fileInfo.has("name") && !fileInfo.get("name").isJsonNull()
+                    ? fileInfo.get("name").getAsString()
+                    : null;
             sha256 = fileInfo.has("sha256Hash") ? fileInfo.get("sha256Hash").getAsString() : null;
         }
-        return Optional.of(new LatestVersion(version, publishedAt, downloadUrl, sha256));
+        return Optional.of(new LatestVersion(version, publishedAt, fileName, downloadUrl, sha256));
     }
 
     private static Instant parseInstant(String raw) {

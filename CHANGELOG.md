@@ -6,7 +6,7 @@
 - **插件自更新（基于 Hangar）** — 不再需要手动下载 jar 再丢进 `plugins/update/`：
   - `update.channel`（默认 `release` 正式版；`beta` 为 `-dev` 开发版）选择更新通道，启动后按 `update.check_interval_hours`（默认 12h）异步检查新版本，不卡主线程
   - 发现新版本时默认仅控制台提示，管理员 `/update check` 查询、`/update now` 手动下载；`update.auto_download: true` 后自动下载
-  - 下载走 CDN 直链 + **sha256 校验**，通过后原子落盘 `plugins/update/OrzMC.jar`（含 `.part` 临时文件清理，防下载损坏），重启服务器即由 Paper 自动完成替换
+  - 下载走 CDN 直链 + **sha256 校验**，通过后按平台原始文件名（如 `OrzMC-1.0.24.jar`）原子落盘 `plugins/update/`（含 `.part` 临时文件清理与旧名暂存清理，防下载损坏/多版本并存），重启服务器即由 Paper 自动完成替换
   - 版本判定精确：构建期烘焙发布串 + HEAD 提交时间，杜绝 `-dev.N` 构建与基础版本误判；远程发布时间早于本地构建（本地更新尚未发版）或已暂存待重启的版本不重复下载；并发下载单飞防重
   - Folia 安全：调度链走 global region，全部网络/文件 IO 走异步线程；`update.enabled: false` 后停止周期检查（`/update` 手动命令仍可用）
   - 既有安装经 schema 自动升级（config-version 11）注入 `update:` 段，无需手动补配置

@@ -25,8 +25,9 @@ import java.util.logging.Logger;
  * 插件自更新核心（纯后台任务，无 Bukkit 依赖，Folia 天然安全）。
  *
  * <p>职责：查询 Hangar 当前通道最新版本 → 与「当前运行版本 + 构建时间」比对 → 需要更新时
- * 下载 jar 到 {@code plugins/update/OrzMC.jar}（sha256 校验通过后原子落盘，Paper 重启时自动
- * 应用并删除旧 jar）。全部网络/文件 IO 走异步线程，不触碰服务器 region 线程。</p>
+ * 下载 jar 到 {@code plugins/update/}（文件名与平台一致，sha256 校验通过后原子落盘；Paper
+ * 重启时按插件元数据 name 匹配应用并删除旧 jar）。全部网络/文件 IO 走异步线程，不触碰服务器
+ * region 线程。</p>
  *
  * <p>版本判定规则（精确比对，避免误判）：{@code currentVersion} 为构建期烘焙的发布串
  * （与 Hangar 版本名一致，如 {@code 1.0.24-dev.360}），仅当远程版本名不同且其发布时间晚于
@@ -34,8 +35,8 @@ import java.util.logging.Logger;
  */
 public final class UpdateService {
 
-    /** 落盘到 plugins/update 的稳定文件名（Paper 按插件名匹配应用更新）。 */
-    public static final String STAGED_FILE = "OrzMC.jar";
+    /** 平台未返回文件名时的兜底落盘名（正常时与 Hangar {@code fileInfo.name} 一致，如 OrzMC-1.0.24.jar）。 */
+    static final String FALLBACK_FILE_NAME = "OrzMC.jar";
 
     private static final Duration DOWNLOAD_CONNECT_TIMEOUT = Duration.ofSeconds(5);
     private static final Duration DOWNLOAD_REQUEST_TIMEOUT = Duration.ofSeconds(60);
@@ -49,6 +50,8 @@ public final class UpdateService {
     private final AtomicBoolean downloadInFlight = new AtomicBoolean(false);
     /** 已下载待重启的版本串（内存态，重启后清空）。 */
     private volatile String stagedVersion;
+    /** 已下载待重启的 jar 文件（带平台文件名；版本更迭后清理旧名文件时记录用）。 */
+    private volatile File stagedFile;
 
     public UpdateService(
             HangarClient hangar,
@@ -98,6 +101,11 @@ public final class UpdateService {
 
     public String stagedVersion() {
         return stagedVersion;
+    }
+
+    /** 已下载待重启的 jar 文件（可能为 null，测试/命令回显用）。 */
+    public File stagedFile() {
+        return stagedFile;
     }
 
     /** 检查当前通道是否有新版本。网络/解析失败收敛为 {@link State#CHECK_FAILED}，不抛异常。 */
@@ -167,8 +175,9 @@ public final class UpdateService {
             return CompletableFuture.completedFuture(new DownloadOutcome(DownloadState.NO_UPDATE, "没有可更新的版本（已是最新）"));
         }
         if (latest.version().equals(stagedVersion)) {
-            return CompletableFuture.completedFuture(
-                    new DownloadOutcome(DownloadState.ALREADY_DOWNLOADED, stagedPath() + "（重启后生效）"));
+            return CompletableFuture.completedFuture(new DownloadOutcome(
+                    DownloadState.ALREADY_DOWNLOADED,
+                    (stagedFile == null ? stagedFileName(latest) : stagedFile.getName()) + " 已下载（重启后生效）"));
         }
         if (latest.version().equals(currentVersion)) {
             return CompletableFuture.completedFuture(
@@ -201,7 +210,7 @@ public final class UpdateService {
                 });
     }
 
-    /** 校验 sha256 → 原子落盘 {@code plugins/update/OrzMC.jar}。 */
+    /** 校验 sha256 → 按平台文件名原子落盘 {@code plugins/update/}。 */
     private File verifyAndInstall(LatestVersion latest, byte[] bytes) throws IOException {
         String actual = sha256Hex(bytes);
         if (!actual.equalsIgnoreCase(latest.sha256())) {
@@ -210,8 +219,9 @@ public final class UpdateService {
         if (!updateFolder.exists() && !updateFolder.mkdirs()) {
             throw new IOException("无法创建更新目录: " + updateFolder);
         }
-        File target = new File(updateFolder, STAGED_FILE);
-        File tmp = new File(updateFolder, STAGED_FILE + ".part");
+        String fileName = stagedFileName(latest);
+        File target = new File(updateFolder, fileName);
+        File tmp = new File(updateFolder, fileName + ".part");
         try {
             Files.write(tmp.toPath(), bytes);
             try {
@@ -226,11 +236,31 @@ public final class UpdateService {
         } finally {
             Files.deleteIfExists(tmp.toPath());
         }
+        // 平台文件名为版本化名（如 OrzMC-1.0.24.jar）：新版本文件名变化，清理上一暂存文件，
+        // 避免 plugins/update 内同插件多版本 jar 并存导致重启应用冲突。仅删本次会话自己下载的文件。
+        File previous = stagedFile;
+        if (previous != null && !previous.equals(target) && previous.isFile()) {
+            try {
+                Files.deleteIfExists(previous.toPath());
+                logger.info("自更新：清理已过期的暂存文件 " + previous.getName());
+            } catch (IOException e) {
+                logger.warning("自更新：清理旧暂存文件失败 " + previous.getName() + " - " + e.getMessage());
+            }
+        }
+        stagedFile = target;
         return target;
     }
 
-    private String stagedPath() {
-        return new File(updateFolder, STAGED_FILE).getAbsolutePath();
+    /** 落盘文件名：优先 Hangar {@code fileInfo.name}（平台原名，含版本号），缺失/非法时兜底。 */
+    private static String stagedFileName(LatestVersion latest) {
+        String raw = latest.fileName();
+        if (raw != null && !raw.isBlank()) {
+            String name = new File(raw).getName();
+            if (name.endsWith(".jar")) {
+                return name;
+            }
+        }
+        return FALLBACK_FILE_NAME;
     }
 
     private static String sha256Hex(byte[] bytes) {
