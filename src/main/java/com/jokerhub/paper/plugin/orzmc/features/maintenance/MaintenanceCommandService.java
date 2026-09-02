@@ -80,16 +80,17 @@ public final class MaintenanceCommandService {
 
     /** 当前维护状态描述（用于 /maintenance status）。 */
     public String status() {
-        if (!mode.isActive()) {
+        var snap = mode.status();
+        if (!snap.active()) {
             return "服务器未处于维护模式";
         }
         String reasonCn =
-                switch (mode.reason()) {
+                switch (snap.reason() == null ? MaintenanceReason.MANUAL : snap.reason()) {
                     case BACKUP -> "地图备份中";
                     case OPTIMIZE -> "地图优化中";
                     case MANUAL -> "手动维护中";
                 };
-        MaintenanceProgress progress = mode.progress();
+        MaintenanceProgress progress = snap.progress();
         if (progress != null) {
             return reasonCn + " " + progress.progressMessage();
         }

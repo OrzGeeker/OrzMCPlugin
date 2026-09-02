@@ -73,6 +73,13 @@ public final class MaintenanceModeService {
         return progress;
     }
 
+    /** 原子状态快照：active/reason/progress 同锁一次读取，避免多次读拼接不一致。 */
+    public synchronized MaintenanceStatus status() {
+        return new MaintenanceStatus(active.get(), reason, progress);
+    }
+
+    public record MaintenanceStatus(boolean active, MaintenanceReason reason, MaintenanceProgress progress) {}
+
     /**
      * 将文案模板中的 {@code {stage}}/{@code {percent}}/{@code {eta}} 占位符替换为进度值；
      * 无进度快照时原样返回（占位符保留，交给调用方按场景兜底）。
