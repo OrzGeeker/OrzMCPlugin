@@ -7,7 +7,7 @@ const { rcon, waitLog } = require('../lib/rcon');
 const { TEST_PORT } = require('../lib/bot');
 const path = require('path');
 const os = require('os');
-const LOG_PATH = process.env.ORZMC_LOG_PATH || path.join(os.homedir(), 'papermc-test', 'logs', 'latest.log');
+const LOG_PATH = process.env.ORZMC_LOG_PATH;  // 无默认：由运行入口注入（MCSM 实例日志路径，见 e2e-mcsm-wrapper.sh）
 
 const results = [];
 let failed = 0;

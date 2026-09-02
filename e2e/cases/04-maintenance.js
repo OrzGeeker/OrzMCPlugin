@@ -7,8 +7,8 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const LOG_PATH = process.env.ORZMC_LOG_PATH || path.join(os.homedir(), 'papermc-test', 'logs', 'latest.log');
-const BACKUP_DIR = process.env.ORZMC_BACKUP_DIR || path.join(os.homedir(), 'papermc-test', 'backup');
+const LOG_PATH = process.env.ORZMC_LOG_PATH;      // 无默认：由运行入口注入（MCSM 实例日志路径）
+const BACKUP_DIR = process.env.ORZMC_BACKUP_DIR;  // 无默认：由运行入口注入（实例目录 backup/）
 
 const results = [];
 let failed = 0;
