@@ -365,6 +365,14 @@ PUBLIC；异常告警（含 GeoIP 上游异常私信）与维护失败事件走 
 | `tnt.place_cooldown` | Integer | 5 | TNT 放置冷却（秒） |
 | `tnt.notify_aggregate_ms` | Long | 3000 | TNT/爆炸告警聚合窗口（毫秒） |
 
+**插件自更新**
+| 配置路径 | 类型 | 默认值 | 描述 |
+|---------|------|--------|------|
+| `update.enabled` | Boolean | true | 自更新总开关（false 后不再自动检查；`/update check\|now` 仍可手动使用） |
+| `update.channel` | String | release | 更新通道：release（正式版）/ beta（开发版） |
+| `update.check_interval_hours` | Long | 12 | 自动检查间隔（小时）；0 = 仅启动后检查一次 |
+| `update.auto_download` | Boolean | false | 发现新版本自动下载到 plugins/update（重启生效） |
+
 **上下线通知**
 | 配置路径 | 类型 | 默认值 | 描述 |
 |---------|------|--------|------|
@@ -439,6 +447,7 @@ PUBLIC；异常告警（含 GeoIP 上游异常私信）与维护失败事件走 
 | `/rank` | — | 查看自己的权限组/时长进度/下一步可申请 | 通用 |
 | `/apply [类型] [理由]` | — | 提交权限晋升申请（`/apply builder` / `/apply admin`） | 通用 |
 | `/review approve\|reject <玩家>` | — | 审核通过/拒绝玩家的晋升申请 | 管理员 |
+| `/update check\|now` | `/upd` | 检查/下载插件新版本（下载到 `plugins/update`，重启生效） | 管理员 |
 
 ---
 
@@ -553,6 +562,19 @@ PUBLIC；异常告警（含 GeoIP 上游异常私信）与维护失败事件走 
 - 权限组只应通过本系统（`/apply` 审核 / `$p` 升降级）管理，请勿用 `lp user X parent add` 手动叠加组，否则会造成权限判定异常
 - 结案申请记录每玩家自动保留最近 10 条，历史记录自动裁剪（文件大小有上限）
 - 详细设计见 [权限系统方案文档](./permission-system-v2.md)
+
+## 十六、插件自更新
+
+插件内置自更新（默认开启），从 [Hangar](https://hangar.papermc.io/) 查询 OrzMC 新版本：
+
+- **`update.channel`**：`release`（正式版，默认）或 `beta`（开发版 `-dev` 构建）
+- 启动后经 `update.check_interval_hours`（默认 12 小时）异步检查一次；发现新版本时：
+  - `update.auto_download: false`（默认）→ 控制台提示，管理员 `/update now` 手动下载
+  - `update.auto_download: true` → 自动下载到 `plugins/update/`（sha256 校验通过才落盘）
+- 下载完成后**重启服务器即生效**（Paper 自动替换旧 jar）；管理员可随时 `/update check` 查询状态
+- 所有检查与下载均走异步线程，不卡主线程；无法识别本地构建信息等异常场景自动降级为仅提示
+
+> 各通道最新版本以 Hangar 发布时间为准；插件本地构建时间晚于远程发布（本地更新尚未发版）时不误判。
 
 ---
 

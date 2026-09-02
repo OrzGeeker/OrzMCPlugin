@@ -6,7 +6,7 @@
 ## 分层说明
 
 - **组合根（Composition Root）**
-    - `OrzServices` 作为显式组合根，按依赖顺序创建 5 个领域模块
+    - `OrzServices` 作为显式组合根，按依赖顺序创建 6 个领域模块
     - `OrzMC` (JavaPlugin) 入口，仅调用 `OrzServices.assemble(this)` 和生命周期方法
 - **适配层（Events/Commands）**
     - 事件监听、命令入口只采集参数并调用服务
@@ -135,6 +135,20 @@ MaintenanceModule
 - 依赖 PlatformModule（ConfigService）和 BotModule（Notifier）
 - 通过 BotCommandService 暴露给 $b / $o 命令
 
+### 4.5 UpdateModule — 插件自更新模块
+
+```
+UpdateModule
+├── UpdateService        ← 版本判定 / sha256 校验下载（纯后台，无 Bukkit 依赖）
+├── UpdateCommandService ← /update check|now 命令服务
+├── HangarClient        ← Hangar API v1 只读客户端（最新版/下载直链/sha256）
+└── BuildInfo           ← 读取构建期烘焙的 orzmc-build.properties（版本串 + HEAD 时间）
+```
+
+- 依赖 PlatformModule（ServerFacade / TypedConfigProvider）；装配于 MaintenanceModule 之后、FeatureModule 之前
+- 版本比对用「发布串 + 构建时间」，与 Hangar 通道 `release`/`beta` 对齐；调度链走 global region，网络/文件 IO 走异步线程，Folia 安全
+- 下载目标 `plugins/update/OrzMC.jar`（sha256 通过后原子落盘），重启后 Paper 自动完成替换
+
 ### 5. FeatureModule — 功能模块（依赖所有其他模块）
 
 将所有 Feature 服务集中创建，并注册 Bukkit 事件监听器和命令。
@@ -163,6 +177,7 @@ MaintenanceModule
 - `/review approve|reject <玩家>` — 管理员审核申请
 - `/rank [玩家]` — 查询权限组与晋升进度（admin 可查指定玩家）
 - `/orzdebug <Bot命令>` — 模拟群里用户发 Bot 命令（调试用）
+- `/update check|now`（别名 `/upd`） — 检查/下载插件自更新（管理员，见 4.5 UpdateModule）
 
 **命令拦截器**（`features/command/binding/`）：
 - `PlayerOnlyInterceptor` — 玩家限定
@@ -188,26 +203,24 @@ OrzServices.assemble(OrzMC)
   │
   ├── 2. new BotModule(platform)         ← 依赖 Platform
   ├── 3. new PortalModule(platform)      ← 依赖 Platform
-  │
   ├── 4. new MaintenanceModule(platform, bot)  ← 依赖 Platform + Bot
+  ├── 4.5 new UpdateModule(platform)     ← 依赖 Platform（自更新）
+  ├── 5. new FeatureModule(platform, bot, portal, maintenance, update)  ← 依赖所有模块
   │
-  ├── 5. bot.setWorldMaintenanceService(...)   ← 跨模块回引用注入
-  ├── 6. ((Initializable) bot).afterPropertiesSet()  ← 二阶段初始化
-  │
-  ├── 7. new FeatureModule(platform, bot, portal, maintenance)  ← 依赖所有模块
-  │
-  ├── 8. bot.botCommandService().injectDependencies(accessRuleService(...))   ← 访问规则回引用注入（Feature → Bot）
+  ├── 6. bot.botCommandService().injectDependencies(...)   ← Feature → Bot 跨模块回引用注入
   │
   └── OrzServices.setupAll(plugin)
-        ├── botModule.setup()             ← 启动 Bot 连接
-        ├── portalModule.setup()          ← 初始化传送门
+        ├── botModule.setup()            ← 启动 Bot 连接
+        ├── portalModule.setup()         ← 初始化传送门
+        ├── maintenanceModule.setup()    ← 维护模块启动
+        ├── updateModule.setup()         ← 排首轮自更新检查（异步，不阻塞启动）
         ├── featureModule.setupEventListeners(plugin)   ← 注册事件
-        ├── featureModule.setupCommandHandlers(plugin)  ← 通过 Paper LifecycleEvents.COMMANDS 注册 Brigadier 命令
+        ├── featureModule.setupCommandHandlers(plugin)  ← 注册 Brigadier 命令（含 /update）
         └── featureModule.enableForceWhitelist(plugin)  ← 应用白名单配置
 ```
 
 `OrzServices.shutdownAll()` 逆序销毁：
-- 先发停服通知 → BotModule.tearDown() → PortalModule.tearDown() → PlatformModule.tearDown()
+- 冲刷上下线聚合批次 → 通知停服 → BotModule.tearDown() → PortalModule.tearDown() → MaintenanceModule.tearDown() → UpdateModule.tearDown() → PlatformModule.tearDown()
 
 ## 依赖关系图
 
@@ -216,6 +229,7 @@ OrzServices.assemble(OrzMC)
     - BotModule 利用 PlatformModule 创建 BotCommandService → BotMessageService → Notifier
     - PortalModule 利用 PlatformModule 创建 PortalService
     - MaintenanceModule 利用 PlatformModule + BotModule 创建 WorldMaintenanceService
+    - UpdateModule 利用 PlatformModule 创建 UpdateService + UpdateCommandService（HangarClient / BuildInfo）
     - FeatureModule 利用所有模块创建 Feature 服务并注册命令/事件
 
 ## 设计原则

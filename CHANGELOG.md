@@ -3,6 +3,14 @@
 ## [Unreleased]
 
 ### ✨ 新功能
+- **插件自更新（基于 Hangar）** — 不再需要手动下载 jar 再丢进 `plugins/update/`：
+  - `update.channel`（默认 `release` 正式版；`beta` 为 `-dev` 开发版）选择更新通道，启动后按 `update.check_interval_hours`（默认 12h）异步检查新版本，不卡主线程
+  - 发现新版本时默认仅控制台提示，管理员 `/update check` 查询、`/update now` 手动下载；`update.auto_download: true` 后自动下载
+  - 下载走 CDN 直链 + **sha256 校验**，通过后原子落盘 `plugins/update/OrzMC.jar`（含 `.part` 临时文件清理，防下载损坏），重启服务器即由 Paper 自动完成替换
+  - 版本判定精确：构建期烘焙发布串 + HEAD 提交时间，杜绝 `-dev.N` 构建与基础版本误判；远程发布时间早于本地构建（本地更新尚未发版）或已暂存待重启的版本不重复下载；并发下载单飞防重
+  - Folia 安全：调度链走 global region，全部网络/文件 IO 走异步线程；`update.enabled: false` 后停止周期检查（`/update` 手动命令仍可用）
+  - 既有安装经 schema 自动升级（config-version 11）注入 `update:` 段，无需手动补配置
+
 - **配置文件 schema 自动升级（框架落地）** — 结束「升级需手动删除全部配置再重生成迁移」的历史操作：
   - `config.yml` / `templates.yml` / `easybot.yml` 顶层新增 `config-version` 版本标记，插件启动时对比磁盘与内置版本
   - 磁盘版本低于内置（含无标记旧装、`#238` 前的旧 `config-version: 2`）→ 自动执行：备份原文件为 `*.bak` → 深合并补齐缺失默认键/段（已有值一律不覆盖）→ 写回新版本标记并打印升级报告

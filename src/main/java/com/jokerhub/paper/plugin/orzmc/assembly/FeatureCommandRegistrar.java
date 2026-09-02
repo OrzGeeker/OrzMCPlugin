@@ -24,6 +24,7 @@ import com.jokerhub.paper.plugin.orzmc.features.security.AccessRuleService;
 import com.jokerhub.paper.plugin.orzmc.features.security.PlayerNameRule;
 import com.jokerhub.paper.plugin.orzmc.features.security.PlayerNameRuleFeedback;
 import com.jokerhub.paper.plugin.orzmc.features.teleport.TeleportBowService;
+import com.jokerhub.paper.plugin.orzmc.features.update.UpdateCommandService;
 import com.jokerhub.paper.plugin.orzmc.infra.config.ConfigPath;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.CommandPolicies;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
@@ -65,6 +66,8 @@ final class FeatureCommandRegistrar {
     private final PrisonCommandService prisonCommandService;
     private final OrzConfigCommand orzConfigCommand;
     private final MaintenanceCommandService maintenanceCommandService;
+    /** 自更新命令：/update check|now（管理员）。 */
+    private final UpdateCommandService updateCommandService;
     /** 坐牢拦截（prison 玩家禁全开放命令；装配层注入 prisonService 判定，LP 缺失恒 false）。 */
     private final PrisonDenyInterceptor prisonDenyInterceptor;
 
@@ -86,6 +89,7 @@ final class FeatureCommandRegistrar {
             OrzConfigCommand orzConfigCommand,
             MaintenanceCommandService maintenanceCommandService,
             PrisonCommandService prisonCommandService,
+            UpdateCommandService updateCommandService,
             java.util.function.Predicate<Player> prisonDenyCheck) {
         this.platform = platform;
         this.botModule = botModule;
@@ -100,6 +104,7 @@ final class FeatureCommandRegistrar {
         this.prisonCommandService = prisonCommandService;
         this.orzConfigCommand = orzConfigCommand;
         this.maintenanceCommandService = maintenanceCommandService;
+        this.updateCommandService = updateCommandService;
         this.prisonDenyInterceptor = prisonDenyCheck == null ? null : new PrisonDenyInterceptor(prisonDenyCheck);
     }
 
@@ -170,6 +175,9 @@ final class FeatureCommandRegistrar {
 
             // ---- Config: /config list|get|set|reset|dump|reload ----
             registerConfig(commands);
+
+            // ---- Update: /update check|now（插件自更新）----
+            registerUpdate(commands);
 
             // ---- Debug: /orzdebug <bot-command> 模拟群里用户发 Bot 命令 ----
             // 注：Paper 26 中 Brigadier 命令不触发 ServerCommandEvent，OrzDebugEvent
@@ -932,5 +940,31 @@ final class FeatureCommandRegistrar {
                 .build();
 
         commands.register(node, "配置管理", List.of("cfg"));
+    }
+
+    /** Update: /update check|now（插件自更新，管理员专属）。 */
+    private void registerUpdate(Commands commands) {
+        List<CommandInterceptor> interceptors = adminInterceptors("update");
+        Predicate<CommandSourceStack> req = requirement(interceptors);
+        OrzTextStyles styles = platform.textStyles();
+        UpdateCommandService svc = updateCommandService;
+        commands.register(
+                literal("update")
+                        .requires(req)
+                        .then(literal("check").executes(guardedExec("update", interceptors, ctx -> {
+                            svc.check(ctx.getSource().getSender());
+                            return 1;
+                        })))
+                        .then(literal("now").executes(guardedExec("update", interceptors, ctx -> {
+                            svc.downloadNow(ctx.getSource().getSender());
+                            return 1;
+                        })))
+                        .executes(guardedExec("update", interceptors, ctx -> {
+                            ctx.getSource().getSender().sendMessage(styles.info("用法: /update check|now"));
+                            return 1;
+                        }))
+                        .build(),
+                "检查/应用 OrzMC 插件更新（下载到 plugins/update，重启生效）",
+                List.of("upd"));
     }
 }

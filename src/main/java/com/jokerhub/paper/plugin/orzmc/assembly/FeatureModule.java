@@ -120,13 +120,15 @@ public final class FeatureModule implements ServiceModule {
     private final PlatformModule platform;
     private final BotModule botModule;
     private final MaintenanceModule maintenanceModule;
+    private final UpdateModule updateModule;
     private final FeatureCommandRegistrar commandRegistrar;
 
     public FeatureModule(
             PlatformModule platform,
             BotModule botModule,
             PortalModule portalModule,
-            MaintenanceModule maintenanceModule) {
+            MaintenanceModule maintenanceModule,
+            UpdateModule updateModule) {
         // Feature services
         this.geoIpAccessService = new GeoIpAccessService(platform.configs());
         this.accessRuleService = new AccessRuleService(
@@ -302,6 +304,7 @@ public final class FeatureModule implements ServiceModule {
         this.platform = platform;
         this.botModule = botModule;
         this.maintenanceModule = maintenanceModule;
+        this.updateModule = updateModule;
         this.commandRegistrar = new FeatureCommandRegistrar(
                 platform,
                 botModule,
@@ -316,6 +319,7 @@ public final class FeatureModule implements ServiceModule {
                 orzConfigCommand,
                 maintenanceCommandService,
                 prisonCommandService,
+                updateModule.updateCommandService(),
                 // 坐牢拦截：prison 玩家禁 /guide /menu /tpbow /portal /apply /rank（聊天/msg 不受影响）
                 player -> prisonService.isPrisoner(player.getUniqueId()));
     }
