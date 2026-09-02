@@ -3,6 +3,14 @@
 ## [Unreleased]
 
 ### ✨ 新功能
+- **配置文件 schema 自动升级（框架落地）** — 结束「升级需手动删除全部配置再重生成迁移」的历史操作：
+  - `config.yml` / `templates.yml` / `easybot.yml` 顶层新增 `config-version` 版本标记，插件启动时对比磁盘与内置版本
+  - 磁盘版本低于内置（含无标记旧装、`#238` 前的旧 `config-version: 2`）→ 自动执行：备份原文件为 `*.bak` → 深合并补齐缺失默认键/段（已有值一律不覆盖）→ 写回新版本标记并打印升级报告
+  - 版本一致时零打扰（不写文件、不告警）；磁盘版本更高（插件降级）或文件疑似 YAML 损坏时跳过并告警，避免误覆盖
+  - 运行时数据文件（`portals.yml` / `access_rules.yml` / `permission.yml` / `guide_book.yml`）明确不纳入 schema 迁移
+- **旧版默认值自动翻转（仅针对仍用旧默认的安装）** — legacy 升级时若磁盘值恰为旧版默认（`rank_colors.tab_enabled: true`、`chat.max_messages_per_minute: 6`、`login_rate_limit.max_login_attempts_per_minute: 5`、`login_rate_limit.max_concurrent_per_ip: 3`、`player_notify.window_ms: 3000`、旧 4 项 `entity_teleport_whitelist`）自动推进到新默认；已手动自定义过的值一律保留并日志列出「保留自定义」，不再需要对照 `#238` 前旧默认逐项手动改
+- **模板健康检查全量解锁** — `templates.yml` 历史上因「升级安装不补新默认」排除在校验外的 9 个事件 key（`command_guard_blocked` / `security_audit` / `login_rate_limit_alert` / `exploit_blocked` / `ip_blacklist_block` / `player_name_block` / `prison_imprisoned` / `prison_released` / `player_digest`）收回 `TemplateKeys.ALL` 统一校验；schema 自动升级会为旧装补齐缺失模板，彻底消除升级后每次启动的持久「缺失」告警，内置 `templates.yml` 必须覆盖全部 key（单测钉死）
+
 - **访问规则统一（IP 黑名单 + 玩家名规则）** — 新增 `AccessRuleService` 统一管理登录访问规则：
   - IP 黑名单继续支持精确 IP / CIDR / 通配符
   - 玩家名新增 `exact / prefix / suffix / contains / glob / regex` 六种匹配方式，默认大小写不敏感
@@ -40,6 +48,7 @@
 - **Bot 命令帮助补全使用示例**：`$d ?` 补齐玩家名规则 6 种匹配类型（`exact`/`prefix`/`suffix`/`contains`/`glob`/`regex`）清单与全类型示例；`$v ?` 补充 `yes`/`no` 别名与同玩家多类型申请用 `$v y <typeId> <玩家>`；`$p ?` 补充 `up`/`down` 别名。仓库文档（`docs/features.md` / `docs/architecture.md`）同步 `$d` 示例
 
 ### ⚠️ 升级注意
+- **配置升级已自动化，无需再手动删档重生成**：升级后启动即自动完成备份 → 补缺 → 旧默认翻转 → 版本回写（见「✨ 新功能」schema 条目）。`config.yml` / `templates.yml` / `easybot.yml` 的 `config-version` 由插件维护，**不要手动改/删**；若需审计变更，比对同目录 `.bak` 文件即可
 - **GeoIP 失败策略默认改为 fail-close**：此前 GeoIP 查询失败一律放行（fail-open），现默认拒绝进入（安全优先）；依赖旧行为的服务器请在 config.yml `geoip:` 段显式设 `fail_open: true`
 - **旧 `ip_blacklist.yml` 不再读取**：本版本起 IP 黑名单与玩家名规则统一存于 `access_rules.yml`，存量封禁数据不自动导入，升级前请将旧规则手动迁移到 `access_rules.yml`
 - **旧独立配置文件不再读取**：配置统一从 `config.yml`（已含 `command_policies` / `rank_colors` 等全部分段）与 `templates.yml` 读取，不再自动 fallback 到旧 `maintenance.yml` / `whitelist.yml` / `tnt.yml` / `player_notify.yml` / `ip_whitelist.yml` / `guard.yml` / `chat.yml` / `login_rate_limit.yml` / `exploit_hardening.yml` / `rank_colors.yml` / `styles.yml` / `commands.yml`。这些旧文件中的自定义值请迁移到 `config.yml` 对应分段；`config-version` 过旧提醒已随旧文件读取一并移除

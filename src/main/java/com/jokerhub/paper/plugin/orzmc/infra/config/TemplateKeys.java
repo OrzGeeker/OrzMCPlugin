@@ -92,16 +92,12 @@ public final class TemplateKeys {
     /**
      * 所有已知的模板事件 key。用于 {@link ConfigHealthCheck} 校验。
      *
-     * <p>不含 {@link #PLAYER_DIGEST}、{@link #COMMAND_GUARD_BLOCKED}、{@link #SECURITY_AUDIT}、
+     * <p>历史版本因「升级安装（templates.yml 已存在故未复制新默认值）不携带该键」而把
+     * {@link #PLAYER_DIGEST}、{@link #COMMAND_GUARD_BLOCKED}、{@link #SECURITY_AUDIT}、
      * {@link #LOGIN_RATE_LIMIT_ALERT}、{@link #EXPLOIT_BLOCKED}、{@link #IP_BLACKLIST_BLOCK}、
-     * {@link #PLAYER_NAME_BLOCK}、{@link #PRISON_IMPRISONED} 与 {@link #PRISON_RELEASED}：
-     * 调用方始终传入 fallback 兜底文案（PLAYER_DIGEST 在 {@code Templates} 中有完整 Java 默认模板，
-     * COMMAND_GUARD_BLOCKED 在 {@code CommandGuardEventService}、SECURITY_AUDIT 在
-     * {@code StartupSecurityAuditService}、LOGIN_RATE_LIMIT_ALERT 在 {@code LoginRateLimitEventService}、
-     * EXPLOIT_BLOCKED 在 {@code ExploitHardeningEventService}、IP_BLACKLIST_BLOCK/PLAYER_NAME_BLOCK 在
-     * {@code LoginAccessControlService}、PRISON_IMPRISONED/PRISON_RELEASED 在
-     * {@code ReviewNotifierAdapter} 中内联兜底），升级安装（templates.yml 已存在故未复制新默认值）不携带
-     * 该键即可正常工作；纳入 ALL 会要求模板文件提供该键，造成升级后每次启动的持久「缺失」告警。</p>
+     * {@link #PLAYER_NAME_BLOCK}、{@link #PRISON_IMPRISONED} 与 {@link #PRISON_RELEASED} 排除在
+     * {@code ALL} 之外（避免升级后每次启动的持久「缺失」告警）；引入配置 schema 自动升级后，
+     * templates.yml 缺键会在升级时由内置默认补齐，故收回纳入统一校验。各调用方内联 fallback 仍保留兜底。</p>
      */
     public static final String[] ALL = {
         PLAYER_JOIN,
@@ -128,6 +124,15 @@ public final class TemplateKeys {
         GEOIP_UNVERIFIABLE,
         WHITELIST_BLOCK,
         WHITELIST_TOGGLE_ALERT,
+        COMMAND_GUARD_BLOCKED,
+        SECURITY_AUDIT,
+        LOGIN_RATE_LIMIT_ALERT,
+        EXPLOIT_BLOCKED,
+        IP_BLACKLIST_BLOCK,
+        PLAYER_NAME_BLOCK,
+        PRISON_IMPRISONED,
+        PRISON_RELEASED,
+        PLAYER_DIGEST,
         TNT_ALERT,
         SERVER_LOAD,
         SERVER_STOP,

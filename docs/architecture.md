@@ -55,6 +55,8 @@ PlatformModule
 
 - **config/** — 配置加载、类型化包装与健康检查
     - ConfigService, ConfigManager, ConfigHealthCheck
+    - schema 自动升级（ConfigSchema / ConfigUpgrader / DefaultsMerger / LegacyDefaultFlips）：
+      版本门控的备份→补缺→旧默认翻转→回写，规则见 [配置 Schema 升级治理规范](dev/config-schema-governance.md)
     - `configs/` 子包中每个配置对应一个记录类（`BotConfig`, `Styles`, `TntConfig`, `WhitelistConfig`, `Portals`, `MainConfig`, `MaintenanceConfig`, `CommandPolicies`, `TemplateOptions`, `Templates`, `IpWhitelist`, `WhitelistKickMessage`）
     - `SafeKeys` YAML 键名安全编码（解决 '.' 被识别为层级分隔的问题）
     - `PortalsWriter` 持久化传送门配置

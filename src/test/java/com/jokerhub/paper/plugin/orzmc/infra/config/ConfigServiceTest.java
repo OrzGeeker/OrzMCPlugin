@@ -5,6 +5,7 @@ import static org.mockito.Mockito.*;
 
 import com.jokerhub.paper.plugin.orzmc.OrzMC;
 import java.io.File;
+import java.io.InputStream;
 import java.util.logging.Logger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,7 +24,15 @@ class ConfigServiceTest {
         plugin = mock(OrzMC.class);
         lenient().when(plugin.getDataFolder()).thenReturn(tempDir);
         lenient().when(plugin.getLogger()).thenReturn(Logger.getLogger("OrzMC"));
-        configService = new ConfigService(plugin);
+        // 注入 classpath 内置默认资源（插件 mock 拿不到 jar 资源），让 schema 升级真实复现
+        configService = new ConfigService(plugin, ConfigServiceTest::classpathResource);
+    }
+
+    /** 读取 classpath 中的内置默认资源（src/main/resources）。 */
+    private static InputStream classpathResource(String name) {
+        InputStream in = Thread.currentThread().getContextClassLoader().getResourceAsStream(name);
+        assertNotNull(in, "classpath resource missing: " + name);
+        return in;
     }
 
     @Test
@@ -88,9 +97,9 @@ class ConfigServiceTest {
 
     @Test
     void setup_backfillsMissingRankColorsKeys() {
-        // mock 插件无资源文件 → 磁盘配置为空，等价于旧版服务器升级（config.yml 缺新键）。
-        // setup() 的 getOrSetDefault 需把 rank_colors 全键（含 tab_enabled）回填进磁盘配置，
-        // 否则 /orzmc config get 显示 <null>（行为虽默认 false，但 UI 与 7 个兄弟键不一致）。
+        // 空磁盘配置 + classpath 内置默认 → schema 自动升级的深合并须把 rank_colors 全键
+        // （含 tab_enabled）实体化进配置，否则 /orzmc config get 显示 <null>（行为虽默认 false，
+        // 但 UI 与 7 个兄弟键不一致）。
         configService.setup();
         org.bukkit.configuration.file.FileConfiguration cfg = configService.getConfig("config");
         for (String path : java.util.List.of(
