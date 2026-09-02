@@ -97,6 +97,14 @@ export ORZMC_LOG_PATH
 # RCON 模式（默认 http = MCSM console API；rcon 模式需 ORZMC_RCON_PASS）
 export ORZMC_RCON_MODE="${ORZMC_RCON_MODE:-http}"
 export ORZMC_CONSOLE_URL ORZMC_API_KEY
+if [ "$ORZMC_RCON_MODE" = "http" ] && [ -z "${ORZMC_CONSOLE_URL:-}" ]; then
+  echo "❌ http 控制台模式缺少 ORZMC_CONSOLE_URL（由技能 wrapper e2e-mcsm-wrapper.sh 注入 MCSM console API 地址）" >&2
+  exit 1
+fi
+if [ "$ORZMC_RCON_MODE" = "rcon" ] && [ -z "${ORZMC_RCON_PASS:-}" ]; then
+  echo "❌ rcon 模式缺少 ORZMC_RCON_PASS（原生 RCON 密码；MCSM 实例场景请用默认 http 模式）" >&2
+  exit 1
+fi
 # 备份目录：优先环境注入，否则按测试服目录推断（04-maintenance 落盘断言仅 ORZMC_ASSERT_COMPLETE=1 时执行）
 if [ -z "${ORZMC_BACKUP_DIR:-}" ]; then
   ORZMC_BACKUP_DIR="$TEST_DIR/backup"

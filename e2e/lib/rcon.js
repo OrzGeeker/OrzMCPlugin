@@ -12,8 +12,6 @@
 // 用法: const { rcon } = require('./lib/rcon');
 //   const out = await rcon('list');          // 默认测试服（模式由环境变量决定）
 const net = require('net');
-const os = require('os');
-const path = require('path');
 
 const RCON_MODE = process.env.ORZMC_RCON_MODE || 'http';
 const DEFAULT_RCON_PORT = parseInt(process.env.ORZMC_RCON_PORT || '25575', 10);
