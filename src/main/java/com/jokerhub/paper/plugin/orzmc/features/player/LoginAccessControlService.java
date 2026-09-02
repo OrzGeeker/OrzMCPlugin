@@ -3,11 +3,14 @@ package com.jokerhub.paper.plugin.orzmc.features.player;
 import com.destroystokyo.paper.profile.PlayerProfile;
 import com.jokerhub.paper.plugin.orzmc.core.bot.MessageEnvelope;
 import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
-import com.jokerhub.paper.plugin.orzmc.features.maintenance.WorldMaintenanceService;
+import com.jokerhub.paper.plugin.orzmc.features.maintenance.MaintenanceModeService;
+import com.jokerhub.paper.plugin.orzmc.features.maintenance.MaintenanceModeService.MaintenanceProgress;
+import com.jokerhub.paper.plugin.orzmc.features.maintenance.MaintenanceModeService.MaintenanceReason;
 import com.jokerhub.paper.plugin.orzmc.features.security.AccessRuleService;
 import com.jokerhub.paper.plugin.orzmc.features.security.GeoIpAccessService;
 import com.jokerhub.paper.plugin.orzmc.features.security.PlayerNameRule;
 import com.jokerhub.paper.plugin.orzmc.infra.config.TemplateKeys;
+import com.jokerhub.paper.plugin.orzmc.infra.config.configs.MaintenanceConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.notify.Notifier;
 import com.jokerhub.paper.plugin.orzmc.infra.notify.ThrottledNotifier;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
@@ -28,7 +31,7 @@ public final class LoginAccessControlService {
      * 40034100 的事故）。控制台 warning 不受限频，保持每次可查。 */
     private static final long ACCESS_RULE_BLOCK_THROTTLE_MS = 5000L;
 
-    private final WorldMaintenanceService maintenanceService;
+    private final MaintenanceModeService maintenanceModeService;
     private final AccessRuleService accessRuleService;
     private final GeoIpAccessService geoIpAccessService;
     private final PlayerEventService playerEventService;
@@ -39,7 +42,7 @@ public final class LoginAccessControlService {
     private final ThrottledNotifier blockNotifier;
 
     public LoginAccessControlService(
-            WorldMaintenanceService maintenanceService,
+            MaintenanceModeService maintenanceModeService,
             AccessRuleService accessRuleService,
             GeoIpAccessService geoIpAccessService,
             PlayerEventService playerEventService,
@@ -48,7 +51,7 @@ public final class LoginAccessControlService {
             OrzTextStyles styles,
             ServerFacade server,
             ThrottledNotifier blockNotifier) {
-        this.maintenanceService = maintenanceService;
+        this.maintenanceModeService = maintenanceModeService;
         this.accessRuleService = accessRuleService;
         this.geoIpAccessService = geoIpAccessService;
         this.playerEventService = playerEventService;
@@ -60,8 +63,8 @@ public final class LoginAccessControlService {
     }
 
     public void handlePreLogin(AsyncPlayerPreLoginEvent event) {
-        if (maintenanceService.isRunning()) {
-            event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_OTHER, styles.warn("服务器地图备份中，请稍后再尝试登录。"));
+        if (maintenanceModeService.isActive()) {
+            event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_OTHER, styles.warn(buildRejectText()));
             return;
         }
         if (!event.getLoginResult().equals(AsyncPlayerPreLoginEvent.Result.ALLOWED)) {
@@ -100,6 +103,32 @@ public final class LoginAccessControlService {
                 ipAddress,
                 geoIpAccessService.decide(ipAddress),
                 GeoIpAccessService.DECISION_TIMEOUT_MS);
+    }
+
+    /**
+     * 按维护原因渲染登录被拒文案：BACKUP/OPTIMIZE/MANUAL 各自可配置文案 + 可选进度 ETA 后缀。
+     *
+     * <p>文案取自 {@code maintenance.*_maintenance_motd}（{@code /config set} 可运行时改），
+     * 支持 {@code {stage}/{percent}/{eta}} 占位符；未用 {@code {eta}} 占位符且有进度时
+     * 追加「预计剩余 N 秒」，让被拒玩家看到处理进度而非「永远维护中」。</p>
+     */
+    private String buildRejectText() {
+        MaintenanceReason reason = maintenanceModeService.reason();
+        MaintenanceConfig maintenance = configs.maintenance();
+        String base =
+                switch (reason) {
+                    case BACKUP -> maintenance.backupMaintenanceMotd();
+                    case OPTIMIZE -> maintenance.optimizeMaintenanceMotd();
+                    case MANUAL -> maintenance.manualMaintenanceMotd();
+                    case null -> "服务器维护中，请稍后再尝试登录。";
+                };
+        MaintenanceProgress progress = maintenanceModeService.progress();
+        boolean hasEtaPlaceholder = base.contains("{eta}");
+        String rendered = MaintenanceModeService.renderTemplate(base, progress);
+        if (progress != null && !hasEtaPlaceholder && progress.etaSeconds() > 0) {
+            rendered += " 预计剩余 " + progress.etaSeconds() + " 秒";
+        }
+        return rendered;
     }
 
     /** 封禁命中（安全加固 P2-4）：PRIVATE 私信管理员 + 服务端日志。私信限频防重连刷屏，日志每次保留。 */

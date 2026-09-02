@@ -118,8 +118,11 @@ public final class ConfigHealthCheck {
         if (thr <= 0) issues.add("非法: maintenance.optimize_tick_time_threshold 必须为正数");
         int retain = section.getInt("backup_retention_count", 5);
         if (retain < 0) issues.add("非法: maintenance.backup_retention_count 不得为负数");
-        String motd = section.getString("backup_maintenance_motd", "");
-        if (motd.isEmpty()) issues.add("缺失: maintenance.backup_maintenance_motd");
+        for (String key :
+                new String[] {"backup_maintenance_motd", "optimize_maintenance_motd", "manual_maintenance_motd"}) {
+            String motd = section.getString(key, "");
+            if (motd.isEmpty()) issues.add("缺失: maintenance." + key);
+        }
     }
 
     private static void validateTntSection(ConfigurationSection section, List<String> issues) {

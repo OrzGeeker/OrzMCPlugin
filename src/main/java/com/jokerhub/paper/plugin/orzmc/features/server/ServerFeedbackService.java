@@ -2,6 +2,9 @@ package com.jokerhub.paper.plugin.orzmc.features.server;
 
 import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
 import com.jokerhub.paper.plugin.orzmc.features.botcommands.OrzUserCmd;
+import com.jokerhub.paper.plugin.orzmc.features.maintenance.MaintenanceModeService;
+import com.jokerhub.paper.plugin.orzmc.features.maintenance.MaintenanceModeService.MaintenanceProgress;
+import com.jokerhub.paper.plugin.orzmc.features.maintenance.MaintenanceModeService.MaintenanceReason;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.BotConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.MaintenanceConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
@@ -17,11 +20,17 @@ public final class ServerFeedbackService {
     private final ServerFacade server;
     private final TypedConfigProvider configs;
     private final OrzTextStyles styles;
+    private final MaintenanceModeService maintenanceModeService;
 
-    public ServerFeedbackService(ServerFacade server, TypedConfigProvider configs, OrzTextStyles styles) {
+    public ServerFeedbackService(
+            ServerFacade server,
+            TypedConfigProvider configs,
+            OrzTextStyles styles,
+            MaintenanceModeService maintenanceModeService) {
         this.server = server;
         this.configs = configs;
         this.styles = styles;
+        this.maintenanceModeService = maintenanceModeService;
     }
 
     public String buildServerLoadMessage(ServerLoadEvent event) {
@@ -47,13 +56,19 @@ public final class ServerFeedbackService {
     public Component buildMaintenanceMotd() {
         MaintenanceConfig maintenance = configs.maintenance();
         BotConfig botConfig = configs.bot();
-        String msg = maintenance.backupMaintenanceMotd();
+        MaintenanceReason reason = maintenanceModeService.reason();
+        String msg = reasonText(maintenance, reason);
         String discordLink = botConfig.discordServerLink();
         String qqGroupId = botConfig.qqGroupId();
         TextComponent.Builder motdBuilder = Component.text();
         motdBuilder.append(styles.warn("⚠ 维护中").decorate(TextDecoration.BOLD));
         motdBuilder.append(Component.newline());
         motdBuilder.append(styles.info(msg));
+        MaintenanceProgress progress = maintenanceModeService.progress();
+        if (progress != null && reason != MaintenanceReason.MANUAL) {
+            motdBuilder.append(Component.newline());
+            motdBuilder.append(styles.info(progress.progressMessage()));
+        }
         if (qqGroupId != null && !qqGroupId.isEmpty()) {
             motdBuilder.append(Component.newline());
             motdBuilder.append(styles.info("QQ群: ")).append(styles.warn(qqGroupId));
@@ -68,5 +83,17 @@ public final class ServerFeedbackService {
                             .clickEvent(ClickEvent.openUrl(discordLink)));
         }
         return motdBuilder.build();
+    }
+
+    /** 按维护原因选场景文案（backup/optimize/manual 三种可配置），并替换 {stage}/{percent}/{eta} 占位符。 */
+    private String reasonText(MaintenanceConfig maintenance, MaintenanceReason reason) {
+        String base =
+                switch (reason) {
+                    case BACKUP -> maintenance.backupMaintenanceMotd();
+                    case OPTIMIZE -> maintenance.optimizeMaintenanceMotd();
+                    case MANUAL -> maintenance.manualMaintenanceMotd();
+                    case null -> maintenance.backupMaintenanceMotd();
+                };
+        return MaintenanceModeService.renderTemplate(base, maintenanceModeService.progress());
     }
 }

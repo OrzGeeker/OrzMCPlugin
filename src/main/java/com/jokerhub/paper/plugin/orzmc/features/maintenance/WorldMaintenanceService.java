@@ -30,13 +30,24 @@ public class WorldMaintenanceService {
     private final TypedConfigProvider configs;
     private final OrzTextStyles styles;
     private final Notifier notifier;
+    /** 维护模式状态机：备份/优化执行时驱动进入/进度/退出（独立于本服务的 running 生命周期）。 */
+    private final MaintenanceModeService maintenanceModeService;
 
     public WorldMaintenanceService(
-            ServerFacade server, TypedConfigProvider configs, OrzTextStyles styles, Notifier notifier) {
+            ServerFacade server,
+            TypedConfigProvider configs,
+            OrzTextStyles styles,
+            Notifier notifier,
+            MaintenanceModeService maintenanceModeService) {
         this.server = server;
         this.configs = configs;
         this.styles = styles;
         this.notifier = notifier;
+        this.maintenanceModeService = maintenanceModeService;
+    }
+
+    public MaintenanceModeService maintenanceModeService() {
+        return maintenanceModeService;
     }
 
     public boolean isRunning() {
@@ -143,6 +154,9 @@ public class WorldMaintenanceService {
             vars.put("eta_unit", etaUnit);
             vars.put("current", String.valueOf(current));
             vars.put("total", String.valueOf(total));
+            // 同步推进度到维护模式状态机：MOTD/登录拦截按此渲染「阶段+百分比+预计剩余」
+            long etaSeconds = Math.max(0, Math.round(etaMs / 1000.0));
+            maintenanceModeService.updateProgress(stageI18n, percent, etaSeconds);
             String eventKey = "备份".equals(label) ? "maintenance_backup_stage" : "maintenance_optimize_stage";
             MessageEnvelope env = configs.renderEvent(eventKey, vars);
             server.logger().info(env.message());
@@ -239,7 +253,8 @@ public class WorldMaintenanceService {
         });
     }
 
-    public void runExclusive(String kickText, Runnable asyncWork, Runnable finallyWork) {
+    public void runExclusive(
+            MaintenanceModeService.MaintenanceReason reason, Runnable asyncWork, Runnable finallyWork) {
         if (!running.compareAndSet(false, true)) {
             return;
         }
@@ -247,6 +262,11 @@ public class WorldMaintenanceService {
         // 后续 run 的致命错误不再发群通知；chunkErrorCount 累积导致干净 run 误报「含 N 个损坏区块」。
         chunkErrorCount.set(0);
         fatalErrorReported.set(false);
+        // 手动维护期间备份/优化照常执行：reason 被备份/优化覆盖，结束后恢复手动维护（wasManual 还原）
+        boolean wasManual = maintenanceModeService.isActive()
+                && maintenanceModeService.reason() == MaintenanceModeService.MaintenanceReason.MANUAL;
+        maintenanceModeService.enter(reason);
+        String kickText = kickText(reason);
         server.runSync(() -> {
             startMs = System.currentTimeMillis();
             for (Player p : server.server().getOnlinePlayers()) {
@@ -261,6 +281,11 @@ public class WorldMaintenanceService {
                     server.logger().log(Level.SEVERE, "WorldMaintenanceService 异步任务异常", e);
                 } finally {
                     OrzUtil.executeConsoleCmd(server, () -> {}, "save-on");
+                    if (wasManual) {
+                        maintenanceModeService.enter(MaintenanceModeService.MaintenanceReason.MANUAL);
+                    } else {
+                        maintenanceModeService.exit();
+                    }
                     running.set(false);
                     if (finallyWork != null) {
                         finallyWork.run();
@@ -270,9 +295,18 @@ public class WorldMaintenanceService {
         });
     }
 
+    /** 按维护场景取踢人文案（备份/优化/手动各自独立，避免「优化时也提示备份中」）。 */
+    private static String kickText(MaintenanceModeService.MaintenanceReason reason) {
+        return switch (reason) {
+            case BACKUP -> "服务器地图备份中，请稍后再尝试登录。";
+            case OPTIMIZE -> "服务器地图优化中，请稍后再尝试登录。";
+            case MANUAL -> "服务器维护中，请稍后再尝试登录。";
+        };
+    }
+
     public void backup(long tickTimeThreshold, int retainCount, Consumer<String> callback) {
         runExclusive(
-                "服务器地图备份中，请稍后再尝试登录。",
+                MaintenanceModeService.MaintenanceReason.BACKUP,
                 () -> {
                     File worldDir = worldFolder();
                     // 备份目录放服务器核心根目录（非插件数据目录），便于快照/迁移整体打包
@@ -391,7 +425,7 @@ public class WorldMaintenanceService {
 
     public void optimize(long tickTimeThreshold, Consumer<String> callback) {
         runExclusive(
-                "服务器地图优化中，请稍后再尝试登录。",
+                MaintenanceModeService.MaintenanceReason.OPTIMIZE,
                 () -> {
                     Path input = worldFolder().toPath();
                     runOptimizerJob(false, input, null, tickTimeThreshold, callback);
