@@ -101,6 +101,11 @@ public final class FeatureModule implements ServiceModule {
     private final OrzConfigCommand orzConfigCommand;
     private final com.jokerhub.paper.plugin.orzmc.features.rank.RankService rankService;
     private final com.jokerhub.paper.plugin.orzmc.features.rank.RankCommandService rankCommandService;
+    /** 坐牢（prison）服务：作弊玩家强制进入独立 prison 组（不继承、不在四级 track）。 */
+    private final com.jokerhub.paper.plugin.orzmc.features.prison.PrisonService prisonService;
+    /** 坐牢命令服务：/prison <玩家> on|off。 */
+    private final com.jokerhub.paper.plugin.orzmc.features.prison.PrisonCommandService prisonCommandService;
+
     private final com.jokerhub.paper.plugin.orzmc.features.review.ReviewService reviewService;
     private final com.jokerhub.paper.plugin.orzmc.features.review.ReviewCommandService reviewCommandService;
     /** 玩家名颜色服务（按权限等级：头顶/聊天/Tab 三处着色）。 */
@@ -221,13 +226,24 @@ public final class FeatureModule implements ServiceModule {
         // 游戏模式矫正：权限组变化后把已无权限的模式切回生存（config 经 Supplier 热重载）
         this.gamemodeCorrectionService = new com.jokerhub.paper.plugin.orzmc.features.rank.GamemodeCorrectionService(
                 platform.serverFacade().plugin(), () -> platform.configs().gamemodeCorrection(), platform.textStyles());
+        // 坐牢（prison）：独立 prison 组（不继承、不在四级 track），作弊玩家关入后仅保留
+        // essentials.msg 私聊；原组/原位置写入 LP 用户元数据，解除坐牢恢复。LP 操作用异步执行器
+        // （非服务器线程），杜绝「调度线程同步等 LP future」自锁。
+        this.prisonService = new com.jokerhub.paper.plugin.orzmc.features.prison.PrisonService(
+                createPrisonGateway(platform),
+                platform.serverFacade().plugin(),
+                () -> platform.configs().prison(),
+                platform.textStyles(),
+                reviewNotifier,
+                playerId -> org.bukkit.Bukkit.getOfflinePlayer(playerId).getName());
         this.rankService = new com.jokerhub.paper.plugin.orzmc.features.rank.RankService(
                 permissionStore,
                 rankPromoter,
                 permissionStore.memberThresholdHours(),
                 reviewNotifier,
                 platform.serverFacade()::runSync,
-                gamemodeCorrectionService);
+                gamemodeCorrectionService,
+                prisonService);
         // 在线列表格式化注入权限组解析（$l 命令与上下线广播共用，一次注入两处生效）
         this.listFormatter.setRankService(this.rankService);
         this.reviewService = new com.jokerhub.paper.plugin.orzmc.features.review.ReviewService(
@@ -243,6 +259,8 @@ public final class FeatureModule implements ServiceModule {
         this.reviewService.register(promotionType("admin-promotion", "晋升管理员", "admin", "builder"));
         this.rankCommandService = new com.jokerhub.paper.plugin.orzmc.features.rank.RankCommandService(
                 rankService, reviewService, platform.textStyles());
+        this.prisonCommandService = new com.jokerhub.paper.plugin.orzmc.features.prison.PrisonCommandService(
+                prisonService, platform.textStyles(), rankService::resolvePlayerId);
         this.reviewCommandService = new com.jokerhub.paper.plugin.orzmc.features.review.ReviewCommandService(
                 reviewService, platform.textStyles());
         // 玩家名颜色（按权限等级）：rankService 创建后装配；LP 启用时桥接等级变更实时刷新。
@@ -295,7 +313,8 @@ public final class FeatureModule implements ServiceModule {
                 rankCommandService,
                 rankService,
                 orzConfigCommand,
-                maintenanceCommandService);
+                maintenanceCommandService,
+                prisonCommandService);
     }
 
     /** 构造一个「晋升」审核类型（builder-promotion / admin-promotion 共用模板，消除重复）。 */
@@ -344,6 +363,7 @@ public final class FeatureModule implements ServiceModule {
             new OrzDebugEvent(plugin, botModule.botInboundHandler()),
             new OrzPortalEvent(plugin, portalEventService),
             new com.jokerhub.paper.plugin.orzmc.events.OrzRankEvent(plugin, rankService),
+            new com.jokerhub.paper.plugin.orzmc.events.OrzPrisonEvent(plugin, prisonService),
             new com.jokerhub.paper.plugin.orzmc.events.OrzRankDisplayEvent(plugin, rankDisplayService),
             // 登录兜底：上线后延迟 ~1s 矫正一次（覆盖离线期间被改组的场景）
             new com.jokerhub.paper.plugin.orzmc.events.OrzGamemodeCorrectionEvent(plugin, gamemodeCorrectionService)
@@ -448,5 +468,24 @@ public final class FeatureModule implements ServiceModule {
         }
         org.bukkit.Bukkit.getLogger().warning("[OrzMC] 未检测到 LuckPerms，权限管理功能不可用（时长查询/申请记录仍可用）");
         return new com.jokerhub.paper.plugin.orzmc.features.rank.NoopRankPromoter();
+    }
+
+    /**
+     * 创建坐牢权限执行器（软依赖条件实例化，同 {@link #createRankPromoter} 范式）。
+     *
+     * <p>LP 已启用 → 实例化 {@code LuckPermsPrisonStore}（直接引用 LP API 类型，此时 LP 插件
+     * 提供 API 类，类加载安全）；LP 未启用 → 改用 {@code NoopPrisonStore} 降级（坐牢功能不可用，
+     * 插件其余功能正常）。关键：LP 未启用时<b>永不执行</b> {@code new LuckPermsPrisonStore}，
+     * JVM 不会加载该类，因此不会因缺失 LP API 类而 NoClassDefFoundError。</p>
+     */
+    private com.jokerhub.paper.plugin.orzmc.features.prison.PrisonLpGateway createPrisonGateway(
+            com.jokerhub.paper.plugin.orzmc.assembly.PlatformModule platform) {
+        if (org.bukkit.Bukkit.getPluginManager().isPluginEnabled("LuckPerms")) {
+            // asyncExecutor = 服务器异步调度器：坐牢/解除的 LP 操作（loadUser/saveUser 等待）在
+            // 非服务器线程执行，杜绝「调度线程同步等待 LP future」自锁（Folia LP 适配器行为）
+            return new com.jokerhub.paper.plugin.orzmc.features.prison.LuckPermsPrisonStore(
+                    platform.serverFacade()::runAsync);
+        }
+        return new com.jokerhub.paper.plugin.orzmc.features.prison.NoopPrisonStore();
     }
 }

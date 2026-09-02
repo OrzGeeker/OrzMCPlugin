@@ -15,6 +15,7 @@ import com.jokerhub.paper.plugin.orzmc.features.guide.GuideService;
 import com.jokerhub.paper.plugin.orzmc.features.maintenance.MaintenanceCommandService;
 import com.jokerhub.paper.plugin.orzmc.features.menu.MenuCommandService;
 import com.jokerhub.paper.plugin.orzmc.features.portal.PortalCommandService;
+import com.jokerhub.paper.plugin.orzmc.features.prison.PrisonCommandService;
 import com.jokerhub.paper.plugin.orzmc.features.rank.RankCommandService;
 import com.jokerhub.paper.plugin.orzmc.features.rank.RankService;
 import com.jokerhub.paper.plugin.orzmc.features.review.ReviewCommandService;
@@ -60,6 +61,7 @@ final class FeatureCommandRegistrar {
     private final ReviewCommandService reviewCommandService;
     private final RankCommandService rankCommandService;
     private final RankService rankService;
+    private final PrisonCommandService prisonCommandService;
     private final OrzConfigCommand orzConfigCommand;
     private final MaintenanceCommandService maintenanceCommandService;
 
@@ -79,7 +81,8 @@ final class FeatureCommandRegistrar {
             RankCommandService rankCommandService,
             RankService rankService,
             OrzConfigCommand orzConfigCommand,
-            MaintenanceCommandService maintenanceCommandService) {
+            MaintenanceCommandService maintenanceCommandService,
+            PrisonCommandService prisonCommandService) {
         this.platform = platform;
         this.botModule = botModule;
         this.guideService = guideService;
@@ -90,6 +93,7 @@ final class FeatureCommandRegistrar {
         this.reviewCommandService = reviewCommandService;
         this.rankCommandService = rankCommandService;
         this.rankService = rankService;
+        this.prisonCommandService = prisonCommandService;
         this.orzConfigCommand = orzConfigCommand;
         this.maintenanceCommandService = maintenanceCommandService;
     }
@@ -145,6 +149,9 @@ final class FeatureCommandRegistrar {
 
             // ---- Rank: /apply（申请）/ /review（审核）/ /rank（查询）----
             registerRank(commands, cpSupplier);
+
+            // ---- Prison: /prison <玩家> on|off（坐牢管理）----
+            registerPrison(commands);
 
             // ---- Config: /config list|get|set|reset|dump|reload ----
             registerConfig(commands);
@@ -690,6 +697,52 @@ final class FeatureCommandRegistrar {
                         .build(),
                 "查询权限组与晋升进度",
                 List.of("rank"));
+    }
+
+    /** 坐牢: /prison <玩家> on（关入）/ off（释放）。仅 OP/orzmc.admin 可用（adminInterceptors）。 */
+    private void registerPrison(Commands commands) {
+        List<CommandInterceptor> interceptors = adminInterceptors("prison");
+        Predicate<CommandSourceStack> req = requirement(interceptors);
+        OrzTextStyles styles = platform.textStyles();
+        PrisonCommandService svc = prisonCommandService;
+
+        // 玩家名用 word（MC 名无空格）；子命令 on/off 收尾，对齐 /prison <玩家> on|off 语法
+        commands.register(
+                literal("prison")
+                        .requires(req)
+                        .then(argument("player", StringArgumentType.word())
+                                .then(literal("on").executes(guardedExec("prison", interceptors, ctx -> {
+                                    String playerName = ctx.getArgument("player", String.class);
+                                    renderPrisonResultAsync(ctx.getSource().getSender(), svc.imprison(playerName));
+                                    return 1;
+                                })))
+                                .then(literal("off").executes(guardedExec("prison", interceptors, ctx -> {
+                                    String playerName = ctx.getArgument("player", String.class);
+                                    renderPrisonResultAsync(ctx.getSource().getSender(), svc.release(playerName));
+                                    return 1;
+                                }))))
+                        .executes(guardedExec("prison", interceptors, ctx -> {
+                            ctx.getSource().getSender().sendMessage(styles.info("用法: /prison <玩家> on|off"));
+                            return 1;
+                        }))
+                        .build(),
+                "坐牢管理（作弊玩家强制进入 prison 组）",
+                List.of());
+    }
+
+    /** 异步坐牢结果渲染：LP 操作完成后（回调度线程）给命令发起者反馈，命令本身立即返回。 */
+    private void renderPrisonResultAsync(
+            CommandSender sender, java.util.concurrent.CompletableFuture<PrisonCommandService.Result> future) {
+        future.whenComplete((result, err) -> {
+            if (err != null) {
+                sender.sendMessage(platform.textStyles()
+                        .error("坐牢操作异常: " + (err.getMessage() == null ? "未知错误" : err.getMessage())));
+            } else if (result instanceof PrisonCommandService.Result.Success s) {
+                sender.sendMessage(s.message());
+            } else if (result instanceof PrisonCommandService.Result.Failure f) {
+                sender.sendMessage(f.message());
+            }
+        });
     }
 
     private void renderReviewResult(CommandSender sender, ReviewCommandService.Result result) {
