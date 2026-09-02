@@ -125,6 +125,7 @@ class PlayerEventServiceTest extends ServiceTestBase {
         verify(logger).warning(contains("已拒绝（fail-close）"));
         verify(notifier).event(eq("exception_alert"), any(MessageEnvelope.class));
         verify(notifier).event(eq("geoip_unverifiable"), any(MessageEnvelope.class));
+        verify(notifier, never()).event(eq("geoip_block"), any(MessageEnvelope.class));
         verify(loginEvent).disallow(eq(AsyncPlayerPreLoginEvent.Result.KICK_OTHER), any(Component.class));
     }
 
@@ -189,6 +190,7 @@ class PlayerEventServiceTest extends ServiceTestBase {
         verify(logger).warning(contains("已拒绝"));
         verify(notifier).event(eq("exception_alert"), any(MessageEnvelope.class));
         verify(notifier).event(eq("geoip_unverifiable"), any(MessageEnvelope.class));
+        verify(notifier, never()).event(eq("geoip_block"), any(MessageEnvelope.class));
         verify(loginEvent).disallow(eq(AsyncPlayerPreLoginEvent.Result.KICK_OTHER), any(Component.class));
     }
 
@@ -208,9 +210,11 @@ class PlayerEventServiceTest extends ServiceTestBase {
         org.mockito.ArgumentCaptor<java.util.Map<String, String>> captor =
                 org.mockito.ArgumentCaptor.forClass(java.util.Map.class);
         verify(configs).renderEvent(eq("geoip_unverifiable"), captor.capture());
+        assertEquals(java.util.Set.of("name", "ip"), captor.getValue().keySet());
         assertEquals("player1", captor.getValue().get("name"));
         assertEquals("1.2.3.4", captor.getValue().get("ip"));
         verify(notifier).event(eq("geoip_unverifiable"), any(MessageEnvelope.class));
+        verify(notifier, never()).event(eq("geoip_block"), any(MessageEnvelope.class));
         verify(loginEvent).disallow(eq(AsyncPlayerPreLoginEvent.Result.KICK_OTHER), any(Component.class));
     }
 
@@ -245,6 +249,7 @@ class PlayerEventServiceTest extends ServiceTestBase {
         verify(logger).warning(contains("boom"));
         verify(notifier).event(eq("exception_alert"), any(MessageEnvelope.class));
         verify(notifier).event(eq("geoip_unverifiable"), any(MessageEnvelope.class));
+        verify(notifier, never()).event(eq("geoip_block"), any(MessageEnvelope.class));
         verify(loginEvent).disallow(eq(AsyncPlayerPreLoginEvent.Result.KICK_OTHER), any(Component.class));
     }
 

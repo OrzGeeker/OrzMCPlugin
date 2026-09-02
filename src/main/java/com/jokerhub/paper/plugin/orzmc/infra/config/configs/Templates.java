@@ -41,8 +41,8 @@ public record Templates(
         String geoipBlock = cfg.getString(
                 base + ".geoip_block",
                 "{name}({ip}) 地区:{country_code} 不在允许列表({allow_list})\n{address_info}\n你的地区({country_code})不在允许列表，如有疑问请联系管理员");
-        String geoipUnverifiable =
-                cfg.getString(base + ".geoip_unverifiable", "地区解析服务暂时不可用，无法验证你的地区（IP:{ip}）。请稍后重新尝试登录，若持续出现请联系管理员");
+        String geoipUnverifiable = cfg.getString(
+                base + ".geoip_unverifiable", "{name} 地区解析服务暂时不可用，无法验证你的地区（IP:{ip}）。请稍后重新尝试登录，若持续出现请联系管理员");
         String tntAlert = cfg.getString(
                 base + ".tnt_alert",
                 "{msg}\n世界:{world_alias} 坐标:{x_unit},{y_unit},{z_unit}({coord_unit})\n触发:{actor} 方块:{block_type}");

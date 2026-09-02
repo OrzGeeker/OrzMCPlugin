@@ -64,12 +64,7 @@ public final class PlayerEventService {
         }
         if (decision.lookupFailed()) {
             // fail-close 拒绝：无法验证地区（解析服务临时故障），区别于「地区不在白名单」的确定性拦截
-            MessageEnvelope envelope =
-                    configs.renderEvent("geoip_unverifiable", java.util.Map.of("name", playerName, "ip", ipAddress));
-            notifyGeoIpBlock("geoip_unverifiable", envelope);
-            event.disallow(
-                    AsyncPlayerPreLoginEvent.Result.KICK_OTHER,
-                    styles.error(playerName + "(" + ipAddress + ")\n无法验证IP所属地区（GeoIP 服务异常）"));
+            denyGeoIpUnverifiable(event, playerName, ipAddress);
             return;
         }
         java.util.Map<String, String> vars = new java.util.HashMap<>();
@@ -172,7 +167,7 @@ public final class PlayerEventService {
         notifyGeoIpBlock("geoip_unverifiable", envelope);
         event.disallow(
                 AsyncPlayerPreLoginEvent.Result.KICK_OTHER,
-                styles.error(playerName + "(" + ipAddress + ")\n无法验证IP所属地区（GeoIP 服务异常）"));
+                styles.error(playerName + "(" + ipAddress + ")\n地区解析服务暂时不可用，无法验证你的地区，请稍后重新尝试登录"));
     }
 
     /** geoip_block/geoip_unverifiable 群消息限频发送（含玩家 IP 与白名单，不适合高频刷群）。 */
