@@ -38,6 +38,7 @@ public final class TemplateKeys {
 
     // ---- 安全事件 ----
     public static final String GEOIP_BLOCK = "geoip_block";
+    public static final String GEOIP_UNVERIFIABLE = "geoip_unverifiable";
     public static final String WHITELIST_BLOCK = "whitelist_block";
     public static final String WHITELIST_TOGGLE_ALERT = "whitelist_toggle_alert";
     public static final String COMMAND_GUARD_BLOCKED = "command_guard_blocked";
@@ -119,6 +120,7 @@ public final class TemplateKeys {
         COMMAND_BLACKLIST_REMOVE,
         COMMAND_BLACKLIST_ERROR,
         GEOIP_BLOCK,
+        GEOIP_UNVERIFIABLE,
         WHITELIST_BLOCK,
         WHITELIST_TOGGLE_ALERT,
         TNT_ALERT,
