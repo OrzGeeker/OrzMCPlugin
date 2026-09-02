@@ -209,6 +209,7 @@ public final class FeatureModule implements ServiceModule {
         this.maintenanceCommandService =
                 new com.jokerhub.paper.plugin.orzmc.features.maintenance.MaintenanceCommandService(
                         platform.serverFacade(),
+                        platform.configs(),
                         platform.textStyles(),
                         maintenanceModule.maintenanceModeService(),
                         maintenanceModule.worldMaintenanceService());

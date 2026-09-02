@@ -1,5 +1,6 @@
 package com.jokerhub.paper.plugin.orzmc.features.maintenance;
 
+import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
 import com.jokerhub.paper.plugin.orzmc.features.maintenance.MaintenanceModeService.MaintenanceProgress;
 import com.jokerhub.paper.plugin.orzmc.features.maintenance.MaintenanceModeService.MaintenanceReason;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
@@ -20,20 +21,20 @@ import org.bukkit.entity.Player;
  */
 public final class MaintenanceCommandService {
 
-    /** 手动维护踢人文案（登录拦截/MOTD 文案可经 config 配置，踢人即时反馈保持简单固定）。 */
-    static final String MANUAL_KICK_TEXT = "服务器维护中，请稍后再尝试登录。";
-
     private final ServerFacade server;
+    private final TypedConfigProvider configs;
     private final OrzTextStyles styles;
     private final MaintenanceModeService mode;
     private final WorldMaintenanceService worldMaintenance;
 
     public MaintenanceCommandService(
             ServerFacade server,
+            TypedConfigProvider configs,
             OrzTextStyles styles,
             MaintenanceModeService mode,
             WorldMaintenanceService worldMaintenance) {
         this.server = server;
+        this.configs = configs;
         this.styles = styles;
         this.mode = mode;
         this.worldMaintenance = worldMaintenance;
@@ -54,8 +55,11 @@ public final class MaintenanceCommandService {
             mode.enter(MaintenanceReason.MANUAL);
         }
         server.runSync(() -> {
+            // 手动维护踢人：统一场景文案（templates.yml maintenance_motd_manual，PR4 迁移）
+            String kickText =
+                    MaintenanceModeService.renderMotdText(MaintenanceReason.MANUAL, configs.templates(), null);
             for (Player p : server.server().getOnlinePlayers()) {
-                p.getScheduler().run(server.plugin(), t -> p.kick(styles.warn(MANUAL_KICK_TEXT)), () -> {});
+                p.getScheduler().run(server.plugin(), t -> p.kick(styles.warn(kickText)), () -> {});
             }
         });
         return null;

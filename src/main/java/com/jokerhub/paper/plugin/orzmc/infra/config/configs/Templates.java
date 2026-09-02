@@ -20,7 +20,11 @@ public record Templates(
         String serverLoad,
         String serverStop,
         String whitelistBlock,
-        String whitelistToggleAlert) {
+        String whitelistToggleAlert,
+        String maintenanceMotdBackup,
+        String maintenanceMotdOptimize,
+        String maintenanceMotdManual,
+        String maintenanceMotdProgressLine) {
 
     public static Templates from(ConfigurationSection cfg) {
         String base = "templates";
@@ -61,6 +65,12 @@ public record Templates(
         String whitelistBlock = cfg.getString(base + ".whitelist_block", "🙅🏻‍♂️ {message}");
         String whitelistToggleAlert = cfg.getString(
                 base + ".whitelist_toggle_alert", "⚠️ 服务器异常\n---------------------------------\n{message}");
+        // 维护场景文案 + 进度行（MOTD / 登录拦截 / 踢人统一渲染入口读取，2026-09-02 迁移自 config.yml maintenance 段）
+        String maintenanceMotdBackup = cfg.getString(base + ".maintenance_motd_backup", "服务器维护中，稍后再试");
+        String maintenanceMotdOptimize = cfg.getString(base + ".maintenance_motd_optimize", "服务器地图优化中，请稍后再试");
+        String maintenanceMotdManual = cfg.getString(base + ".maintenance_motd_manual", "服务器维护中，请稍后再试");
+        String maintenanceMotdProgressLine =
+                cfg.getString(base + ".maintenance_motd_progress_line", "进度：{stage} {percent}% 预计剩余 {eta}秒");
         return new Templates(
                 join,
                 quit,
@@ -79,6 +89,10 @@ public record Templates(
                 serverLoad,
                 serverStop,
                 whitelistBlock,
-                whitelistToggleAlert);
+                whitelistToggleAlert,
+                maintenanceMotdBackup,
+                maintenanceMotdOptimize,
+                maintenanceMotdManual,
+                maintenanceMotdProgressLine);
     }
 }

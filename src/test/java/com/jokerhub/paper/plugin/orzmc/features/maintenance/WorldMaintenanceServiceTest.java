@@ -70,6 +70,8 @@ public class WorldMaintenanceServiceTest extends ServiceTestBase {
         MessageEnvelope envMock = mock(MessageEnvelope.class);
         when(envMock.message()).thenReturn("backup progress");
         when(configs.renderEvent(anyString(), anyMap())).thenReturn(envMock);
+        // runExclusive 踢人文案经 renderMotdText 读 templates.yml 场景模板（PR4 迁移），默认模板即可
+        when(configs.templates()).thenReturn(defaultTemplates());
 
         // 临时目录
         worldDir = new File(System.getProperty("java.io.tmpdir"), "wm-world-" + System.nanoTime());

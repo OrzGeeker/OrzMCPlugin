@@ -29,9 +29,7 @@ class MaintenanceModuleTest {
         // ScheduledBackupService 在构造时捕获 configs 引用，setup() 才读取 maintenance()，
         // 因此这里提前给默认（interval=0 关闭）并 lenient，避免其余测试报 UnnecessaryStubbing。
         TypedConfigProvider configs = mock(TypedConfigProvider.class);
-        lenient()
-                .when(configs.maintenance())
-                .thenReturn(new MaintenanceConfig(false, 300L, 5, "服务器维护中，稍后再试", "服务器地图优化中，请稍后再试", "服务器维护中，请稍后再试", 0L));
+        lenient().when(configs.maintenance()).thenReturn(new MaintenanceConfig(false, 300L, 5, 0L));
         lenient().when(platform.configs()).thenReturn(configs);
         // 热重载后 setup() 无论开关都注册常驻检查器，需要 server 提供 runTaskTimer
         // （该 stub 仅 setup_doesNotThrow 用到，标记 lenient）。

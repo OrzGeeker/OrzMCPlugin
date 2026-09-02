@@ -77,13 +77,11 @@ public class TypedConfigsTest {
         cfg.set("optimize_enabled", true);
         cfg.set("optimize_tick_time_threshold", 600L);
         cfg.set("backup_retention_count", 12);
-        cfg.set("backup_maintenance_motd", "维护中");
 
         MaintenanceConfig maintenance = MaintenanceConfig.from(cfg);
         Assertions.assertTrue(maintenance.optimizeEnabled());
         Assertions.assertEquals(600L, maintenance.optimizeTickTimeThreshold());
         Assertions.assertEquals(12, maintenance.backupRetentionCount());
-        Assertions.assertEquals("维护中", maintenance.backupMaintenanceMotd());
     }
 
     @Test

@@ -13,13 +13,16 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
 import com.jokerhub.paper.plugin.orzmc.features.maintenance.MaintenanceModeService.MaintenanceReason;
+import com.jokerhub.paper.plugin.orzmc.infra.config.configs.Templates;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
 import io.papermc.paper.threadedregions.scheduler.EntityScheduler;
 import java.util.List;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Server;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,6 +30,7 @@ import org.junit.jupiter.api.Test;
 class MaintenanceCommandServiceTest {
 
     private ServerFacade server;
+    private TypedConfigProvider configs;
     private OrzTextStyles styles;
     private MaintenanceModeService mode;
     private WorldMaintenanceService worldMaintenance;
@@ -35,11 +39,14 @@ class MaintenanceCommandServiceTest {
     @BeforeEach
     void setUp() {
         server = mock(ServerFacade.class);
+        configs = mock(TypedConfigProvider.class);
         styles = mock(OrzTextStyles.class);
         mode = new MaintenanceModeService();
         worldMaintenance = mock(WorldMaintenanceService.class);
+        // 手动维护踢人经 renderMotdText 读 templates.yml 场景模板（PR4 迁移），默认模板即可
+        when(configs.templates()).thenReturn(Templates.from(new YamlConfiguration()));
         when(styles.warn(anyString())).thenReturn(Component.text("warn"));
-        service = new MaintenanceCommandService(server, styles, mode, worldMaintenance);
+        service = new MaintenanceCommandService(server, configs, styles, mode, worldMaintenance);
     }
 
     @Test
