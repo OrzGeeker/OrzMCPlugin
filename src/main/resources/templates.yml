@@ -8,6 +8,7 @@ templates:
     tnt_alert: CODE_BLOCK
     exception_alert: PLAIN
     geoip_block: CODE_BLOCK
+    geoip_unverifiable: CODE_BLOCK
     command_output: CODE_BLOCK
     command_help: CODE_BLOCK
     command_players: CODE_BLOCK
@@ -95,7 +96,8 @@ templates:
   player_digest: "🎮 当前玩家({online_count}/{max_count})\n{join_summary}{quit_summary}{kick_summary}"
   # 群消息不再附堆栈摘要（{stack_summary} 仍保留在白名单供自定义模板使用）
   exception_alert: "⚠️ 服务器异常\n---------------------------------\n{message}"
-  geoip_block: "{name}({ip}) 地区:{country_code} 不在允许列表({allow_list})\n{address_info}"
+  geoip_block: "{name}({ip}) 地区:{country_code} 不在允许列表({allow_list})\n{address_info}\n你的地区({country_code})不在允许列表，如有疑问请联系管理员"
+  geoip_unverifiable: "地区解析服务暂时不可用，无法验证你的地区（IP:{ip}）。请稍后重新尝试登录，若持续出现请联系管理员"
   tnt_alert: "{msg}\n世界:{world_alias} 坐标:{x_unit},{y_unit},{z_unit}({coord_unit})\n触发:{actor} 方块:{block_type}"
   maintenance_backup_stage: "地图{label} 阶段:{stage}({stage_name}/{stage_i18n}) 进度:{percent}% {current}/{total} 速率:{rate_per}{rate_unit} 预计剩余:{eta_value}{eta_unit}"
   maintenance_backup_done: "地图{label} 完成 用时:{duration_human}"
