@@ -4,6 +4,7 @@ import com.jokerhub.paper.plugin.orzmc.core.bot.MessageEnvelope;
 import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.BotConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.ChatConfig;
+import com.jokerhub.paper.plugin.orzmc.infra.config.configs.EntityTeleportConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.ExploitHardeningConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.GamemodeCorrectionConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.IpWhitelist;
@@ -109,6 +110,12 @@ public final class DefaultTypedConfigProvider implements TypedConfigProvider {
     @Override
     public PrisonConfig prison() {
         return PrisonConfig.from(section("prison"));
+    }
+
+    @Override
+    public EntityTeleportConfig entityTeleport() {
+        // entity_teleport 两键在 config.yml 根级（合并重构后未段化），不走 section(name)
+        return EntityTeleportConfig.from(configService.getConfig("config"));
     }
 
     @Override

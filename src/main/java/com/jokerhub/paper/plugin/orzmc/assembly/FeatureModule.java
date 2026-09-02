@@ -45,7 +45,6 @@ import com.jokerhub.paper.plugin.orzmc.features.teleport.TeleportBowService;
 import com.jokerhub.paper.plugin.orzmc.features.tnt.TntEventService;
 import com.jokerhub.paper.plugin.orzmc.features.whitelist.WhitelistEventService;
 import com.jokerhub.paper.plugin.orzmc.infra.binding.EventBinder;
-import com.jokerhub.paper.plugin.orzmc.infra.config.configs.MainConfig;
 import java.util.Arrays;
 import org.bukkit.GameMode;
 import org.bukkit.event.Listener;
@@ -121,7 +120,6 @@ public final class FeatureModule implements ServiceModule {
     private final PlatformModule platform;
     private final BotModule botModule;
     private final MaintenanceModule maintenanceModule;
-    private final MainConfig mainConfig;
     private final FeatureCommandRegistrar commandRegistrar;
 
     public FeatureModule(
@@ -129,7 +127,6 @@ public final class FeatureModule implements ServiceModule {
             BotModule botModule,
             PortalModule portalModule,
             MaintenanceModule maintenanceModule) {
-        this.mainConfig = MainConfig.from(platform.configService().getConfig("config"));
         // Feature services
         this.geoIpAccessService = new GeoIpAccessService(platform.configs());
         this.accessRuleService = new AccessRuleService(
@@ -347,16 +344,17 @@ public final class FeatureModule implements ServiceModule {
     // --- Event Listener Registration ---
 
     public void setupEventListeners(OrzMC plugin) {
+        // 实体传送策略配置：启动时读一次（与历史装配时机一致）
+        var entityTeleport = platform.configs().entityTeleport();
         Listener[] eventListeners = new Listener[] {
             new OrzBowShootEvent(plugin, teleportBowEventService),
             new OrzPlayerEvent(plugin, loginAccessControlService, guideService, playerEventService),
             new OrzTPEvent(
                     plugin,
                     platform.serverFacade(),
-                    // entityTeleportEnabled=true 表示「允许所有实体传送」，
+                    // enabled=true 表示「允许所有实体传送」，
                     // service 的 cancelEnabled 需取反（true = 仅白名单内实体可传送）
-                    new EntityTeleportPolicyService(
-                            !mainConfig.entityTeleportEnabled(), mainConfig.entityTeleportWhitelist())),
+                    new EntityTeleportPolicyService(!entityTeleport.enabled(), entityTeleport.whitelist())),
             new OrzTNTEvent(plugin, tntEventService),
             new OrzCommandGuardEvent(plugin, commandGuardEventService),
             new OrzChatEvent(plugin, chatSpamFilterEventService),
