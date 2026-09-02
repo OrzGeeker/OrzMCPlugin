@@ -31,7 +31,21 @@ public final class UpdateModule implements ServiceModule {
     private final UpdateCommandService updateCommandService;
 
     public UpdateModule(PlatformModule platform) {
+        this(platform, buildUpdateService(platform));
+    }
+
+    /**
+     * 测试接缝（包内可见）：注入现成 UpdateService，绕开读取插件元数据/数据目录等重型装配，
+     * 专测调度链与配置反应逻辑。
+     */
+    UpdateModule(PlatformModule platform, UpdateService updateService) {
         this.platform = platform;
+        this.updateService = updateService;
+        this.updateCommandService =
+                new UpdateCommandService(platform.serverFacade(), updateService, platform.textStyles());
+    }
+
+    private static UpdateService buildUpdateService(PlatformModule platform) {
         var plugin = platform.serverFacade().plugin();
         Optional<BuildInfo> build = BuildInfo.load(plugin.getClass().getClassLoader());
         String currentVersion;
@@ -46,15 +60,13 @@ public final class UpdateModule implements ServiceModule {
             platform.serverFacade().logger().warning("未找到构建信息（orzmc-build.properties），自更新按插件描述版本比对");
         }
         File updateFolder = new File(plugin.getDataFolder().getParentFile(), "update");
-        this.updateService = new UpdateService(
+        return new UpdateService(
                 new HangarClient(),
                 () -> platform.configs().update(),
                 currentVersion,
                 buildTime,
                 updateFolder,
                 platform.serverFacade().logger());
-        this.updateCommandService =
-                new UpdateCommandService(platform.serverFacade(), updateService, platform.textStyles());
     }
 
     @Override
