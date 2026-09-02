@@ -3,6 +3,7 @@ package com.jokerhub.paper.plugin.orzmc.core.ports.config;
 import com.jokerhub.paper.plugin.orzmc.core.bot.MessageEnvelope;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.BotConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.ChatConfig;
+import com.jokerhub.paper.plugin.orzmc.infra.config.configs.EntityTeleportConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.ExploitHardeningConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.IpWhitelist;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.LoginRateLimitConfig;
@@ -54,6 +55,9 @@ public interface TypedConfigProvider {
 
     /** 坐牢（prison）配置：牢房坐标。 */
     PrisonConfig prison();
+
+    /** 实体传送策略配置（config.yml 根级扁平键）。 */
+    EntityTeleportConfig entityTeleport();
 
     MessageEnvelope renderEvent(String eventKey, Map<String, String> vars);
 
