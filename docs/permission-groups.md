@@ -12,11 +12,10 @@
 3. **不含管理侧**：任何组的通配符都避开管理分支（worldedit.reload、worldguard.region.bypass、essentials.gamemode.others 等）
 4. **权限组内其它细节由线上自管**：本表只保证「定位功能可用」，不覆盖线上自定义
 
-## L0 default（访客）— 生存基础体验（23 项）
+## L0 default（访客）— 生存基础体验（22 项）
 
 | 权限节点 | 验证指令 | 预期 |
 |:--|:--|:--|
-| `ls.bypass` | `lp group default permission check ls.bypass` | true |
 | `essentials.afk` | `/afk` | 「你暂时离开了」 |
 | `essentials.back` | `/back`（死亡后） | 传送回死亡点 |
 | `essentials.msg` | `/msg <玩家> hi` | 对方收到 |
@@ -68,7 +67,7 @@
 
 > 剔除项：`essentials.spawn`（继承自 default，不重复列）；5 个 `getmehome.command.*` 分列节点 → 合并为 `getmehome.user`（省 5 项）。**`/kit` 维持 member 专属**（2026-08-30 决策：default 不发基础 kit）。
 
-## L2 builder（建造者）— WE/WG 裁剪子集 + 建造便利 + Litematica 投影（35 项）
+## L2 builder（建造者）— WE/WG 裁剪子集 + 建造便利 + Litematica 投影（37 项）
 
 | 权限节点 | 验证指令 | 预期 |
 |:--|:--|:--|
@@ -107,6 +106,10 @@
 | `minecraft.command.setblock` | `/setblock ~ ~ ~ stone` | 放置成功（**Litematica 粘贴核心**） |
 | `minecraft.command.fill` | `/fill ~ ~ ~ ~5 ~ ~5 stone` | 填充成功（Litematica 连续区域） |
 | `minecraft.command.data` | `/data get block ~ ~ ~` | 读取方块 NBT（Litematica NBT 恢复） |
+| `grim.exempt.fastbreak` | `lp group builder permission check grim.exempt.fastbreak` | true（GrimAC FastBreak 检测豁免） |
+| `grim.exempt.airliquidbreak` | `lp group builder permission check grim.exempt.airliquidbreak` | true（GrimAC AirLiquidBreak 检测豁免） |
+
+> **GrimAC 挖掘类豁免（2026-09-02 新增，老板拍板）**：builder 及以上（admin 经继承自动获得）豁免 `fastbreak` + `airliquidbreak` 两个挖掘类检测——**仅限挖掘类，`grim.exempt` 全豁免及其它 per-check 豁免一律不授予**。背景：Tweakeroo 等客户端辅助模组的 Fast Block Break（快速破方块）在生存模式触发 GrimAC FastBreak 误报（线上实测 xiaofeng612 50 次 / yuan30908 34 次 + AirLiquidBreak 681 次，Misc kick 阈值 25/300s 会被误踢）；WorldEdit 为服务器侧改方块（不走玩家挖掘数据包）不触发任何 GrimAC 检测，**无需豁免**。本地测试服 2026-09-02 已实测：builder 组快速挖掘零 FastBreak 记录、default 组 100% 触发、Simulation/Timer 等核心检测不受影响。同步命令见决策记录。
 
 > **Litematica 投影粘贴支持（2026-08-12 新增，方案 A）**
 > - 需求来源：玩家客户端 Litematica 模组 Paste 功能（官方 wiki Schematic Pasting）
@@ -177,6 +180,21 @@
 
 **高危节点（明确不授予任何组）**：`*`、`luckperms.*`、`minecraft.command.op`、`bukkit.command.op`、`essentials.stop`、`essentials.reload`。
 
+## 2026-09-02 GrimAC 挖掘类豁免决策记录（老板拍板）
+
+**背景**：玩家使用 Tweakeroo 等客户端辅助模组的 Fast Block Break，在生存模式触发 GrimAC FastBreak/AirLiquidBreak 误报（线上库实测：xiaofeng612 FastBreak 50 次/7 分钟、yuan30908 FastBreak 34 + AirLiquidBreak 681 次，超过 Misc kick 阈值 25 次/300s 会被误踢）。WorldEdit 为服务器侧 API 改方块、不产生玩家挖掘数据包，**不触发任何 GrimAC 检测、无需豁免**（joker 本地+线上大量 WE 操作零挖掘类违规实证）。
+
+**决策**：
+1. **豁免范围**：仅 `grim.exempt.fastbreak` + `grim.exempt.airliquidbreak` 两个挖掘类 per-check 权限，授予 **builder 组**（admin 经继承自动获得）。default/member **不授予**。
+2. **不授予**：`grim.exempt`（全豁免）、`grim.nosetback`、`grim.disabled`、`grim.nomodifypacket` 及任何其它 per-check 豁免（含战斗类 Reach/Hitboxes 等）——维持 2026-08-31「高危节点任何组不授」决策。
+3. **同步命令**（三端 LP 执行，RCON 无回显 → `lp export` 快照验证）：
+   ```
+   lp group builder permission set grim.exempt.fastbreak true
+   lp group builder permission set grim.exempt.airliquidbreak true
+   ```
+4. **验证**（本地测试服 2026-09-02 实测通过）：对照组 default 组快速挖掘 8/8 触发 FastBreak；builder 组（FastBreakA）快速挖掘 7 次零新增记录；Simulation/Timer 等核心检测照常。测试脚本 `~/minecraft-bot/fastbreak-test.js`。
+5. **坑**：LP `parent add` 对未登录过（LP 无记录）的玩家**静默失败**——必须先让玩家登录一次或确认用户存在再授权限。
+
 ## 验证方法总纲
 
 1. **LP 层**：`lp group <组> permission check <节点>` → true（确认配置生效）
@@ -203,7 +221,7 @@
 | L0 | `essentials.pay` | `/pay TestNewbie 1` | ✅ 放行（目标离线提示） |
 | L0 | `essentials.msg` | `/msg TestNewbie hi` | ⚠️ 反垃圾拦截（「移动后才能聊天」——非权限问题） |
 | L0 | `essentials.spawn` | `/spawn` | ❌ Unknown（26.2 兼容已知，权限节点已配） |
-| L0 | `ls.bypass`/`bod.back`/`ezshops.*` | LP check + GUI 命令 | ✅ true |
+| L0 | `bod.back`/`ezshops.*` | LP check + GUI 命令 | ✅ true |
 | L1 | `getmehome.user` | `/sethome` `/home` `/listhomes` `/delhome` | ✅ 全部成功（父权限展开） |
 | L1 | `essentials.tpa`/`tpahere` | `/tpa TestNewbie` | ✅ 放行（目标离线） |
 | L1 | `essentials.warp.list` | `/warp` | ✅ 复测放行（初测缺 list 被拒→修复） |
