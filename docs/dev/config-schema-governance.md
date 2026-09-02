@@ -117,3 +117,8 @@ schema 文件顶层统一携带 `config-version: N`，三个文件共享同一�
 - `DefaultsMergerTest`：嵌套补键、保留空值、段/标量冲突、空 disk 段补缺。
 - `TemplateKeysTest`：`ALL` 无重复、每个 key 在内置 `templates.yml` 有默认文本。
 - `ConfigHealthCheckTest`：健康夹具遍历 `TemplateKeys.ALL` 填充（勿退化为静态清单）。
+- `ConfigServiceTest`（服务接缝级，最接近生产的整包验证）：
+  - `setup_legacyInstall_upgradesAllSchemaFilesToDisk`：三份 schema 文件全为无版本标记旧档 → 一次启动后
+    `.bak` 原始内容、翻转与自定义保留、缺键补齐**全部落盘可从磁盘重读验证**，且健康检查不再报模板 key 缺失；
+  - `setup_secondRun_isNoop_doesNotRewriteSchemaFiles`：已最新版二次启动（setup 再运行）对三个 schema 文件
+    **零写入**（字节与 mtime 不变）——UP_TO_DATE 路径的落盘级保证。
