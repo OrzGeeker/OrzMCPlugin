@@ -12,25 +12,6 @@ class TemplateKeysTest {
     }
 
     @Test
-    void commandKeys_containsCommandTemplates() {
-        assertTrue(TemplateKeys.COMMAND_KEYS.length >= 17, "Should have at least 17 command template keys");
-    }
-
-    @Test
-    void allKeys_inCommandKeysSubset() {
-        for (String key : TemplateKeys.COMMAND_KEYS) {
-            boolean found = false;
-            for (String all : TemplateKeys.ALL) {
-                if (all.equals(key)) {
-                    found = true;
-                    break;
-                }
-            }
-            assertTrue(found, "Command key " + key + " should be in ALL array");
-        }
-    }
-
-    @Test
     void noDuplicateKeysInAll() {
         for (int i = 0; i < TemplateKeys.ALL.length; i++) {
             for (int j = i + 1; j < TemplateKeys.ALL.length; j++) {

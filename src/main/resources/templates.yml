@@ -1,7 +1,6 @@
 # ==================================================
 #             配置消息模板
 # ==================================================
-config-version: 2
 
 templates:
   format:
@@ -128,38 +127,6 @@ templates:
     world: 主世界
     world_nether: 下界
     world_the_end: 末地
-  locale: zh-CN
-  i18n:
-    command:
-      en-US:
-        command_output: "{message}"
-        command_help: "{help}"
-        command_players: "------Online ({online_count}/{max_count})------\n{online_list}"
-        command_whitelist_header: "------Whitelist ({count})------"
-        command_whitelist_page: "{header}\nPage {page}/{total}\n{body}"
-        command_whitelist_cleanup: "------Whitelist Cleanup------\n{removed_list}"
-        command_whitelist_add_result: "{message}"
-        command_whitelist_remove_result: "{message}"
-        command_blacklist_list: "{patterns}"
-        command_blacklist_add: "{message}"
-        command_blacklist_remove: "{message}"
-        command_blacklist_error: "{message}"
-        command_admin_required: "{message}"
-        command_usage: "{message}"
-        command_backup: "{message}"
-        command_optimize: "{message}"
-        command_optimize_disabled: "{message}"
-    world_alias:
-      zh-CN:
-        world: 主世界
-        world_nether: 下界
-        world_the_end: 末地
-    stage_alias:
-      zh-CN:
-        Region: 区域
-        Chunk: 区块
-        File: 文件
-        Done: 完成
   coord:
     scale: 1.0
     precision: 2

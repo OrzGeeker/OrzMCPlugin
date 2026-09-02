@@ -11,7 +11,7 @@ class ConfigPathTest {
     void all_containsExpectedEntries() {
         Map<String, ConfigPath> all = ConfigPath.all();
         assertNotNull(all);
-        assertEquals(40, all.size());
+        assertEquals(39, all.size());
     }
 
     @Test
@@ -84,12 +84,6 @@ class ConfigPathTest {
     @Test
     void all_containsTemplatesPaths() {
         Map<String, ConfigPath> all = ConfigPath.all();
-
-        ConfigPath locale = all.get("templates.locale");
-        assertNotNull(locale);
-        assertEquals("templates", locale.configName());
-        assertEquals(String.class, locale.type());
-        assertEquals("zh-CN", locale.defaultValue());
 
         ConfigPath scale = all.get("templates.coord.scale");
         assertNotNull(scale);

@@ -8,7 +8,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 
 public final class TemplatePlaceholderValidator {
@@ -33,25 +32,6 @@ public final class TemplatePlaceholderValidator {
             validateTemplate(key, tpl, allowedByKey.getOrDefault(key, Set.of()), issues);
         }
 
-        Object rawCmd = templatesCfg.get("templates.i18n.command");
-        if (rawCmd instanceof ConfigurationSection cmdSec) {
-            for (String locale : cmdSec.getKeys(false)) {
-                ConfigurationSection lang = cmdSec.getConfigurationSection(locale);
-                if (lang == null) continue;
-                for (String key : commandTemplateKeys()) {
-                    String tpl = lang.getString(key, "");
-                    if (tpl.isEmpty()) {
-                        continue;
-                    }
-                    validateTemplate(
-                            "i18n.command." + locale + "." + key,
-                            tpl,
-                            allowedByKey.getOrDefault(key, Set.of()),
-                            issues);
-                }
-            }
-        }
-
         return issues;
     }
 
@@ -72,27 +52,6 @@ public final class TemplatePlaceholderValidator {
             if (v != null && !v.isEmpty()) vars.add(v);
         }
         return vars;
-    }
-
-    private static List<String> commandTemplateKeys() {
-        return List.of(
-                "command_output",
-                "command_help",
-                "command_players",
-                "command_whitelist_header",
-                "command_whitelist_page",
-                "command_whitelist_cleanup",
-                "command_whitelist_add_result",
-                "command_whitelist_remove_result",
-                "command_admin_required",
-                "command_usage",
-                "command_backup",
-                "command_optimize",
-                "command_optimize_disabled",
-                "command_blacklist_list",
-                "command_blacklist_add",
-                "command_blacklist_remove",
-                "command_blacklist_error");
     }
 
     private static Map<String, Set<String>> allowedVarsByTemplateKey() {

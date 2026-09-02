@@ -42,7 +42,6 @@ public class ConfigRobustnessTest {
     /** 新式 config.yml：包含所有分段 */
     private FileConfiguration newStyleConfig() {
         YamlConfiguration cfg = new YamlConfiguration();
-        cfg.set("config-version", 2);
         cfg.set("whitelist.force_whitelist", true);
         cfg.set("whitelist.cleanup_inactive_days", 90);
         cfg.set("whitelist.pagination_delay_ticks", 5);
