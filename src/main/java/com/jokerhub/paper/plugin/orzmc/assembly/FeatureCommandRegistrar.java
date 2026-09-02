@@ -11,10 +11,12 @@ import com.jokerhub.paper.plugin.orzmc.OrzMC;
 import com.jokerhub.paper.plugin.orzmc.commands.OrzConfigCommand;
 import com.jokerhub.paper.plugin.orzmc.features.command.binding.AdminOnlyInterceptor;
 import com.jokerhub.paper.plugin.orzmc.features.command.binding.CommandInterceptor;
+import com.jokerhub.paper.plugin.orzmc.features.command.binding.PrisonDenyInterceptor;
 import com.jokerhub.paper.plugin.orzmc.features.guide.GuideService;
 import com.jokerhub.paper.plugin.orzmc.features.maintenance.MaintenanceCommandService;
 import com.jokerhub.paper.plugin.orzmc.features.menu.MenuCommandService;
 import com.jokerhub.paper.plugin.orzmc.features.portal.PortalCommandService;
+import com.jokerhub.paper.plugin.orzmc.features.prison.PrisonCommandService;
 import com.jokerhub.paper.plugin.orzmc.features.rank.RankCommandService;
 import com.jokerhub.paper.plugin.orzmc.features.rank.RankService;
 import com.jokerhub.paper.plugin.orzmc.features.review.ReviewCommandService;
@@ -60,8 +62,11 @@ final class FeatureCommandRegistrar {
     private final ReviewCommandService reviewCommandService;
     private final RankCommandService rankCommandService;
     private final RankService rankService;
+    private final PrisonCommandService prisonCommandService;
     private final OrzConfigCommand orzConfigCommand;
     private final MaintenanceCommandService maintenanceCommandService;
+    /** 坐牢拦截（prison 玩家禁全开放命令；装配层注入 prisonService 判定，LP 缺失恒 false）。 */
+    private final PrisonDenyInterceptor prisonDenyInterceptor;
 
     /** command_policies 快照缓存：拦截器每次判断读 volatile 缓存，避免热路径（每次执行/补全）
      * 全量重解析整张策略表；配置改动经 {@link #refreshCommandPolicies()} 刷新缓存。 */
@@ -79,7 +84,9 @@ final class FeatureCommandRegistrar {
             RankCommandService rankCommandService,
             RankService rankService,
             OrzConfigCommand orzConfigCommand,
-            MaintenanceCommandService maintenanceCommandService) {
+            MaintenanceCommandService maintenanceCommandService,
+            PrisonCommandService prisonCommandService,
+            java.util.function.Predicate<Player> prisonDenyCheck) {
         this.platform = platform;
         this.botModule = botModule;
         this.guideService = guideService;
@@ -90,8 +97,20 @@ final class FeatureCommandRegistrar {
         this.reviewCommandService = reviewCommandService;
         this.rankCommandService = rankCommandService;
         this.rankService = rankService;
+        this.prisonCommandService = prisonCommandService;
         this.orzConfigCommand = orzConfigCommand;
         this.maintenanceCommandService = maintenanceCommandService;
+        this.prisonDenyInterceptor = prisonDenyCheck == null ? null : new PrisonDenyInterceptor(prisonDenyCheck);
+    }
+
+    /** 给开放命令拦截器链追加坐牢拒绝（null 守卫：未注入 prison 判定时不追加）。 */
+    private List<CommandInterceptor> withPrisonDeny(List<CommandInterceptor> interceptors) {
+        if (prisonDenyInterceptor == null) {
+            return interceptors;
+        }
+        List<CommandInterceptor> extended = new ArrayList<>(interceptors);
+        extended.add(prisonDenyInterceptor);
+        return extended;
     }
 
     /** 注册所有命令（Paper LifecycleEvents.COMMANDS + Brigadier）。 */
@@ -145,6 +164,9 @@ final class FeatureCommandRegistrar {
 
             // ---- Rank: /apply（申请）/ /review（审核）/ /rank（查询）----
             registerRank(commands, cpSupplier);
+
+            // ---- Prison: /prison <玩家> on|off（坐牢管理）----
+            registerPrison(commands);
 
             // ---- Config: /config list|get|set|reset|dump|reload ----
             registerConfig(commands);
@@ -235,7 +257,7 @@ final class FeatureCommandRegistrar {
             Supplier<CommandPolicies> cpSupplier,
             boolean skipPlayerOnly,
             Consumer<Player> action) {
-        List<CommandInterceptor> interceptors = commandInterceptors(name, cpSupplier, skipPlayerOnly);
+        List<CommandInterceptor> interceptors = withPrisonDeny(commandInterceptors(name, cpSupplier, skipPlayerOnly));
         commands.register(
                 literal(name)
                         .requires(requirement(interceptors))
@@ -290,7 +312,7 @@ final class FeatureCommandRegistrar {
 
     /** Portal: /portal [remove] <host> [port] */
     private void registerPortal(Commands commands, Supplier<CommandPolicies> cpSupplier) {
-        List<CommandInterceptor> interceptors = commandInterceptors("portal", cpSupplier, false);
+        List<CommandInterceptor> interceptors = withPrisonDeny(commandInterceptors("portal", cpSupplier, false));
         Predicate<CommandSourceStack> req = requirement(interceptors);
         OrzTextStyles styles = platform.textStyles();
         PortalCommandService svc = portalCommandService;
@@ -556,7 +578,7 @@ final class FeatureCommandRegistrar {
         OrzTextStyles styles = platform.textStyles();
 
         // ---- /apply 通用申请命令 ----
-        List<CommandInterceptor> applyInterceptors = commandInterceptors("apply", cpSupplier, false);
+        List<CommandInterceptor> applyInterceptors = withPrisonDeny(commandInterceptors("apply", cpSupplier, false));
         commands.register(
                 literal("apply")
                         .requires(requirement(applyInterceptors))
@@ -658,7 +680,7 @@ final class FeatureCommandRegistrar {
                 List.of("review"));
 
         // ---- /rank — 查询自己 / /rank <玩家> — admin 查指定玩家 ----
-        List<CommandInterceptor> rankInterceptors = commandInterceptors("rank", cpSupplier, false);
+        List<CommandInterceptor> rankInterceptors = withPrisonDeny(commandInterceptors("rank", cpSupplier, false));
         List<CommandInterceptor> adminRankInterceptors = adminInterceptors("rank");
         commands.register(
                 literal("rank")
@@ -690,6 +712,52 @@ final class FeatureCommandRegistrar {
                         .build(),
                 "查询权限组与晋升进度",
                 List.of("rank"));
+    }
+
+    /** 坐牢: /prison <玩家> on（关入）/ off（释放）。仅 OP/orzmc.admin 可用（adminInterceptors）。 */
+    private void registerPrison(Commands commands) {
+        List<CommandInterceptor> interceptors = adminInterceptors("prison");
+        Predicate<CommandSourceStack> req = requirement(interceptors);
+        OrzTextStyles styles = platform.textStyles();
+        PrisonCommandService svc = prisonCommandService;
+
+        // 玩家名用 word（MC 名无空格）；子命令 on/off 收尾，对齐 /prison <玩家> on|off 语法
+        commands.register(
+                literal("prison")
+                        .requires(req)
+                        .then(argument("player", StringArgumentType.word())
+                                .then(literal("on").executes(guardedExec("prison", interceptors, ctx -> {
+                                    String playerName = ctx.getArgument("player", String.class);
+                                    renderPrisonResultAsync(ctx.getSource().getSender(), svc.imprison(playerName));
+                                    return 1;
+                                })))
+                                .then(literal("off").executes(guardedExec("prison", interceptors, ctx -> {
+                                    String playerName = ctx.getArgument("player", String.class);
+                                    renderPrisonResultAsync(ctx.getSource().getSender(), svc.release(playerName));
+                                    return 1;
+                                }))))
+                        .executes(guardedExec("prison", interceptors, ctx -> {
+                            ctx.getSource().getSender().sendMessage(styles.info("用法: /prison <玩家> on|off"));
+                            return 1;
+                        }))
+                        .build(),
+                "坐牢管理（作弊玩家强制进入 prison 组）",
+                List.of());
+    }
+
+    /** 异步坐牢结果渲染：LP 操作完成后（回调度线程）给命令发起者反馈，命令本身立即返回。 */
+    private void renderPrisonResultAsync(
+            CommandSender sender, java.util.concurrent.CompletableFuture<PrisonCommandService.Result> future) {
+        future.whenComplete((result, err) -> {
+            if (err != null) {
+                sender.sendMessage(platform.textStyles()
+                        .error("坐牢操作异常: " + (err.getMessage() == null ? "未知错误" : err.getMessage())));
+            } else if (result instanceof PrisonCommandService.Result.Success s) {
+                sender.sendMessage(s.message());
+            } else if (result instanceof PrisonCommandService.Result.Failure f) {
+                sender.sendMessage(f.message());
+            }
+        });
     }
 
     private void renderReviewResult(CommandSender sender, ReviewCommandService.Result result) {

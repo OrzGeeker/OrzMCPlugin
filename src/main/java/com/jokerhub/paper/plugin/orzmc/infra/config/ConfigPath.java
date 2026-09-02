@@ -108,6 +108,8 @@ public final class ConfigPath {
                 Boolean.class,
                 true,
                 "观察模式矫正前回出生点");
+        // prison (config.yml)
+        reg(map, "config", "prison.cell_location", String.class, "world,0,100,0,0,0", "牢房坐标(world,x,y,z,yaw,pitch)");
         return Collections.unmodifiableMap(map);
     }
 

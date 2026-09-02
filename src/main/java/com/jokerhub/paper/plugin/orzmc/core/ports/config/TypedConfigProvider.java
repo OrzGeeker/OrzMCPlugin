@@ -8,6 +8,7 @@ import com.jokerhub.paper.plugin.orzmc.infra.config.configs.IpWhitelist;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.LoginRateLimitConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.MaintenanceConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.PlayerNotifyConfig;
+import com.jokerhub.paper.plugin.orzmc.infra.config.configs.PrisonConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.RankColorsConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.SecurityGuardConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.TemplateOptions;
@@ -50,6 +51,9 @@ public interface TypedConfigProvider {
 
     /** 游戏模式矫正（权限组变化后）配置。 */
     com.jokerhub.paper.plugin.orzmc.infra.config.configs.GamemodeCorrectionConfig gamemodeCorrection();
+
+    /** 坐牢（prison）配置：牢房坐标。 */
+    PrisonConfig prison();
 
     MessageEnvelope renderEvent(String eventKey, Map<String, String> vars);
 

@@ -47,6 +47,8 @@ templates:
     review_rejected: PLAIN
     rank_promoted: PLAIN
     rank_demoted: PLAIN
+    prison_imprisoned: PLAIN
+    prison_released: PLAIN
     rank_status: CODE_BLOCK
     command_review_list: CODE_BLOCK
     command_review_list_empty: PLAIN
@@ -75,6 +77,8 @@ templates:
   review_rejected: "❌ [申请拒绝] {player}\n---------------------------------\n{summary}\n---------------------------------\n审核人：{reviewer}"
   rank_promoted: "🎉 {player} 权限已升级为「{group}」"
   rank_demoted: "⬇️ {player} 权限已被降级为「{group}」"
+  prison_imprisoned: "🔒 {player} 已被关入牢房（原组 {group}）"
+  prison_released: "🔓 {player} 已解除坐牢（恢复组 {group}）"
   rank_status: "{message}"
   command_review_list: "{message}"
   command_review_list_empty: "当前没有待审核的申请。"
