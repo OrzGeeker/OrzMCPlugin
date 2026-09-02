@@ -67,6 +67,8 @@ class ConfigHealthCheckTest {
         config.getConfigurationSection("maintenance").set("optimize_tick_time_threshold", 300);
         config.getConfigurationSection("maintenance").set("backup_retention_count", 5);
         config.getConfigurationSection("maintenance").set("backup_maintenance_motd", "维护中");
+        config.getConfigurationSection("maintenance").set("optimize_maintenance_motd", "优化中");
+        config.getConfigurationSection("maintenance").set("manual_maintenance_motd", "手动维护中");
     }
 
     private void addFullValidConfig_tnt() {
@@ -592,6 +594,8 @@ class ConfigHealthCheckTest {
         config.getConfigurationSection("maintenance").set("optimize_tick_time_threshold", -1);
         config.getConfigurationSection("maintenance").set("backup_retention_count", 5);
         config.getConfigurationSection("maintenance").set("backup_maintenance_motd", "维护中");
+        config.getConfigurationSection("maintenance").set("optimize_maintenance_motd", "优化中");
+        config.getConfigurationSection("maintenance").set("manual_maintenance_motd", "手动维护中");
         addFullValidConfig_whitelist();
         addFullValidConfig_tnt();
         addFullValidConfig_geoip();
@@ -608,6 +612,8 @@ class ConfigHealthCheckTest {
         config.getConfigurationSection("maintenance").set("optimize_tick_time_threshold", 300);
         config.getConfigurationSection("maintenance").set("backup_retention_count", -1);
         config.getConfigurationSection("maintenance").set("backup_maintenance_motd", "维护中");
+        config.getConfigurationSection("maintenance").set("optimize_maintenance_motd", "优化中");
+        config.getConfigurationSection("maintenance").set("manual_maintenance_motd", "手动维护中");
         addFullValidConfig_whitelist();
         addFullValidConfig_tnt();
         addFullValidConfig_geoip();
@@ -624,6 +630,8 @@ class ConfigHealthCheckTest {
         config.getConfigurationSection("maintenance").set("optimize_tick_time_threshold", 300);
         config.getConfigurationSection("maintenance").set("backup_retention_count", 5);
         config.getConfigurationSection("maintenance").set("backup_maintenance_motd", "");
+        config.getConfigurationSection("maintenance").set("optimize_maintenance_motd", "优化中");
+        config.getConfigurationSection("maintenance").set("manual_maintenance_motd", "手动维护中");
         addFullValidConfig_whitelist();
         addFullValidConfig_tnt();
         addFullValidConfig_geoip();

@@ -94,6 +94,10 @@ public final class FeatureModule implements ServiceModule {
 
     private final MenuCommandService menuCommandService;
     private final PortalCommandService portalCommandService;
+    /** 手动维护命令（/maintenance on|off|status）：进入/退出维护模式并踢在线玩家。 */
+    private final com.jokerhub.paper.plugin.orzmc.features.maintenance.MaintenanceCommandService
+            maintenanceCommandService;
+
     private final OrzConfigCommand orzConfigCommand;
     private final com.jokerhub.paper.plugin.orzmc.features.rank.RankService rankService;
     private final com.jokerhub.paper.plugin.orzmc.features.rank.RankCommandService rankCommandService;
@@ -146,7 +150,7 @@ public final class FeatureModule implements ServiceModule {
                 new PlayerEventAggregator(
                         platform.serverFacade(), platform.configs(), botModule.notifier(), this.listFormatter));
         this.loginAccessControlService = new LoginAccessControlService(
-                maintenanceModule.worldMaintenanceService(),
+                maintenanceModule.maintenanceModeService(),
                 accessRuleService,
                 geoIpAccessService,
                 playerEventService,
@@ -166,11 +170,14 @@ public final class FeatureModule implements ServiceModule {
         this.teleportBowService = new TeleportBowService(platform.serverFacade(), platform.textStyles());
         this.teleportBowEventService = new TeleportBowEventService(teleportBowService);
         this.portalEventService = new PortalEventService(platform.serverFacade(), portalModule.portalService());
-        this.serverFeedbackService =
-                new ServerFeedbackService(platform.serverFacade(), platform.configs(), platform.textStyles());
+        this.serverFeedbackService = new ServerFeedbackService(
+                platform.serverFacade(),
+                platform.configs(),
+                platform.textStyles(),
+                maintenanceModule.maintenanceModeService());
         this.serverEventService = new ServerEventService(
                 serverFeedbackService,
-                maintenanceModule.worldMaintenanceService(),
+                maintenanceModule.maintenanceModeService(),
                 platform.configs(),
                 botModule.notifier());
         this.serverLifecycleService =
@@ -194,6 +201,12 @@ public final class FeatureModule implements ServiceModule {
                 platform.textStyles());
         this.menuCommandService = new MenuCommandService(platform.textStyles());
         this.portalCommandService = new PortalCommandService(portalModule.portalService(), platform.textStyles());
+        this.maintenanceCommandService =
+                new com.jokerhub.paper.plugin.orzmc.features.maintenance.MaintenanceCommandService(
+                        platform.serverFacade(),
+                        platform.textStyles(),
+                        maintenanceModule.maintenanceModeService(),
+                        maintenanceModule.worldMaintenanceService());
         this.orzConfigCommand = new OrzConfigCommand(
                 platform.configService(), platform.textStyles(), botModule.botMessageService()::reloadConfig);
         // 权限晋升（Rank）模块：时长（读服务器原生 stats 文件）+ 自动晋升 + 通用审核框架
@@ -281,7 +294,8 @@ public final class FeatureModule implements ServiceModule {
                 reviewCommandService,
                 rankCommandService,
                 rankService,
-                orzConfigCommand);
+                orzConfigCommand,
+                maintenanceCommandService);
     }
 
     /** 构造一个「晋升」审核类型（builder-promotion / admin-promotion 共用模板，消除重复）。 */

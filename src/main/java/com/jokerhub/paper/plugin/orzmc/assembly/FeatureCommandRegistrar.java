@@ -12,6 +12,7 @@ import com.jokerhub.paper.plugin.orzmc.commands.OrzConfigCommand;
 import com.jokerhub.paper.plugin.orzmc.features.command.binding.AdminOnlyInterceptor;
 import com.jokerhub.paper.plugin.orzmc.features.command.binding.CommandInterceptor;
 import com.jokerhub.paper.plugin.orzmc.features.guide.GuideService;
+import com.jokerhub.paper.plugin.orzmc.features.maintenance.MaintenanceCommandService;
 import com.jokerhub.paper.plugin.orzmc.features.menu.MenuCommandService;
 import com.jokerhub.paper.plugin.orzmc.features.portal.PortalCommandService;
 import com.jokerhub.paper.plugin.orzmc.features.rank.RankCommandService;
@@ -60,6 +61,7 @@ final class FeatureCommandRegistrar {
     private final RankCommandService rankCommandService;
     private final RankService rankService;
     private final OrzConfigCommand orzConfigCommand;
+    private final MaintenanceCommandService maintenanceCommandService;
 
     /** command_policies 快照缓存：拦截器每次判断读 volatile 缓存，避免热路径（每次执行/补全）
      * 全量重解析整张策略表；配置改动经 {@link #refreshCommandPolicies()} 刷新缓存。 */
@@ -76,7 +78,8 @@ final class FeatureCommandRegistrar {
             ReviewCommandService reviewCommandService,
             RankCommandService rankCommandService,
             RankService rankService,
-            OrzConfigCommand orzConfigCommand) {
+            OrzConfigCommand orzConfigCommand,
+            MaintenanceCommandService maintenanceCommandService) {
         this.platform = platform;
         this.botModule = botModule;
         this.guideService = guideService;
@@ -88,6 +91,7 @@ final class FeatureCommandRegistrar {
         this.rankCommandService = rankCommandService;
         this.rankService = rankService;
         this.orzConfigCommand = orzConfigCommand;
+        this.maintenanceCommandService = maintenanceCommandService;
     }
 
     /** 注册所有命令（Paper LifecycleEvents.COMMANDS + Brigadier）。 */
@@ -181,6 +185,39 @@ final class FeatureCommandRegistrar {
                             .build(),
                     "模拟群里用户发 Bot 命令（调试用）",
                     List.of());
+
+            // ---- Maintenance: /maintenance on|off|status（手动维护模式）----
+            // op/orzmc.admin 权限；与备份/优化互斥由 MaintenanceCommandService 内部保证
+            List<CommandInterceptor> maintenanceInterceptors = adminInterceptors("maintenance");
+            MaintenanceCommandService maintSvc = maintenanceCommandService;
+            OrzTextStyles styles = platform.textStyles();
+            commands.register(
+                    literal("maintenance")
+                            .requires(requirement(maintenanceInterceptors))
+                            .then(literal("on").executes(guardedExec("maintenance", maintenanceInterceptors, ctx -> {
+                                String result = maintSvc.enterManual();
+                                CommandSender sender = ctx.getSource().getSender();
+                                sender.sendMessage(result == null ? styles.success("已进入手动维护模式") : styles.error(result));
+                                return 1;
+                            })))
+                            .then(literal("off").executes(guardedExec("maintenance", maintenanceInterceptors, ctx -> {
+                                String result = maintSvc.exitManual();
+                                CommandSender sender = ctx.getSource().getSender();
+                                sender.sendMessage(result == null ? styles.success("已退出维护模式") : styles.error(result));
+                                return 1;
+                            })))
+                            .then(literal("status")
+                                    .executes(guardedExec("maintenance", maintenanceInterceptors, ctx -> {
+                                        ctx.getSource().getSender().sendMessage(styles.info(maintSvc.status()));
+                                        return 1;
+                                    })))
+                            .executes(guardedExec("maintenance", maintenanceInterceptors, ctx -> {
+                                ctx.getSource().getSender().sendMessage(styles.info("用法: /maintenance on|off|status"));
+                                return 1;
+                            }))
+                            .build(),
+                    "手动维护模式管理（on/off/status）",
+                    List.of("mt"));
         });
     }
 
