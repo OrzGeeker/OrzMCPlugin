@@ -2,7 +2,9 @@ package com.jokerhub.paper.plugin.orzmc.features.prison;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
@@ -66,7 +68,12 @@ public final class LuckPermsPrisonStore implements PrisonLpGateway {
         }
     }
 
+    /** 同玩家操作串行化分条带锁数（按 UUID 散列，条带数固定无增长，不同玩家极少碰撞）。 */
+    private static final int LOCK_STRIPES = 32;
+
     private final Executor asyncExecutor;
+    /** 同玩家 imprison/release 串行化条带锁：同一玩家的两个异步任务不会并发改同一 LP User。 */
+    private final Object[] playerLocks;
 
     public LuckPermsPrisonStore() {
         this(null);
@@ -75,6 +82,10 @@ public final class LuckPermsPrisonStore implements PrisonLpGateway {
     /** @param asyncExecutor 非服务器线程执行器（坐牢/解除 LP 操作在此运行；null 时内联，测试用） */
     public LuckPermsPrisonStore(Executor asyncExecutor) {
         this.asyncExecutor = asyncExecutor;
+        this.playerLocks = new Object[LOCK_STRIPES];
+        for (int i = 0; i < LOCK_STRIPES; i++) {
+            this.playerLocks[i] = new Object();
+        }
     }
 
     /** LuckPerms 是否已启用（软依赖检测）。 */
@@ -110,7 +121,7 @@ public final class LuckPermsPrisonStore implements PrisonLpGateway {
         if (!isAvailable()) {
             return CompletableFuture.completedFuture(new ImprisonOutcome(false, null));
         }
-        return supplyAsync(() -> imprisonInternal(playerId, originalLocation));
+        return serializedSupply(playerId, () -> imprisonInternal(playerId, originalLocation));
     }
 
     @Override
@@ -118,7 +129,7 @@ public final class LuckPermsPrisonStore implements PrisonLpGateway {
         if (!isAvailable()) {
             return CompletableFuture.completedFuture(new ReleaseOutcome(false, false, null, null));
         }
-        return supplyAsync(() -> releaseInternal(playerId));
+        return serializedSupply(playerId, () -> releaseInternal(playerId));
     }
 
     // ---- LP 操作主体（在非服务器线程执行）----
@@ -134,6 +145,9 @@ public final class LuckPermsPrisonStore implements PrisonLpGateway {
             return new ImprisonOutcome(true, metaValue(user, META_ORIGINAL_GROUP, "default"));
         }
         String originalGroup = resolveRankOrPrimaryGroup(user);
+        // 变更前快照：saveUser 失败时回滚内存态（LP 只改内存，落库失败必须还原，避免
+        // 内存态与磁盘态漂移——本局后续读/重算会基于错误的内存态判定）
+        UserSnapshot snapshot = snapshot(user);
         setParents(user, PRISON_GROUP);
         user.setPrimaryGroup(PRISON_GROUP);
         setMeta(user, META_ORIGINAL_GROUP, originalGroup);
@@ -141,7 +155,8 @@ public final class LuckPermsPrisonStore implements PrisonLpGateway {
             setMeta(user, META_ORIGINAL_LOCATION, originalLocation);
         }
         if (!saveUser(user)) {
-            LOG.warning("imprison(" + playerId + ") 落库失败，视为失败");
+            restore(user, snapshot);
+            LOG.warning("imprison(" + playerId + ") 落库失败，已回滚内存态，视为失败");
             return new ImprisonOutcome(false, originalGroup);
         }
         return new ImprisonOutcome(true, originalGroup);
@@ -153,12 +168,17 @@ public final class LuckPermsPrisonStore implements PrisonLpGateway {
             LOG.warning("release 跳过: 用户加载失败 " + playerId);
             return new ReleaseOutcome(false, false, null, null);
         }
+        UserSnapshot snapshot = snapshot(user);
         if (!isPrisonUser(user)) {
             // 非坐牢玩家：清理可能残留的元数据，返回当前组（不传送）
             String current = resolveRankOrPrimaryGroup(user);
             clearMeta(user, META_ORIGINAL_GROUP);
             clearMeta(user, META_ORIGINAL_LOCATION);
-            saveUser(user);
+            if (!saveUser(user)) {
+                restore(user, snapshot);
+                LOG.warning("release(" + playerId + ") 清理残留元数据落库失败，已回滚内存态");
+                return new ReleaseOutcome(false, false, current, null);
+            }
             return new ReleaseOutcome(true, false, current, null);
         }
         String originalGroup = metaValue(user, META_ORIGINAL_GROUP, "default");
@@ -168,11 +188,30 @@ public final class LuckPermsPrisonStore implements PrisonLpGateway {
         clearMeta(user, META_ORIGINAL_GROUP);
         clearMeta(user, META_ORIGINAL_LOCATION);
         if (!saveUser(user)) {
-            LOG.warning("release(" + playerId + ") 落库失败，视为失败");
+            restore(user, snapshot);
+            LOG.warning("release(" + playerId + ") 落库失败，已回滚内存态，视为失败");
             return new ReleaseOutcome(false, true, originalGroup, originalLocation);
         }
         return new ReleaseOutcome(true, true, originalGroup, originalLocation);
     }
+
+    /** LP User 内存态快照（全节点 + primary group），供落库失败回滚。 */
+    private static UserSnapshot snapshot(User user) {
+        return new UserSnapshot(new ArrayList<>(user.data().toCollection()), user.getPrimaryGroup());
+    }
+
+    /** 把 LP User 内存态还原到快照（清空全部节点后重放快照节点 + 恢复 primary group）。 */
+    private static void restore(User user, UserSnapshot snap) {
+        NodeMap data = user.data();
+        data.clear(node -> true);
+        for (Node node : snap.nodes()) {
+            data.add(node);
+        }
+        user.setPrimaryGroup(snap.primaryGroup());
+    }
+
+    /** LP User 内存态快照记录。 */
+    private record UserSnapshot(List<Node> nodes, String primaryGroup) {}
 
     /** 玩家是否为坐牢状态：primary group 为 prison，或任一 parent 为 prison。 */
     private boolean isPrisonUser(User user) {
@@ -228,7 +267,12 @@ public final class LuckPermsPrisonStore implements PrisonLpGateway {
     }
 
     private void setMeta(User user, String key, String value) {
-        user.data().add(MetaNode.builder(key, value).build());
+        user.data()
+                .add(api().getNodeBuilderRegistry()
+                        .forMeta()
+                        .key(key)
+                        .value(value)
+                        .build());
     }
 
     private String metaValue(User user, String key, String fallback) {
@@ -294,11 +338,30 @@ public final class LuckPermsPrisonStore implements PrisonLpGateway {
         }
     }
 
-    /** 在异步执行器（非服务器线程）上执行 LP 操作；无执行器时内联（测试/无阻塞场景）。 */
-    private <T> CompletableFuture<T> supplyAsync(Supplier<T> action) {
+    /** 同一玩家的条带锁（UUID 散列到固定条带，条带数固定不随玩家数增长）。 */
+    private Object lockFor(UUID playerId) {
+        return playerLocks[Math.floorMod(playerId.hashCode(), LOCK_STRIPES)];
+    }
+
+    /**
+     * 在异步执行器（非服务器线程）上执行 LP 操作；无执行器时内联（测试/无阻塞场景）。
+     *
+     * <p><b>同玩家串行化</b>：imprison/release 按 UUID 条带锁串行执行（锁内完成 loadUser/
+     * 修改/saveUser 等待），避免两个异步任务并发修改同一 LP User 造成状态竞争（如 release
+     * 与 imprison 交错、saveUser 覆盖彼此的变更）。不同玩家散列到不同条带，互不阻塞。</p>
+     */
+    private <T> CompletableFuture<T> serializedSupply(UUID playerId, Supplier<T> action) {
         if (asyncExecutor == null) {
-            return CompletableFuture.completedFuture(action.get());
+            synchronized (lockFor(playerId)) {
+                return CompletableFuture.completedFuture(action.get());
+            }
         }
-        return CompletableFuture.supplyAsync(action, asyncExecutor);
+        return CompletableFuture.supplyAsync(
+                () -> {
+                    synchronized (lockFor(playerId)) {
+                        return action.get();
+                    }
+                },
+                asyncExecutor);
     }
 }

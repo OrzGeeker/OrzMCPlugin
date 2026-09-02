@@ -87,7 +87,7 @@ public final class PrisonService {
         }
         return gateway.release(playerId).thenApply(outcome -> {
             if (!outcome.success()) {
-                return new Result.Failure(styles.error("解除坐牢失败（LP 数据写入失败）"));
+                return new Result.Failure(styles.error("解除坐牢失败（数据写入失败，请重试或联系管理员）"));
             }
             if (!outcome.wasPrisoner()) {
                 return new Result.Success(styles.info("该玩家不在牢房中"));
@@ -130,7 +130,7 @@ public final class PrisonService {
 
     private Result finalizeImprison(UUID playerId, Player player, PrisonLpGateway.ImprisonOutcome outcome) {
         if (!outcome.success()) {
-            return new Result.Failure(styles.error("坐牢失败（LP 数据写入失败）"));
+            return new Result.Failure(styles.error("坐牢失败（数据写入失败，请重试或联系管理员）"));
         }
         if (player != null && player.isOnline()) {
             teleportToCell(playerId);
@@ -192,7 +192,12 @@ public final class PrisonService {
                 + "," + loc.getPitch();
     }
 
-    /** 解析 {@code world,x,y,z[,yaw,pitch]}；格式非法或世界未加载返回 null。 */
+    /**
+     * 解析 {@code world,x,y,z[,yaw,pitch]}。
+     *
+     * <p>格式非法、世界未加载/不存在、y 超出世界高度范围 [minHeight, maxHeight] 一律返回 null
+     * （调用方回退出生点）——防配置错写把玩家传进虚空/天花板外。</p>
+     */
     static Location parseLocation(String raw) {
         if (raw == null || raw.isBlank()) {
             return null;
@@ -209,6 +214,9 @@ public final class PrisonService {
             double x = Double.parseDouble(parts[1].trim());
             double y = Double.parseDouble(parts[2].trim());
             double z = Double.parseDouble(parts[3].trim());
+            if (y < world.getMinHeight() || y > world.getMaxHeight()) {
+                return null;
+            }
             float yaw = parts.length > 4 ? Float.parseFloat(parts[4].trim()) : 0f;
             float pitch = parts.length > 5 ? Float.parseFloat(parts[5].trim()) : 0f;
             return new Location(world, x, y, z, yaw, pitch);

@@ -182,6 +182,10 @@ public final class RankService {
         if (!promoter.isAvailable()) {
             return CompletableFuture.completedFuture(null); // 无 LuckPerms：升级不可用
         }
+        // 坐牢玩家拒绝升降级（双层守卫：本层拦截业务调用 + LuckPermsPromoter 内层拦截 LP 直接调用）
+        if (prisonService != null && prisonService.isPrisoner(playerId)) {
+            return CompletableFuture.completedFuture(null);
+        }
         return promoter.promoteAsync(playerId).thenApply(to -> {
             if (to == null) {
                 return null; // 链顶（END_OF_TRACK）或失败
@@ -219,6 +223,10 @@ public final class RankService {
     public CompletableFuture<String> demoteAsync(UUID playerId) {
         if (!promoter.isAvailable()) {
             return CompletableFuture.completedFuture(null); // 无 LuckPerms：降级不可用
+        }
+        // 坐牢玩家拒绝升降级（同 promoteAsync 双层守卫）
+        if (prisonService != null && prisonService.isPrisoner(playerId)) {
+            return CompletableFuture.completedFuture(null);
         }
         return promoter.demoteAsync(playerId).thenApply(to -> {
             if (to == null) {

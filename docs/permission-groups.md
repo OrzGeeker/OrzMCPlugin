@@ -30,6 +30,7 @@
 > 同步/运维要点：
 > - **无需手动 LP 命令建组**：LuckPermsBootstrap 启动时幂等补齐（缺失建组 + 补 `essentials.msg`；已存在只补权限、不动其它节点）。
 > - **切勿给 prison 组加 `default` parent**——否则坐牢玩家恢复访客权限，坐牢形同虚设。
+> - **牢房需配置为封闭空间**（如 bedrock 笼子：四面/顶部/底部全封闭 + 权限全禁使其无法破坏/放置），默认值 `world,0,100,0` 仅示例，**不可直接用于线上**（露天坐标坐牢玩家仍可被他人搭路/干扰，且空中坐标需按世界 `minHeight~maxHeight` 校验，越界自动回退出生点）。
 > - 坐牢/释放的 LP 操作在异步执行器执行（服务器调度线程同步等 LP future 会自锁，见 `docs/dev/folia-luckperms-gotchas.md`）。
 
 ## L0 default（访客）— 生存基础体验（22 项）

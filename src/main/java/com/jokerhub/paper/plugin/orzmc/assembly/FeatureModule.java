@@ -218,7 +218,10 @@ public final class FeatureModule implements ServiceModule {
         // permission.yml 两段式统一存储（config 阈值 / reviews 审核记录；权限组状态由 LP track 持有）
         var permissionStore =
                 new com.jokerhub.paper.plugin.orzmc.features.rank.PermissionStore(platform.configService());
-        var rankPromoter = createRankPromoter(platform);
+        // 坐牢（prison）LP 网关先建：LuckPermsPromoter 的坐牢守卫需注入 prison 判定端口
+        // （prisonService 自身依赖 rankService 的通知/解析，故此处只建底层 gateway 不建 service）。
+        var prisonGateway = createPrisonGateway(platform);
+        var rankPromoter = createRankPromoter(platform, prisonGateway);
         // 通用审核框架：通知端口适配现有 Notifier + 模板；玩家解析端口适配 OfflinePlayer
         var reviewNotifier = new com.jokerhub.paper.plugin.orzmc.infra.notify.ReviewNotifierAdapter(
                 platform.configs(), botModule.notifier());
@@ -230,7 +233,7 @@ public final class FeatureModule implements ServiceModule {
         // essentials.msg 私聊；原组/原位置写入 LP 用户元数据，解除坐牢恢复。LP 操作用异步执行器
         // （非服务器线程），杜绝「调度线程同步等 LP future」自锁。
         this.prisonService = new com.jokerhub.paper.plugin.orzmc.features.prison.PrisonService(
-                createPrisonGateway(platform),
+                prisonGateway,
                 platform.serverFacade().plugin(),
                 () -> platform.configs().prison(),
                 platform.textStyles(),
@@ -314,7 +317,9 @@ public final class FeatureModule implements ServiceModule {
                 rankService,
                 orzConfigCommand,
                 maintenanceCommandService,
-                prisonCommandService);
+                prisonCommandService,
+                // 坐牢拦截：prison 玩家禁 /guide /menu /tpbow /portal /apply /rank（聊天/msg 不受影响）
+                player -> prisonService.isPrisoner(player.getUniqueId()));
     }
 
     /** 构造一个「晋升」审核类型（builder-promotion / admin-promotion 共用模板，消除重复）。 */
@@ -449,9 +454,12 @@ public final class FeatureModule implements ServiceModule {
      * LP 插件提供 API 类，类加载安全）；LP 未启用 → 改用 {@code NoopRankPromoter}
      * 降级。关键：LP 未启用时<b>永不执行</b> {@code new LuckPermsPromoter}，
      * JVM 不会加载该类，因此不会因缺失 LP API 类而 NoClassDefFoundError。</p>
+     *
+     * @param prisonGateway 坐牢 LP 网关（升降级坐牢守卫判定端口；LP 未启用时为 Noop）
      */
     private com.jokerhub.paper.plugin.orzmc.features.rank.RankPromoter createRankPromoter(
-            com.jokerhub.paper.plugin.orzmc.assembly.PlatformModule platform) {
+            com.jokerhub.paper.plugin.orzmc.assembly.PlatformModule platform,
+            com.jokerhub.paper.plugin.orzmc.features.prison.PrisonLpGateway prisonGateway) {
         com.jokerhub.paper.plugin.orzmc.features.rank.PlayerNameResolver resolver = playerId -> {
             // 离线服：UUID→名字，玩家可能不在线（审核时申请者已退出），用 OfflinePlayer 查缓存
             return org.bukkit.Bukkit.getOfflinePlayer(playerId).getName();
@@ -462,9 +470,13 @@ public final class FeatureModule implements ServiceModule {
                             net.luckperms.api.LuckPermsProvider.get(), org.bukkit.Bukkit.getLogger())
                     .initialize();
             // asyncExecutor = 服务器异步调度器：LP 升降级（含 loadUser/saveUser 等待）在
-            // 非服务器线程执行，杜绝「调度线程同步等待 LP future」自锁（Folia LP 适配器行为）
+            // 非服务器线程执行，杜绝「调度线程同步等待 LP future」自锁（Folia LP 适配器行为）。
+            // prisonCheck = 坐牢守卫：坐牢玩家拒绝升降级（LuckPermsPrisonStore 内部已判 LP 可用）
             return new com.jokerhub.paper.plugin.orzmc.features.rank.LuckPermsPromoter(
-                    resolver, platform.serverFacade()::runSync, platform.serverFacade()::runAsync);
+                    resolver,
+                    platform.serverFacade()::runSync,
+                    platform.serverFacade()::runAsync,
+                    prisonGateway::isPrisoner);
         }
         org.bukkit.Bukkit.getLogger().warning("[OrzMC] 未检测到 LuckPerms，权限管理功能不可用（时长查询/申请记录仍可用）");
         return new com.jokerhub.paper.plugin.orzmc.features.rank.NoopRankPromoter();
