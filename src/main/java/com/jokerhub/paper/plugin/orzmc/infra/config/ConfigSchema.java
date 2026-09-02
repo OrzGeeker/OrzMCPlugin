@@ -19,7 +19,7 @@ public final class ConfigSchema {
     private ConfigSchema() {}
 
     /** 当前最新 schema 版本（config/templates/easybot 同步发版，共享一个版本号）。 */
-    public static final int LATEST_VERSION = 10;
+    public static final int LATEST_VERSION = 11;
 
     /** 可信版本下限：磁盘值低于此值（含缺失、旧版 config-version: 2）一律按 legacy 处理。 */
     public static final int MIN_TRUSTED_VERSION = 10;

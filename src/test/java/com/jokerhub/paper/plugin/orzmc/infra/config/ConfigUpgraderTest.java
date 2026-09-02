@@ -65,7 +65,9 @@ class ConfigUpgraderTest {
 
     @Test
     void upToDate_whenVersionMatches_doesNotTouchFile() throws Exception {
-        File file = writeConfig("config.yml", "config-version: 10\nwhitelist:\n  force_whitelist: true\n");
+        File file = writeConfig(
+                "config.yml",
+                "config-version: " + ConfigSchema.LATEST_VERSION + "\nwhitelist:\n  force_whitelist: true\n");
         String before = Files.readString(file.toPath());
         FileConfiguration cfg = YamlConfiguration.loadConfiguration(file);
 

@@ -138,6 +138,11 @@ public final class ConfigPath {
         reg(map, "config", "geoip.fail_open", Boolean.class, false, "GeoIP查询失败放行(fail-open)");
         // 根级键（config.yml）
         reg(map, "config", "entity_teleport_enabled", Boolean.class, false, "实体传送总开关");
+        // update 自更新 (config.yml)
+        reg(map, "config", "update.enabled", Boolean.class, true, "自更新总开关");
+        reg(map, "config", "update.channel", String.class, "release", "更新通道(release/beta)");
+        reg(map, "config", "update.check_interval_hours", Long.class, 12L, "自动检查间隔(小时)，0=仅启动检查一次");
+        reg(map, "config", "update.auto_download", Boolean.class, false, "发现新版自动下载到plugins/update");
         return Collections.unmodifiableMap(map);
     }
 

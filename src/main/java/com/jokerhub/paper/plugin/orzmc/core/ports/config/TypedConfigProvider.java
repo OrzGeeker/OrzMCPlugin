@@ -15,6 +15,7 @@ import com.jokerhub.paper.plugin.orzmc.infra.config.configs.SecurityGuardConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.TemplateOptions;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.Templates;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.TntConfig;
+import com.jokerhub.paper.plugin.orzmc.infra.config.configs.UpdateConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.WhitelistConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.WhitelistKickMessage;
 import java.util.Map;
@@ -58,6 +59,9 @@ public interface TypedConfigProvider {
 
     /** 实体传送策略配置（config.yml 根级扁平键）。 */
     EntityTeleportConfig entityTeleport();
+
+    /** 插件自更新配置（config.yml {@code update} 段）。 */
+    UpdateConfig update();
 
     MessageEnvelope renderEvent(String eventKey, Map<String, String> vars);
 
