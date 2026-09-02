@@ -10,7 +10,6 @@ import com.jokerhub.paper.plugin.orzmc.features.security.AccessRuleService;
 import com.jokerhub.paper.plugin.orzmc.features.security.GeoIpAccessService;
 import com.jokerhub.paper.plugin.orzmc.features.security.PlayerNameRule;
 import com.jokerhub.paper.plugin.orzmc.infra.config.TemplateKeys;
-import com.jokerhub.paper.plugin.orzmc.infra.config.configs.MaintenanceConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.notify.Notifier;
 import com.jokerhub.paper.plugin.orzmc.infra.notify.ThrottledNotifier;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
@@ -106,29 +105,19 @@ public final class LoginAccessControlService {
     }
 
     /**
-     * 按维护原因渲染登录被拒文案：BACKUP/OPTIMIZE/MANUAL 各自可配置文案 + 可选进度 ETA 后缀。
+     * 按维护原因渲染登录被拒文案：统一走 {@link MaintenanceModeService#renderMotdText}。
      *
-     * <p>文案取自 {@code maintenance.*_maintenance_motd}（{@code /config set} 可运行时改），
-     * 支持 {@code {stage}/{percent}/{eta}} 占位符；未用 {@code {eta}} 占位符且有进度时
-     * 追加「预计剩余 N 秒」，让被拒玩家看到处理进度而非「永远维护中」。</p>
+     * <p>场景文案与进度行由 {@code templates.yml} 的 {@code maintenance_motd_*} 键驱动
+     * （2026-09-02 PR4 迁移自 config.yml maintenance 段）：有进度时进度行以
+     * {@code maintenance_motd_progress_line} 模板渲染为第二行；场景模板自带
+     * {@code {stage}/{percent}/{eta}} 占位符则直接替换、不追加独立进度行。原「未用 {eta} 时
+     * 追加空格+预计剩余 N 秒」尾缀逻辑已废弃（progress_line 默认含 {eta}；若服主自定义
+     * progress_line 无 {eta} 则无预计剩余，尊重模板意图）。</p>
      */
     private String buildRejectText() {
         MaintenanceReason reason = maintenanceModeService.reason();
-        MaintenanceConfig maintenance = configs.maintenance();
-        String base =
-                switch (reason) {
-                    case BACKUP -> maintenance.backupMaintenanceMotd();
-                    case OPTIMIZE -> maintenance.optimizeMaintenanceMotd();
-                    case MANUAL -> maintenance.manualMaintenanceMotd();
-                    case null -> "服务器维护中，请稍后再尝试登录。";
-                };
         MaintenanceProgress progress = maintenanceModeService.progress();
-        boolean hasEtaPlaceholder = base.contains("{eta}");
-        String rendered = MaintenanceModeService.renderTemplate(base, progress);
-        if (progress != null && !hasEtaPlaceholder && progress.etaSeconds() > 0) {
-            rendered += " 预计剩余 " + progress.etaSeconds() + " 秒";
-        }
-        return rendered;
+        return MaintenanceModeService.renderMotdText(reason, configs.templates(), progress);
     }
 
     /** 封禁命中（安全加固 P2-4）：PRIVATE 私信管理员 + 服务端日志。私信限频防重连刷屏，日志每次保留。 */

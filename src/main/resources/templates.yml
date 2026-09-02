@@ -109,6 +109,13 @@ templates:
   maintenance_optimize_stage: "地图{label} 阶段:{stage}({stage_name}/{stage_i18n}) 进度:{percent}% {current}/{total} 速率:{rate_per}{rate_unit} 预计剩余:{eta_value}{eta_unit}"
   maintenance_optimize_done: "地图{label} 完成 用时:{duration_human}"
   maintenance_optimize_error: "地图{label} 失败 用时:{duration_human}"
+  # 维护场景文案 + 进度行（MOTD / 登录拦截 / 踢人统一渲染；2026-09-02 迁移自 config.yml maintenance 段，
+  # 原 config maintenance.backup/optimize/manual_maintenance_motd 键废弃）。进度行支持
+  # {stage} {percent} {eta} 占位符；场景模板若自带进度占位符则不再追加独立进度行。
+  maintenance_motd_backup: "服务器地图备份中，请稍后再试"
+  maintenance_motd_optimize: "服务器地图优化中，请稍后再试"
+  maintenance_motd_manual: "服务器维护中，请稍后再试"
+  maintenance_motd_progress_line: "进度：{stage} {percent}% 预计剩余 {eta}秒"
   stage_cn:
     Region: 区域
     Chunk: 区块

@@ -4,7 +4,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.jokerhub.orzmc.world.ProgressEvent;
@@ -16,6 +18,8 @@ import com.jokerhub.paper.plugin.orzmc.infra.notify.Notifier;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
 import com.jokerhub.paper.plugin.orzmc.testutil.ServiceTestBase;
+import io.papermc.paper.threadedregions.scheduler.EntityScheduler;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.nio.file.Files;
@@ -24,8 +28,10 @@ import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
+import net.kyori.adventure.text.Component;
 import org.bukkit.Server;
 import org.bukkit.command.ConsoleCommandSender;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -70,6 +76,8 @@ public class WorldMaintenanceServiceTest extends ServiceTestBase {
         MessageEnvelope envMock = mock(MessageEnvelope.class);
         when(envMock.message()).thenReturn("backup progress");
         when(configs.renderEvent(anyString(), anyMap())).thenReturn(envMock);
+        // runExclusive 踢人文案经 renderMotdText 读 templates.yml 场景模板（PR4 迁移），默认模板即可
+        when(configs.templates()).thenReturn(defaultTemplates());
 
         // 临时目录
         worldDir = new File(System.getProperty("java.io.tmpdir"), "wm-world-" + System.nanoTime());
@@ -469,5 +477,34 @@ public class WorldMaintenanceServiceTest extends ServiceTestBase {
         // 进行中再触发 backup → 被互斥跳过（runSync 计数不增长）
         runningSvc.backup(300L, 5, msg -> {});
         Assertions.assertEquals(afterFirst, heldRunSyncCount.get(), "互斥：backup 被跳过");
+    }
+
+    @Test
+    public void runExclusive_kickText_matchesBackupSceneTemplate() {
+        // PR4 统一渲染入口 review：备份启动踢人应带场景词（templates.yml maintenance_motd_backup），
+        // 而非泛化「服务器维护中」——MOTD/登录拦截/踢人三处共用 renderMotdText 后靠默认文案区分场景。
+        Player p = mock(Player.class);
+        EntityScheduler sched = mock(EntityScheduler.class);
+        when(p.getScheduler()).thenReturn(sched);
+        doReturn(List.of(p)).when(bukkitServer).getOnlinePlayers();
+        // warn 回显入参，避免把 kick 文案桩死成固定值（断言需要真实渲染文本）
+        OrzTextStyles echoStyles = mock(OrzTextStyles.class);
+        when(echoStyles.warn(anyString())).thenAnswer(inv -> Component.text((String) inv.getArgument(0)));
+        WorldMaintenanceService svc = new WorldMaintenanceService(
+                server, configs, echoStyles, mock(Notifier.class), new MaintenanceModeService());
+        // Folia：踢人消费者投递到 region 线程的 scheduler.run——同步执行以捕获 p.kick 入参
+        doAnswer(inv -> {
+                    ((Consumer<ScheduledTask>) inv.getArgument(1)).accept(mock(ScheduledTask.class));
+                    return null;
+                })
+                .when(sched)
+                .run(any(org.bukkit.plugin.Plugin.class), any(), any(Runnable.class));
+
+        svc.runExclusive(MaintenanceModeService.MaintenanceReason.BACKUP, () -> {}, null);
+
+        String expected = MaintenanceModeService.renderMotdText(
+                MaintenanceModeService.MaintenanceReason.BACKUP, defaultTemplates(), null);
+        Assertions.assertEquals("服务器地图备份中，请稍后再试", expected, "备份场景默认文案应带场景词");
+        verify(p).kick(Component.text(expected));
     }
 }

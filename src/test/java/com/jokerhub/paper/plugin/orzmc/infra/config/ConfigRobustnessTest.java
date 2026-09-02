@@ -57,9 +57,6 @@ public class ConfigRobustnessTest {
         cfg.set("maintenance.optimize_enabled", false);
         cfg.set("maintenance.optimize_tick_time_threshold", 300);
         cfg.set("maintenance.backup_retention_count", 5);
-        cfg.set("maintenance.backup_maintenance_motd", "服务器维护中，稍后再试");
-        cfg.set("maintenance.optimize_maintenance_motd", "服务器地图优化中，请稍后再试");
-        cfg.set("maintenance.manual_maintenance_motd", "服务器维护中，请稍后再试");
         cfg.set("tnt.enable", false);
         cfg.set("tnt.enable_respawn_anchor", false);
         cfg.set("tnt.place_cooldown", 5);

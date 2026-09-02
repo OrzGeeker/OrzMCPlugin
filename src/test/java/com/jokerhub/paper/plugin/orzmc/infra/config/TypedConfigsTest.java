@@ -21,7 +21,6 @@ public class TypedConfigsTest {
         cfg.set("optimize_enabled", true);
         cfg.set("optimize_tick_time_threshold", 500L);
         cfg.set("backup_retention_count", 9);
-        cfg.set("backup_maintenance_motd", "维护中");
         cfg.set("allow_country_code", List.of("CN", "JP"));
 
         MainConfig mc = MainConfig.from(cfg);
@@ -32,7 +31,6 @@ public class TypedConfigsTest {
         Assertions.assertTrue(mc.optimizeEnabled());
         Assertions.assertEquals(500L, mc.optimizeTickTimeThreshold());
         Assertions.assertEquals(9, mc.backupRetentionCount());
-        Assertions.assertEquals("维护中", mc.backupMaintenanceMotd());
         Assertions.assertEquals(List.of("CN", "JP"), mc.allowCountryCode());
     }
 
@@ -77,13 +75,11 @@ public class TypedConfigsTest {
         cfg.set("optimize_enabled", true);
         cfg.set("optimize_tick_time_threshold", 600L);
         cfg.set("backup_retention_count", 12);
-        cfg.set("backup_maintenance_motd", "维护中");
 
         MaintenanceConfig maintenance = MaintenanceConfig.from(cfg);
         Assertions.assertTrue(maintenance.optimizeEnabled());
         Assertions.assertEquals(600L, maintenance.optimizeTickTimeThreshold());
         Assertions.assertEquals(12, maintenance.backupRetentionCount());
-        Assertions.assertEquals("维护中", maintenance.backupMaintenanceMotd());
     }
 
     @Test

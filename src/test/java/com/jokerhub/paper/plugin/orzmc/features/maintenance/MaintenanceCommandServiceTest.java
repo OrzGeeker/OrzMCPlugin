@@ -13,13 +13,18 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
 import com.jokerhub.paper.plugin.orzmc.features.maintenance.MaintenanceModeService.MaintenanceReason;
+import com.jokerhub.paper.plugin.orzmc.infra.config.configs.Templates;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
 import io.papermc.paper.threadedregions.scheduler.EntityScheduler;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import java.util.List;
+import java.util.function.Consumer;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Server;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,6 +32,7 @@ import org.junit.jupiter.api.Test;
 class MaintenanceCommandServiceTest {
 
     private ServerFacade server;
+    private TypedConfigProvider configs;
     private OrzTextStyles styles;
     private MaintenanceModeService mode;
     private WorldMaintenanceService worldMaintenance;
@@ -35,11 +41,15 @@ class MaintenanceCommandServiceTest {
     @BeforeEach
     void setUp() {
         server = mock(ServerFacade.class);
+        configs = mock(TypedConfigProvider.class);
         styles = mock(OrzTextStyles.class);
         mode = new MaintenanceModeService();
         worldMaintenance = mock(WorldMaintenanceService.class);
-        when(styles.warn(anyString())).thenReturn(Component.text("warn"));
-        service = new MaintenanceCommandService(server, styles, mode, worldMaintenance);
+        // 手动维护踢人经 renderMotdText 读 templates.yml 场景模板（PR4 迁移），默认模板即可
+        when(configs.templates()).thenReturn(Templates.from(new YamlConfiguration()));
+        // warn 回显入参：不桩死成固定值，踢人断言需要真实渲染文本
+        when(styles.warn(anyString())).thenAnswer(i -> Component.text((String) i.getArgument(0)));
+        service = new MaintenanceCommandService(server, configs, styles, mode, worldMaintenance);
     }
 
     @Test
@@ -60,6 +70,13 @@ class MaintenanceCommandServiceTest {
                 })
                 .when(server)
                 .runSync(any(Runnable.class));
+        // Folia：踢人消费者投递到 region 线程的 scheduler.run——同步执行以捕获 p.kick 入参
+        doAnswer(inv -> {
+                    ((Consumer<ScheduledTask>) inv.getArgument(1)).accept(mock(ScheduledTask.class));
+                    return null;
+                })
+                .when(scheduler)
+                .run(any(), any(), any());
 
         assertNull(service.enterManual());
 
@@ -67,6 +84,11 @@ class MaintenanceCommandServiceTest {
         assertEquals(MaintenanceReason.MANUAL, mode.reason());
         // Folia：踢人必须投递到玩家所在 region 线程（EntityScheduler）
         verify(scheduler).run(any(), any(), any());
+        // 手动维护踢人文案 = templates.yml maintenance_motd_manual 场景模板（默认值，带场景词）
+        String expected = MaintenanceModeService.renderMotdText(
+                MaintenanceReason.MANUAL, Templates.from(new YamlConfiguration()), null);
+        assertEquals("服务器维护中，请稍后再试", expected, "手动维护场景默认文案");
+        verify(p).kick(Component.text(expected));
     }
 
     @Test

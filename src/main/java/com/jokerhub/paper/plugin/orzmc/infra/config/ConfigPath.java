@@ -58,9 +58,7 @@ public final class ConfigPath {
         reg(map, "config", "maintenance.optimize_enabled", Boolean.class, false, "启用地图自动优化");
         reg(map, "config", "maintenance.optimize_tick_time_threshold", Long.class, 300L, "优化触发tick阈值(ms)");
         reg(map, "config", "maintenance.backup_retention_count", Integer.class, 5, "地图备份保留数量");
-        reg(map, "config", "maintenance.backup_maintenance_motd", String.class, "服务器维护中，稍后再试", "备份维护MOTD提示");
-        reg(map, "config", "maintenance.optimize_maintenance_motd", String.class, "服务器地图优化中，请稍后再试", "优化维护MOTD提示");
-        reg(map, "config", "maintenance.manual_maintenance_motd", String.class, "服务器维护中，请稍后再试", "手动维护MOTD提示");
+        // 维护场景文案/进度行已迁 templates.yml（maintenance_motd_*），不再注册 config 键（2026-09-02 PR4）
         // tnt (config.yml)
         reg(map, "config", "tnt.enable", Boolean.class, false, "启用TNT放置检测");
         reg(map, "config", "tnt.enable_respawn_anchor", Boolean.class, false, "启用重生锚检测");

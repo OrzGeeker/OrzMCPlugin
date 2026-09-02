@@ -13,7 +13,6 @@ import com.jokerhub.paper.plugin.orzmc.features.maintenance.MaintenanceModeServi
 import com.jokerhub.paper.plugin.orzmc.features.security.AccessRuleService;
 import com.jokerhub.paper.plugin.orzmc.features.security.GeoIpAccessService;
 import com.jokerhub.paper.plugin.orzmc.features.security.PlayerNameRule;
-import com.jokerhub.paper.plugin.orzmc.infra.config.configs.MaintenanceConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.notify.Notifier;
 import com.jokerhub.paper.plugin.orzmc.infra.notify.ThrottledNotifier;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
@@ -119,8 +118,7 @@ class LoginAccessControlServiceTest extends ServiceTestBase {
     void handlePreLogin_maintenance_backup_usesBackupMotdAndSkipsChecks() {
         when(maintenanceModeService.isActive()).thenReturn(true);
         when(maintenanceModeService.reason()).thenReturn(MaintenanceReason.BACKUP);
-        when(configs.maintenance())
-                .thenReturn(new MaintenanceConfig(true, 300L, 5, "服务器地图备份中，请稍后再试", "优化中", "手动维护中", 0L));
+        when(configs.templates()).thenReturn(maintenanceTemplates("服务器地图备份中，请稍后再试", null, null, null));
 
         service.handlePreLogin(event);
 
@@ -132,8 +130,7 @@ class LoginAccessControlServiceTest extends ServiceTestBase {
     void handlePreLogin_maintenance_optimize_usesOptimizeMotd() {
         when(maintenanceModeService.isActive()).thenReturn(true);
         when(maintenanceModeService.reason()).thenReturn(MaintenanceReason.OPTIMIZE);
-        when(configs.maintenance())
-                .thenReturn(new MaintenanceConfig(true, 300L, 5, "备份中", "服务器地图优化中，请稍后再试", "手动维护中", 0L));
+        when(configs.templates()).thenReturn(maintenanceTemplates(null, "服务器地图优化中，请稍后再试", null, null));
 
         service.handlePreLogin(event);
 
@@ -144,7 +141,7 @@ class LoginAccessControlServiceTest extends ServiceTestBase {
     void handlePreLogin_maintenance_manual_usesManualMotd() {
         when(maintenanceModeService.isActive()).thenReturn(true);
         when(maintenanceModeService.reason()).thenReturn(MaintenanceReason.MANUAL);
-        when(configs.maintenance()).thenReturn(new MaintenanceConfig(true, 300L, 5, "备份中", "优化中", "服务器维护中，请稍后再试", 0L));
+        when(configs.templates()).thenReturn(maintenanceTemplates(null, null, "服务器维护中，请稍后再试", null));
 
         service.handlePreLogin(event);
 
@@ -152,26 +149,25 @@ class LoginAccessControlServiceTest extends ServiceTestBase {
     }
 
     @Test
-    void handlePreLogin_maintenance_withEta_appendsEstimatedSeconds() {
+    void handlePreLogin_maintenance_withProgress_appendsProgressLine() {
+        // 场景模板未用进度占位符 + 有进度 → progress_line 模板（默认含 {eta}）渲染为第二行
         when(maintenanceModeService.isActive()).thenReturn(true);
         when(maintenanceModeService.reason()).thenReturn(MaintenanceReason.BACKUP);
-        when(configs.maintenance())
-                .thenReturn(new MaintenanceConfig(true, 300L, 5, "服务器地图备份中，请稍后再试", "优化中", "手动维护中", 0L));
+        when(configs.templates()).thenReturn(maintenanceTemplates("服务器地图备份中，请稍后再试", null, null, null));
         when(maintenanceModeService.progress()).thenReturn(new MaintenanceProgress("区块", 35, 30, "进度：区块 35% 预计剩余 30秒"));
 
         service.handlePreLogin(event);
 
         String text = disallowedText();
         assertTrue(text.contains("服务器地图备份中，请稍后再试"));
-        assertTrue(text.contains("预计剩余 30 秒"), "未用 {eta} 占位符时应追加预计剩余: " + text);
+        assertTrue(text.contains("进度：区块 35% 预计剩余 30秒"), "应渲染 progress_line 进度行: " + text);
     }
 
     @Test
     void handlePreLogin_maintenance_withEtaPlaceholder_replacesPlaceholders() {
         when(maintenanceModeService.isActive()).thenReturn(true);
         when(maintenanceModeService.reason()).thenReturn(MaintenanceReason.BACKUP);
-        when(configs.maintenance())
-                .thenReturn(new MaintenanceConfig(true, 300L, 5, "备份 {stage} {percent}% {eta}秒", "优化中", "手动维护中", 0L));
+        when(configs.templates()).thenReturn(maintenanceTemplates("备份 {stage} {percent}% {eta}秒", null, null, null));
         when(maintenanceModeService.progress()).thenReturn(new MaintenanceProgress("区块", 35, 30, "进度：区块 35% 预计剩余 30秒"));
 
         service.handlePreLogin(event);

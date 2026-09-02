@@ -6,7 +6,6 @@ import com.jokerhub.orzmc.world.*;
 import com.jokerhub.paper.plugin.orzmc.core.bot.MessageEnvelope;
 import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.TemplateOptions;
-import com.jokerhub.paper.plugin.orzmc.infra.config.configs.Templates;
 import com.jokerhub.paper.plugin.orzmc.infra.notify.Notifier;
 import com.jokerhub.paper.plugin.orzmc.infra.server.OrzUtil;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
@@ -118,7 +117,6 @@ public class WorldMaintenanceService {
             }
             int percent = (int) Math.ceil(current * 100.0 / total);
             MaintenanceStage stage = mapProgressStage(progressEvent.getStage());
-            Templates tpls = configs.templates();
             java.util.Map<String, String> vars = new java.util.HashMap<>();
             vars.put("label", label);
             vars.put("stage", stage.name());
@@ -272,7 +270,8 @@ public class WorldMaintenanceService {
             wasManual = maintenanceModeService.isActive()
                     && maintenanceModeService.reason() == MaintenanceModeService.MaintenanceReason.MANUAL;
             maintenanceModeService.enter(reason);
-            kickText = kickText(reason);
+            // 踢人无进度：统一场景文案（templates.yml maintenance_motd_*，PR4 迁移）
+            kickText = MaintenanceModeService.renderMotdText(reason, configs.templates(), null);
         }
         try {
             server.runSync(() -> {
@@ -319,15 +318,6 @@ public class WorldMaintenanceService {
         } else {
             maintenanceModeService.exit();
         }
-    }
-
-    /** 按维护场景取踢人文案（备份/优化/手动各自独立，避免「优化时也提示备份中」）。 */
-    private static String kickText(MaintenanceModeService.MaintenanceReason reason) {
-        return switch (reason) {
-            case BACKUP -> "服务器地图备份中，请稍后再尝试登录。";
-            case OPTIMIZE -> "服务器地图优化中，请稍后再尝试登录。";
-            case MANUAL -> "服务器维护中，请稍后再尝试登录。";
-        };
     }
 
     public void backup(long tickTimeThreshold, int retainCount, Consumer<String> callback) {

@@ -11,7 +11,7 @@ class ConfigPathTest {
     void all_containsExpectedEntries() {
         Map<String, ConfigPath> all = ConfigPath.all();
         assertNotNull(all);
-        assertEquals(43, all.size());
+        assertEquals(40, all.size());
     }
 
     @Test
@@ -129,13 +129,13 @@ class ConfigPathTest {
 
         // whitelist entries come first
         assertTrue(keys[0].startsWith("whitelist."));
-        // maintenance entries come after whitelist（3 项 whitelist + 6 项 maintenance → tnt 起点 9）
+        // maintenance entries come after whitelist（3 项 whitelist + 3 项 maintenance → tnt 起点 6）
         assertTrue(keys[3].startsWith("maintenance."));
         // tnt entries come after maintenance
-        assertTrue(keys[9].startsWith("tnt."));
-        // easybot entries after command_policies（maintenance 6 项 + player_notify 5 项 + command_policies 6 项 → easybot
-        // 起点 24）
-        assertTrue(keys[24].startsWith("cmd_prompt_char") || keys[24].startsWith("discord_server_link"));
+        assertTrue(keys[6].startsWith("tnt."));
+        // easybot entries after command_policies（maintenance 3 项 + tnt 4 项 + player_notify 5 项 + command_policies 6 项
+        // → easybot 起点 21）
+        assertTrue(keys[21].startsWith("cmd_prompt_char") || keys[21].startsWith("discord_server_link"));
     }
 
     @Test
@@ -157,14 +157,12 @@ class ConfigPathTest {
     void all_containsMaintenancePaths() {
         Map<String, ConfigPath> all = ConfigPath.all();
 
-        ConfigPath motd = all.get("maintenance.backup_maintenance_motd");
-        assertNotNull(motd);
-        assertEquals(String.class, motd.type());
-        assertEquals("服务器维护中，稍后再试", motd.defaultValue());
-
         ConfigPath retention = all.get("maintenance.backup_retention_count");
         assertNotNull(retention);
         assertEquals(Integer.class, retention.type());
         assertEquals(5, retention.defaultValue());
+
+        // 维护场景文案/进度行已迁 templates.yml（maintenance_motd_*），不再是 config.yml 可注册路径
+        assertNull(all.get("maintenance.backup_maintenance_motd"));
     }
 }
