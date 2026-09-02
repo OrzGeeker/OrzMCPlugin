@@ -99,11 +99,8 @@ final class FeatureCommandRegistrar {
         this.rankService = rankService;
         this.prisonCommandService = prisonCommandService;
         this.orzConfigCommand = orzConfigCommand;
-<<<<<<< HEAD
         this.maintenanceCommandService = maintenanceCommandService;
-=======
-        this.prisonDenyInterceptor =
-                prisonDenyCheck == null ? null : new PrisonDenyInterceptor(prisonDenyCheck);
+        this.prisonDenyInterceptor = prisonDenyCheck == null ? null : new PrisonDenyInterceptor(prisonDenyCheck);
     }
 
     /** 给开放命令拦截器链追加坐牢拒绝（null 守卫：未注入 prison 判定时不追加）。 */
@@ -114,7 +111,6 @@ final class FeatureCommandRegistrar {
         List<CommandInterceptor> extended = new ArrayList<>(interceptors);
         extended.add(prisonDenyInterceptor);
         return extended;
->>>>>>> 9680739 (fix(rank): prison review 修复——升降级 prison 守卫、LP 落库失败回滚、prison 命令拦截、join tp 兜底、牢房坐标校验+测试)
     }
 
     /** 注册所有命令（Paper LifecycleEvents.COMMANDS + Brigadier）。 */

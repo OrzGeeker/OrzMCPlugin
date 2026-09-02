@@ -164,8 +164,7 @@ class LuckPermsPrisonStoreTest {
     }
 
     private boolean hasInheritance(String group) {
-        return nodes.stream()
-                .anyMatch(n -> n instanceof InheritanceNode inh && group.equals(inh.getGroupName()));
+        return nodes.stream().anyMatch(n -> n instanceof InheritanceNode inh && group.equals(inh.getGroupName()));
     }
 
     private String metaValue(String key) {
@@ -185,7 +184,8 @@ class LuckPermsPrisonStoreTest {
         nodes.add(mockInheritance("builder"));
         when(user.getPrimaryGroup()).thenReturn("builder");
 
-        PrisonLpGateway.ImprisonOutcome outcome = store.imprison(id, "world,1,2,3").join();
+        PrisonLpGateway.ImprisonOutcome outcome =
+                store.imprison(id, "world,1,2,3").join();
 
         assertTrue(outcome.success());
         assertEquals("builder", outcome.originalGroup());
@@ -216,7 +216,8 @@ class LuckPermsPrisonStoreTest {
         nodes.add(mockMeta(META_GROUP, "admin"));
         when(user.getPrimaryGroup()).thenReturn(PRISON);
 
-        PrisonLpGateway.ImprisonOutcome outcome = store.imprison(id, "world,9,9,9").join();
+        PrisonLpGateway.ImprisonOutcome outcome =
+                store.imprison(id, "world,9,9,9").join();
 
         assertTrue(outcome.success());
         assertEquals("admin", outcome.originalGroup());
@@ -233,7 +234,8 @@ class LuckPermsPrisonStoreTest {
         when(userManager.saveUser(any()))
                 .thenReturn(CompletableFuture.failedFuture(new RuntimeException("storage down")));
 
-        PrisonLpGateway.ImprisonOutcome outcome = store.imprison(id, "world,1,2,3").join();
+        PrisonLpGateway.ImprisonOutcome outcome =
+                store.imprison(id, "world,1,2,3").join();
 
         assertFalse(outcome.success());
         assertEquals("builder", outcome.originalGroup());

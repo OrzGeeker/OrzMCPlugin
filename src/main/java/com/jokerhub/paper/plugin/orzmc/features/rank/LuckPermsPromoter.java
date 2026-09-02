@@ -102,7 +102,10 @@ public final class LuckPermsPromoter implements RankPromoter {
      * @param prisonCheck   坐牢判定端口（可 null；非 null 时坐牢玩家拒绝升降级）
      */
     public LuckPermsPromoter(
-            PlayerNameResolver nameResolver, ServerScheduler scheduler, Executor asyncExecutor, Predicate<UUID> prisonCheck) {
+            PlayerNameResolver nameResolver,
+            ServerScheduler scheduler,
+            Executor asyncExecutor,
+            Predicate<UUID> prisonCheck) {
         this.nameResolver = nameResolver;
         this.scheduler = scheduler;
         this.asyncExecutor = asyncExecutor;
