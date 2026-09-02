@@ -14,7 +14,6 @@ public record MainConfig(
         boolean optimizeEnabled,
         long optimizeTickTimeThreshold,
         int backupRetentionCount,
-        String backupMaintenanceMotd,
         List<String> allowCountryCode,
         boolean entityTeleportEnabled,
         List<String> entityTeleportWhitelist,
@@ -51,7 +50,6 @@ public record MainConfig(
         boolean optimizeEnabled = cfg.getBoolean("optimize_enabled", false);
         long optimizeTickTimeThreshold = cfg.getLong("optimize_tick_time_threshold", 300L);
         int backupRetentionCount = cfg.getInt("backup_retention_count", 5);
-        String backupMaintenanceMotd = cfg.getString("backup_maintenance_motd", "服务器维护中，稍后再试");
         List<String> allowCodes = new ArrayList<>();
         Object raw = cfg.get("allow_country_code");
         if (raw instanceof List<?> list) {
@@ -84,7 +82,6 @@ public record MainConfig(
                 optimizeEnabled,
                 optimizeTickTimeThreshold,
                 backupRetentionCount,
-                backupMaintenanceMotd,
                 allowCodes,
                 entityTeleportEnabled,
                 entityTeleportWhitelist,

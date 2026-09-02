@@ -26,6 +26,13 @@ public record Templates(
         String maintenanceMotdManual,
         String maintenanceMotdProgressLine) {
 
+    /** 维护场景文案默认值（templates.yml {@code maintenance_motd_*}）：统一渲染入口后 MOTD/登录拦截/踢人共文案，
+     *  默认带场景词，保证备份/优化/手动仍可区分（2026-09-02 review）。 */
+    public static final String DEFAULT_MAINTENANCE_MOTD_BACKUP = "服务器地图备份中，请稍后再试";
+
+    public static final String DEFAULT_MAINTENANCE_MOTD_OPTIMIZE = "服务器地图优化中，请稍后再试";
+    public static final String DEFAULT_MAINTENANCE_MOTD_MANUAL = "服务器维护中，请稍后再试";
+
     public static Templates from(ConfigurationSection cfg) {
         String base = "templates";
         String join = cfg.getString(
@@ -66,9 +73,12 @@ public record Templates(
         String whitelistToggleAlert = cfg.getString(
                 base + ".whitelist_toggle_alert", "⚠️ 服务器异常\n---------------------------------\n{message}");
         // 维护场景文案 + 进度行（MOTD / 登录拦截 / 踢人统一渲染入口读取，2026-09-02 迁移自 config.yml maintenance 段）
-        String maintenanceMotdBackup = cfg.getString(base + ".maintenance_motd_backup", "服务器维护中，稍后再试");
-        String maintenanceMotdOptimize = cfg.getString(base + ".maintenance_motd_optimize", "服务器地图优化中，请稍后再试");
-        String maintenanceMotdManual = cfg.getString(base + ".maintenance_motd_manual", "服务器维护中，请稍后再试");
+        String maintenanceMotdBackup =
+                cfg.getString(base + ".maintenance_motd_backup", DEFAULT_MAINTENANCE_MOTD_BACKUP);
+        String maintenanceMotdOptimize =
+                cfg.getString(base + ".maintenance_motd_optimize", DEFAULT_MAINTENANCE_MOTD_OPTIMIZE);
+        String maintenanceMotdManual =
+                cfg.getString(base + ".maintenance_motd_manual", DEFAULT_MAINTENANCE_MOTD_MANUAL);
         String maintenanceMotdProgressLine =
                 cfg.getString(base + ".maintenance_motd_progress_line", "进度：{stage} {percent}% 预计剩余 {eta}秒");
         return new Templates(

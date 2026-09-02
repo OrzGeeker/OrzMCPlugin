@@ -348,10 +348,14 @@ PUBLIC；异常告警（含 GeoIP 上游异常私信）与维护失败事件走 
 | `maintenance.backup_retention_count` | Integer | 5 | 地图备份保留数量 |
 
 > **维护场景文案/进度行模板**（2026-09-02 起迁移至 templates.yml，MOTD/登录拦截/踢人统一读取）：
-> `maintenance_motd_backup`（地图备份中）、`maintenance_motd_optimize`（地图优化中）、
+> `maintenance_motd_backup`（服务器地图备份中）、`maintenance_motd_optimize`（服务器地图优化中）、
 > `maintenance_motd_manual`（服主手动 `/maintenance on`）、`maintenance_motd_progress_line`（追加进度行）。
 > 支持占位符 `{stage}` `{percent}` `{eta}`：场景模板写入占位符即内联展示进度（不再追加独立进度行）；
 > 未写占位符且场景有进度（backup/optimize）时自动追加 progress_line 行。模板缺失时用代码内置默认文案。
+>
+> ⚠️ **升级迁移**：旧版 `config.yml` 的 `maintenance.backup/optimize/manual_maintenance_motd` 自定义文案已废弃——
+> 升级后需手动把自定义值搬运到 `templates.yml` 的 `maintenance_motd_*` 对应键；且不再支持
+> `/orzmc config set` 修改 motd 文案（该路径已移出注册表），请直接编辑 `templates.yml` 后执行 `/config reload` 生效。
 
 **TNT**
 | 配置路径 | 类型 | 默认值 | 描述 |

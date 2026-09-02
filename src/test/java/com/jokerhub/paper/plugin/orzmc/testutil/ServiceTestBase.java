@@ -118,7 +118,9 @@ public abstract class ServiceTestBase {
     }
 
     /**
-     * 返回全部默认值的 {@link Templates}（维护场景文案/进度行走 record 默认，与 templates.yml 资源一致）。
+     * 返回全部默认值的 {@link Templates}（维护场景文案/进度行走 record 默认，
+     * 与 templates.yml 资源一致：backup='服务器地图备份中，请稍后再试'、optimize='服务器地图优化中，请稍后再试'、
+     * manual='服务器维护中，请稍后再试'，见 {@code Templates.DEFAULT_MAINTENANCE_MOTD_*}）。
      */
     protected Templates defaultTemplates() {
         return Templates.from(new YamlConfiguration());
@@ -126,7 +128,8 @@ public abstract class ServiceTestBase {
 
     /**
      * 构造自定义维护场景模板的 {@link Templates}：仅覆盖传入的 4 个 {@code maintenance_motd_*} 键，
-     * 其余模板保持 record 默认值。参数传 null 表示该键用默认值。
+     * 其余模板保持 record 默认值（默认字面收敛在 {@code Templates.DEFAULT_MAINTENANCE_MOTD_*} 常量，
+     * 与 templates.yml 同步）。参数传 null 表示该键用默认值。
      *
      * @param backup       {@code maintenance_motd_backup}（BACKUP 场景文案）
      * @param optimize     {@code maintenance_motd_optimize}（OPTIMIZE 场景文案）

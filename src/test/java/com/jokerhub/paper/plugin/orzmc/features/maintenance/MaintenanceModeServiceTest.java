@@ -180,4 +180,35 @@ class MaintenanceModeServiceTest extends ServiceTestBase {
                         maintenanceTemplates("备份 {stage} {percent}% 预计 {eta}秒", null, null, null),
                         null));
     }
+
+    @Test
+    void renderMotdText_sceneNoPlaceholders_withProgress_etaZero_appendsZeroEtaLine() {
+        // 边界：eta=0（已完成/瞬间）→ progress_line 仍渲染「预计剩余 0秒」（不因 0 吞行）
+        MaintenanceProgress p = MaintenanceProgress.of("区块", 100, 0);
+        assertEquals(
+                "备份维护中\n进度：区块 100% 预计剩余 0秒",
+                MaintenanceModeService.renderMotdText(
+                        MaintenanceReason.BACKUP, maintenanceTemplates("备份维护中", null, null, null), p));
+    }
+
+    @Test
+    void renderMotdText_sceneOnlyStagePlaceholder_withProgress_noSeparateProgressLine() {
+        // 边界：场景模板仅含 {stage} → hasProgressPlaceholders 判定为真，占位符替换进场景文案，
+        // 不再追加独立进度行（percent/eta 不在模板中，不渲染）
+        MaintenanceProgress p = MaintenanceProgress.of("区块", 35, 30);
+        assertEquals(
+                "正在处理区块",
+                MaintenanceModeService.renderMotdText(
+                        MaintenanceReason.BACKUP, maintenanceTemplates("正在处理{stage}", null, null, null), p));
+    }
+
+    @Test
+    void renderMotdText_optimize_withProgress_endToEnd() {
+        // 端到端：OPTIMIZE 场景纯文案 + 有进度 → 场景行 + 默认 progress_line 第二行
+        MaintenanceProgress p = MaintenanceProgress.of("区块", 50, 20);
+        assertEquals(
+                "服务器地图优化中，请稍后再试\n进度：区块 50% 预计剩余 20秒",
+                MaintenanceModeService.renderMotdText(
+                        MaintenanceReason.OPTIMIZE, maintenanceTemplates(null, "服务器地图优化中，请稍后再试", null, null), p));
+    }
 }
