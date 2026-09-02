@@ -123,6 +123,7 @@ public final class TemplatePlaceholderValidator {
         m.put("rank_demoted", Set.of("player", "group"));
         m.put("exception_alert", Set.of("message", "stack_summary"));
         m.put("geoip_block", Set.of("name", "ip", "country_code", "allow_list", "address_info"));
+        m.put("geoip_unverifiable", Set.of("name", "ip"));
         m.put(
                 "tnt_alert",
                 Set.of("msg", "world_alias", "x_unit", "y_unit", "z_unit", "coord_unit", "actor", "block_type"));

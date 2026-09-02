@@ -11,7 +11,7 @@ class ConfigPathTest {
     void all_containsExpectedEntries() {
         Map<String, ConfigPath> all = ConfigPath.all();
         assertNotNull(all);
-        assertEquals(40, all.size());
+        assertEquals(43, all.size());
     }
 
     @Test
@@ -129,12 +129,13 @@ class ConfigPathTest {
 
         // whitelist entries come first
         assertTrue(keys[0].startsWith("whitelist."));
-        // maintenance entries come after whitelist
+        // maintenance entries come after whitelist（3 项 whitelist + 6 项 maintenance → tnt 起点 9）
         assertTrue(keys[3].startsWith("maintenance."));
         // tnt entries come after maintenance
-        assertTrue(keys[7].startsWith("tnt."));
-        // easybot entries after command_policies（player_notify 5 项 + command_policies 6 项 → easybot 起点 22）
-        assertTrue(keys[22].startsWith("cmd_prompt_char") || keys[22].startsWith("discord_server_link"));
+        assertTrue(keys[9].startsWith("tnt."));
+        // easybot entries after command_policies（maintenance 6 项 + player_notify 5 项 + command_policies 6 项 → easybot
+        // 起点 24）
+        assertTrue(keys[24].startsWith("cmd_prompt_char") || keys[24].startsWith("discord_server_link"));
     }
 
     @Test

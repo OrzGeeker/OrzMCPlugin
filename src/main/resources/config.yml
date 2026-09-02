@@ -27,7 +27,13 @@ maintenance:
   optimize_enabled: false
   optimize_tick_time_threshold: 300
   backup_retention_count: 5
+  # 维护场景文案（支持占位符 {stage} {percent} {eta}）：
+  #   backup_maintenance_motd  — 地图备份中（MOTD / 登录拦截）
+  #   optimize_maintenance_motd — 地图优化中（MOTD / 登录拦截）
+  #   manual_maintenance_motd   — 服主手动 /maintenance on（MOTD / 登录拦截）
   backup_maintenance_motd: "服务器维护中，稍后再试"
+  optimize_maintenance_motd: "服务器地图优化中，请稍后再试"
+  manual_maintenance_motd: "服务器维护中，请稍后再试"
   # 定时自动备份间隔（小时）：0 = 关闭；>0 表示每 N 小时自动备份一次。
   # 该字段支持 /config reload 热重载：修改后无需重启，下一个检查点（每分钟）即生效。
   backup_interval_hours: 0
@@ -245,6 +251,15 @@ rank_colors:
     builder: "green"
     member: "aqua"
     default: "gray"
+
+# ==================================================
+#          坐牢（作弊玩家，2026-09-02）
+# ==================================================
+# 作弊玩家强制进入独立 prison 组（完全独立于四级 track：不继承、不在晋升链），
+# 仅保留 essentials.msg 私聊权限，其余全部禁用；重进仍保持 prison 并强制传回牢房。
+prison:
+  # 牢房传送坐标（world,x,y,z[,yaw,pitch]）；未配置/世界未加载时回退玩家当前世界出生点
+  cell_location: "world,0,100,0,0,0"
 
 # ==================================================
 #          游戏模式矫正（权限组变化后，2026-08-29）
