@@ -17,6 +17,7 @@ import com.jokerhub.paper.plugin.orzmc.infra.config.configs.SecurityGuardConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.TemplateOptions;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.Templates;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.TntConfig;
+import com.jokerhub.paper.plugin.orzmc.infra.config.configs.UpdateConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.WhitelistConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.WhitelistKickMessage;
 import com.jokerhub.paper.plugin.orzmc.infra.templates.TemplateRenderer;
@@ -110,6 +111,11 @@ public final class DefaultTypedConfigProvider implements TypedConfigProvider {
     @Override
     public PrisonConfig prison() {
         return PrisonConfig.from(section("prison"));
+    }
+
+    @Override
+    public UpdateConfig update() {
+        return UpdateConfig.from(section("update"));
     }
 
     @Override

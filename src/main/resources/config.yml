@@ -4,7 +4,7 @@
 
 # 配置 schema 版本：插件启动时若磁盘版本低于内置版本，会自动补齐缺失默认键并升级
 # （原文件备份为 config.yml.bak）。版本号由插件维护，无需手动修改。
-config-version: 10
+config-version: 11
 
 # ==================================================
 #             服务器白名单配置
@@ -261,3 +261,22 @@ gamemode-correction:
   # 观察模式玩家切生存前是否先处理安全位置（低于世界 minHeight+10 或脚下不安全
   # → 传送回床点/世界出生点，防虚空坠落/卡墙窒息）
   teleport-to-spawn-on-spectator-fix: true
+
+# ==================================================
+#              插件自更新（2026-09-03）
+# ==================================================
+# 插件在启用后异步查询 Hangar 项目通道最新版本；发现新版本时按下方策略自动下载到
+# plugins/update/（Paper 重启时自动应用并删除旧 jar）。下载前按 Hangar 返回的
+# sha256 校验，校验失败不落盘。全部网络/文件 IO 在异步线程执行，不阻塞服务器主线程。
+update:
+  # 自更新总开关：false 时启动/周期不再自动检查（/update check|now 仍可手动使用）
+  enabled: true
+  # 更新通道：release=正式版（推荐，稳定）| beta=开发版（-dev 构建）
+  # 对应 CI 发布规则：tag → release 通道；main push → beta 通道
+  channel: release
+  # 自动检查间隔（小时）；0 = 仅启用时检查一次
+  check_interval_hours: 12
+  # 发现新版本后自动下载到 plugins/update/（下次重启生效）；
+  # false = 仅控制台提示有新版 + 管理员执行 /update now 手动下载
+  auto_download: false
+

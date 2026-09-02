@@ -11,7 +11,7 @@ class ConfigPathTest {
     void all_containsExpectedEntries() {
         Map<String, ConfigPath> all = ConfigPath.all();
         assertNotNull(all);
-        assertEquals(64, all.size());
+        assertEquals(68, all.size());
     }
 
     @Test
@@ -140,7 +140,8 @@ class ConfigPathTest {
             "login_rate_limit.",
             "exploit_hardening.",
             "geoip.",
-            "entity_teleport_enabled"
+            "entity_teleport_enabled",
+            "update."
         };
         int prev = -1;
         for (String prefix : groupStartPrefixes) {
