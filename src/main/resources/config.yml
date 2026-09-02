@@ -11,7 +11,6 @@ whitelist:
   pagination_delay_ticks: 5
   # 白名单踢出消息（当 force_whitelist=true 且玩家不在名单中时显示）
   kick_message:
-    qq_group_id: ''
     title: "可以在这里提示用户关注UP主帐号，进行私域建设"
     ups:
       - platform: 'YouTube'
@@ -43,22 +42,9 @@ tnt:
   # TNT/爆炸告警聚合窗口(ms)：同一区域(128×128×64区块)同类型事件在窗口内合并为一条告警(带 ×N 和首个坐标)；
   # 既是突发合并也限制持续刷屏频率。单发事件仍立即发，不受窗口延迟。
   notify_aggregate_ms: 3000
-  whitelist:
-    - { minX: 0, maxX: 0, minY: 0, maxY: 0, minZ: 0, maxZ: 0, world: 'world' }
-    - { minX: 0, maxX: 0, minY: 0, maxY: 0, minZ: 0, maxZ: 0, world: 'world_nether' }
-    - { minX: 0, maxX: 0, minY: 0, maxY: 0, minZ: 0, maxZ: 0, world: 'world_the_end' }
-  exempt_entities:
-    - CREEPER
-    - FIREBALL
-    - BREEZE
-    - WIND_CHARGE
-    - BREEZE_WIND_CHARGE
-    - ENDER_DRAGON
-    - END_CRYSTAL
-    - WITHER
-    - WITHER_SKULL
-    - SLIME
-    - STRAY
+  # 放行区域列表（空 = 全图禁止 TNT 放置/点燃；条目格式 {minX,maxX,minY,maxY,minZ,maxZ,world}）
+  whitelist: []
+  # 豁免实体由代码内置兜底（TntEventService.DEFAULT_EXEMPT_ENTITIES 11 项），如需自定义在此填 EntityType 大写名列表
 
 # ==================================================
 #                IP 地区白名单

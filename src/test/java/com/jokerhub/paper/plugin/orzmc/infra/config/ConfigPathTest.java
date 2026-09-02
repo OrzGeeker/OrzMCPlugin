@@ -11,7 +11,7 @@ class ConfigPathTest {
     void all_containsExpectedEntries() {
         Map<String, ConfigPath> all = ConfigPath.all();
         assertNotNull(all);
-        assertEquals(39, all.size());
+        assertEquals(64, all.size());
     }
 
     @Test
@@ -121,15 +121,40 @@ class ConfigPathTest {
         Map<String, ConfigPath> all = ConfigPath.all();
         String[] keys = all.keySet().toArray(new String[0]);
 
-        // whitelist entries come first
-        assertTrue(keys[0].startsWith("whitelist."));
-        // maintenance entries come after whitelist（3 项 whitelist + 3 项 maintenance → tnt 起点 6）
-        assertTrue(keys[3].startsWith("maintenance."));
-        // tnt entries come after maintenance
-        assertTrue(keys[6].startsWith("tnt."));
-        // easybot entries after command_policies（maintenance 3 项 + tnt 4 项 + player_notify 5 项 + command_policies 6 项
-        // → easybot 起点 21）
-        assertTrue(keys[21].startsWith("cmd_prompt_char") || keys[21].startsWith("discord_server_link"));
+        // 各组起始键按注册顺序单调递增：whitelist 最早，随后 maintenance/tnt/player_notify/
+        // command_policies/easybot/templates/rank_colors/gamemode-correction/prison，
+        // 末尾为后补齐的 chat/guard/login_rate_limit/exploit_hardening/geoip/entity_teleport_enabled。
+        String[] groupStartPrefixes = {
+            "whitelist.",
+            "maintenance.",
+            "tnt.",
+            "player_notify.",
+            "command_policies.",
+            "cmd_prompt_char",
+            "templates.",
+            "rank_colors.",
+            "gamemode-correction.",
+            "prison.",
+            "chat.",
+            "guard.",
+            "login_rate_limit.",
+            "exploit_hardening.",
+            "geoip.",
+            "entity_teleport_enabled"
+        };
+        int prev = -1;
+        for (String prefix : groupStartPrefixes) {
+            int idx = -1;
+            for (int i = 0; i < keys.length; i++) {
+                if (keys[i].startsWith(prefix)) {
+                    idx = i;
+                    break;
+                }
+            }
+            assertTrue(idx > prev, prefix + " 分组应出现在上一分组之后，实际 idx=" + idx);
+            prev = idx;
+        }
+        assertTrue(keys[0].startsWith("whitelist."), "whitelist 应为第一个分组");
     }
 
     @Test
