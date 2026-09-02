@@ -255,44 +255,70 @@ public class WorldMaintenanceService {
 
     public void runExclusive(
             MaintenanceModeService.MaintenanceReason reason, Runnable asyncWork, Runnable finallyWork) {
-        if (!running.compareAndSet(false, true)) {
-            return;
-        }
-        // 复位本次运行的错误聚合计数器：否则跨 run 累积——fatalErrorReported 一旦置 true，
-        // 后续 run 的致命错误不再发群通知；chunkErrorCount 累积导致干净 run 误报「含 N 个损坏区块」。
-        chunkErrorCount.set(0);
-        fatalErrorReported.set(false);
-        // 手动维护期间备份/优化照常执行：reason 被备份/优化覆盖，结束后恢复手动维护（wasManual 还原）
-        boolean wasManual = maintenanceModeService.isActive()
-                && maintenanceModeService.reason() == MaintenanceModeService.MaintenanceReason.MANUAL;
-        maintenanceModeService.enter(reason);
-        String kickText = kickText(reason);
-        server.runSync(() -> {
-            startMs = System.currentTimeMillis();
-            for (Player p : server.server().getOnlinePlayers()) {
-                // Folia：踢人投递到玩家所在 region 线程；save 命令留在 global region 的 dispatchCommand
-                p.getScheduler().run(server.plugin(), t -> p.kick(styles.warn(kickText)), () -> {});
+        // 状态转移收敛到同一把锁（维护模式状态机实例）：CAS running + 读 wasManual + enter(reason)
+        // 与 /maintenance on|off（MaintenanceCommandService）的校验 + enter/exit 同锁互斥，
+        // 消除 check-then-act 竞态——避免 reason 被覆盖或手动维护被静默清除。
+        boolean wasManual;
+        String kickText;
+        synchronized (maintenanceModeService) {
+            if (!running.compareAndSet(false, true)) {
+                return;
             }
-            OrzUtil.executeConsoleCmd(server, () -> {}, "save-off", "save-all flush");
-            server.runAsync(() -> {
-                try {
-                    asyncWork.run();
-                } catch (Exception e) {
-                    server.logger().log(Level.SEVERE, "WorldMaintenanceService 异步任务异常", e);
-                } finally {
-                    OrzUtil.executeConsoleCmd(server, () -> {}, "save-on");
-                    if (wasManual) {
-                        maintenanceModeService.enter(MaintenanceModeService.MaintenanceReason.MANUAL);
-                    } else {
-                        maintenanceModeService.exit();
-                    }
-                    running.set(false);
-                    if (finallyWork != null) {
-                        finallyWork.run();
-                    }
+            // 复位本次运行的错误聚合计数器：否则跨 run 累积——fatalErrorReported 一旦置 true，
+            // 后续 run 的致命错误不再发群通知；chunkErrorCount 累积导致干净 run 误报「含 N 个损坏区块」。
+            chunkErrorCount.set(0);
+            fatalErrorReported.set(false);
+            // 手动维护期间备份/优化照常执行：reason 被备份/优化覆盖，结束后恢复手动维护（wasManual 还原）
+            wasManual = maintenanceModeService.isActive()
+                    && maintenanceModeService.reason() == MaintenanceModeService.MaintenanceReason.MANUAL;
+            maintenanceModeService.enter(reason);
+            kickText = kickText(reason);
+        }
+        try {
+            server.runSync(() -> {
+                startMs = System.currentTimeMillis();
+                for (Player p : server.server().getOnlinePlayers()) {
+                    // Folia：踢人投递到玩家所在 region 线程；save 命令留在 global region 的 dispatchCommand
+                    p.getScheduler().run(server.plugin(), t -> p.kick(styles.warn(kickText)), () -> {});
                 }
+                OrzUtil.executeConsoleCmd(server, () -> {}, "save-off", "save-all flush");
+                server.runAsync(() -> {
+                    try {
+                        asyncWork.run();
+                    } catch (Exception e) {
+                        server.logger().log(Level.SEVERE, "WorldMaintenanceService 异步任务异常", e);
+                    } finally {
+                        OrzUtil.executeConsoleCmd(server, () -> {}, "save-on");
+                        // 还原维护模式 + running 复位同锁原子化：让 exitManual 在锁内读到一致的
+                        // running==false 边界（否则残留态无法自愈）
+                        synchronized (maintenanceModeService) {
+                            restoreMaintenanceMode(wasManual);
+                            running.set(false);
+                        }
+                        if (finallyWork != null) {
+                            finallyWork.run();
+                        }
+                    }
+                });
             });
-        });
+        } catch (RuntimeException e) {
+            // runSync 调度被拒（关服/插件禁用等）：async 分支不会执行，兜底还原状态，
+            // 避免 running + 维护模式残留（否则 /maintenance off 也因 running 卡死无法退出）
+            server.logger().log(Level.SEVERE, "WorldMaintenanceService 维护调度失败，已还原状态", e);
+            synchronized (maintenanceModeService) {
+                restoreMaintenanceMode(wasManual);
+                running.set(false);
+            }
+        }
+    }
+
+    /** 还原维护模式：备份/优化前为手动维护 → 恢复 MANUAL，否则退出。 */
+    private void restoreMaintenanceMode(boolean wasManual) {
+        if (wasManual) {
+            maintenanceModeService.enter(MaintenanceModeService.MaintenanceReason.MANUAL);
+        } else {
+            maintenanceModeService.exit();
+        }
     }
 
     /** 按维护场景取踢人文案（备份/优化/手动各自独立，避免「优化时也提示备份中」）。 */

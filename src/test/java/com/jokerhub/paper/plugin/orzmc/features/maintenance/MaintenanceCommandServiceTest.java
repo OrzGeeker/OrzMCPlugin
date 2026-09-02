@@ -112,14 +112,12 @@ class MaintenanceCommandServiceTest {
     }
 
     @Test
-    void exitManual_refusedWhenBackupOwnedMaintenance() {
+    void exitManual_backupResidualLeak_forceExits() {
+        // 残留态：备份/优化调度失败遗留（mode active BACKUP 但 running==false）→ /maintenance off 强制退出自愈
         mode.enter(MaintenanceReason.BACKUP);
 
-        String result = service.exitManual();
-
-        assertNotNull(result);
-        assertTrue(result.contains("备份/优化"), "非手动维护退出应提示由任务结束恢复: " + result);
-        assertTrue(mode.isActive());
+        assertNull(service.exitManual());
+        assertFalse(mode.isActive(), "残留态应允许强制退出，避免登录拦截/MOTD 永久维护中");
     }
 
     @Test

@@ -105,7 +105,8 @@ class ServerFeedbackServiceTest extends ServiceTestBase {
     }
 
     @Test
-    void buildMaintenanceMotd_backupWithProgress_showsProgressLine() {
+    void buildMaintenanceMotd_withoutPlaceholders_appendsProgressLine() {
+        // 纯场景文案（不含 {stage}/{percent}/{eta}）+ 有进度 → 追加独立进度行
         MaintenanceConfig maint = new MaintenanceConfig(true, 300L, 5, "备份中", "优化中", "手动维护中", 0L);
         BotConfig bot = new BotConfig("$", null, null);
         when(configs.maintenance()).thenReturn(maint);
@@ -120,10 +121,7 @@ class ServerFeedbackServiceTest extends ServiceTestBase {
 
         Component result = svc.buildMaintenanceMotd();
         String plain = PlainTextComponentSerializer.plainText().serialize(result);
-        assertTrue(plain.contains("备份中"), "backup MOTD 文案: " + plain);
-        assertTrue(plain.contains("区块"), "应包含进度阶段: " + plain);
-        assertTrue(plain.contains("45%"), "应包含进度百分比: " + plain);
-        assertTrue(plain.contains("35秒"), "应包含预计剩余: " + plain);
+        assertEquals("⚠ 维护中\n备份中\n进度：区块 45% 预计剩余 35秒", plain);
     }
 
     @Test
@@ -146,7 +144,8 @@ class ServerFeedbackServiceTest extends ServiceTestBase {
     }
 
     @Test
-    void buildMaintenanceMotd_placeholdersReplaced() {
+    void buildMaintenanceMotd_withPlaceholders_noSeparateProgressLine() {
+        // 场景模板含 {stage}/{percent}/{eta} → 占位符替换进场景文案，不再追加独立进度行（防重复）
         MaintenanceConfig maint =
                 new MaintenanceConfig(true, 300L, 5, "备份 {stage} {percent}% {eta}秒", "优化中", "手动维护中", 0L);
         BotConfig bot = new BotConfig("$", null, null);
@@ -162,6 +161,7 @@ class ServerFeedbackServiceTest extends ServiceTestBase {
 
         Component result = svc.buildMaintenanceMotd();
         String plain = PlainTextComponentSerializer.plainText().serialize(result);
-        assertTrue(plain.contains("备份 区块 45% 35秒"), "应替换 {stage}/{percent}/{eta}: " + plain);
+        // 精确断言：只有场景文案一行（占位符已被替换），无第二行「进度：区块 45% 预计剩余 35秒」重复
+        assertEquals("⚠ 维护中\n备份 区块 45% 35秒", plain);
     }
 }
