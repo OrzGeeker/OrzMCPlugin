@@ -166,6 +166,8 @@ UpdateModule
 - OrzRankEvent — 权限/晋升相关事件
 
 **注册的命令**（通过 Paper LifecycleEvents.COMMANDS + Brigadier `LiteralCommandNode`，替代旧的 CommandMap API）：
+命令树按特性拆到 `assembly/` 下独立的 `XxxCommandRegistrar`（一个文件一个特性），由
+`FeatureCommandRegistrar` 在事件里统一编排；下列命令仍内联于协调器：guide/menu/tpbow、`/bot`、`/orzdebug`、`/maintenance`。
 - `/guide` — 获取玩家指南
 - `/menu` — 打开菜单
 - `/tpbow`（别名 `/tpb`） — 获取传送弓
@@ -380,14 +382,16 @@ command_policies:
 | 模块 | `assembly/BotModule.java` | 机器人消息模块 |
 | 模块 | `assembly/PortalModule.java` | 传送门模块 |
 | 模块 | `assembly/MaintenanceModule.java` | 维护模块 |
-| 模块 | `assembly/FeatureModule.java` | 功能模块（注册命令/事件） |
+| 模块 | `assembly/FeatureModule.java` | 功能模块（集中创建 Feature 服务、注册事件） |
 | 事件 | `events/` | 事件适配层（10 个监听器） |
-| 命令 | `commands/` | 命令适配层（仅保留 OrzConfigCommand，其余命令已内联至 FeatureModule Brigadier 注册） |
+| 命令 | `assembly/FeatureCommandRegistrar.java` | 命令协调器（薄，298 行）：编排各特性命令组 + 未独立化简单命令 |
+| 命令组 | `assembly/*CommandRegistrar.java` | 按特性拆分的命令注册器（portal/blacklist/review/rank/prison/config/update，均实现 `CommandGroup`） |
+| 命令 | `commands/` | 命令适配层（仅保留 OrzConfigCommand） |
 | 配置 | `infra/config/configs/` | 类型化配置记录类（15 个，含 EasyBotConfig） |
 | 配置 | `src/main/resources/easybot.yml` | EasyBot IM Gateway 默认配置 |
 | 适配器 | `infra/bot/OrzEasyBot.java` | EasyBot 网关适配器（WS + HTTP） |
 | 拦截器 | `features/command/binding/` | 命令拦截器（5 个文件：4 拦截器 + CooldownRegistry） |
-| 命令注册 | `assembly/FeatureModule.java` | 通过 Paper LifecycleEvents.COMMANDS + Brigadier 注册（替代 CommandMap API） |
+| 命令注册 | `assembly/FeatureCommandRegistrar.java` | 通过 Paper LifecycleEvents.COMMANDS + Brigadier 注册（替代 CommandMap API），编排 `CommandGroup` 特性组 |
 | 绑定 | `infra/binding/EventBinder.java` | 事件监听器注册 |
 | 端口 | `orzmc-api/src/main/java/.../orzmc/core/ports/` | 纯 Java 接口 |
 | 消息 | `orzmc-api/src/main/java/.../orzmc/core/bot/` | 消息模型 |
