@@ -1,4 +1,4 @@
-package com.jokerhub.paper.plugin.orzmc.features.security;
+package com.jokerhub.paper.plugin.orzmc.features.command.binding;
 
 import com.jokerhub.paper.plugin.orzmc.features.command.CommandFeedbackService;
 import net.kyori.adventure.text.Component;
