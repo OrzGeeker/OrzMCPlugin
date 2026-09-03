@@ -1,4 +1,4 @@
-package com.jokerhub.paper.plugin.orzmc.features.security;
+package com.jokerhub.paper.plugin.orzmc.features.command.binding;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
