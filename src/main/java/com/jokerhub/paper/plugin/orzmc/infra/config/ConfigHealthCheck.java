@@ -1,12 +1,17 @@
 package com.jokerhub.paper.plugin.orzmc.infra.config;
 
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.ChatConfig;
+import com.jokerhub.paper.plugin.orzmc.infra.config.configs.CommandPolicies;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.ExploitHardeningConfig;
+import com.jokerhub.paper.plugin.orzmc.infra.config.configs.IpWhitelist;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.LoginRateLimitConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.MaintenanceConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.PlayerNotifyConfig;
+import com.jokerhub.paper.plugin.orzmc.infra.config.configs.RankColorsConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.SecurityGuardConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.TntConfig;
+import com.jokerhub.paper.plugin.orzmc.infra.config.configs.WhitelistConfig;
+import com.jokerhub.paper.plugin.orzmc.infra.config.configs.WhitelistKickMessage;
 import com.jokerhub.paper.plugin.orzmc.infra.templates.TemplatePlaceholderValidator;
 import java.net.URI;
 import java.util.ArrayList;
@@ -15,8 +20,6 @@ import java.util.Locale;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
-import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 
@@ -43,96 +46,18 @@ public final class ConfigHealthCheck {
             issues.add("config.yml 未加载");
             return;
         }
-        validateWhitelistSection(cfg.getConfigurationSection("whitelist"), issues);
+        WhitelistConfig.validate(cfg.getConfigurationSection("whitelist"), issues);
+        WhitelistKickMessage.validate(cfg.getConfigurationSection("whitelist"), issues);
         MaintenanceConfig.validate(cfg.getConfigurationSection("maintenance"), issues);
         TntConfig.validate(cfg.getConfigurationSection("tnt"), issues);
         PlayerNotifyConfig.validate(cfg.getConfigurationSection("player_notify"), issues);
-        validateGeoIpSection(cfg.getConfigurationSection("geoip"), issues);
-        validateCommandPoliciesSection(cfg.getConfigurationSection("command_policies"), issues);
+        IpWhitelist.validate(cfg.getConfigurationSection("geoip"), issues);
+        CommandPolicies.validate(cfg.getConfigurationSection("command_policies"), issues);
         SecurityGuardConfig.validate(cfg.getConfigurationSection("guard"), issues);
         ChatConfig.validate(cfg.getConfigurationSection("chat"), issues);
         LoginRateLimitConfig.validate(cfg.getConfigurationSection("login_rate_limit"), issues);
         ExploitHardeningConfig.validate(cfg.getConfigurationSection("exploit_hardening"), issues);
-        validateRankColorsSection(cfg.getConfigurationSection("rank_colors"), issues);
-    }
-
-    private static void validateRankColorsSection(ConfigurationSection section, List<String> issues) {
-        if (section == null) {
-            issues.add("建议: config.yml 缺失 rank_colors 配置段，将使用默认配置（Tab 着色默认关闭）");
-            return;
-        }
-        Object en = section.get("enabled");
-        if (en != null && !(en instanceof Boolean)) issues.add("类型错误: rank_colors.enabled 需为布尔值");
-        Object nt = section.get("nametag_enabled");
-        if (nt != null && !(nt instanceof Boolean)) issues.add("类型错误: rank_colors.nametag_enabled 需为布尔值");
-        Object tab = section.get("tab_enabled");
-        if (tab != null && !(tab instanceof Boolean)) issues.add("类型错误: rank_colors.tab_enabled 需为布尔值");
-        String opColor = section.getString("op_color", "");
-        if (!opColor.isBlank() && !isValidRankColor(opColor)) {
-            issues.add("非法: rank_colors.op_color '" + opColor + "' 不是合法命名色或 #RRGGBB");
-        }
-        ConfigurationSection colorsSection = section.getConfigurationSection("colors");
-        if (colorsSection != null) {
-            for (String key : colorsSection.getKeys(false)) {
-                String raw = colorsSection.getString(key, "");
-                if (!raw.isBlank() && !isValidRankColor(raw)) {
-                    issues.add("非法: rank_colors.colors." + key + " '" + raw + "' 不是合法命名色或 #RRGGBB");
-                }
-            }
-        }
-    }
-
-    /** 与 {@code RankColorsConfig.parseColor} 同一接受范围：命名色或 CSS hex（含 #RRGGBB）。 */
-    private static boolean isValidRankColor(String raw) {
-        String trimmed = raw.trim();
-        return NamedTextColor.NAMES.value(trimmed.toLowerCase(Locale.ROOT)) != null
-                || TextColor.fromCSSHexString(trimmed) != null;
-    }
-
-    private static void validateWhitelistSection(ConfigurationSection section, List<String> issues) {
-        if (section == null) {
-            issues.add("config.yml 缺失 whitelist 配置段");
-            return;
-        }
-        Object fw = section.get("force_whitelist");
-        if (!(fw instanceof Boolean)) issues.add("类型错误: whitelist.force_whitelist 需为布尔值");
-        int days = section.getInt("cleanup_inactive_days", 90);
-        if (days <= 0) issues.add("非法: whitelist.cleanup_inactive_days 必须为正数");
-        int ticks = section.getInt("pagination_delay_ticks", 5);
-        if (ticks < 0) issues.add("非法: whitelist.pagination_delay_ticks 不得为负数");
-        ConfigurationSection kickSection = section.getConfigurationSection("kick_message");
-        if (kickSection == null) {
-            issues.add("缺失: whitelist.kick_message 未配置");
-        } else {
-            String title = kickSection.getString("title", "");
-            if (title.isEmpty()) issues.add("缺失: whitelist.kick_message.title 不可为空");
-            List<?> ups = kickSection.getList("ups");
-            if (ups == null || ups.isEmpty()) issues.add("缺失: whitelist.kick_message.ups 至少需要一项");
-        }
-    }
-
-    private static void validateGeoIpSection(ConfigurationSection section, List<String> issues) {
-        if (section == null) {
-            issues.add("config.yml 缺失 geoip 配置段");
-            return;
-        }
-        Object raw = section.get("allow_country_code");
-        if (raw == null) {
-            issues.add("建议: geoip.allow_country_code 未配置，默认允许所有地区");
-        } else if (raw instanceof java.util.List<?> list) {
-            for (Object o : list) {
-                if (o == null) {
-                    issues.add("非法: geoip.allow_country_code 不允许空项");
-                } else {
-                    String code = String.valueOf(o);
-                    if (!code.matches("^[A-Z]{2}$")) {
-                        issues.add("非法: geoip.allow_country_code '" + code + "' 必须为大写两位国家码");
-                    }
-                }
-            }
-        } else {
-            issues.add("类型错误: geoip.allow_country_code 需为列表");
-        }
+        RankColorsConfig.validate(cfg.getConfigurationSection("rank_colors"), issues);
     }
 
     private static void validateAccessRules(FileConfiguration cfg, List<String> issues) {
@@ -189,32 +114,6 @@ public final class ConfigHealthCheck {
                     issues.add("非法: access_rules.player_name_rules 正则无法编译: " + value);
                 }
             }
-        }
-    }
-
-    private static void validateCommandPoliciesSection(ConfigurationSection section, List<String> issues) {
-        if (section == null) {
-            issues.add("config.yml 缺失 command_policies 配置段");
-            return;
-        }
-        for (String key : section.getKeys(false)) {
-            ConfigurationSection s = section.getConfigurationSection(key);
-            if (s == null) {
-                issues.add("非法: command_policies." + key + " 需为对象");
-                continue;
-            }
-            Object cd = s.get("cooldown_secs");
-            if (cd != null) {
-                try {
-                    int val = Integer.parseInt(String.valueOf(cd));
-                    if (val < 0) issues.add("非法: command_policies." + key + ".cooldown_secs 不得为负数");
-                } catch (Exception e) {
-                    issues.add("类型错误: command_policies." + key + ".cooldown_secs 需为数字");
-                }
-            }
-            Object ao = s.get("admin_only");
-            if (ao != null && !(ao instanceof Boolean))
-                issues.add("类型错误: command_policies." + key + ".admin_only 需为布尔值");
         }
     }
 
