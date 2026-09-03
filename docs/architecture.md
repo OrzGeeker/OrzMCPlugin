@@ -234,6 +234,25 @@ OrzServices.assemble(OrzMC)
     - UpdateModule 利用 PlatformModule 创建 UpdateService + UpdateCommandService（HangarClient / BuildInfo）
     - FeatureModule 利用所有模块创建 Feature 服务并注册命令/事件
 
+## AI 智能体编辑路径（改 X → 读 Y）
+
+> 供 AI 编码时按「最小必读集」取上下文，减少无关 token。各包更细锚点见对应 `package-info.java`。
+> 成本规则：先读 package-info（约 10 行）定位，再定向读下表的文件，勿整读全层。
+
+| 想改 | 必读文件（最小集） |
+|---|---|
+| 某特性命令的参数/权限/文案 | `assembly/<Feat>CommandRegistrar.java` + `features/<feat>/` 对应服务 + `features/command/binding/`（拦截器/文案） |
+| 增删一个命令组 | `assembly/FeatureCommandRegistrar.java`（协调器 groups 列表）+ 新建/删除 `assembly/<Feat>CommandRegistrar.java` + 对应 `features/<feat>/` 服务 |
+| **rank/review/prison 任一逻辑** | **三包同读**（`features/rank` + `features/review` + `features/prison`，属同一 LP 权限治理簇，见 package-info）+ `assembly/FeatureModule.java` 接线段 + LP 软依赖（`LuckPermsBootstrap`/`LuckPermsPromoter`/`LuckPermsPrisonStore`/Noop 降级）+ `events/OrzRankEvent`/`OrzRankDisplayEvent`/`OrzPrisonEvent` |
+| 新增/改一个配置字段 | `infra/config/configs/XxxConfig.java`（默认值+解析）+ `infra/config/ConfigHealthCheck.java` 对应 `validateXxxSection`（P2 计划下沉）+ 若需运行时重载则挂 `OrzConfigCommand.setXxxReload`（`FeatureModule.setupEventListeners`） |
+| 改命令冷却/权限策略 | `features/command/binding/`（拦截器链）+ `infra/config/configs/CommandPolicies` + `assembly/BrigadierSupport` |
+| 改 Bot `$` 命令 | `features/botcommands/<Xxx>CommandHandler.java` + 目标 `features/<feat>/` 服务；新增依赖时改 `BotCommandDependencies` + `OrzServices.assemble` 注入段 |
+| 改事件响应 | `events/OrzXxxEvent.java`（薄适配器）+ `features/<feat>/<Feat>EventService.java` |
+| 改启动装配/接线顺序 | `OrzServices.assemble/setupAll` + `assembly/FeatureModule.java` 构造函数（跨特性 DAG，勿乱动次序） |
+| 改群通知/站内消息文案模板 | `src/main/resources/templates.yml` + `features/<feat>/` 的渲染/Notifier + `infra/templates` |
+| 改配置 schema 迁移/旧默认翻转 | `infra/config/ConfigUpgrader.java` + `LegacyDefaultFlips.java` + `DefaultsMerger.java`（版本门控，勿手改存量文件） |
+| 新增一个 feature | 建 `features/<feat>/`（服务 + package-info）→ 需要事件则加 `events/OrzXxxEvent` → 命令则加 `assembly/<Feat>CommandRegistrar` + 注册进协调器 → `FeatureModule` 装配接线 → 配置段/默认/校验 → 测试 |
+
 ## 设计原则
 
 - **分层清晰**：Feature 只编排业务，Infra 提供能力，Events/Commands 仅做转发
