@@ -46,6 +46,11 @@ public final class QqGatewayClient extends ReconnectingGateway {
     /** 心跳安全系数：按 hello 间隔的 0.75 发送（对齐 EasyBot，留出网络抖动余量，防止看门狗误杀）。 */
     private static final double HEARTBEAT_SAFETY = 0.75;
 
+    /** 网关 URL 缓存窗口：/gateway/bot 有频率限制（实测 HTTP 400 code 100017），窗口内复用不重取。 */
+    private static final long GATEWAY_URL_CACHE_MS = 60_000;
+    /** op9 无效会话防抖：距上次处理不足该时长仅清 session，不立即重连（防重连风暴触发平台限频）。 */
+    private static final long OP9_MIN_INTERVAL_MS = 15_000;
+
     private final TokenProvider tokens;
     private final QqGatewayUrlFetcher urlFetcher;
     private final int intents;
@@ -56,6 +61,12 @@ public final class QqGatewayClient extends ReconnectingGateway {
     private final AtomicLong seq = new AtomicLong();
     /** READY 下发的会话 id：具备 + seq>0 时重连走 resume。 */
     private volatile String sessionId;
+    /** 最近成功网关 URL（缓存，限频保护）。 */
+    private volatile String cachedGatewayUrl;
+
+    private volatile long cachedGatewayUrlMs;
+    /** 最近一次 op9 处理时间（防抖）。 */
+    private volatile long lastOp9HandledMs;
 
     /**
      * @param server 服务端日志门面
@@ -118,9 +129,19 @@ public final class QqGatewayClient extends ReconnectingGateway {
             log.warning("[qq] 无可用 access_token，本次建连失败（将退避重试）");
             return null;
         }
+        // /gateway/bot 限频保护（实测 HTTP 400 code 100017）：窗口内复用最近 URL，不重复请求
+        long now = System.currentTimeMillis();
+        String cached = cachedGatewayUrl;
+        if (cached != null && now - cachedGatewayUrlMs < GATEWAY_URL_CACHE_MS) {
+            return cached;
+        }
         QqGatewayUrlFetcher.Result result = urlFetcher.fetch(token);
         return switch (result.status()) {
-            case SUCCESS -> result.url();
+            case SUCCESS -> {
+                cachedGatewayUrl = result.url();
+                cachedGatewayUrlMs = now;
+                yield result.url();
+            }
             case AUTH -> {
                 // token 被平台提前作废：强制重换一次，下次尝试用新 token（换发失败也按退避，防风暴）
                 log.warning("[qq] 网关地址鉴权被拒，强制重换令牌后重试");
@@ -161,10 +182,17 @@ public final class QqGatewayClient extends ReconnectingGateway {
                 reconnectNow();
             }
             case 9 -> {
-                // resume 失败 / 会话无效：清除会话，全量 re-identify
-                log.info("[qq] 收到 op9（无效会话），清除 session 后全量 re-identify");
+                // resume 失败 / 会话无效：清除会话；防抖后立即重连（全量 re-identify）——
+                // 若被平台限频/连续拒绝，过快重连会触发网关 URL 频率限制（实测 HTTP 400 code 100017）
                 sessionId = null;
-                reconnectNow();
+                long now = System.currentTimeMillis();
+                if (now - lastOp9HandledMs >= OP9_MIN_INTERVAL_MS) {
+                    lastOp9HandledMs = now;
+                    log.info("[qq] 收到 op9（无效会话），清除 session 后重连并全量 re-identify");
+                    reconnectNow();
+                } else {
+                    log.warning("[qq] 收到 op9 但距上次处理过近，跳过立即重连（等待连接关闭/退避）");
+                }
             }
             default -> {
                 // op1/op6/op11 等本端发起的帧/心跳回执：无需动作（基类已按入站帧喂活看门狗）
@@ -229,9 +257,11 @@ public final class QqGatewayClient extends ReconnectingGateway {
         String sid = sessionId;
         boolean canResume = sid != null && !sid.isEmpty() && currentSeq > 0;
         JsonObject frame = new JsonObject();
+        // QQ 网关 identify/resume 的 token 字段为鉴权串（QQBot <access_token>，EasyBot 实机验证；裸 token 会被 op9 拒）
+        String gatewayToken = "QQBot " + token;
         if (canResume) {
             JsonObject d = new JsonObject();
-            d.addProperty("token", token);
+            d.addProperty("token", gatewayToken);
             d.addProperty("session_id", sid);
             d.addProperty("seq", currentSeq);
             frame.addProperty("op", 6);
@@ -239,7 +269,7 @@ public final class QqGatewayClient extends ReconnectingGateway {
             log.info("[qq] 发送 resume（session 续传）");
         } else {
             JsonObject d = new JsonObject();
-            d.addProperty("token", token);
+            d.addProperty("token", gatewayToken);
             d.addProperty("intents", intents);
             JsonArray shard = new JsonArray();
             shard.add(0);
