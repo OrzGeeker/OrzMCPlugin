@@ -125,11 +125,9 @@ class ReconnectingGatewayTest {
         try (ServerSocket tmp = new ServerSocket(0)) {
             deadPort = tmp.getLocalPort();
         }
-        AtomicReference<TestWsServer> unused = new AtomicReference<>();
         ReconnectPolicy capped = new ReconnectPolicy(20, 80, 0, 0, 3);
         RecordingListener listener = new RecordingListener();
         gateway = new TestGateway("qq", capped, null, listener, () -> "ws://127.0.0.1:" + deadPort + "/");
-        assert unused.get() == null;
 
         gateway.start();
 
