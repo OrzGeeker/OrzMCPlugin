@@ -122,6 +122,30 @@ class FeishuInboundParserTest {
     }
 
     @Test
+    void parse_atMentionedText_stripsUserPlaceholder() {
+        // 实测：@机器人消息 content.text = "@_user_1 $h"（@ 被飞书转为占位符）——须剥后进命令层
+        byte[] payload = messageEvent("group", "text", sender("ou_abc", "user"), "{\"text\":\"@_user_1 $h\"}");
+        FeishuInboundMessage m = FeishuInboundParser.parse(payload);
+        assertTrue(m != null, "@ 消息应解析");
+        assertEquals("$h", m.text(), "@_user_N 占位符应剥离");
+    }
+
+    @Test
+    void parse_mentionOnlyMessage_dropped() {
+        // 只有 @ 没有实际文本 → 剥离后为空 → 丢弃
+        byte[] payload = messageEvent("group", "text", sender("ou_abc", "user"), "{\"text\":\"@_user_1\"}");
+        assertNull(FeishuInboundParser.parse(payload), "纯 @ 无文本应丢弃");
+    }
+
+    @Test
+    void parse_mentionMidText_keepsSurroundingText() {
+        byte[] payload = messageEvent("group", "text", sender("ou_abc", "user"), "{\"text\":\"你好@_user_1 $w\"}");
+        FeishuInboundMessage m = FeishuInboundParser.parse(payload);
+        assertTrue(m != null);
+        assertEquals("你好 $w", m.text(), "句中 @ 占位符剥离、两侧文本保留");
+    }
+
+    @Test
     void parse_nullOrEmpty_dropped() {
         assertNull(FeishuInboundParser.parse(null));
         assertNull(FeishuInboundParser.parse(new byte[0]));
