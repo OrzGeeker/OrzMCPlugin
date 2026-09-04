@@ -105,7 +105,7 @@ class QqGatewayClientTest {
         List<String> identifies = framesWith(conn, "\"op\":2");
         assertEquals(1, identifies.size(), "仅应在 hello 后发一次 identify: " + conn.receivedText());
         String identify = identifies.get(0);
-        assertTrue(identify.contains("\"token\":\"tok-0\""), identify);
+        assertTrue(identify.contains("\"token\":\"QQBot tok-0\""), identify);
         assertTrue(identify.contains("\"intents\":" + INTENTS), identify);
         assertTrue(identify.contains("\"shard\":[0,1]"), identify);
         assertEquals(State.OPEN, client.state());
@@ -180,7 +180,7 @@ class QqGatewayClientTest {
         conn1.sendText(HELLO);
         awaitTrue(
                 "重连 identify 携带新令牌",
-                () -> framesWith(conn1, "\"op\":2").stream().anyMatch(f -> f.contains("\"token\":\"fresh-1\"")));
+                () -> framesWith(conn1, "\"op\":2").stream().anyMatch(f -> f.contains("\"token\":\"QQBot fresh-1\"")));
         assertEquals(State.OPEN, client.state());
         assertEquals(0, listener.fatal.get());
     }
@@ -223,7 +223,7 @@ class QqGatewayClientTest {
                 () -> framesWith(conn1, "\"op\":6").stream()
                         .anyMatch(f -> f.contains("\"session_id\":\"sid-R\"")
                                 && f.contains("\"seq\":2")
-                                && f.contains("\"token\":\"tok-0\"")));
+                                && f.contains("\"token\":\"QQBot tok-0\"")));
         assertFalse(
                 conn1.receivedText().stream().anyMatch(f -> f.contains("\"op\":2")),
                 "resume 成功前不应发 identify: " + conn1.receivedText());
@@ -249,6 +249,50 @@ class QqGatewayClientTest {
         assertFalse(
                 conn1.receivedText().stream().anyMatch(f -> f.contains("\"op\":6")),
                 "会话已清除，不应再 resume: " + conn1.receivedText());
+    }
+
+    @Test
+    void op9_withinDebounceWindow_skipsImmediateReconnect() throws Exception {
+        RecordingListener listener = new RecordingListener();
+        client = startClient(new FakeTokens("tok-0"), null, listener);
+        TestWsServer.Conn conn0 = helloThenIdentify(listener);
+        conn0.sendText(
+                "{\"op\":0,\"s\":1,\"t\":\"READY\",\"d\":{\"version\":1,\"session_id\":\"sid-D\",\"user\":{},\"shard\":[0,1]}}");
+
+        conn0.sendText("{\"op\":9}"); // 第一次：清 session + 立即重连
+        awaitTrue("首次 op9 触发重连", () -> listener.connected.get() >= 2);
+        int connsAfterFirst = server.connections().size();
+
+        TestWsServer.Conn conn1 = server.connections().get(1);
+        conn1.sendText(HELLO);
+        awaitTrue("重连后 identify", () -> framesWith(conn1, "\"op\":2").size() == 1);
+        conn1.sendText("{\"op\":9}"); // 15s 防抖窗口内的第二次：不应立即重连
+        Thread.sleep(700);
+        assertEquals(connsAfterFirst, server.connections().size(), "防抖窗口内 op9 不应触发立即重连");
+    }
+
+    @Test
+    void gatewayUrl_cachedWithinWindow_reducesFetches() throws Exception {
+        server = TestWsServer.start();
+        RecordingListener listener = new RecordingListener();
+        AtomicInteger fetches = new AtomicInteger();
+        client = new QqGatewayClient(
+                silentLogger(),
+                new ReconnectPolicy(30, 120, 0, 500, 0),
+                new FakeTokens("tok-0"),
+                token -> {
+                    fetches.incrementAndGet();
+                    return QqGatewayUrlFetcher.Result.success("ws://127.0.0.1:" + server.port() + "/");
+                },
+                null,
+                listener);
+        client.start();
+        awaitTrue("首次建连", () -> listener.connected.get() >= 1);
+        assertEquals(1, fetches.get());
+
+        server.connections().get(0).closeSocket(); // 断线重连：缓存窗口内不应重复请求 /gateway/bot
+        awaitTrue("自动重连", () -> listener.connected.get() >= 2);
+        assertEquals(1, fetches.get(), "60s 缓存窗口内重连复用网关 URL");
     }
 
     // =====================================================================
