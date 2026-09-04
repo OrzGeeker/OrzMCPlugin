@@ -51,7 +51,9 @@ jobs:
               exit 1
             fi
             case "$state" in
-              OPEN:CLEAN)
+              OPEN:CLEAN|OPEN:UNSTABLE)
+                # UNSTABLE 视为可合：poller 自身 job 作为非必选 check pending 时 GitHub 报 UNSTABLE
+                # （必选 build/folia-smoke 已绿且失败已在上方拦截），此时直接尝试合并
                 if gh pr merge "$PR_NUMBER" --squash; then
                   echo "✅ 里程碑已自动合并并触发发布"
                   exit 0
@@ -59,8 +61,8 @@ jobs:
                   echo "⚠️ 合并请求被拒绝（可能并发变更），人工检查"
                   exit 1
                 fi ;;
-              OPEN:BLOCKED|OPEN:DRAFT|OPEN:BEHIND|UNKNOWN|OPEN:UNKNOWN|OPEN:UNSTABLE)
-                # 检查在跑/瞬时未就绪/落后 base：继续等待（UNSTABLE 亦重试，必选检查失败已在上方拦截）
+              OPEN:BLOCKED|OPEN:DRAFT|OPEN:BEHIND|UNKNOWN|OPEN:UNKNOWN)
+                # 检查在跑/瞬时未就绪/落后 base：继续等待
                 sleep 20 ;;
               MERGED:*)
                 echo "✅ PR 已被合并（并发 run 完成）"
