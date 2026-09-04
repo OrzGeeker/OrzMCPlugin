@@ -530,8 +530,8 @@ public abstract class ReconnectingGateway {
     private void closeAndReconnect(boolean immediate) {
         WebSocketClient toClose;
         synchronized (lock) {
-            if (state == State.STOPPED || state == State.FATAL) {
-                return;
+            if (state == State.STOPPED || state == State.FATAL || state == State.IDLE) {
+                return; // 未启动/已终止：无事可做
             }
             if (state == State.CONNECTING && currentWs != null) {
                 return; // 尝试中：鉴权失败会由服务端 close 触发，无需主动干预
