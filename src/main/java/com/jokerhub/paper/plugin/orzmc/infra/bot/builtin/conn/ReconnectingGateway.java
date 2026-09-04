@@ -78,7 +78,12 @@ public abstract class ReconnectingGateway {
     private ScheduledFuture<?> reconnectFuture;
     private ScheduledFuture<?> heartbeatFuture;
     private volatile long heartbeatIntervalMs;
-    private volatile Supplier<String> heartbeatFactory;
+    private volatile HeartbeatPump heartbeatPump;
+
+    /** 心跳发送器：文本（QQ op1 JSON）或二进制（飞书 protobuf ping）各一实现，帧类型保持平台正确。 */
+    private interface HeartbeatPump {
+        void send(WebSocketClient ws);
+    }
 
     /**
      * @param name 平台标识（如 "qq"），用于日志与调度线程命名
@@ -190,8 +195,11 @@ public abstract class ReconnectingGateway {
     /** 连接已建立（每次成功建连都会回调，含自动重连）：子类在此发送 identify 帧、根据 hello 配置心跳等。 */
     protected abstract void onGatewayOpen();
 
-    /** 收到一条文本帧（opcode 分发由子类完成）。 */
+    /** 收到一条文本帧（opcode 分发由子类完成）。QQ 等文本协议实现。 */
     protected abstract void onGatewayPayload(String payload);
+
+    /** 收到一条二进制帧（如飞书 protobuf 帧）。默认为空实现，二进制平台子类覆写。 */
+    protected void onGatewayPayload(byte[] payload) {}
 
     /** 连接已关闭（含建连失败的 close）。子类可在此识别鉴权关闭码并调用 {@link #onAuthFailure()} / {@link #reconnectNow()}。 */
     protected void onGatewayClosed(int code, String reason, boolean remote) {}
@@ -214,6 +222,20 @@ public abstract class ReconnectingGateway {
             }
         } else {
             log.warning("[" + name + "] 未连接，丢弃发送: " + clip(payload, 120));
+        }
+    }
+
+    /** 发送二进制帧（飞书 protobuf 等）；未连接时丢弃并告警。 */
+    protected final void sendBytes(byte[] payload) {
+        WebSocketClient ws = currentWs;
+        if (ws != null && ws.isOpen()) {
+            try {
+                ws.send(java.nio.ByteBuffer.wrap(payload));
+            } catch (Exception e) {
+                log.warning("[" + name + "] WS 二进制发送失败: " + e);
+            }
+        } else {
+            log.warning("[" + name + "] 未连接，丢弃二进制发送");
         }
     }
 
@@ -256,18 +278,43 @@ public abstract class ReconnectingGateway {
         }
     }
 
-    /** 配置协议心跳：每 {@code intervalMs} 发送一帧；连续 3 个周期无任何入站帧则强制断开触发重连。intervalMs &lt;= 0 视为关闭心跳。 */
+    /** 配置协议心跳（文本帧，QQ）：每 {@code intervalMs} 发送一帧；连续 3 个周期无任何入站帧则强制断开触发重连。intervalMs &lt;= 0 视为关闭心跳。 */
     protected final void configureHeartbeat(long intervalMs, Supplier<String> payloadFactory) {
         if (intervalMs <= 0 || payloadFactory == null) {
             disableHeartbeat();
             return;
         }
+        configureHeartbeatPump(intervalMs, ws -> {
+            try {
+                ws.send(payloadFactory.get());
+            } catch (Exception e) {
+                log.warning("[" + name + "] 心跳文本发送失败: " + e);
+            }
+        });
+    }
+
+    /** 配置协议心跳（二进制帧，飞书 protobuf ping）：语义同上（静默看门狗对二进制入站同样生效）。 */
+    protected final void configureHeartbeatBytes(long intervalMs, Supplier<byte[]> payloadFactory) {
+        if (intervalMs <= 0 || payloadFactory == null) {
+            disableHeartbeat();
+            return;
+        }
+        configureHeartbeatPump(intervalMs, ws -> {
+            try {
+                ws.send(java.nio.ByteBuffer.wrap(payloadFactory.get()));
+            } catch (Exception e) {
+                log.warning("[" + name + "] 心跳二进制发送失败: " + e);
+            }
+        });
+    }
+
+    private void configureHeartbeatPump(long intervalMs, HeartbeatPump pump) {
         synchronized (lock) {
             if (state == State.STOPPED || state == State.FATAL) {
                 return;
             }
             heartbeatIntervalMs = intervalMs;
-            heartbeatFactory = payloadFactory;
+            heartbeatPump = pump;
             if (heartbeatFuture != null) {
                 heartbeatFuture.cancel(false);
             }
@@ -280,7 +327,7 @@ public abstract class ReconnectingGateway {
     protected final void disableHeartbeat() {
         synchronized (lock) {
             heartbeatIntervalMs = 0;
-            heartbeatFactory = null;
+            heartbeatPump = null;
             cancelHeartbeatLocked();
         }
     }
@@ -349,6 +396,14 @@ public abstract class ReconnectingGateway {
             public void onMessage(String message) {
                 lastReceivedMs = System.currentTimeMillis();
                 ReconnectingGateway.this.onGatewayPayload(message);
+            }
+
+            @Override
+            public void onMessage(java.nio.ByteBuffer message) {
+                lastReceivedMs = System.currentTimeMillis();
+                byte[] bytes = new byte[message.remaining()];
+                message.get(bytes);
+                ReconnectingGateway.this.onGatewayPayload(bytes);
             }
 
             @Override
@@ -578,21 +633,16 @@ public abstract class ReconnectingGateway {
     private void heartbeatTick() {
         WebSocketClient ws;
         long intervalMs;
-        Supplier<String> factory;
+        HeartbeatPump pump;
         synchronized (lock) {
             ws = currentWs;
             intervalMs = heartbeatIntervalMs;
-            factory = heartbeatFactory;
+            pump = heartbeatPump;
         }
-        if (ws == null || !ws.isOpen() || intervalMs <= 0 || factory == null) {
+        if (ws == null || !ws.isOpen() || intervalMs <= 0 || pump == null) {
             return;
         }
-        try {
-            ws.send(factory.get());
-        } catch (Exception e) {
-            log.warning("[" + name + "] 心跳发送失败: " + e);
-            return;
-        }
+        pump.send(ws);
         long silentMs = intervalMs * SILENT_CYCLES;
         if (System.currentTimeMillis() - lastReceivedMs > silentMs) {
             log.warning("[" + name + "] 心跳静默超时（" + silentMs + "ms 无任何入站帧），强制断开触发重连");
