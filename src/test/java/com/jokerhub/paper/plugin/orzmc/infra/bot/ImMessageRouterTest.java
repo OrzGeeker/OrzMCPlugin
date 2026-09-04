@@ -1,6 +1,7 @@
 package com.jokerhub.paper.plugin.orzmc.infra.bot;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.jokerhub.paper.plugin.orzmc.core.bot.MessageEnvelope.TargetType;
@@ -74,5 +75,22 @@ class ImMessageRouterTest {
                 conv(true, "c:admin", "", ""));
 
         assertEquals(List.of("a:player", "b:player", "c:admin"), ImMessageRouter.publicTargets(all));
+    }
+
+    @Test
+    void isInboundAllowed_onlyWithinEnabledSessionTargets() {
+        ImConversation all = conv(true, "qq:admin", "qq:player", "qq:dm");
+
+        assertTrue(ImMessageRouter.isInboundAllowed(all, "qq:admin"));
+        assertTrue(ImMessageRouter.isInboundAllowed(all, "qq:player"));
+        assertTrue(ImMessageRouter.isInboundAllowed(all, "qq:dm"));
+        assertFalse(ImMessageRouter.isInboundAllowed(all, "qq:unknown-chat"));
+        assertFalse(ImMessageRouter.isInboundAllowed(all, null));
+    }
+
+    @Test
+    void isInboundAllowed_disabledOrNullConversationRejects() {
+        assertFalse(ImMessageRouter.isInboundAllowed(conv(false, "qq:admin", "", ""), "qq:admin"));
+        assertFalse(ImMessageRouter.isInboundAllowed(null, "qq:admin"));
     }
 }
