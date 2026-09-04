@@ -253,6 +253,28 @@ OrzServices.assemble(OrzMC)
 | 改配置 schema 迁移/旧默认翻转 | `infra/config/ConfigUpgrader.java` + `LegacyDefaultFlips.java` + `DefaultsMerger.java`（版本门控，勿手改存量文件） |
 | 新增一个 feature | 建 `features/<feat>/`（服务 + package-info）→ 需要事件则加 `events/OrzXxxEvent` → 命令则加 `assembly/<Feat>CommandRegistrar` + 注册进协调器 → `FeatureModule` 装配接线 → 配置段/默认/校验 → 测试 |
 
+## 模块边界与已知取舍
+
+> 完整路线图问题清单见 [roadmap/code-quality-roadmap.md](roadmap/code-quality-roadmap.md)；本文只记与「分层理解」直接相关的边界规则与决策。
+
+### orzmc-api 子模块边界（逻辑包跨模块分裂）
+
+逻辑包 `com.jokerhub.paper.plugin.orzmc.core.*` 实际分处两个模块：
+
+| 位置 | 内容 | 约束 |
+|:--|:--|:--|
+| `orzmc-api/`（独立 artifact，发布 Maven Local） | 纯 Java 资产：`core/bot`（MessageEnvelope/BotInboundHandler）、`core/ports/health`、`core/ports/server`（ServerLogger/ServerScheduler）、`assembly`（ServiceModule/Initializable） | **零 Bukkit import**（A4 已闭环并有 grep 核验）；可独立发布 |
+| 主模块 `src/.../core/ports/` | Bukkit 绑定端口：`server/ServerAccess`（返回 `org.bukkit.Server`）、`portal/*`（含 `Location`/`Player` 等）、`config/TypedConfigProvider` | 无法入纯模块，留在主模块 |
+
+**判据**：可发布为 SDK 的**稳定**资产 → orzmc-api；绑定 Bukkit 类型或**高频演进**的资产 → 主模块。典型对照：消息模型/调度端口稳定 → 已入 orzmc-api；配置模型每周演进（近 30 commit 改 50 次）→ 刻意留在 infra。
+
+### 已知取舍（决策记录）
+
+| # | 取舍 | 决策 | 原因 |
+|:--|:--|:--|:--|
+| A5 | `core/ports/config/TypedConfigProvider` 反向 import `infra.config.configs.*`（19 个记录类型） | **保留现状**（2026-09-03 复核） | 配置记录依赖 Bukkit `ConfigurationSection` 解析无法入纯 api；33+ 调用点直连 infra 记录已是现实；纯化将回退「校验随 schema 落位 record」（#250/#251）成果。缓解：建议补一条依赖方向守卫测试禁止 `core → infra` import，防止扩散 |
+| A7 | `enableForceWhitelist` 无条件覆盖服务器 gamemode | **待产品确认** | false 分支应「不触碰运维手动配置」还是「显式关闭」？主路径（默认 true）不受影响，等实际事故证据再改 |
+
 ## 设计原则
 
 - **分层清晰**：Feature 只编排业务，Infra 提供能力，Events/Commands 仅做转发
