@@ -79,11 +79,16 @@ public final class FeishuInboundParser {
             return null;
         }
         String contentText = extractText(text(message, "content"));
-        if (contentText == null || contentText.isEmpty() || contentText.length() > MAX_TEXT_CHARS) {
+        if (contentText == null || contentText.isEmpty()) {
             return null;
         }
-        String trimmed = contentText.trim();
+        // 剥离飞书 @ 占位符（@机器人/@成员在 text 中为 {@code @_user_N}，非用户真实输入）后 trim——
+        // 否则 {@code @机器人 $h} 文本为 "@_user_1 $h" 无法以 $ 前缀进命令层（实测）
+        String trimmed = contentText.replaceAll("@_user_\\d+", "").trim();
         if (trimmed.isEmpty()) {
+            return null;
+        }
+        if (trimmed.length() > MAX_TEXT_CHARS) {
             return null;
         }
         String senderId = resolveSenderId(sender);
