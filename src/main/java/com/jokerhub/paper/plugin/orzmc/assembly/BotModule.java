@@ -33,6 +33,7 @@ public final class BotModule implements ServiceModule {
         // Phase C: 创建 BotMessageService（以 BotCommandService 作为 BotInboundHandler）
         this.botMessageService = BotMessageServiceProvider.create(
                 platform.serverFacade(),
+                platform.serverFacade(), // 同实例：ServerLogger + ServerScheduler（builtin 入站 R12 调度用）
                 platform.configService(),
                 platform.throttledLogger(),
                 botCommandService,
