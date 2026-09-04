@@ -84,6 +84,19 @@ class BotMessageServiceProviderTest {
     }
 
     @Test
+    void builtinBackend_withUsableFeishu_selectsBuiltinDriver() {
+        // QQ 未配、飞书凭据齐备 → builtin 应启用（批次4：任一平台可用即可，逐平台 reconcile）
+        YamlConfiguration yaml = new YamlConfiguration();
+        yaml.set("backend", "builtin");
+        yaml.set("platforms.feishu.enabled", true);
+        yaml.set("platforms.feishu.app_id", "cli-fs");
+        yaml.set("platforms.feishu.app_secret", "secret-fs");
+        when(configService.getConfig("im")).thenReturn(yaml);
+
+        assertTrue(create() instanceof BuiltinImDriver);
+    }
+
+    @Test
     void invalidBackend_fallsBackToEasybotDriver() {
         backend("hybrid");
 
