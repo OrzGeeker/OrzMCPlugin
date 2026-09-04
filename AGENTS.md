@@ -89,13 +89,9 @@ OrzMC/
 | Push → main（且含代码改动） | `{version}-dev.{GITHUB_RUN_NUMBER}` | beta | beta | Dev 快照 |
 | Push tag `1.0.0` | `{version}`（纯 SemVer） | release | release | 正式发布 + GitHub Release |
 
-- **main 冻结 + 里程碑发布**：日常 PR 一律合 `develop`（CI 照跑，**develop 不触发发布**）；`main` 只承载
-  **owner 验收通过的里程碑**（develop→main 合并）与经 owner 批准的紧急热修复——每次并 main = 一次 beta，
-  让 beta 对应「已验收功能集」而非逐个中间提交；
-  **里程碑自动合并（GitHub 原生 auto-merge）**：里程碑 PR（base=`main`、head=`develop`）上一次性执行
-  `gh pr merge <编号> --auto --squash`（或 UI 勾选 Enable auto-merge）——GitHub 在分支保护要求的
-  CI（build+folia-smoke）绿后自动合并并触发发布，无需轮询脚本/人工盯 CI；
-  非 develop→main 的 main PR（如热修复/纯文档）不自动合并；
+- **版本语义**：beta =「已验收功能集」——push main（含代码改动）一次 = 1 个 beta；develop 永不发布；
+  纯文档/CI/流程改动（`docs/**`、`*.md`、`.github/**` 等）被 paths-ignore 跳过发布；tag → release。
+  分支模型与 feature/bugfix/hotfix/里程碑/发版完整流程见「开发工作流与发布」一节。
 - **纯文档/CI/流程改动不发版**：`publish.yml` 对 `docs/**`、`*.md`、`.github/**` 等路径改动跳过发布
   （docs PR 直接合 main 也不会产生 beta）；
 - Tag 使用严格 SemVer，**不加 `v` 前缀**。本地构建产物为 `{version}-dev`，PR 构建产物为 `{version}-pr.{PR}.{RUN}`。
@@ -140,6 +136,49 @@ OrzMC/
 - orzdebug 控制台命令**只回显日志、不发群**，无法模拟群用户命令。
 - 测试服验证方法论（bot 脚本、RCON、投递查询、重启流程）见 `docs/dev/folia-luckperms-gotchas.md` §6。
 
+## 开发工作流与发布（2026-09-04 定稿，仓库级规范）
+
+**分支三轨**
+
+```text
+main（冻结）── 仅 owner 验收的里程碑（develop→main）与批准的热修复
+develop（默认分支）── 日常开发集散地：PR 全走这里；永不直接发布
+feature|fix|hotfix/<主题> ── 临时分支，从对应基线拉出，PR 合并后删除
+```
+
+| 场景 | 拉分支基线 | PR base | 合并方式 | 发布 |
+|------|-----------|---------|---------|------|
+| feature | `origin/develop` | develop | squash | 不发布 |
+| bugfix | `origin/develop` | develop | squash | 不发布 |
+| hotfix（owner 批准） | `origin/main` | main | squash（**无 auto-merge**，owner 手动合） | 1 个 beta |
+| 里程碑发布 | —（PR head=develop） | main | `gh pr merge <n> --auto --squash`，CI 绿自动合 | 含代码 → 1 个 beta |
+| 正式版本 | — | — | 打 SemVer tag | release 双平台 + GitHub Release |
+
+**标准流程**
+
+- **feature / bugfix**：`git fetch origin develop && git checkout -b feature/<主题> origin/develop` → 实现（本地
+  `./gradlew spotlessApply && ./gradlew test` 全绿）→ push → PR base=develop → CI（check + folia-smoke）绿 →
+  squash 合并。多个 PR 在 develop 聚合，等里程碑统一验收。
+- **里程碑发布（一次 = 一个 beta）**：owner 在 develop 聚合态验收 → 开 PR（base=main、head=develop）→ 执行
+  `gh pr merge <编号> --auto --squash`（须用个人 token；Actions 内 GITHUB_TOKEN 无法 enable auto-merge）→
+  GitHub 原生 auto-merge 在分支保护的 build/folia-smoke 绿后自动 squash 合并 → push main 触发 publish：
+  含代码改动 → `{version}-dev.{run}` beta；纯 docs/`*.md`/`.github` 改动被 paths-ignore 跳过不发版。
+- **hotfix**：仅 owner 批准（线上紧急）。从 `origin/main` 拉 `hotfix/<主题>` → PR base=main（不自动合并，
+  owner 手动 squash，同样产生 1 个 beta）→ **合后必须把 main 并回 develop**（PR head=main base=develop），
+  保证后续开发基线含该修复。
+- **正式发版**：owner 打 SemVer tag（如 `1.0.25`，不加 `v`）→ tag 触发：完整 `./gradlew check` →
+  Hangar/Modrinth release → GitHub Release → 版本号自增 commit 回 main。
+
+**门禁（GitHub 强制）**：main 与 develop 各有 ruleset = PR 必合（0 审批）+ 必选检查 build/folia-smoke +
+禁强推/删除；默认分支 = develop；仓库 Allow auto-merge 已开。
+
+**铁律**
+
+- 禁止直接 push main/develop；一切改动经 PR（squash 合并）。
+- 本地动分支前先 `git reset --hard origin/<基线>`，防止脏工作区把错误内容带进 PR（#286/#290 教训：
+  错误树被 squash 合入 remote）。任何分支操作后核验 `git ls-tree`/`git diff origin/<基线>` 再开 PR。
+- beta 只对应「验收过的功能集」；纯文档/CI/流程改动合 main 不发版，无需为「怕发版」而卡文档 PR。
+
 ## 多 AI Agent 协作约定（不同厂商工具交叉使用）
 
 本仓库支持 Claude Code / Codex / Gemini CLI / Cursor / Cline 等**任意厂商 AI agent 工具**协作迭代。共同遵守：
@@ -147,11 +186,9 @@ OrzMC/
 1. **单一事实源**：所有仓库指引只维护本文件（AGENTS.md）。`CLAUDE.md` / `GEMINI.md` / `.cursor/rules/` 是桥接入口，内容一律引用本文件。修改指引只改 AGENTS.md；详细案例写 `docs/dev/` 并被本文件引用。
 2. **动手前必读**：任何 agent 在改代码前，先读 AGENTS.md（自动加载）+ 涉及模块的 `docs/` 文档；不熟悉 Folia 线程/LP 集成必须先读 `docs/dev/folia-luckperms-gotchas.md`。
 3. **开发流程**（仓库级规范，所有 agent 遵守）：
-   - **分支模型（2026-09-04 起）**：`main` 冻结 = 仅 owner 验收的里程碑与批准的热修复；
-     日常开发分支一律从 **`develop`** 拉出（`feature/<主题>` / `fix/<主题>`），PR 目标 base=`develop`，
-     squash 合并，**禁止直接 push `main` 或 `develop`**；功能批次在 develop 聚合、验收通过后由 owner
-     合 develop→main（一次合并 = 一次 beta，见「版本号与发布规则」）；纯文档/CI 改动可直接 PR 合 main
-     （publish 已按路径跳过，不发版）；
+   - **分支与提交流程**：完整规范见「开发工作流与发布」一节。要点：日常分支一律从 `origin/develop` 拉出
+     （`feature/<主题>` / `fix/<主题>`），PR 目标 base=`develop`，squash 合并，**禁止直接 push `main`/`develop`**；
+     纯文档/CI 改动可直接 PR 合 main（publish 已按路径跳过，不发版）；
    - CI 门禁：PR 必须 CI 绿（`./gradlew check`：spotless + test + integrationTest + shadowJar；
      PR→develop 与 PR→main 同样要求）；
    - 本地提交前：`./gradlew spotlessApply && ./gradlew test` 全绿。
