@@ -86,6 +86,7 @@ public final class TestWsServer implements AutoCloseable {
     public final class Conn {
         private final Socket socket;
         private final List<String> received = new CopyOnWriteArrayList<>();
+        private final List<byte[]> receivedBinary = new CopyOnWriteArrayList<>();
         private final Thread reader;
 
         private Conn(Socket socket) {
@@ -102,9 +103,19 @@ public final class TestWsServer implements AutoCloseable {
             return received;
         }
 
+        /** 客户端发来的二进制帧负载（去掩码后原始字节）。 */
+        public List<byte[]> receivedBinary() {
+            return receivedBinary;
+        }
+
         /** 服务端→客户端发文本帧（不掩码）。 */
         public void sendText(String text) {
             writeFrame(0x1, text.getBytes(StandardCharsets.UTF_8));
+        }
+
+        /** 服务端→客户端发二进制帧（不掩码）。 */
+        public void sendBinary(byte[] payload) {
+            writeFrame(0x2, payload);
         }
 
         /** 服务端主动 close 帧（指定 code），随后关闭 TCP。 */
@@ -206,6 +217,11 @@ public final class TestWsServer implements AutoCloseable {
                                 sendText("ack");
                             }
                         }
+                        case 0x2 -> {
+                            byte[] copy = new byte[payload.length];
+                            System.arraycopy(payload, 0, copy, 0, payload.length);
+                            receivedBinary.add(copy);
+                        }
                         case 0x8 -> {
                             if (payload.length >= 2) {
                                 writeFrame(0x8, payload);
@@ -214,7 +230,7 @@ public final class TestWsServer implements AutoCloseable {
                         }
                         case 0x9 -> writeFrame(0xA, payload); // ping → pong
                         default -> {
-                            // 0x0 续帧 / 0xA pong / 其它：忽略（测试客户端均为单文本帧）
+                            // 0x0 续帧 / 0xA pong / 其它：忽略
                         }
                     }
                 }
