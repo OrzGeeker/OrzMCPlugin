@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### 📝 文档
+- **QQ builtin 接入操作手册定稿（真机验收版）**：`features.md` §2.6 重构为分阶段跟随式手册（0 概念速览 / 阶段 A 平台侧 / B 插件配置 / C 会话发现与绑定 / D 验收清单），每阶段附期望日志与完成标志；补 QQ 平台两项必需消息权限（群内全部消息、主动发言）与真机踩坑排查表；明确「改 im.yml 需重启、bind 即时生效」的生效边界
 - **IM 双通道用户指南**：`features.md` 新增 §2.6 builtin 内置直连配置指南（backend 切换/im.yml 凭据/`/config im` 命令/QQ 会话值/出站域名放行清单 R11/能力边界），§2.1 与 §2.5 改述双通道语义（文档纪律：行为/配置变更与代码同批）
 - **文档结构重组**：新增 [docs/README.md](docs/README.md) 文档导航（按读者角色 + 时效组织）；历史快照/验收/已完结路线图统一归档 `docs/reports/`（9 份，逐份加「状态：归档」头）；`code-quality-roadmap.md` 移入 `docs/roadmap/`；`commercialization.md`（商业策略）移出工作树（PUBLIC 仓库不放经营内容，可经 git 历史恢复）
 - **内容治理**：`features.md` 补齐 §5.5 危险命令拦截 / §5.6 聊天反垃圾 / §5.7 进服限流 / §5.8 漏洞加固 / §15.7 坐牢治理（prison）章节，修正 GeoIP 失败策略表述（默认 fail-close）；`quality-testing-plan.md` 功能清单去重收敛至 features.md、e2e 用例清单与实现对齐；文档与代码数量漂移修正（配置记录类 20/15→23）
