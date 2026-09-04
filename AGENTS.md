@@ -92,8 +92,9 @@ OrzMC/
 - **main 冻结 + 里程碑发布**：日常 PR 一律合 `develop`（CI 照跑，**develop 不触发发布**）；`main` 只承载
   **owner 验收通过的里程碑**（develop→main 合并）与经 owner 批准的紧急热修复——每次并 main = 一次 beta，
   让 beta 对应「已验收功能集」而非逐个中间提交；
-  **里程碑自动合并**：里程碑 PR（base=`main`、head=`develop`）由 `auto-merge-milestone.yml` 自动 enable
-  auto-merge（squash）——CI（build+folia-smoke）绿后 GitHub 自动合并并触发发布，无需人工点合并；
+  **里程碑自动合并（GitHub 原生 auto-merge）**：里程碑 PR（base=`main`、head=`develop`）上一次性执行
+  `gh pr merge <编号> --auto --squash`（或 UI 勾选 Enable auto-merge）——GitHub 在分支保护要求的
+  CI（build+folia-smoke）绿后自动合并并触发发布，无需轮询脚本/人工盯 CI；
   非 develop→main 的 main PR（如热修复/纯文档）不自动合并；
 - **纯文档/CI/流程改动不发版**：`publish.yml` 对 `docs/**`、`*.md`、`.github/**` 等路径改动跳过发布
   （docs PR 直接合 main 也不会产生 beta）；
