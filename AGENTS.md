@@ -86,10 +86,15 @@ OrzMC/
 
 | 事件 | 版本号格式 | Hangar Channel | Modrinth Type | 目标 |
 |------|-----------|---------------|---------------|------|
-| Push → main | `{version}-dev.{GITHUB_RUN_NUMBER}` | beta | beta | Dev 快照 |
+| Push → main（且含代码改动） | `{version}-dev.{GITHUB_RUN_NUMBER}` | beta | beta | Dev 快照 |
 | Push tag `1.0.0` | `{version}`（纯 SemVer） | release | release | 正式发布 + GitHub Release |
 
-Tag 使用严格 SemVer，**不加 `v` 前缀**。本地构建产物为 `{version}-dev`，PR 构建产物为 `{version}-pr.{PR}.{RUN}`。
+- **main 冻结 + 里程碑发布**：日常 PR 一律合 `develop`（CI 照跑，**develop 不触发发布**）；`main` 只承载
+  **owner 验收通过的里程碑**（develop→main 合并）与经 owner 批准的紧急热修复——每次并 main = 一次 beta，
+  让 beta 对应「已验收功能集」而非逐个中间提交；
+- **纯文档/CI/流程改动不发版**：`publish.yml` 对 `docs/**`、`*.md`、`.github/**` 等路径改动跳过发布
+  （docs PR 直接合 main 也不会产生 beta）；
+- Tag 使用严格 SemVer，**不加 `v` 前缀**。本地构建产物为 `{version}-dev`，PR 构建产物为 `{version}-pr.{PR}.{RUN}`。
 
 ### 关键设计决策
 
@@ -138,11 +143,16 @@ Tag 使用严格 SemVer，**不加 `v` 前缀**。本地构建产物为 `{versio
 1. **单一事实源**：所有仓库指引只维护本文件（AGENTS.md）。`CLAUDE.md` / `GEMINI.md` / `.cursor/rules/` 是桥接入口，内容一律引用本文件。修改指引只改 AGENTS.md；详细案例写 `docs/dev/` 并被本文件引用。
 2. **动手前必读**：任何 agent 在改代码前，先读 AGENTS.md（自动加载）+ 涉及模块的 `docs/` 文档；不熟悉 Folia 线程/LP 集成必须先读 `docs/dev/folia-luckperms-gotchas.md`。
 3. **开发流程**（仓库级规范，所有 agent 遵守）：
-   - main 分支冻结：开发一律在 `feature/<主题>` 或 `fix/<主题>` 分支，经 PR 合并，**禁止直接 push main**。
-   - CI 门禁：PR 必须 CI 绿（`./gradlew check`：spotless + test + integrationTest + shadowJar）。
+   - **分支模型（2026-09-04 起）**：`main` 冻结 = 仅 owner 验收的里程碑与批准的热修复；
+     日常开发分支一律从 **`develop`** 拉出（`feature/<主题>` / `fix/<主题>`），PR 目标 base=`develop`，
+     squash 合并，**禁止直接 push `main` 或 `develop`**；功能批次在 develop 聚合、验收通过后由 owner
+     合 develop→main（一次合并 = 一次 beta，见「版本号与发布规则」）；纯文档/CI 改动可直接 PR 合 main
+     （publish 已按路径跳过，不发版）；
+   - CI 门禁：PR 必须 CI 绿（`./gradlew check`：spotless + test + integrationTest + shadowJar；
+     PR→develop 与 PR→main 同样要求）；
    - 本地提交前：`./gradlew spotlessApply && ./gradlew test` 全绿。
    - 提交信息遵循仓库现有风格（conventional commits，如 `fix(folia): ...` / `feat(portal): ...` / `docs: ...`），中文描述。
-   - 合并规范：squash merge；PR 落后 main 先 rebase + force push。
+   - 合并规范：squash merge；PR 落后 base 先 rebase + force push。
 4. **多工具分工建议**（可按需组合，无强制）：
    - 实现/重构：任一工具均可（Claude Code / Codex / Gemini CLI）
    - 代码审查：建议换一个工具做（不同厂商模型视角互补），审查输出记录到 PR 评论区

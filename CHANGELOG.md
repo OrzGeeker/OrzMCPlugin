@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### 📝 文档
+- **发布治理调整（2026-09-04）**：`publish.yml` 对纯文档/CI/流程改动（`docs/**`、`*.md`、`.github/**` 等）跳过发布；分支模型引入 `develop` 集成分支——日常 PR 合 develop（CI 照跑不发布），main 仅 owner 验收的里程碑与批准热修复（并 main = 一次 beta）；AGENTS.md 版本规则与开发流程同步（beta 应对应已验收功能集，不再为逐中间提交/纯文档发版）
 - **QQ builtin 接入操作手册定稿（真机验收版）**：`features.md` §2.6 重构为分阶段跟随式手册（0 概念速览 / 阶段 A 平台侧 / B 插件配置 / C 会话发现与绑定 / D 验收清单），每阶段附期望日志与完成标志；补 QQ 平台两项必需消息权限（群内全部消息、主动发言）与真机踩坑排查表；明确「改 im.yml 需重启、bind 即时生效」的生效边界
 - **IM 双通道用户指南**：`features.md` 新增 §2.6 builtin 内置直连配置指南（backend 切换/im.yml 凭据/`/config im` 命令/QQ 会话值/出站域名放行清单 R11/能力边界），§2.1 与 §2.5 改述双通道语义（文档纪律：行为/配置变更与代码同批）
 - **文档结构重组**：新增 [docs/README.md](docs/README.md) 文档导航（按读者角色 + 时效组织）；历史快照/验收/已完结路线图统一归档 `docs/reports/`（9 份，逐份加「状态：归档」头）；`code-quality-roadmap.md` 移入 `docs/roadmap/`；`commercialization.md`（商业策略）移出工作树（PUBLIC 仓库不放经营内容，可经 git 历史恢复）
