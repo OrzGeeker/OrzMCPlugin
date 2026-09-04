@@ -7,6 +7,7 @@ import com.jokerhub.paper.plugin.orzmc.core.ports.server.ServerScheduler;
 import com.jokerhub.paper.plugin.orzmc.infra.bot.BotMessageService;
 import com.jokerhub.paper.plugin.orzmc.infra.bot.ImBindings;
 import com.jokerhub.paper.plugin.orzmc.infra.bot.ImConversation;
+import com.jokerhub.paper.plugin.orzmc.infra.bot.ImDiscoveryCandidates;
 import com.jokerhub.paper.plugin.orzmc.infra.bot.ImMessageRouter;
 import com.jokerhub.paper.plugin.orzmc.infra.bot.MessageFormatter;
 import com.jokerhub.paper.plugin.orzmc.infra.config.ConfigService;
@@ -34,6 +35,9 @@ public final class BuiltinImDriver implements BotMessageService {
     private final ServerLogger logger;
     private final ConfigService configService;
     private final MessageFormatter formatter;
+    /** 未绑定会话自动发现候选（D11：status 候选/控制台日志提示）。 */
+    private final ImDiscoveryCandidates discovery = new ImDiscoveryCandidates();
+
     private final Function<QqPlatformConfig, BuiltinPlatform> platformFactory;
 
     private volatile BuiltinPlatform qqPlatform;
@@ -51,7 +55,14 @@ public final class BuiltinImDriver implements BotMessageService {
         this.configService = configService;
         this.formatter = formatter;
         this.platformFactory = cfg -> new QqBuiltinAdapter(
-                logger, scheduler, inbound, formatter, () -> this.bindings().conversation("qq"), health, cfg);
+                logger,
+                scheduler,
+                inbound,
+                formatter,
+                () -> this.bindings().conversation("qq"),
+                health,
+                cfg,
+                this.discovery);
     }
 
     /** 测试用：可注入平台工厂（替身适配器，避免单元测试触发真实网络）。 */
@@ -155,6 +166,22 @@ public final class BuiltinImDriver implements BotMessageService {
 
     private ImBindings bindings() {
         return ImBindings.from(configService.getConfig("im_bindings"));
+    }
+
+    /** 向指定 target（平台前缀会话串）投递文本（/config im test 用）。@return 已投递 true；无可用平台 false */
+    public boolean sendTo(String target, String text) {
+        BuiltinPlatform platform = platformFor(target);
+        if (platform == null) {
+            logger.logger().warning("[builtin] 无可用平台发送 target=" + target);
+            return false;
+        }
+        platform.send(target, text);
+        return true;
+    }
+
+    /** 未绑定会话自动发现候选（D11：status 展示用）。 */
+    public ImDiscoveryCandidates candidates() {
+        return discovery;
     }
 
     /** target 前缀平台（如 qq:... → qq）；无对应已启用适配器 → null。 */

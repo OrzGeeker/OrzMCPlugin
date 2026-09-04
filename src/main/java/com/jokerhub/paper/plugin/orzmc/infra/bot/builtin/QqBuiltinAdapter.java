@@ -4,6 +4,7 @@ import com.jokerhub.paper.plugin.orzmc.core.bot.BotInboundHandler;
 import com.jokerhub.paper.plugin.orzmc.core.ports.server.ServerLogger;
 import com.jokerhub.paper.plugin.orzmc.core.ports.server.ServerScheduler;
 import com.jokerhub.paper.plugin.orzmc.infra.bot.ImConversation;
+import com.jokerhub.paper.plugin.orzmc.infra.bot.ImDiscoveryCandidates;
 import com.jokerhub.paper.plugin.orzmc.infra.bot.MessageFormatter;
 import com.jokerhub.paper.plugin.orzmc.infra.bot.builtin.conn.GatewayStateListener;
 import com.jokerhub.paper.plugin.orzmc.infra.bot.builtin.conn.ReconnectPolicy;
@@ -50,6 +51,21 @@ public final class QqBuiltinAdapter implements BuiltinPlatform {
             Supplier<ImConversation> conversation,
             HealthRegistry health,
             QqPlatformConfig cfg) {
+        this(serverLogger, scheduler, inbound, formatter, conversation, health, cfg, null);
+    }
+
+    /**
+     * @param discovery 未绑定会话发现候选（可为 null；D11：候选进 status 提示）
+     */
+    public QqBuiltinAdapter(
+            ServerLogger serverLogger,
+            ServerScheduler scheduler,
+            BotInboundHandler inbound,
+            MessageFormatter formatter,
+            Supplier<ImConversation> conversation,
+            HealthRegistry health,
+            QqPlatformConfig cfg,
+            ImDiscoveryCandidates discovery) {
         if (serverLogger == null || scheduler == null || inbound == null || health == null) {
             throw new IllegalArgumentException("必需依赖不能为 null");
         }
@@ -62,7 +78,7 @@ public final class QqBuiltinAdapter implements BuiltinPlatform {
         this.tokens = new RefreshableTokenProvider(api::fetchAccessToken, TOKEN_TTL, TOKEN_REFRESH_AHEAD);
         this.sender = new QqSender(log, tokens);
         QqInboundProcessor processor =
-                new QqInboundProcessor(log, scheduler, conversation, inbound, formatter, this::sendReply);
+                new QqInboundProcessor(log, scheduler, conversation, inbound, formatter, this::sendReply, discovery);
         this.gateway = new QqGatewayClient(
                 serverLogger, ReconnectPolicy.defaults(), tokens, api, processor, new HealthListener());
     }
