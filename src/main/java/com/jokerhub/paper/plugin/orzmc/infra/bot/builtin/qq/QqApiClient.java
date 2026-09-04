@@ -133,8 +133,8 @@ public final class QqApiClient implements QqGatewayUrlFetcher {
         }
     }
 
-    /** token 失效谓词（对齐 EasyBot auth.rs）：HTTP 401 或 body 含业务码 11244 / 11242。 */
-    private static boolean isTokenRejected(int status, String body) {
+    /** token 失效谓词（对齐 EasyBot auth.rs）：HTTP 401 或 body 含业务码 11244 / 11242。同包 QqSender 复用（发送 401 重试一次）。 */
+    static boolean isTokenRejected(int status, String body) {
         return status == 401
                 || body.contains("11244")
                 || body.contains("11242")
