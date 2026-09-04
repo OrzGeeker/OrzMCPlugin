@@ -17,6 +17,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  issues: read   # 读 PR 标签需 issues 权限（gh pr view --json labels 底层走 issues API）
 
 concurrency:
   group: milestone-automerge-${{ github.event.pull_request.number }}
@@ -36,7 +37,7 @@ jobs:
           set -u
           # 无授权标签则跳过（owner 打标签后再由 labeled 事件触发）
           for i in $(seq 1 100); do
-            labels="$(gh pr view "$PR_NUMBER" --json labels -q '.labels[].name' 2>/dev/null || true)"
+            labels="$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/labels" -q '.[].name' 2>/dev/null || true)"
             if ! printf '%s\n' "$labels" | grep -qx 'milestone:auto-merge'; then
               echo "未打 milestone:auto-merge 标签，跳过自动合并（等待人工）"
               exit 0
