@@ -1,14 +1,16 @@
 # Milestone auto-merge (develop → main)
 #
-# 里程碑发布闭环：owner 把 develop 合入 main 的 PR（base=main, head=develop）开启后，
-# 本 workflow 自动 enable auto-merge（squash）——CI（build + folia-smoke，分支保护要求）通过后
-# GitHub 自动合并 → push main → publish.yml 自动发布 beta（含代码改动时）。
-# 非 develop→main 的 PR 不触发（如纯文档 PR 仍走人工合并，不发版）。
+# 里程碑发布闭环：owner 将 develop 合入 main 时，开 PR（base=main, head=develop）并打标签
+# `milestone:auto-merge` 即显式授权自动合并：
+#   标签存在 → 本 workflow 轮询分支保护要求的 CI（build + folia-smoke）至全绿（mergeable）
+#            → gh pr merge --squash 自动合并 → push main → publish.yml 自动发布 beta（含代码时）
+# 无标签的 develop→main PR（或热修复/纯文档 PR）不自动合并，保持人工把关。
+# 若 owner 想先看 CI 结果再放行：等绿后再补标签 → 立刻触发合并（labeled 事件）。
 name: Milestone Auto-Merge
 
 on:
   pull_request:
-    types: [opened, reopened, ready_for_review, synchronize]
+    types: [opened, ready_for_review, synchronize, labeled]
     branches:
       - main
 
@@ -16,15 +18,54 @@ permissions:
   contents: write
   pull-requests: write
 
+concurrency:
+  group: milestone-automerge-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   auto-merge:
     if: github.event.pull_request.head.ref == 'develop' && github.event.pull_request.base.ref == 'main'
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     steps:
-      - name: Enable auto-merge (squash)
+      - name: Wait for CI green then auto-merge (squash)
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          gh pr merge "$PR_NUMBER" --auto --squash \
-            || echo "auto-merge 未生效（可能已开启/暂不可合并，稍后人工检查）"
+          set -u
+          # 无授权标签则跳过（owner 打标签后再由 labeled 事件触发）
+          for i in $(seq 1 100); do
+            labels="$(gh pr view "$PR_NUMBER" --json labels -q '.labels[].name' 2>/dev/null || true)"
+            if ! printf '%s\n' "$labels" | grep -qx 'milestone:auto-merge'; then
+              echo "未打 milestone:auto-merge 标签，跳过自动合并（等待人工）"
+              exit 0
+            fi
+            state="$(gh pr view "$PR_NUMBER" --json mergeStateStatus,state -q '"\(.state):\(.mergeStateStatus)"' 2>/dev/null || echo 'UNKNOWN')"
+            echo "[$i] PR 状态: $state"
+            # 分支保护要求的检查（build / folia-smoke）失败 → 中止等待，交人工
+            failed="$(gh pr checks "$PR_NUMBER" 2>/dev/null | awk -F'\t' '$2=="fail" || $2=="error" || $2=="cancel" {print $1" "$2}')"
+            if [ -n "$failed" ]; then
+              echo "❌ 必选检查失败：$failed —— 不自动合并，请人工处理"
+              exit 1
+            fi
+            case "$state" in
+              OPEN:CLEAN)
+                if gh pr merge "$PR_NUMBER" --squash; then
+                  echo "✅ 里程碑已自动合并并触发发布"
+                  exit 0
+                else
+                  echo "⚠️ 合并请求被拒绝（可能并发变更），人工检查"
+                  exit 1
+                fi ;;
+              OPEN:BLOCKED|OPEN:DRAFT|OPEN:BEHIND)
+                # 检查仍在跑或落后 base：继续等待（behind 由合并策略自动处理，重试即可）
+                sleep 20 ;;
+              *)
+                # 检查失败/冲突等：中止等待，交人工处理
+                echo "❌ PR 不可自动合并（状态 $state），请人工处理"
+                exit 1 ;;
+            esac
+          done
+          echo "⏰ 等待超时（40min），请人工检查 PR $PR_NUMBER"
+          exit 1
