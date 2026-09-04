@@ -25,6 +25,7 @@ public final class BotMessageServiceProvider {
         ImGatewayConfig im = ImGatewayConfig.from(configService.getConfig("im"));
         if (im.isBuiltin()) {
             if (anyPlatformUsable(configService)) {
+                logger.logger().info("IM backend=builtin：启用内置直连（可用平台：" + usablePlatformNames(configService) + "）。");
                 return new BuiltinImDriver(
                         logger, scheduler, configService, inboundHandler, new PlainMessageFormatter(), healthRegistry);
             }
@@ -34,6 +35,21 @@ public final class BotMessageServiceProvider {
         }
         return new OrzEasyBot(
                 logger, configService, inboundHandler, new PlainMessageFormatter(), throttledLogger, healthRegistry);
+    }
+
+    /** 可用平台名（逗号分隔，供启用日志展示）。 */
+    private static String usablePlatformNames(ConfigService configService) {
+        StringBuilder names = new StringBuilder();
+        if (qqPlatform(configService).usable()) {
+            names.append("qq");
+        }
+        if (feishuPlatform(configService).usable()) {
+            if (names.length() > 0) {
+                names.append(", ");
+            }
+            names.append("feishu");
+        }
+        return names.length() == 0 ? "-" : names.toString();
     }
 
     /** backend=builtin 时是否有任一可用平台（builtin 内部逐平台 reconcile；全部不可用才返回 Unavailable）。 */
