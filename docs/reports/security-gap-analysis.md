@@ -1,10 +1,9 @@
 # OrzMC 安全能力对照与补强建议
 
-> 定位：内部文档。对照通用 PaperMC 安全风险（通用知识见 [site 文章 25/26](../site/content/posts/2.server/25.papermc-dangerous-commands.md)），梳理 OrzMC 插件已有防护、识别缺口，并给出补强建议。
+> **状态：归档快照**（2026-08-16 编写，2026-09-03 归档）
+> 定位：内部安全对照文档，对照通用 PaperMC 安全风险梳理插件已有防护与缺口（通用知识源为站外文章《PaperMC 危险指令与防护》25 /《对外开服安全清单》26）。
 >
-> 最后更新：2026-08-16
->
-> **⚠️ 状态更新（2026-08-19）**：本文 §3 对照表与 §5 建议中的缺口（危险命令拦截、定时备份、聊天反垃圾、登录爆破、漏洞加固、IP 黑名单增强）**已由 [security-hardening-roadmap.md](./security-hardening-roadmap.md) 全部落地**（PR #179–#184）。本文保留为「加固前的现状快照」，最新能力清单见 `docs/features.md` 与 `docs/quality-testing-plan.md`。
+> **⚠️ 本文内容已被落地取代**：§3 对照表与 §5 建议中的缺口（危险命令拦截、定时备份、聊天反垃圾、登录爆破、漏洞加固、IP 黑名单增强）已由安全加固路线图（[security-hardening-roadmap.md](./security-hardening-roadmap.md)，✅ 已完结）全部落地（PR #179–#184）。**最新能力清单以 [features.md](../features.md) 为唯一权威**，本文仅作加固前快照参考，不再更新。
 
 ---
 

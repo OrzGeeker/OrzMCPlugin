@@ -1,10 +1,12 @@
 # OrzMC Folia 适配验收清单
 
+> **状态：归档快照**（2026-09-03 归档）——验收已随 [e2e-test-report-20260820.md](./e2e-test-report-20260820.md) 完成双核心核对；本文保留逐项结果与证据备查。
+>
 > 本文档收录 OrzMC 插件在 **Folia 运行时**下需要完成的功能验收项。
 > 目标：确认插件在 Folia（regionized 多线程）上功能与 Paper 等价、无 region 线程错误。
 > 与 [test-cases.md](test-cases.md)（Paper E2E）互补——Folia 的调度/区域亲和差异只能靠真实 Folia 服务器验证。
 >
-> - 适配与测试策略详见 [folia-migration.md](folia-migration.md)（D3 区域亲和 / D6 测试策略 / D7 并发）
+> - 适配与测试策略详见 [folia-migration.md](../folia-migration.md)（D3 区域亲和 / D6 测试策略 / D7 并发）
 > - 结论标记：✅ 已验收（附证据）/ ⬜ 待真实环境 / ⚠️ 工具限制（非插件缺陷）/ ❌ 失败（含修复记录）
 > - **失败判据**：日志出现 `IllegalThreadStateException`、`not the correct region`、死锁（卡 tick）任一即失败
 

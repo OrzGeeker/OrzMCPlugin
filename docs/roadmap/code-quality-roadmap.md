@@ -1,7 +1,9 @@
 # OrzMC 代码质量与架构改进路线图
 
+> **状态：现行**（进行中路线图，2026-09-03 最后复核）——活跃任务清单，随迭代更新。
+
 > 定位：执行路线图。六维审查（架构 / 质量保障 / 文档 / 性能 / PaperMC·Folia / 安全）的**完整问题清单 + 可独立推进的任务拆分**。
-> 与既有 [security-hardening-roadmap.md](./security-hardening-roadmap.md)（安全功能已全部落地）互补——本文聚焦**已上线功能的缺陷修复、泄漏治理、测试补齐与文档校正**。
+> 与既有 [security-hardening-roadmap.md](../reports/security-hardening-roadmap.md)（安全功能已全部落地）互补——本文聚焦**已上线功能的缺陷修复、泄漏治理、测试补齐与文档校正**。
 >
 > 最后更新：2026-08-19（已对 HEAD `1248213` = 1.0.19 重新评估，#198–#203 的变更已核对：P0 命令绕过仍开放，新增 N1/N2 两项）
 >
@@ -18,7 +20,7 @@
 - **Flash 级任务**（§3）：单文件改动 / 明确修复点 / 自带验收标准 / 无跨模块重构。每个任务给出了 `问题 → 位置 → 修复方案 → 验收`，DeepSeekV4Flash 可**无需理解全局架构**直接照做并独立开 PR。
 - **Claude 级任务**（§4）：God class 拆分、六边形边界修复、跨模块生命周期重构。这些需要理解全局依赖、判断副作用，**不适合 Flash 一次做完**，必须分阶段小步推进或由强推理模型执行。
 
-**通用执行约定**（所有任务遵守，沿用 [AGENTS.md](../AGENTS.md)）：
+**通用执行约定**（所有任务遵守，沿用 [AGENTS.md](../../AGENTS.md)）：
 
 1. 代码/测试改动一律走 `fix/<主题>` 分支 → PR → CI 绿（`./gradlew check`）→ squash merge，**禁止直推 main**。
 2. 本地提交前 `./gradlew spotlessApply && ./gradlew test` 全绿。
@@ -493,8 +495,8 @@
 
 ## 6. 相关文档
 
-- [security-hardening-roadmap.md](./security-hardening-roadmap.md) — 安全功能落地路线图（P0-P2 已完成）
-- [security-gap-analysis.md](./security-gap-analysis.md) — 安全现状对照
-- [architecture.md](./architecture.md) — 架构设计
-- [folia-migration.md](./folia-migration.md)、[dev/folia-luckperms-gotchas.md](./dev/folia-luckperms-gotchas.md) — Folia 线程红线
-- [AGENTS.md](../AGENTS.md) — 仓库协作约定（单一事实源）
+- [security-hardening-roadmap.md](../reports/security-hardening-roadmap.md) — 安全功能落地路线图（P0-P2 已完成）
+- [security-gap-analysis.md](../reports/security-gap-analysis.md) — 安全现状对照
+- [architecture.md](../architecture.md) — 架构设计
+- [folia-migration.md](../folia-migration.md)、[dev/folia-luckperms-gotchas.md](../dev/folia-luckperms-gotchas.md) — Folia 线程红线
+- [AGENTS.md](../../AGENTS.md) — 仓库协作约定（单一事实源）

@@ -1,8 +1,10 @@
 # OrzMC 安全加固路线图
 
+> **状态：✅ 已完结**（2026-09-03 归档）——P0/P1/P2 全部落地（PR #179–#184），本文转历史记录。现状能力以 [features.md](../features.md) 为唯一权威。
+
 > 定位：执行路线图。对照站点文章《PaperMC 危险指令与防护》(25) 与《对外开服安全清单》(26)，
 > 把 OrzMC 插件的安全补强工作拆成**可独立推进、按优先级落地**的子任务清单。
-> 现状对照与背景分析见 [security-gap-analysis.md](./security-gap-analysis.md)（本文不重复展开）。
+> 现状对照与背景分析见 [security-gap-analysis.md](security-gap-analysis.md)（本文不重复展开）。
 >
 > 最后更新：2026-08-17
 

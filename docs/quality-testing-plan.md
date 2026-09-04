@@ -3,7 +3,7 @@
 > **版本**：v1.0（2026-08-19）
 > **适用范围**：OrzMCPlugin 全部功能（Paper 26.x + Folia 双运行时）
 > **基线**：main@f79e165（#197 群消息样式统一），OrzMC 1.0.18-dev.302
-> **配套**：[功能测试用例（E2E）](test-cases.md) · [Folia 适配验收清单](folia-acceptance.md)
+> **配套**：[功能测试用例（E2E）](reports/test-cases.md) · [Folia 适配验收清单](reports/folia-acceptance.md)
 
 ---
 

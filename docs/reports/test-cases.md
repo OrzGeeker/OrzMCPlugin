@@ -1,5 +1,7 @@
 # OrzMC 插件功能测试用例
 
+> **状态：归档快照**（2026-09-03 归档）——手工用例（TC-01~28）已被自动化取代：现行用例见 [e2e/cases/](../../e2e/cases/)（`e2e/run-all.sh`），测试策略见 [quality-testing-plan.md](../quality-testing-plan.md)。
+>
 > 本文档收录 OrzMC 插件在**真实服务器环境**下执行过的全部端到端测试用例（机器人 + 真实玩家）。
 >
 > - 适用范围：Paper 26.2-92 + OrzMC 1.0.14-dev（修复版）
