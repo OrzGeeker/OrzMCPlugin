@@ -14,3 +14,7 @@ platforms:
     enabled: false
     app_id: ''
     client_secret: ''
+  feishu:
+    enabled: false
+    app_id: ''            # 飞书开放平台 App ID（cli_ 前缀）
+    app_secret: ''        # 飞书开放平台 App Secret

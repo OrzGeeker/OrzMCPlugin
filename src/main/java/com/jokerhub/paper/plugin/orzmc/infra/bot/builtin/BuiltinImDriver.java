@@ -11,6 +11,7 @@ import com.jokerhub.paper.plugin.orzmc.infra.bot.ImDiscoveryCandidates;
 import com.jokerhub.paper.plugin.orzmc.infra.bot.ImMessageRouter;
 import com.jokerhub.paper.plugin.orzmc.infra.bot.MessageFormatter;
 import com.jokerhub.paper.plugin.orzmc.infra.config.ConfigService;
+import com.jokerhub.paper.plugin.orzmc.infra.config.configs.FeishuPlatformConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.QqPlatformConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.health.HealthRegistry;
 import java.util.ArrayList;
@@ -59,6 +60,16 @@ public final class BuiltinImDriver implements BotMessageService {
                 health,
                 cfg,
                 this.discovery));
+        // 批次4：飞书平台（F4b 起）；凭据齐备即与 QQ 并行可用（R10 单平台失败不阻塞其他）
+        registerFeishu(cfg -> new FeishuBuiltinAdapter(
+                logger,
+                scheduler,
+                inbound,
+                formatter,
+                () -> this.bindings().conversation("feishu"),
+                health,
+                cfg,
+                this.discovery));
     }
 
     /** 测试用：注入替身 QQ 平台工厂（避免单元测试触发真实网络）。 */
@@ -80,6 +91,11 @@ public final class BuiltinImDriver implements BotMessageService {
 
     private void registerQq(Function<QqPlatformConfig, BuiltinPlatform> factory) {
         register(new PlatformSlot<>("qq", cs -> readQqConfig(), QqPlatformConfig::usable, factory, logger));
+    }
+
+    /** 注册飞书平台槽（批次4；会话绑定实时读）。 */
+    private void registerFeishu(Function<FeishuPlatformConfig, BuiltinPlatform> factory) {
+        register(new PlatformSlot<>("feishu", cs -> readFeishuConfig(), FeishuPlatformConfig::usable, factory, logger));
     }
 
     /** 注册平台槽（幂等：同名替换）。测试与后续平台（飞书等）经此挂载。 */
@@ -162,6 +178,13 @@ public final class BuiltinImDriver implements BotMessageService {
             return QqPlatformConfig.DISABLED;
         }
         return QqPlatformConfig.from(configService.getConfig("im").getConfigurationSection("platforms.qq"));
+    }
+
+    private FeishuPlatformConfig readFeishuConfig() {
+        if (configService.getConfig("im") == null) {
+            return FeishuPlatformConfig.DISABLED;
+        }
+        return FeishuPlatformConfig.from(configService.getConfig("im").getConfigurationSection("platforms.feishu"));
     }
 
     private ImBindings bindings() {
