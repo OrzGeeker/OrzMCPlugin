@@ -1,0 +1,30 @@
+# Milestone auto-merge (develop → main)
+#
+# 里程碑发布闭环：owner 把 develop 合入 main 的 PR（base=main, head=develop）开启后，
+# 本 workflow 自动 enable auto-merge（squash）——CI（build + folia-smoke，分支保护要求）通过后
+# GitHub 自动合并 → push main → publish.yml 自动发布 beta（含代码改动时）。
+# 非 develop→main 的 PR 不触发（如纯文档 PR 仍走人工合并，不发版）。
+name: Milestone Auto-Merge
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review, synchronize]
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    if: github.event.pull_request.head.ref == 'develop' && github.event.pull_request.base.ref == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enable auto-merge (squash)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          gh pr merge "$PR_NUMBER" --auto --squash \
+            || echo "auto-merge 未生效（可能已开启/暂不可合并，稍后人工检查）"
