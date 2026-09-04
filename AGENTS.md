@@ -164,8 +164,17 @@ feature|fix|hotfix/<主题> ── 临时分支，从对应基线拉出，PR 合
   GitHub 原生 auto-merge 在分支保护的 build/folia-smoke 绿后自动 squash 合并 → push main 触发 publish：
   含代码改动 → `{version}-dev.{run}` beta；纯 docs/`*.md`/`.github` 改动被 paths-ignore 跳过不发版。
 - **hotfix**：仅 owner 批准（线上紧急）。从 `origin/main` 拉 `hotfix/<主题>` → PR base=main（不自动合并，
-  owner 手动 squash，同样产生 1 个 beta）→ **合后必须把 main 并回 develop**（PR head=main base=develop），
+  owner 手动 squash，同样产生 1 个 beta）→ **合后必须把 main 并回 develop**（见下方「main→develop 反向同步」），
   保证后续开发基线含该修复。
+- **main→develop 反向同步（main 有独立提交时必做）**：凡是 main 单独承载的提交（hotfix 直合、纯文档/CI 改动
+  直合 main 等），都要反向同步进 develop，保证 develop ⊇ main——否则下次 develop→main 里程碑会因
+  「两侧同文件各自演进」产生冲突（#293 教训）。操作（两端均有 PR 保护，直接开反向 PR）：
+  ① `git fetch origin main develop && git diff origin/main origin/develop --stat` 确认 main 确有领先内容
+     （两分支已同树时 GitHub 会拒绝空 PR，恰好作为「已同步」信号）；
+  ② `gh pr create --base develop --head main --title "chore(sync): main → develop 同步"`；
+  ③ CI（build + folia-smoke）绿后 `gh pr merge <编号> --squash`（反向同步**不用 auto-merge**，仅里程碑
+     develop→main 用）；hotfix 建议立即同步，纯文档/CI 改动可随里程碑前批量同步。
+  重复合并不冲突：即使内容先直合 main、又经里程碑从 develop 带回，git 对两侧相同新增视为干净合并。
 - **正式发版**：owner 打 SemVer tag（如 `1.0.25`，不加 `v`）→ tag 触发：完整 `./gradlew check` →
   Hangar/Modrinth release → GitHub Release → 版本号自增 commit 回 main。
 
