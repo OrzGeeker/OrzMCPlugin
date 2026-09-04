@@ -17,9 +17,13 @@
 | D6 | 消息类型 | **仅支持文本消息，不支持媒体**（图片/文件/语音全部砍掉，实现量不值得） |
 | D7 | 发送重试语义 | **尽力一次 + 日志/健康告警，不重试**（无持久化幂等，重试会造成重复通知；轻量定位放弃投递对账） |
 | D8 | 能力边界 | 内建版**保留**：文本收发/一问一答、群主/管理判定、PUBLIC/PRIVATE 路由与降级、背压限频健康（插件已有等价复用）；**砍掉**：投递对账、会话/消息持久化与后台 UI、富文本 parse_mode、批量发送（简化为逐目标单发）、媒体 |
+| D9 | 配置文件形态 | **两文件**：`im.yml`（schema：backend + 每平台凭据/开关，用户仅手配凭据）+ `im_bindings.yml`（运行时数据：会话绑定，命令可写，非手配主路径） |
+| D10 | 绑定权限 | 首版**仅控制台 / 游戏内 op** 可执行绑定（防劫持；bootstrap 信任）；群内自动发现只提示 ID、不授予任何权限 |
+| D11 | 自动发现提示去向 | 未绑定会话的提示**只进控制台日志 + status 候选列表**，不向陌生群回消息打扰 |
+| D12 | 体验命令 | **并入现有命令体系**（建议 `/orzmc im <setup\|status\|bind\|test>`），不单立 `/im` 命令 |
 
 > D5 与「先 TG 试点」的早期草案不同——owner 以现网主平台 QQ 为优先。各平台仍建议首个落地平台同时铺「通用骨架 + 该平台 adapter」，后续平台只是往骨架里填 adapter。
-> D6/D7/D8 共同定义内建版 = **轻量直连**：仅保留「文本收发 + 群主/管理判定 + PUBLIC/PRIVATE 路由 + 健康告警」，砍掉投递对账/持久化/后台 UI/媒体/富文本。
+> D6–D12 共同定义内建版 = **轻量直连、低上手成本**：仅保留「文本收发 + 群主/管理判定 + PUBLIC/PRIVATE 路由 + 健康告警」；凭据手配最少化，会话绑定命令化，连接/Token/断线全部由骨架层自动管理。
 
 ## 1. 背景与目标
 
@@ -93,28 +97,78 @@ MessageEnvelope 目标解析（PUBLIC→player_group 降级 admin_group；PRIVAT
 入站会话门槛（fail-closed）、限频、格式化分段。抽出后 OrzEasyBot 退化为「EasyBot transport」。
 抽取本身应是**零行为变更的重构**（现测试全绿为验收门槛）。
 
-## 4. 配置设计（D2）
+## 4. 配置与首次接入体验（D2/D9–D12）
 
-### v1（backend 开关；P1 交付）
+### 4.1 文件拆分（D9）
+
+`schema 文件`（版本治理：只读 + 升级门控）与 `运行时数据文件`（插件原子写，`updateConfig` 基建已有）分开：
 
 ```yaml
-# im.yml（新增，schema 文件，纳入 ConfigSchema 版本治理）
+# im.yml —— schema 文件，用户手配最小集（backend + 凭据/开关）
 config-version: 1
-backend: easybot            # easybot | builtin；builtin 不可用时按 D3 处理
-# v1 只放 backend；builtin 凭据/会话在首个 builtin 平台（QQ）PR 时按需扩展，
-# 届时把 easybot.yml 的 platforms 段收敛为 im.yml 单一事实源（见「演进」）。
+backend: easybot            # easybot | builtin（D1）；builtin 不可用时按 D3 停群+告警
+platforms:
+  qq:      { enabled: false, app_id: '', client_secret: '' }
+  feishu:  { enabled: false, app_id: '', app_secret: '' }
+  discord: { enabled: false, token: '' }
+  telegram:{ enabled: false, token: '' }
 ```
 
-- `easybot.yml` **完全不动**（EasyBotDriver 继续读它：api_server/ws_server/api_key/platforms/超时重试）；
-- `im.yml` 注册进 ConfigService（schema 文件：`im`），与 easybot 并列可 `/orzmc config reload im`；
-- Provider.create 读取 `im.yml.backend`：`easybot` → 现 OrzEasyBot；`builtin` → Facade/BuiltinDriver。
+```yaml
+# im_bindings.yml —— 运行时数据文件，绑定命令维护（/orzmc im bind，D10），一般不用手写
+sessions:
+  qq:
+    admin_group:  'group:<GroupOpenID>'
+    player_group: ''                    # 空则降级 admin_group
+    admin_dm:     'user:<UserOpenID>'
+  # 其他平台同理（DC channel id / TG chat_id / Feishu chat_id）
+```
 
-### 演进（builtin 首平台落地时，单独 PR）
+- `easybot.yml` **不改动、继续被 EasyBotDriver 使用**；其 13 个连接微调参数（超时/重试/心跳/日志节流）在 **builtin 模式不再暴露**——全部由骨架层代码内置默认（复用 RobustWebSocketClient 现有 5s 起 / 60s 上限 / ±jitter / 稳定 20s 重置）；
+- `im.yml` / `im_bindings.yml` 都注册进 ConfigService，`/orzmc config reload im` 可重载；
+- QQ 会话值 = 平台原生 OpenID（与 EasyBot target 语义一致）——**两模式共用同一会话值，切 backend 无需改绑定**。
 
-会话路由成为单一事实源：`easybot.yml.platforms` 迁移入 `im.yml`，easybot.yml 退化为纯连接参数
-（api_server/ws_server/api_key/超时重试/ws 日志）；提供一次性迁移（沿用 ConfigUpgrader 惯例），
-并做「双文件平台段不一致」启动告警。QQ 会话标识为平台原生 OpenID 三段式
-（`qq:group:{OpenID}` 等，与 EasyBot target 语义一致——两模式共用同一会话值，切换 backend 无需改配置）。
+### 4.2 连接生命周期与 Token 刷新（统一骨架层）
+
+各平台 token 事实：
+
+| 平台 | 令牌 | 有效期 | 失效处理 |
+|:--|:--|:--|:--|
+| QQ | access_token（app_id+client_secret 换） | 2h | 到期前 60s 预刷新；鉴权错误 → 即时重换 + 重试一次（同 EasyBot qq adapter 策略） |
+| 飞书 | tenant_access_token | 2h | 同上（官方允许旧 token 宽限期换新；错误码如 99991663/4 触发刷新） |
+| Discord | Bot token | 长期 | 无刷新；401 = 配置错误 → 告警停用；Gateway resume/identify 自愈 |
+| Telegram | Bot token | 长期 | 无刷新；401 = 配置错误告警；长轮询无状态天然自愈 |
+
+统一抽象（builtin 骨架，首个 adapter 落地时实现）：
+
+```
+AccessTokenProvider 接口
+ ├─ RefreshableTokenProvider（QQ/飞书：缓存 + 到期前 60s 预刷新 + onAuthError 触发刷新）
+ └─ StaticTokenProvider      （Discord/TG：直通；onAuthError=配置错误只告警）
+
+统一连接生命周期（每平台一个 Adapter）：
+  start → 取 token → 鉴权/建连 → 心跳 liveness
+  → 网络断/超时 ──► 指数退避重连（复用 RobustWebSocketClient 参数）
+  → 鉴权类错误 ──► TokenProvider.onAuthError()（刷新一次）→ 重连
+                 ──► 仍失败：健康降级 builtin.<platform> + 告警 + 继续退避
+```
+
+健康按平台分 key（`builtin.qq` 等），含 token 到期时间 / 下次重试 / lastError，供 status 命令一览。
+
+### 4.3 首次接入与绑定（D10/D11/D12）
+
+- **凭据获取无法全自动**（平台侧注册不可避免：QQ 开放平台审核 / 飞书企业应用 / DC 开发者后台 / TG BotFather）——`/orzmc im setup` 逐平台 checklist：凭据未配 / 已配未验证 / 已验证(bot 名)，附官方链接；配完自动 getMe 类自检；
+- **会话 ID 自动化**（当前最大手动成本，尤其 QQ openid 平台 UI 无处可查）：adapter 收到未绑定会话消息 → **仅控制台日志 + `/orzmc im status` 候选列表**提示（D11）；QQ 机器人进群后任意一条消息即暴露群 openid，自动捕获；
+- **绑定命令**（D10：仅控制台 / 游戏内 op）：
+
+```
+/orzmc im bind <platform> <group|user> <chat_id> <admin_group|player_group|admin_dm>
+/orzmc im test <platform> <chat_id>      # 发一条测试消息验证下行可达
+/orzmc im status                          # 连接/Token/绑定/候选一览
+/orzmc im setup                           # 首次接入引导 checklist
+```
+
+- 手工编辑 `im_bindings.yml` 仍可作为兜底；命令最终挂载与命名在实现时敲定（D12）。
 
 ## 5. 两模式语义一致性（双通道可行前提）
 
@@ -148,9 +202,9 @@ backend: easybot            # easybot | builtin；builtin 不可用时按 D3 处
 
 | 步 | 内容 | 验收（对应测试） |
 |:--|:--|:--|
-| **P1** | `im.yml` schema（backend）+ Provider 按 backend 选 driver（builtin 未实现时 backend=builtin 报「不可用」并停群功能+告警，D3）+ Facade 骨架 | 新单测：backend 解析/选择/不可用路径；现有 EasyBot 测试全绿；`backend=easybot` 行为与现状字节级一致 |
+| **P1** | `im.yml` + `im_bindings.yml` schema/文件注册（D9）+ Provider 按 backend 选 driver（builtin 未实现时 backend=builtin 报「不可用」并停群功能+告警，D3）+ Facade 骨架 | 新单测：backend 解析/选择/不可用路径；现有 EasyBot 测试全绿；`backend=easybot` 行为与现状一致 |
 | **P2** | 共享路由层抽取（OrzEasyBot 拆 transport/路由，零行为变更） | 现有 26 个 EasyBot 相关测试 + e2e（Paper/Folia）全绿，diff 仅移动 |
-| **P3a** | **QQ adapter**（D5 首个）：WS Gateway + member_role 角色 + `/v2/...` 下行 + openid 会话 | QQ adapter 单测（MockWebServer + mock gateway）；真实平台冒烟脚本 |
+| **P3a** | **QQ adapter**（D5 首个）：WS Gateway + member_role 角色 + `/v2/...` 下行 + openid 会话；同时铺骨架：AccessTokenProvider + 统一连接生命周期（§4.2）+ 绑定/测试/status/setup 命令（§4.3，并入 /orzmc） | QQ adapter 单测（MockWebServer + mock gateway）；绑定命令权限测试（D10）；真实平台冒烟脚本 |
 | **P3b-e** | 飞书 → Discord → Telegram adapter 逐个挂载 | 同 P3a 模式 |
 | **P4** | backend=builtin 端到端（`/bot` 健康/投递、群指令一问一答）+ 文档（features.md §2.5 重写为双通道） | e2e 双核心全绿 |
 
