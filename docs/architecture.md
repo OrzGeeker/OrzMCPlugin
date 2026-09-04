@@ -57,7 +57,7 @@ PlatformModule
     - ConfigService, ConfigManager, ConfigHealthCheck
     - schema 自动升级（ConfigSchema / ConfigUpgrader / DefaultsMerger / LegacyDefaultFlips）：
       版本门控的备份→补缺→旧默认翻转→回写，规则见 [配置 Schema 升级治理规范](dev/config-schema-governance.md)
-    - `configs/` 子包中每个配置对应一个记录类（`BotConfig`, `Styles`, `TntConfig`, `WhitelistConfig`, `Portals`, `MainConfig`, `MaintenanceConfig`, `CommandPolicies`, `TemplateOptions`, `Templates`, `IpWhitelist`, `WhitelistKickMessage`）
+    - `configs/` 子包中每个配置段对应一个记录类（共 23 个：`BotConfig`, `Styles`, `TntConfig`, `WhitelistConfig`, `WhitelistKickMessage`, `Portals`, `MaintenanceConfig`, `CommandPolicies`, `CommandPolicy`, `TemplateOptions`, `Templates`, `ChatConfig`, `SecurityGuardConfig`, `LoginRateLimitConfig`, `ExploitHardeningConfig`, `RankColorsConfig`, `PrisonConfig`, `UpdateConfig`, `EntityTeleportConfig`, `GamemodeCorrectionConfig`, `IpWhitelist`, `PlayerNotifyConfig`, `EasyBotConfig`）
     - `SafeKeys` YAML 键名安全编码（解决 '.' 被识别为层级分隔的问题）
     - `PortalsWriter` 持久化传送门配置
 - **notify/** — 通知派发与限流
@@ -406,7 +406,7 @@ command_policies:
 | 命令 | `assembly/FeatureCommandRegistrar.java` | 命令协调器（薄，298 行）：编排各特性命令组 + 未独立化简单命令 |
 | 命令组 | `assembly/*CommandRegistrar.java` | 按特性拆分的命令注册器（portal/blacklist/review/rank/prison/config/update，均实现 `CommandGroup`） |
 | 命令 | `commands/` | 命令适配层（仅保留 OrzConfigCommand） |
-| 配置 | `infra/config/configs/` | 类型化配置记录类（15 个，含 EasyBotConfig） |
+| 配置 | `infra/config/configs/` | 类型化配置记录类（23 个，含 EasyBotConfig） |
 | 配置 | `src/main/resources/easybot.yml` | EasyBot IM Gateway 默认配置 |
 | 适配器 | `infra/bot/OrzEasyBot.java` | EasyBot 网关适配器（WS + HTTP） |
 | 拦截器 | `features/command/binding/` | 命令拦截器（5 个文件：4 拦截器 + CooldownRegistry） |

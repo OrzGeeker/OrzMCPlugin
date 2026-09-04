@@ -63,7 +63,7 @@ OrzMC/
 │   │   ├── server/            服务端生命周期事件
 │   │   └── ...                guide, menu, teleport, player, bot
 │   ├── infra/                 基础设施实现
-│   │   ├── config/            ConfigService + 类型化配置记录类（20个，含 EasyBotConfig）、ConfigHealthCheck
+│   │   ├── config/            ConfigService + 类型化配置记录类（23 个，含 EasyBotConfig）、ConfigHealthCheck
 │   │   ├── bot/               BotMessageService, BotMessageServiceProvider, OrzEasyBot
 │   │   ├── ws/                RobustWebSocketClient（自动重连 + 心跳检测）
 │   │   ├── net/               AsyncHttp（指数退避重试）、HangarClient（自更新查询）
@@ -95,7 +95,7 @@ Tag 使用严格 SemVer，**不加 `v` 前缀**。本地构建产物为 `{versio
 
 - **无数据库**：所有状态存储在 YAML 配置文件中（portals.yml 在运行时修改）
 - **无 DI 框架**：通过显式组合根进行构造器注入
-- **类型化配置**：所有 YAML 访问通过 `configs/` 子包中的记录类（20 个，含 `WhitelistConfig`, `TntConfig`），附带健康检查
+- **类型化配置**：所有 YAML 访问通过 `configs/` 子包中的记录类（23 个，含 `WhitelistConfig`, `TntConfig`），附带健康检查
 - **异步安全**：`SafeScheduler` 包装 Bukkit 调度器，统一异常日志
 - **健康注册表**：`HealthStatus` 接口在 orzmc-api 中，`HealthAccessor` 适配器桥接实例化的 `HealthRegistry`
 
