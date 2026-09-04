@@ -182,11 +182,13 @@ AccessTokenProvider 接口
 | R4 | **消息源过滤**：各 adapter 滤除自身 bot 与其它 bot 消息（TG `from.id==bot`、QQ `author.bot`、DC `author.id==bot`、飞书 sender_type=bot）再进命令层，防回声环 | 各 adapter |
 | R5 | **凭据安全纪律**：日志/异常打码 token/secret；`/orzmc im status` 仅 op 可见；绑定文件不落 git | 骨架 |
 | R6 | **入站限频保留**：builtin 各 adapter 入站同样套用现有限频（EasyBot 网关曾 100/s；防群内刷屏触发批量命令） | 骨架 |
-| R7 | **单条文本上限常量表**：各平台单条上限（QQ 群/私聊待查证、DC 2000、TG 4096、飞书）对接现有 formatter 分段 | 各 adapter |
-| R8 | **TG offset 语义**：长轮询严格推进 offset 防重/防丢；重启后跳过积压（24h 未确认窗口内旧消息不当作新消息处理） | TG adapter |
+| R7 | **单条文本上限常量表**：各平台单条上限（QQ 群/私聊待查证、DC 2000 普通/4000 boost、TG 4096 官方最新、飞书按文档）对接现有 formatter 分段 | 各 adapter |
+| R8 | **TG offset 语义**：长轮询严格推进 offset；**内存 offset 只防进程内重连重复**（EasyBot 同款）；进程重启后 24h 未确认积压会重拉 → 启动首拉后丢弃积压（轻量，不做持久化） | TG adapter |
 | R9 | **QQ 沙箱测试环境**：QQ 官方沙箱（可加测试成员）作为 P3a 冒烟与回归环境 | 测试 |
 | R10 | **PUBLIC 广播逐平台隔离**：单平台发送失败不阻塞其他平台（try/catch + 局部日志），承接 D7 | 共享路由层 |
 | R11 | **出站白名单域名清单**：运维文档列出需放行域名（QQ `bots.qq.com`/`api.bot.qq.com` + wss 网关由 API 下发、飞书 `open.feishu.cn`、TG `api.telegram.org`、DC `discord.com`）；有防火墙的服务器需放行 | 文档 |
+| R12 | **线程模型红线**：网络/WS/轮询线程回调**不得直接触碰 Bukkit API**——入站事件必须经 `ServerFacade.runSync` / SafeScheduler 调度到服务器线程后再进命令层（对齐 folia-luckperms-gotchas 红线） | 骨架 |
+| R13 | **生命周期清理**：每平台 WS/轮询线程与 ScheduledExecutor 在 tearDown 必须 shutdown 并等待终止（防 reload 泄漏）；线程命名带平台前缀便于诊断 | 骨架 |
 
 ## 5. 两模式语义一致性（双通道可行前提）
 
@@ -207,12 +209,14 @@ AccessTokenProvider 接口
 | | QQ（官方开放平台） | 飞书 | Discord | Telegram |
 |:--|:--|:--|:--|:--|
 | 鉴权 | `app_id+client_secret`→`bots.qq.com` 换 access_token（2h 缓存刷新） | `app_id+app_secret`→`/open-apis/auth/v3/tenant_access_token/internal` | `Authorization: Bot <token>` | token 在 URL 路径 |
-| 上行 | 出站 WS Gateway（identify/heartbeat/resume/session，同 Discord 构型） | 事件订阅长连接（集群单活） | Gateway WS `gateway.discord.gg`（opcode/intents/resume） | `getUpdates` 长轮询（免公网） |
-| 下行 | `POST /v2/groups/{openid}/messages`（msg_type 1）；C2C `/v2/users/{openid}/messages` | `POST /im/v1/messages`（chat_id, msg_type text） | `POST /channels/{id}/messages`（2000 上限） | `sendMessage`（4096 上限） |
+| 上行 | 出站 WS Gateway（identify/heartbeat/resume/session，同 Discord 构型） | 事件订阅**长连接 WS**（端点 `{domain}/callback/ws/endpoint`，集群单活） | Gateway WS `gateway.discord.gg`（opcode/intents/resume） | `getUpdates` 长轮询（免公网） |
+| 下行 | `POST /v2/groups/{openid}/messages`（`msg_type: 0` 文本；带 `msg_id` = 被动回复通道）；C2C `/v2/users/{openid}/messages` | `POST /im/v1/messages`（chat_id, msg_type text） | `POST /channels/{id}/messages`（2000 上限，boost 服可 4000） | `sendMessage`（4096 上限，官方最新仍 4096） |
 | 身份 | openid（非 QQ 号） | openid + chat_id | snowflake + roles | 数字 id |
 | 入站限 | 事件 `author.member_role` 自带角色 | 事件无角色→ chats API 查询（缓存） | 事件 `member.permissions` 自带 | 无角色→ admins API（缓存） |
 | 政策/门槛 | 开放平台注册+审核+进群方式（**需 owner 后台核验**） | 需企业组织；事件端点细节核验 | 开放；>100 guilds 需申请 intent | 完全开放（BotFather 即建即用） |
 | 预估 adapter 量 | ~600 行 | ~500 行 | ~600 行 | ~300 行 |
+
+> **协议复核（2026-09-03，对照 EasyBot main 源码 + 官方文档）**：QQ 群文本 `msg_type: 0`（早期流传 1 系误传）；`msg_id` 仅回复时携带 = 被动回复通道（D14）；事件双轨 `GROUP_AT_MESSAGE_CREATE`（@机器人）与 `GROUP_MESSAGE_CREATE`（全量群消息）**均带 `author.member_role`**；intents：群+C2C 单 intent `GROUP_AND_C2C_EVENT = 1<<25`，频道私域 `GUILD_MESSAGES = 1<<9`（官方：[event-emit](https://bot.q.qq.com/wiki/develop/api-v2/dev-prepare/interface-framework/event-emit.html)）；飞书长连接 WS 端点为 `{domain}/callback/ws/endpoint`；TG 上限 4096 经官方最新文档核实；DC 2000（boost 4000）。
 
 体积：四平台 adapter 全落地预计 shadowJar 增加 <100KB（仅业务代码，无新依赖）——10MB 上限余量充足。
 
@@ -222,9 +226,9 @@ AccessTokenProvider 接口
 |:--|:--|:--|
 | **P1** | `im.yml` + `im_bindings.yml` schema/文件注册（D9）+ Provider 按 backend 选 driver（builtin 未实现时 backend=builtin 报「不可用」并停群功能+告警，D3）+ Facade 骨架 | 新单测：backend 解析/选择/不可用路径；现有 EasyBot 测试全绿；`backend=easybot` 行为与现状一致 |
 | **P2** | 共享路由层抽取（OrzEasyBot 拆 transport/路由，零行为变更） | 现有 26 个 EasyBot 相关测试 + e2e（Paper/Folia）全绿，diff 仅移动 |
-| **P3a** | **QQ adapter**（D5 首个）：WS Gateway + member_role 角色 + `/v2/...` 下行 + openid 会话；同时铺骨架：AccessTokenProvider + 统一连接生命周期（§4.2）+ 绑定/测试/status/setup 命令（§4.3，并入 /orzmc） | QQ adapter 单测（MockWebServer + mock gateway）；绑定命令权限测试（D10）；真实平台冒烟脚本 |
+| **P3a** | **QQ adapter**（D5 首个）：WS Gateway + member_role 角色 + `/v2/...` 下行 + openid 会话；同时铺骨架：AccessTokenProvider + 统一连接生命周期（§4.2）+ 绑定/测试/status/setup 命令（§4.3，并入 /orzmc）；D13 代理落地 = 扩展 AsyncHttp 支持 per-proxy HttpClient（现状按 connectTimeout 缓存 client，proxy 入 key） | QQ adapter 单测（MockWebServer + mock gateway）；绑定命令权限测试（D10）；真实平台冒烟脚本 |
 | **P3b-e** | 飞书 → Discord → Telegram adapter 逐个挂载 | 同 P3a 模式 |
-| **P4** | backend=builtin 端到端（`/bot` 健康/投递、群指令一问一答）+ 文档（features.md §2.5 重写为双通道） | e2e 双核心全绿 |
+| **P4** | backend=builtin 端到端（`/bot` 健康/投递扩展为**多平台 key 聚合展示**、群指令一问一答）+ 文档（features.md §2.5 重写为双通道、R11 域名清单） | e2e 双核心全绿 |
 
 每步独立 PR（AGENTS.md：单 PR <500 行），逐步合并、逐步可回退（backend 一行切回 easybot）。
 
