@@ -3,10 +3,16 @@
 ## [Unreleased]
 
 ### 📝 文档
+- **IM 双通道用户指南**：`features.md` 新增 §2.6 builtin 内置直连配置指南（backend 切换/im.yml 凭据/`/config im` 命令/QQ 会话值/出站域名放行清单 R11/能力边界），§2.1 与 §2.5 改述双通道语义（文档纪律：行为/配置变更与代码同批）
 - **文档结构重组**：新增 [docs/README.md](docs/README.md) 文档导航（按读者角色 + 时效组织）；历史快照/验收/已完结路线图统一归档 `docs/reports/`（9 份，逐份加「状态：归档」头）；`code-quality-roadmap.md` 移入 `docs/roadmap/`；`commercialization.md`（商业策略）移出工作树（PUBLIC 仓库不放经营内容，可经 git 历史恢复）
 - **内容治理**：`features.md` 补齐 §5.5 危险命令拦截 / §5.6 聊天反垃圾 / §5.7 进服限流 / §5.8 漏洞加固 / §15.7 坐牢治理（prison）章节，修正 GeoIP 失败策略表述（默认 fail-close）；`quality-testing-plan.md` 功能清单去重收敛至 features.md、e2e 用例清单与实现对齐；文档与代码数量漂移修正（配置记录类 20/15→23）
 
 ### ✨ 新功能
+- **IM 双通道 + 内置直连（builtin）QQ adapter** — 在默认 EasyBot 网关通道之外提供插件内置直连（方案 docs/dev/im-gateway-inhouse.md）：
+  - `im.yml` 的 `backend: easybot|builtin` 全局切换（默认 easybot 零风险兜底；改后 `/config reload im` 或重启生效）；**无可用平台时停用群功能并告警，不自动回退**（D3）
+  - builtin QQ：出站 WS 网关（identify/resume/心跳/断线指数退避重连）+ 下行 REST（群/私聊，被动回复带 msg_id）+ 入站事件归一与角色判定（群主/管理员），业务层命令/通知语义与 EasyBot 通道一致；凭据经 `im.yml platforms.qq`（app_id/client_secret）换取 2h access_token 自动预刷新
+  - 会话绑定 `im_bindings.yml` + `/config im setup|status|bind|test` 管理命令（D10 仅控制台/游戏内 op）：bind 持久化即时生效；未绑定会话来消息只进控制台日志与 status 候选（D11），绑定后候选自动清除
+  - 能力边界：仅文本（D6）、发送尽力一次不重试（D7）、单凭据单实例（R3）；出站域名放行清单见 features.md §2.6（R11）
 - **插件自更新（基于 Hangar）** — 不再需要手动下载 jar 再丢进 `plugins/update/`：
   - `update.channel`（默认 `release` 正式版；`beta` 为 `-dev` 开发版）选择更新通道，启动后按 `update.check_interval_hours`（默认 12h）异步检查新版本，不卡主线程
   - 发现新版本时默认仅控制台提示，管理员 `/update check` 查询、`/update now` 手动下载；`update.auto_download: true` 后自动下载

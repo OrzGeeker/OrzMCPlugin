@@ -41,8 +41,12 @@
 
 ### 2.1 支持的平台
 
-插件统一通过 **EasyBot 网关** 接入 QQ、Telegram、Discord、飞书和微信。EasyBot 使用
-WebSocket 向插件推送入站消息，插件通过 HTTP API 发送回复和服务器通知。
+插件提供**双通道**接入多平台 IM（方案：[docs/dev/im-gateway-inhouse.md](dev/im-gateway-inhouse.md)）：
+
+- **EasyBot 网关（默认，`backend: easybot`）**：外部网关服务统一接入 QQ、Telegram、Discord、飞书和微信；
+  EasyBot 使用 WebSocket 向插件推送入站消息，插件通过 HTTP API 发送回复和服务器通知；
+- **内置直连（`backend: builtin`，QQ 已落地）**：插件直连各平台官方 API（WS 网关 + REST），不再依赖外部网关进程；
+  业务层命令/通知语义与 EasyBot 通道完全一致，切换 backend 无需改会话绑定（QQ 会话值与 EasyBot target 同构）。
 
 ### 2.2 Bot 命令一览
 
@@ -76,11 +80,14 @@ WebSocket 向插件推送入站消息，插件通过 HTTP API 发送回复和服
 
 ### 2.4 Bot 健康状态
 
-- 游戏内 `/bot` 命令查看 EasyBot 连接状态：`enabled`、`http`（Ok / Unknown / NotOk）、`ws`（Ok / NotOk）三个彩色状态词，http 与 ws 异常时可点击跳转 `/bot http`、`/bot ws` 查看详情
+- 游戏内 `/bot` 命令查看 **EasyBot 通道**（backend=easybot）连接状态：`enabled`、`http`（Ok / Unknown / NotOk）、`ws`（Ok / NotOk）三个彩色状态词，http 与 ws 异常时可点击跳转 `/bot http`、`/bot ws` 查看详情
+- backend=builtin 时改用 `/config im status` 查看通道健康（含平台连接/绑定/未绑定候选）
 - 执行命令时自动尝试重连 WebSocket
 
-### 2.5 EasyBot 网关配置指南
+### 2.5 EasyBot 网关配置指南（backend=easybot 默认通道）
 
+> 本节适用于默认的 **EasyBot 网关通道**（`im.yml` 中 `backend: easybot`）；使用插件内置直连请见下文 **§2.6 builtin 内置直连配置指南**。
+>
 > EasyBot 是一个统一的 IM 网关服务，对外暴露一套 REST API + WebSocket 事件推送接口，
 > 屏蔽了各 IM 平台（QQ / Telegram / Discord / 飞书 / 微信）的协议差异。
 > 项目地址：[https://github.com/easyIndie/EasyBot](https://github.com/easyIndie/EasyBot)
@@ -156,6 +163,64 @@ PUBLIC；异常告警（含 GeoIP 上游异常私信）与维护失败事件走 
 > **⚠️ 飞书 WebSocket 多实例限制：** 飞书开放平台 WebSocket 事件订阅使用**集群模式**——同一飞书应用**只随机推送到一个 WebSocket 客户端**。部署多个 EasyBot 实例时，需确保：
 > - **方案一：单实例独占**——只启动一个 EasyBot 实例接收飞书事件，其他实例通过配置 `enabled: false` 停用飞书平台；
 > - **方案二：多应用隔离**——每个 EasyBot 实例注册不同的飞书应用（不同的 `app_id` / `app_secret`），各自独立接收事件。
+
+---
+
+### 2.6 builtin 内置直连配置指南（backend=builtin）
+
+> **当前状态：QQ 平台已落地**（上行 WS 网关 + 下行 REST + 入站归一，业务语义与 EasyBot 通道一致）；飞书/Discord/Telegram 按同一骨架后续批次接入。切换由 `im.yml` 的 `backend` 决定（改后 `/config reload im` 或重启生效，D4）；**无可用平台时群功能整体停用并在日志/`/config im status` 告警，不自动回退**（D3）。
+
+#### 首次接入 checklist
+
+1. **注册 QQ 开放平台机器人**：在 [QQ 开放平台](https://q.qq.com/) 注册并过审，获取 `app_id` / `client_secret`；
+2. **填写凭据并切换通道**：`im.yml`：
+
+```yaml
+backend: builtin
+platforms:
+  qq:
+    enabled: true
+    app_id: '你的 app_id'
+    client_secret: '你的 client_secret'
+```
+
+3. **绑定会话**（仅控制台/游戏内 op，D10）：`/config im bind qq group <群OpenID> admin_group`（玩家群 `player_group`、私聊 `admin_dm` 同理，类型为 `group|user`）；也可直接编辑 `im_bindings.yml`：
+
+```yaml
+sessions:
+  qq:
+    admin_group: 'group:<GroupOpenID>'    # 管理群
+    player_group: 'group:<GroupOpenID>'   # 玩家群（留空降级 admin_group）
+    admin_dm: 'user:<UserOpenID>'         # 管理员私聊
+```
+
+4. **验证**：`/config im test qq group <群OpenID> 你好` 验证下行；群里发消息验证上行；未绑定会话来消息时**只进控制台日志 + `/config im status` 候选列表**（D11，不向陌生会话回消息）。
+
+#### 管理命令（`/config im ...`，并入配置管理树）
+
+| 子命令 | 功能 |
+|--------|------|
+| `setup` | 首次接入 checklist（backend/凭据/绑定引导） |
+| `status` | 通道健康（连接）+ 会话绑定 + 未绑定候选一览 |
+| `bind <平台> <group\|user> <会话id> <admin_group\|player_group\|admin_dm>` | 绑定会话并持久化（D10 仅控制台/游戏内 op） |
+| `test <平台> <group\|user> <会话id> <文本>` | 向指定会话发一条测试文本验证下行（D7 尽力一次） |
+
+> **QQ 会话值 = 平台原生 OpenID**（`group:` 群 / `user:` 私聊），与 EasyBot 通道的「会话 key」（如 `qq:conv_xxx`）**不是一回事**；两通道切换无需改绑定值（§5 语义一致）。QQ 群/私聊 OpenID 在平台 UI 无处可查——把机器人拉进群后任意一条消息即可经 `/config im status` 候选发现。
+
+#### 出站域名放行清单（R11，有防火墙的服务器需放行）
+
+| 用途 | 域名 | 方向 |
+|------|------|------|
+| QQ 鉴权（换 access_token） | `bots.qq.com` | HTTPS 出站 |
+| QQ 开放 API（网关地址/消息发送） | `api.bot.qq.com` | HTTPS 出站 |
+| QQ 出站网关 WS | 由 `/gateway/bot` 接口下发（`wss://…`） | WSS 出站 |
+
+#### 能力边界与注意
+
+- **仅文本**（D6）：图片/文件/语音等媒体不支持；
+- **发送尽力一次不重试**（D7）：失败经健康告警，无投递对账/自动补发；
+- **单凭据单实例**（R3）：一个 bot 凭据只允许一个实例消费事件（多服需多 bot）；
+- 消息上限/被动回复窗口等按 QQ 官方文档约束，格式化分段见既有模板机制。
 
 ---
 
