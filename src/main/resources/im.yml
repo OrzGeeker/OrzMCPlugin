@@ -1,0 +1,9 @@
+# IM 网关配置（方案：docs/dev/im-gateway-inhouse.md）
+#
+# backend 选择 IM 消息通道：
+#   easybot —— 外部 EasyBot 网关（默认，现状兜底；连接参数见 easybot.yml）
+#   builtin —— 插件内置直连（QQ/飞书/Discord/Telegram；按 im-gateway-inhouse.md 逐平台落地，
+#              当前未实现时选择 builtin 会停用群功能并在日志/告警中说明，不会自动回退）
+#
+# 会话绑定（admin_group / player_group / admin_dm）见 im_bindings.yml（由 /orzmc im bind 维护）。
+backend: easybot
