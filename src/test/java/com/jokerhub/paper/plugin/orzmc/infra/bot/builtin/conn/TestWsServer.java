@@ -14,13 +14,14 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * 测试用最小 RFC6455 WebSocket 服务端（S3 验收：本地 WS 服务端 accept 后断开验证重连）。
+ * 测试用最小 RFC6455 WebSocket 服务端（S3 起各 adapter 测试复用：本地 WS 服务端 accept 后收发帧/断开验证重连）。
  *
  * <p>仅支持单文本帧（客户端小帧即单帧发送）、close/ping 控制帧；服务端→客户端发送不掩码。
  * 每连接一个读线程；可模拟：网络断开（关 socket，客户端见 1006）、服务端主动 close 帧（指定 code，如 QQ 鉴权 4004）、
- * 回声模式（收到文本帧回 "ack"，保持客户端活跃防止静默看门狗误判）。</p>
+ * 回声模式（收到文本帧回 "ack"，保持客户端活跃防止静默看门狗误判）。
+ * 服务端→客户端帧用 {@link Conn#sendText(String)} 直接下发（如 QQ hello op10 / 事件 op0）。</p>
  */
-final class TestWsServer implements AutoCloseable {
+public final class TestWsServer implements AutoCloseable {
 
     private static final String WS_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 
@@ -38,19 +39,19 @@ final class TestWsServer implements AutoCloseable {
         this.acceptThread.start();
     }
 
-    static TestWsServer start() throws IOException {
+    public static TestWsServer start() throws IOException {
         return start(false);
     }
 
-    static TestWsServer start(boolean echo) throws IOException {
+    public static TestWsServer start(boolean echo) throws IOException {
         return new TestWsServer(new ServerSocket(0, 10, java.net.InetAddress.getByName("127.0.0.1")), echo);
     }
 
-    int port() {
+    public int port() {
         return serverSocket.getLocalPort();
     }
 
-    List<Conn> connections() {
+    public List<Conn> connections() {
         return connections;
     }
 
@@ -81,8 +82,8 @@ final class TestWsServer implements AutoCloseable {
         connections.forEach(Conn::closeSocket);
     }
 
-    /** 单连接：读线程负责握手 + 读帧；主线程可发送文本 / 主动关闭。 */
-    final class Conn {
+    /** 单连接：读线程负责握手 + 读帧；测试线程可发送文本 / 主动关闭。 */
+    public final class Conn {
         private final Socket socket;
         private final List<String> received = new CopyOnWriteArrayList<>();
         private final Thread reader;
@@ -97,17 +98,17 @@ final class TestWsServer implements AutoCloseable {
             reader.start();
         }
 
-        List<String> receivedText() {
+        public List<String> receivedText() {
             return received;
         }
 
         /** 服务端→客户端发文本帧（不掩码）。 */
-        void sendText(String text) {
+        public void sendText(String text) {
             writeFrame(0x1, text.getBytes(StandardCharsets.UTF_8));
         }
 
         /** 服务端主动 close 帧（指定 code），随后关闭 TCP。 */
-        void sendClose(int code) {
+        public void sendClose(int code) {
             try {
                 byte[] payload = new byte[] {(byte) (code >> 8), (byte) code};
                 writeFrame(0x8, payload);
@@ -117,7 +118,7 @@ final class TestWsServer implements AutoCloseable {
         }
 
         /** 模拟网络断开：直接关闭 TCP（客户端将收到 1006 abnormal closure）。 */
-        void closeSocket() {
+        public void closeSocket() {
             try {
                 socket.close();
             } catch (IOException ignored) {
