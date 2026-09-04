@@ -28,13 +28,22 @@ class BuiltinImDriverTest {
 
     /** 替身平台：记录生命周期与投递。 */
     static final class FakePlatform implements BuiltinPlatform {
+        private final String platformName;
         final List<String> sent = new CopyOnWriteArrayList<>();
         volatile boolean started;
         volatile boolean stopped;
 
+        FakePlatform() {
+            this("qq");
+        }
+
+        FakePlatform(String platformName) {
+            this.platformName = platformName;
+        }
+
         @Override
         public String platform() {
-            return "qq";
+            return platformName;
         }
 
         @Override
@@ -191,5 +200,121 @@ class BuiltinImDriverTest {
         driver.tearDown();
 
         assertTrue(platform.stopped);
+    }
+
+    // =====================================================================
+    // F1 多平台泛化：第二平台槽（feishu）注册 / reconcile / 路由
+    // =====================================================================
+
+    /** 第二平台（飞书形态）最小配置：字段与 QQ 不同（app_secret），验证槽支持任意配置类型。 */
+    private record FeishuLikeConfig(boolean enabled, String appId, String appSecret) {
+        static final FeishuLikeConfig DISABLED = new FeishuLikeConfig(false, "", "");
+
+        boolean usable() {
+            return enabled && notBlank(appId) && notBlank(appSecret);
+        }
+
+        static FeishuLikeConfig from(org.bukkit.configuration.ConfigurationSection section) {
+            if (section == null) {
+                return DISABLED;
+            }
+            return new FeishuLikeConfig(
+                    section.getBoolean("enabled", false),
+                    section.getString("app_id", ""),
+                    section.getString("app_secret", ""));
+        }
+
+        private static boolean notBlank(String s) {
+            return s != null && !s.trim().isEmpty();
+        }
+    }
+
+    private static FeishuLikeConfig feishuConfig(ConfigService cs) {
+        return FeishuLikeConfig.from(section(cs, "platforms.feishu"));
+    }
+
+    private static org.bukkit.configuration.ConfigurationSection section(ConfigService cs, String path) {
+        if (cs.getConfig("im") == null) {
+            return null;
+        }
+        return cs.getConfig("im").getConfigurationSection(path);
+    }
+
+    @Test
+    void register_secondPlatform_reconcilesBothAndRoutesToEach() {
+        // 两平台配置均可用；im_bindings 各绑一类会话（qq=player_group、feishu=admin_dm）
+        YamlConfiguration im = new YamlConfiguration();
+        im.set("backend", "builtin");
+        im.set("platforms.qq.enabled", true);
+        im.set("platforms.qq.app_id", "app-1");
+        im.set("platforms.qq.client_secret", "secret-1");
+        im.set("platforms.feishu.enabled", true);
+        im.set("platforms.feishu.app_id", "cli-feishu");
+        im.set("platforms.feishu.app_secret", "secret-feishu");
+        Mockito.when(configService.getConfig("im")).thenReturn(im);
+
+        YamlConfiguration b = new YamlConfiguration();
+        b.set("sessions.qq.player_group", "qq:group:G-qq");
+        b.set("sessions.feishu.admin_dm", "feishu:user:U-feishu");
+        Mockito.when(configService.getConfig("im_bindings")).thenReturn(b);
+
+        FakePlatform qq = new FakePlatform("qq");
+        FakePlatform feishu = new FakePlatform("feishu");
+        BuiltinImDriver driver = new BuiltinImDriver(silentLogger(), configService, formatter);
+        driver.register(new PlatformSlot<>(
+                "qq",
+                cs -> QqPlatformConfig.from(section(cs, "platforms.qq")),
+                QqPlatformConfig::usable,
+                c -> qq,
+                silentLogger()));
+        driver.register(new PlatformSlot<>(
+                "feishu", cs -> feishuConfig(cs), FeishuLikeConfig::usable, c -> feishu, silentLogger()));
+        driver.setup();
+
+        assertTrue(qq.started, "QQ 平台应启动");
+        assertTrue(feishu.started, "飞书平台应启动");
+
+        // PUBLIC → 仅绑定的 qq player_group；PRIVATE → 仅 feishu admin_dm
+        driver.send(MessageEnvelope.publicMessage("群公告"));
+        driver.send(MessageEnvelope.privateMessage("私信"));
+        assertEquals(List.of("qq:group:G-qq|群公告"), qq.sent);
+        assertEquals(List.of("feishu:user:U-feishu|私信"), feishu.sent);
+    }
+
+    @Test
+    void register_onePlatformUnusable_otherStillServes() {
+        YamlConfiguration im = new YamlConfiguration();
+        im.set("backend", "builtin");
+        im.set("platforms.qq.enabled", true);
+        im.set("platforms.qq.app_id", "app-1");
+        im.set("platforms.qq.client_secret", "secret-1");
+        im.set("platforms.feishu.enabled", true);
+        im.set("platforms.feishu.app_id", ""); // 飞书凭据缺失 → 不可用
+        im.set("platforms.feishu.app_secret", "");
+        Mockito.when(configService.getConfig("im")).thenReturn(im);
+
+        YamlConfiguration b = new YamlConfiguration();
+        b.set("sessions.qq.player_group", "qq:group:G-qq");
+        b.set("sessions.feishu.player_group", "feishu:group:G-fs");
+        Mockito.when(configService.getConfig("im_bindings")).thenReturn(b);
+
+        FakePlatform qq = new FakePlatform("qq");
+        FakePlatform feishu = new FakePlatform("feishu");
+        BuiltinImDriver driver = new BuiltinImDriver(silentLogger(), configService, formatter);
+        driver.register(new PlatformSlot<>(
+                "qq",
+                cs -> QqPlatformConfig.from(section(cs, "platforms.qq")),
+                QqPlatformConfig::usable,
+                c -> qq,
+                silentLogger()));
+        driver.register(new PlatformSlot<>(
+                "feishu", cs -> feishuConfig(cs), FeishuLikeConfig::usable, c -> feishu, silentLogger()));
+        driver.setup();
+
+        assertTrue(qq.started);
+        assertFalse(feishu.started, "凭据缺失平台不启动（不阻塞其他平台）");
+        driver.send(MessageEnvelope.publicMessage("群公告"));
+        assertEquals(List.of("qq:group:G-qq|群公告"), qq.sent, "仅可用平台收公告");
+        assertTrue(feishu.sent.isEmpty());
     }
 }

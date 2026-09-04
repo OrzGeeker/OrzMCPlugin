@@ -11,22 +11,24 @@ import com.jokerhub.paper.plugin.orzmc.infra.bot.ImDiscoveryCandidates;
 import com.jokerhub.paper.plugin.orzmc.infra.bot.ImMessageRouter;
 import com.jokerhub.paper.plugin.orzmc.infra.bot.MessageFormatter;
 import com.jokerhub.paper.plugin.orzmc.infra.config.ConfigService;
+import com.jokerhub.paper.plugin.orzmc.infra.config.configs.FeishuPlatformConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.QqPlatformConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.health.HealthRegistry;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
 /**
  * builtin 双通道驱动（方案 §2/§3：BotMessageService 的第二个实现，backend=builtin 时由 Provider 返回）。
  *
- * <p>按 im.yml 平台配置持有各平台 {@link BuiltinPlatform}（当前仅 QQ，S7 起逐平台挂载）；会话绑定
- * 每次实时读 im_bindings.yml（S8 命令写入后 reload 即生效，无需重启）：</p>
+ * <p>按 im.yml 平台配置持有各平台 {@link PlatformSlot}（单平台槽，每平台一个，批次 4 起逐平台注册）；
+ * 会话绑定每次实时读 im_bindings.yml（S8 命令写入后 reload 即生效，无需重启）：</p>
  * <ul>
  *   <li>出站：{@link #send} 按信封 PUBLIC/PRIVATE 经共享路由（ImMessageRouter）解析目标并逐平台投递；
  *       无可用平台或无可投递目标 → 静默跳过（广播语义与 EasyBot 一致，R10：单平台失败不阻塞其他平台）；</li>
  *   <li>入站：平台适配器内部接 BotInboundHandler（QQ 经 QqInboundProcessor，R12 调度到服务器线程）；
  *       本驱动把 im_bindings 会话按需喂给适配器做门槛判定；</li>
- *   <li>生命周期：{@link #reloadConfig} reconcile——平台配置可用则（重建并）启动，不可用则停止并降级
+ *   <li>生命周期：{@link #reloadConfig} reconcile 所有槽——配置可用则（重建并）启动，不可用则停止并降级
  *       健康（D3：无任何可用平台时 Provider 直接返回 Unavailable 停群，不自动回退）。</li>
  * </ul>
  */
@@ -38,12 +40,9 @@ public final class BuiltinImDriver implements BotMessageService {
     /** 未绑定会话自动发现候选（D11：status 候选/控制台日志提示）。 */
     private final ImDiscoveryCandidates discovery = new ImDiscoveryCandidates();
 
-    private final Function<QqPlatformConfig, BuiltinPlatform> platformFactory;
+    private final List<PlatformSlot<?>> slots = new ArrayList<>();
 
-    private volatile BuiltinPlatform qqPlatform;
-    private volatile QqPlatformConfig currentQqConfig = QqPlatformConfig.DISABLED;
-
-    /** 生产入口：QQ 平台工厂闭包引用构造参数与本实例方法（会话绑定实时读）。 */
+    /** 生产入口：注册 QQ 平台槽（工厂闭包引用本实例方法，会话绑定实时读）。 */
     public BuiltinImDriver(
             ServerLogger logger,
             ServerScheduler scheduler,
@@ -51,10 +50,8 @@ public final class BuiltinImDriver implements BotMessageService {
             BotInboundHandler inbound,
             MessageFormatter formatter,
             HealthRegistry health) {
-        this.logger = logger;
-        this.configService = configService;
-        this.formatter = formatter;
-        this.platformFactory = cfg -> new QqBuiltinAdapter(
+        this(logger, configService, formatter);
+        registerQq(cfg -> new QqBuiltinAdapter(
                 logger,
                 scheduler,
                 inbound,
@@ -62,19 +59,51 @@ public final class BuiltinImDriver implements BotMessageService {
                 () -> this.bindings().conversation("qq"),
                 health,
                 cfg,
-                this.discovery);
+                this.discovery));
+        // 批次4：飞书平台（F4b 起）；凭据齐备即与 QQ 并行可用（R10 单平台失败不阻塞其他）
+        registerFeishu(cfg -> new FeishuBuiltinAdapter(
+                logger,
+                scheduler,
+                inbound,
+                formatter,
+                () -> this.bindings().conversation("feishu"),
+                health,
+                cfg,
+                this.discovery));
     }
 
-    /** 测试用：可注入平台工厂（替身适配器，避免单元测试触发真实网络）。 */
+    /** 测试用：注入替身 QQ 平台工厂（避免单元测试触发真实网络）。 */
     BuiltinImDriver(
             ServerLogger logger,
             ConfigService configService,
             MessageFormatter formatter,
-            Function<QqPlatformConfig, BuiltinPlatform> platformFactory) {
+            Function<QqPlatformConfig, BuiltinPlatform> qqFactory) {
+        this(logger, configService, formatter);
+        registerQq(qqFactory);
+    }
+
+    /** 测试用：不注册任何平台（后续经 {@link #register} 增补，用于多平台路由用例）。 */
+    BuiltinImDriver(ServerLogger logger, ConfigService configService, MessageFormatter formatter) {
         this.logger = logger;
         this.configService = configService;
         this.formatter = formatter;
-        this.platformFactory = platformFactory;
+    }
+
+    private void registerQq(Function<QqPlatformConfig, BuiltinPlatform> factory) {
+        register(new PlatformSlot<>("qq", cs -> readQqConfig(), QqPlatformConfig::usable, factory, logger));
+    }
+
+    /** 注册飞书平台槽（批次4；会话绑定实时读）。 */
+    private void registerFeishu(Function<FeishuPlatformConfig, BuiltinPlatform> factory) {
+        register(new PlatformSlot<>("feishu", cs -> readFeishuConfig(), FeishuPlatformConfig::usable, factory, logger));
+    }
+
+    /** 注册平台槽（幂等：同名替换）。测试与后续平台（飞书等）经此挂载。 */
+    void register(PlatformSlot<?> slot) {
+        synchronized (slots) {
+            slots.removeIf(existing -> existing.platform().equals(slot.platform()));
+            slots.add(slot);
+        }
     }
 
     // =====================================================================
@@ -111,49 +140,36 @@ public final class BuiltinImDriver implements BotMessageService {
 
     @Override
     public void tryReconnectIfDisconnected() {
-        if (qqPlatform != null) {
-            qqPlatform.reconnectIfNeeded();
+        for (PlatformSlot<?> slot : snapshot()) {
+            BuiltinPlatform platform = slot.current();
+            if (platform != null) {
+                platform.reconnectIfNeeded();
+            }
         }
     }
 
-    /** 配置重载：按当前 im.yml 平台配置 reconcile（backend 切换由 Provider/外层负责）。 */
+    /** 配置重载：reconcile 所有平台槽（backend 切换由 Provider/外层负责）。 */
     @Override
     public void reloadConfig() {
-        QqPlatformConfig qq = readQqConfig();
-        if (qq.usable()) {
-            if (qqPlatform == null) {
-                BuiltinPlatform created = platformFactory.apply(qq);
-                created.start();
-                qqPlatform = created;
-                currentQqConfig = qq;
-            } else if (!currentQqConfig.equals(qq)) {
-                // 凭据变化：停旧建新（配置级变更需重建；会话绑定实时读不在此列）
-                stopPlatform();
-                BuiltinPlatform created = platformFactory.apply(qq);
-                created.start();
-                qqPlatform = created;
-                currentQqConfig = qq;
-            }
-        } else if (qqPlatform != null) {
-            logger.logger().warning("[builtin] QQ 平台不可用（enabled 或凭据缺失），已停用该平台");
-            stopPlatform();
+        for (PlatformSlot<?> slot : snapshot()) {
+            slot.reconcile(configService);
         }
     }
 
     @Override
     public void tearDown() {
-        stopPlatform();
+        for (PlatformSlot<?> slot : snapshot()) {
+            slot.stop();
+        }
     }
 
     // =====================================================================
     // 内部
     // =====================================================================
 
-    private void stopPlatform() {
-        if (qqPlatform != null) {
-            qqPlatform.stop();
-            qqPlatform = null;
-            currentQqConfig = QqPlatformConfig.DISABLED;
+    private List<PlatformSlot<?>> snapshot() {
+        synchronized (slots) {
+            return List.copyOf(slots);
         }
     }
 
@@ -162,6 +178,13 @@ public final class BuiltinImDriver implements BotMessageService {
             return QqPlatformConfig.DISABLED;
         }
         return QqPlatformConfig.from(configService.getConfig("im").getConfigurationSection("platforms.qq"));
+    }
+
+    private FeishuPlatformConfig readFeishuConfig() {
+        if (configService.getConfig("im") == null) {
+            return FeishuPlatformConfig.DISABLED;
+        }
+        return FeishuPlatformConfig.from(configService.getConfig("im").getConfigurationSection("platforms.feishu"));
     }
 
     private ImBindings bindings() {
@@ -190,6 +213,11 @@ public final class BuiltinImDriver implements BotMessageService {
             return null;
         }
         String platform = target.indexOf(':') > 0 ? target.substring(0, target.indexOf(':')) : target;
-        return platform.equals("qq") ? qqPlatform : null;
+        for (PlatformSlot<?> slot : snapshot()) {
+            if (slot.platform().equals(platform)) {
+                return slot.current();
+            }
+        }
+        return null;
     }
 }
