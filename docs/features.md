@@ -46,7 +46,7 @@
 - **EasyBot 网关（默认，`backend: easybot`）**：外部网关服务统一接入 QQ、Telegram、Discord、飞书和微信；
   EasyBot 使用 WebSocket 向插件推送入站消息，插件通过 HTTP API 发送回复和服务器通知；
 - **内置直连（`backend: builtin`，QQ 已落地）**：插件直连各平台官方 API（WS 网关 + REST），不再依赖外部网关进程；
-  业务层命令/通知语义与 EasyBot 通道完全一致，切换 backend 无需改会话绑定（QQ 会话值与 EasyBot target 同构）。
+  业务层命令/通知语义与 EasyBot 通道完全一致。⚠️ 会话值体系不同：EasyBot 通道用后台分配的「会话 key」（如 `qq:conv_xxx`，见 §2.5），builtin 通道用**平台原生会话标识**（QQ 为 `group:<OpenID>` / `user:<OpenID>`，见 §2.6）——切 backend 后需按新通道重新绑定会话。
 
 ### 2.2 Bot 命令一览
 
@@ -169,22 +169,52 @@ PUBLIC；异常告警（含 GeoIP 上游异常私信）与维护失败事件走 
 ### 2.6 builtin 内置直连配置指南（backend=builtin）
 
 > **当前状态：QQ 平台已落地**（上行 WS 网关 + 下行 REST + 入站归一，业务语义与 EasyBot 通道一致）；飞书/Discord/Telegram 按同一骨架后续批次接入。切换由 `im.yml` 的 `backend` 决定（改后 `/config reload im` 或重启生效，D4）；**无可用平台时群功能整体停用并在日志/`/config im status` 告警，不自动回退**（D3）。
+>
+> 本节按「平台侧准备 → 插件配置 → 会话绑定 → 验证 → 排查」完整流程编写，可作为用户手册素材。QQ 平台相关 UI 路径与限制以 [QQ 开放平台](https://q.qq.com/) 当前界面/规则为准。
 
-#### 首次接入 checklist
+#### 第 1 步：QQ 开放平台创建机器人并获取凭据
 
-1. **注册 QQ 开放平台机器人**：在 [QQ 开放平台](https://q.qq.com/) 注册并过审，获取 `app_id` / `client_secret`；
-2. **填写凭据并切换通道**：`im.yml`：
+1. 打开 [QQ 开放平台](https://q.qq.com/) → 右上角**立即注册**（支持个人/企业实名）并登录；
+2. **创建机器人应用**：登录后创建机器人，填写名称/简介/头像；测试阶段可选**私域机器人**（无需正式审核，可在沙箱验证）；
+3. **获取凭据**（左侧菜单 → **开发设置**）：
+   - **BotAppID**：直接复制（如 `123456789`）→ 对应插件 `app_id`；
+   - **AppSecret**：点击**查看**（仅首次查看时可复制，离开后不可见）→ 对应插件 `client_secret`。⚠️ **不要提交到版本库/分享**（R5）；
+4. **配置 IP 白名单（必须）**：开发设置 → **IP白名单** 添加运行服务器的**公网出口 IP**（`curl -s https://api.ipify.org` 查看）；若本机走代理（Surge/Clash 等），需让 `api.bot.qq.com` / `bots.qq.com` 走直连（DIRECT）或把代理出口 IP 加入白名单——否则报 `接口访问源IP不在白名单`；
+5. **沙箱环境（测试用）**：左侧菜单 → **沙箱配置**：
+   - 创建**测试 QQ 群**（群名须含“测试”二字、你须为群主），在沙箱配置页下拉选择该群添加；
+   - （可选）**私聊白名单**添加允许与机器人私聊的 QQ 号；
+6. **把机器人加进群**：手机 QQ → 测试群 → 群设置 → **群机器人** → 底部找到你的机器人 → 添加。添加后在群里 @机器人 即可收到消息。
+
+#### 第 2 步：插件配置（im.yml）
+
+在 `im.yml` 切换通道并填凭据（`app_id` = BotAppID，`client_secret` = AppSecret）：
 
 ```yaml
 backend: builtin
 platforms:
   qq:
     enabled: true
-    app_id: '你的 app_id'
-    client_secret: '你的 client_secret'
+    app_id: '123456789'
+    client_secret: 'your_app_secret'
 ```
 
-3. **绑定会话**（仅控制台/游戏内 op，D10）：`/config im bind qq group <群OpenID> admin_group`（玩家群 `player_group`、私聊 `admin_dm` 同理，类型为 `group|user`）；也可直接编辑 `im_bindings.yml`：
+改完 `/config reload im` 或重启生效（D4）。插件行为：
+
+- 凭据齐备 → 启动 QQ 内置适配器（自动换发 2h access_token、到期前预刷新、连接出站 WS 网关；健康 key `builtin.qq`）；
+- `enabled` 缺失/凭据为空 → QQ 平台不可用；**backend=builtin 且无任何可用平台时停用群功能并告警**（D3，不会自动回退到 EasyBot）。
+
+#### 第 3 步：会话发现与绑定（im_bindings.yml）
+
+QQ 群/私聊**会话值是平台原生 OpenID**（`group:` 群 / `user:` 私聊），在平台 UI 无处可查——把机器人拉进群后任意发一条消息，插件只会在控制台日志记录，并把它列入 `/config im status` 的**未绑定候选**（D11，不向陌生会话回消息打扰）。随后绑定（仅控制台/游戏内 op，D10）：
+
+```
+/config im status                       # 查看候选/健康/绑定
+/config im bind qq group <群OpenID> admin_group
+/config im bind qq group <群OpenID> player_group
+/config im bind qq user <用户OpenID> admin_dm
+```
+
+也可以直接编辑 `im_bindings.yml`（`/config im bind` 维护后自动持久化，一般不需手写）：
 
 ```yaml
 sessions:
@@ -194,9 +224,14 @@ sessions:
     admin_dm: 'user:<UserOpenID>'         # 管理员私聊
 ```
 
-4. **验证**：`/config im test qq group <群OpenID> 你好` 验证下行；群里发消息验证上行；未绑定会话来消息时**只进控制台日志 + `/config im status` 候选列表**（D11，不向陌生会话回消息）。
+#### 第 4 步：验证
 
-#### 管理命令（`/config im ...`，并入配置管理树）
+- 下行：`/config im test qq group <群OpenID> 你好`——若群内收到即达；失败查 `builtin.qq` 健康最后错误；
+- 上行一问一答：群内 @机器人 发 `$h` / `$l`，应收到机器人回复（被动回复通道，带来源消息 msg_id）；
+- 管理指令：管理群内 owner/admin 角色成员可发 `$b`/`$e` 等（角色判定取平台事件 `member_role`，fail-closed）；
+- 全链路：`/config im status` 应显示“已连接 + 已绑定会话”，`/bot` 对 easybot 通道的语义见 §2.4。
+
+#### 管理命令一览
 
 | 子命令 | 功能 |
 |--------|------|
@@ -204,8 +239,6 @@ sessions:
 | `status` | 通道健康（连接）+ 会话绑定 + 未绑定候选一览 |
 | `bind <平台> <group\|user> <会话id> <admin_group\|player_group\|admin_dm>` | 绑定会话并持久化（D10 仅控制台/游戏内 op） |
 | `test <平台> <group\|user> <会话id> <文本>` | 向指定会话发一条测试文本验证下行（D7 尽力一次） |
-
-> **QQ 会话值 = 平台原生 OpenID**（`group:` 群 / `user:` 私聊），与 EasyBot 通道的「会话 key」（如 `qq:conv_xxx`）**不是一回事**；两通道切换无需改绑定值（§5 语义一致）。QQ 群/私聊 OpenID 在平台 UI 无处可查——把机器人拉进群后任意一条消息即可经 `/config im status` 候选发现。
 
 #### 出站域名放行清单（R11，有防火墙的服务器需放行）
 
@@ -215,12 +248,19 @@ sessions:
 | QQ 开放 API（网关地址/消息发送） | `api.bot.qq.com` | HTTPS 出站 |
 | QQ 出站网关 WS | 由 `/gateway/bot` 接口下发（`wss://…`） | WSS 出站 |
 
-#### 能力边界与注意
+#### 已知限制与常见问题
 
-- **仅文本**（D6）：图片/文件/语音等媒体不支持；
-- **发送尽力一次不重试**（D7）：失败经健康告警，无投递对账/自动补发；
-- **单凭据单实例**（R3）：一个 bot 凭据只允许一个实例消费事件（多服需多 bot）；
-- 消息上限/被动回复窗口等按 QQ 官方文档约束，格式化分段见既有模板机制。
+| 现象 | 原因/处理 |
+|------|----------|
+| 日志 `backend=builtin 无可用平台` | im.yml 平台未启用或凭据缺失（D3：停群，修好后 `/config reload im` 或重启） |
+| 健康 `builtin.qq` 未连接 + `token not exist or expire`（11244） | access_token 被提前失效：插件自动强制重换并重试一次；若持续，核对 app_id/client_secret |
+| `接口访问源IP不在白名单` | 服务器出口 IP 未加入 QQ 平台 IP 白名单（或代理未放行 `api.bot.qq.com`/`bots.qq.com`） |
+| 发消息失败提示主动消息无权限 | **QQ 限制主动消息**（需特殊权限）；一问一答走被动回复（带 msg_id）默认可用；服务器**广播/通知类主动推送在未开通主动消息权限时会被拒**——QQ 群通知请先开通或接受该限制 |
+| 被动回复窗口 | 官方要求收到消息后短窗口内回复（EasyBot 实机记录为 5 分钟内，以 QQ 官方当前规则为准，D14） |
+| 无法识别网关帧/心跳异常 | 网络抖动自动重连；持续异常查代理/DNS（198.18.x 为代理拦截特征） |
+| 两个通道连同一 bot | 一个 bot 凭据只允许一个实例消费事件（R3）：EasyBot 与 builtin 切通道时先停用其一，避免抢会话/互踢 |
+
+其他能力边界：**仅文本**（D6，图片/文件/语音不支持）、**发送尽力一次不重试**（D7）、单条文本上限按 QQ 官方约束（R7 常量待核验固化）。
 
 ---
 
