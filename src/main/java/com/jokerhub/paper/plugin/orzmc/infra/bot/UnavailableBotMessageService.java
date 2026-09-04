@@ -15,7 +15,8 @@ public final class UnavailableBotMessageService implements BotMessageService {
 
     private static final String HEALTH_KEY = "im";
     private static final String MESSAGE =
-            "IM backend=builtin 尚未可用（内置直连未实现或初始化失败）。已停用群功能——" + "请将 im.yml 的 backend 改回 easybot（默认兜底）或修复后重启。";
+            "IM backend=builtin 无可用平台（需在 im.yml platforms 下启用平台并配齐凭据，如 QQ 的 app_id/client_secret）。"
+                    + "已停用群功能——请将 im.yml 的 backend 改回 easybot（默认兜底）或修复配置后重启。";
 
     private final ServerLogger logger;
     private final HealthRegistry healthRegistry;

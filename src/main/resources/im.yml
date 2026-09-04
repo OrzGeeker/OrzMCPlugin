@@ -7,3 +7,10 @@
 #
 # 会话绑定（admin_group / player_group / admin_dm）见 im_bindings.yml（由 /orzmc im bind 维护）。
 backend: easybot
+
+# builtin 直连平台凭据（backend: builtin 且平台 enabled + 凭据齐备时启用；缺任一即该平台不可用）
+platforms:
+  qq:
+    enabled: false
+    app_id: ''
+    client_secret: ''
