@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### 📝 文档
+- **文档结构重组**：新增 [docs/README.md](docs/README.md) 文档导航（按读者角色 + 时效组织）；历史快照/验收/已完结路线图统一归档 `docs/reports/`（9 份，逐份加「状态：归档」头）；`code-quality-roadmap.md` 移入 `docs/roadmap/`；`commercialization.md`（商业策略）移出工作树（PUBLIC 仓库不放经营内容，可经 git 历史恢复）
+- **内容治理**：`features.md` 补齐 §5.5 危险命令拦截 / §5.6 聊天反垃圾 / §5.7 进服限流 / §5.8 漏洞加固 / §15.7 坐牢治理（prison）章节，修正 GeoIP 失败策略表述（默认 fail-close）；`quality-testing-plan.md` 功能清单去重收敛至 features.md、e2e 用例清单与实现对齐；文档与代码数量漂移修正（配置记录类 20/15→23）
+
 ### ✨ 新功能
 - **插件自更新（基于 Hangar）** — 不再需要手动下载 jar 再丢进 `plugins/update/`：
   - `update.channel`（默认 `release` 正式版；`beta` 为 `-dev` 开发版）选择更新通道，启动后按 `update.check_interval_hours`（默认 12h）异步检查新版本，不卡主线程
