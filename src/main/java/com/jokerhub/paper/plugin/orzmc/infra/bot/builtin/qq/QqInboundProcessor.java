@@ -5,6 +5,7 @@ import com.jokerhub.paper.plugin.orzmc.core.bot.MessageEnvelope;
 import com.jokerhub.paper.plugin.orzmc.core.ports.server.ServerScheduler;
 import com.jokerhub.paper.plugin.orzmc.infra.bot.BotInboundDispatcher;
 import com.jokerhub.paper.plugin.orzmc.infra.bot.ImConversation;
+import com.jokerhub.paper.plugin.orzmc.infra.bot.ImDiscoveryCandidates;
 import com.jokerhub.paper.plugin.orzmc.infra.bot.ImMessageRouter;
 import com.jokerhub.paper.plugin.orzmc.infra.bot.MessageFormatter;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -40,6 +41,8 @@ public final class QqInboundProcessor implements QqEventSink {
     private final BotInboundHandler inbound;
     private final MessageFormatter formatter;
     private final QqReplySink outbound;
+    /** 未绑定会话发现候选（可为 null：不记录；D11 候选仅 status 提示用）。 */
+    private final ImDiscoveryCandidates discovery;
 
     private final AtomicLong rateWindowStart = new AtomicLong();
     private final AtomicInteger rateWindowCount = new AtomicInteger();
@@ -52,6 +55,17 @@ public final class QqInboundProcessor implements QqEventSink {
             BotInboundHandler inbound,
             MessageFormatter formatter,
             QqReplySink outbound) {
+        this(log, scheduler, conversation, inbound, formatter, outbound, null);
+    }
+
+    public QqInboundProcessor(
+            Logger log,
+            ServerScheduler scheduler,
+            Supplier<ImConversation> conversation,
+            BotInboundHandler inbound,
+            MessageFormatter formatter,
+            QqReplySink outbound,
+            ImDiscoveryCandidates discovery) {
         if (log == null || scheduler == null || conversation == null || inbound == null) {
             throw new IllegalArgumentException("log/scheduler/conversation/inbound must not be null");
         }
@@ -61,6 +75,7 @@ public final class QqInboundProcessor implements QqEventSink {
         this.inbound = inbound;
         this.formatter = formatter;
         this.outbound = outbound;
+        this.discovery = discovery;
     }
 
     @Override
@@ -113,11 +128,14 @@ public final class QqInboundProcessor implements QqEventSink {
     }
 
     private void logUnbound(QqInboundMessage message) {
+        if (discovery != null) {
+            discovery.record(message.target()); // 候选供 status（D11）：每次事件都记，日志节流不影响
+        }
         long now = System.currentTimeMillis();
         if (now - lastUnboundLogMs >= UNBOUND_LOG_INTERVAL_MS) {
             lastUnboundLogMs = now;
-            // 只进控制台日志（D11）：提示管理员用 /orzmc im bind 绑定该会话（S8）
-            log.info("[qq] 忽略未绑定会话消息 target=" + message.target() + "（绑定见 /orzmc im bind，候选入 status）");
+            // 只进控制台日志（D11）：提示管理员用 /config im bind 绑定该会话
+            log.info("[qq] 忽略未绑定会话消息 target=" + message.target() + "（绑定见 /config im bind，候选入 status）");
         }
     }
 

@@ -49,9 +49,10 @@ public final class ConfigService {
         configManager.registerConfig("easybot", "easybot.yml");
 
         // IM 网关双通道（方案 im-gateway-inhouse.md）：im.yml 为只读通道配置（backend，用户手配）；
-        // im_bindings.yml 为运行时绑定数据（/orzmc im bind 维护，预留）。
+        // im_bindings.yml 为运行时绑定数据（/orzmc im bind 维护，预留）。markAlwaysSave 保证绑定写盘不丢。
         configManager.registerConfig("im", "im.yml");
         configManager.registerConfig("im_bindings", "im_bindings.yml");
+        configManager.markAlwaysSave("im_bindings");
 
         configManager.setDefaults("guide_book", config -> {});
 

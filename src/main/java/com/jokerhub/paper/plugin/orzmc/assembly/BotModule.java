@@ -24,6 +24,7 @@ public final class BotModule implements ServiceModule {
     private final Notifier notifier;
     private final BotStatusService botStatusService;
     private final HealthRegistry healthRegistry;
+    private final HealthAccessor healthAccessor;
 
     public BotModule(PlatformModule platform) {
         this.healthRegistry = new HealthRegistry();
@@ -43,7 +44,8 @@ public final class BotModule implements ServiceModule {
         this.notifier = new Notifier(platform.serverAccess(), botMessageService);
 
         // BotStatusService
-        this.botStatusService = new BotStatusService(platform.textStyles(), new HealthAccessor(healthRegistry));
+        this.healthAccessor = new HealthAccessor(healthRegistry);
+        this.botStatusService = new BotStatusService(platform.textStyles(), healthAccessor);
     }
 
     @Override
@@ -72,6 +74,11 @@ public final class BotModule implements ServiceModule {
 
     public BotStatusService botStatusService() {
         return botStatusService;
+    }
+
+    /** 健康只读视图（/bot 与 im status 共用，key 如 easybot / builtin.qq）。 */
+    public HealthAccessor healthAccessor() {
+        return healthAccessor;
     }
 
     public BotInboundHandler botInboundHandler() {
