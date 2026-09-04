@@ -7,9 +7,9 @@
 > **运行环境**：Paper 26.x 或 Folia（`folia-supported: true`，同一 JAR 双运行时兼容）。适配细节与测试策略见 [Folia 迁移评估文档](folia-migration.md)。
 
 > **相关测试文档**：
-> - [插件功能测试用例](test-cases.md)（28 项端到端用例，含前置条件/步骤/预期/实际）
-> - [端到端测试报告（2026-08-06）](e2e-test-report-20260806.md)（真实环境：机器人 + 真实玩家 + RCON）
-> - [端到端测试报告（2026-08-20 双核心）](e2e-test-report-20260820.md)（Paper + Folia 62/62 用例，E2E 套件 `plugin/e2e/`）
+> - [插件功能测试用例](reports/test-cases.md)（28 项端到端用例，含前置条件/步骤/预期/实际）
+> - [端到端测试报告（2026-08-06）](reports/e2e-test-report-20260806.md)（真实环境：机器人 + 真实玩家 + RCON）
+> - [端到端测试报告（2026-08-20 双核心）](reports/e2e-test-report-20260820.md)（Paper + Folia 62/62 用例，E2E 套件 `plugin/e2e/`）
 > - E2E 自动化套件：`plugin/e2e/run-all.sh`（01-06 用例：Bot 命令/玩家命令/安全拦截/备份维护/群消息/权限审核，双核心自动检测）
 
 ---
@@ -561,7 +561,7 @@ PUBLIC；异常告警（含 GeoIP 上游异常私信）与维护失败事件走 
 **说明**：
 - 权限组只应通过本系统（`/apply` 审核 / `$p` 升降级）管理，请勿用 `lp user X parent add` 手动叠加组，否则会造成权限判定异常
 - 结案申请记录每玩家自动保留最近 10 条，历史记录自动裁剪（文件大小有上限）
-- 详细设计见 [权限系统方案文档](./permission-system-v2.md)
+- 详细设计见 [权限系统方案文档](reports/permission-system-v2.md)
 
 ## 十六、插件自更新
 
@@ -578,4 +578,4 @@ PUBLIC；异常告警（含 GeoIP 上游异常私信）与维护失败事件走 
 
 ---
 
-> 完整信息请参阅：[README](../README.md) | [架构文档](./architecture.md) | [贡献指南](../CONTRIBUTING.md)
+> 完整信息请参阅：[README](../README.md) | [架构文档](architecture.md) | [贡献指南](../CONTRIBUTING.md)

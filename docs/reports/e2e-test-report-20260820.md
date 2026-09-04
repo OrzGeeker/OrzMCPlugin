@@ -1,5 +1,7 @@
 # OrzMC 插件双核心验收报告（2026-08-20）
 
+> **状态：归档快照**（2026-09-03 归档）——时点验收报告，不再更新。现行 E2E 套件清单见 [e2e/README.md](../../e2e/README.md)。
+>
 > **范围**：OrzMC 1.0.19-dev（源码 `OrzMC/plugin` 最新 main e12ca5d 本地构建）双核心（Paper + Folia）真实环境验收
 > **方式**：`plugin/e2e/` 自动化套件（run-all.sh，01-06 共 62 项断言）+ RCON + Mineflayer bot + 日志/落盘断言
 > **结论**：**Paper 62/62 + Folia 62/62 全部通过**；发现 1 个 backup-core 缺陷（symlink 世界 $b 空备份，修复 PR 已提）与若干环境观察项
