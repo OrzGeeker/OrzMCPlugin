@@ -59,4 +59,20 @@ public final class ImMessageRouter {
         }
         return targets;
     }
+
+    /**
+     * 入站会话门槛（fail-closed）：仅来源会话 ∈ {adminGroup, playerGroup, adminDm} 且该会话启用才放行。
+     *
+     * <p>EasyBotDriver（easybot.yml platforms）与 BuiltinDriver（im_bindings.yml）共用同一判定，
+     * target 与会话值为平台前缀后的 target 字符串（如 {@code qq:group:<openid>}）。空会话（未绑定/未配置）
+     * 一律拒绝——未绑定会话的提示只进控制台日志（D11），不向陌生会话回消息。</p>
+     */
+    public static boolean isInboundAllowed(ImConversation conversation, String target) {
+        if (conversation == null || !conversation.enabled() || target == null) {
+            return false;
+        }
+        return target.equals(conversation.adminGroup())
+                || target.equals(conversation.playerGroup())
+                || target.equals(conversation.adminDm());
+    }
 }
