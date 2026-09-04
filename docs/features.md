@@ -6,11 +6,10 @@
 >
 > **运行环境**：Paper 26.x 或 Folia（`folia-supported: true`，同一 JAR 双运行时兼容）。适配细节与测试策略见 [Folia 迁移评估文档](folia-migration.md)。
 
-> **相关测试文档**：
-> - [插件功能测试用例](reports/test-cases.md)（28 项端到端用例，含前置条件/步骤/预期/实际）
-> - [端到端测试报告（2026-08-06）](reports/e2e-test-report-20260806.md)（真实环境：机器人 + 真实玩家 + RCON）
-> - [端到端测试报告（2026-08-20 双核心）](reports/e2e-test-report-20260820.md)（Paper + Folia 62/62 用例，E2E 套件 `plugin/e2e/`）
-> - E2E 自动化套件：`plugin/e2e/run-all.sh`（01-06 用例：Bot 命令/玩家命令/安全拦截/备份维护/群消息/权限审核，双核心自动检测）
+> **测试与质量**：
+> - 测试策略 / 质量体系：[quality-testing-plan.md](quality-testing-plan.md)
+> - 自动化 E2E 套件：`e2e/`（`run-all.sh`，01-06 用例：Bot 命令/玩家命令/安全拦截/备份维护/群消息/权限审核）——详见 [e2e/README.md](../e2e/README.md)
+> - 历史手工用例与验收快照（已归档）：见 [docs/README.md](README.md)「历史快照」节
 
 ---
 
@@ -205,7 +204,7 @@ PUBLIC；异常告警（含 GeoIP 上游异常私信）与维护失败事件走 
 - 玩家登录前异步查询 IP 地理位置
 - 仅允许配置的国家代码（`allow_country_code`）通过；未配置时放行所有 IP
 - 内网/私有地址（RFC1918、环回、CGNAT、链路本地及 IPv6 内网段）直接放行，不触发 GeoIP 查询
-- 上游查询失败/超时/返回空国家码时 **fail-open 放行**（可用性优先），并私信告警管理员（1 分钟限频，日志始终保留完整现场），告警不入玩家群
+- 上游查询失败/超时/返回空国家码时默认 **fail-close 拒绝进入**（安全优先；需放行时手动设 `geoip.fail_open: true`），拦截与放行均私信告警管理员（1 分钟限频，日志始终保留完整现场），告警不入玩家群
 - 被拒玩家踢出消息中显示其所在国家及允许的国家列表；拦截时 Bot 推送通知
 
 ### 5.2 访问规则
@@ -234,6 +233,28 @@ PUBLIC；异常告警（含 GeoIP 上游异常私信）与维护失败事件走 
 ### 5.4 命令权限
 - 命令可配置为仅管理员可用（OP 或 `orzmc.admin` 权限）
 - 非管理员看不到管理员命令的 Tab 提示
+
+### 5.5 危险命令拦截与审计（guard）
+- 高危命令 deny-list 拦截（默认 `op` / `publish` / `seed`，支持子命令项如 `plugman reload`）：命中即阻止；`guard.notify_admins` 开启时私信管理员
+- 运维命令（`stop` / `reload` / `deop` / `plugman` 等）不默认拦截——原生即受 OP 权限限制，避免管理员也无法停服/重载/管理 OP
+- `guard.audit_enabled` 开启时命令审计落盘 `audit/command_audit.log`；危险命令 WARN 不再重复刷控制台，细节由审计文件承载
+- 总开关：`guard.enabled`（关闭后拦截与审计全部停用）
+
+### 5.6 聊天反垃圾（chat）
+- 聊天限流：60s 滑动窗口每玩家最多 20 条（`chat.max_messages_per_minute`）
+- 链接检测（`chat.detect_links`）与重复内容检测（`chat.detect_repeat`）：命中取消消息并提示
+- 提示语可配置（`chat.message`）；总开关：`chat.enabled`
+
+### 5.7 进服限流（login_rate_limit）
+- 登录防爆破：每 IP 每分钟最多 20 次登录尝试（`max_login_attempts_per_minute`）；同 IP 并发上限 5（`max_concurrent_per_ip`）
+- 超限拒绝进入并提示；`notify_admins` 开启时私信管理员
+- 总开关：`login_rate_limit.enabled`
+
+### 5.8 已知漏洞加固（exploit_hardening）
+- 书与笔：每本最多 100 页（`book_max_pages`）
+- 物品属性：单个物品属性修饰符上限 6 个（`item_max_attribute_modifiers`）
+- 实体：单区块最多 128 实体（`entity_max_per_chunk`）
+- 命中自动清除异常内容/实体并可告警管理员；总开关：`exploit_hardening.enabled`
 
 ---
 
@@ -562,6 +583,21 @@ PUBLIC；异常告警（含 GeoIP 上游异常私信）与维护失败事件走 
 - 权限组只应通过本系统（`/apply` 审核 / `$p` 升降级）管理，请勿用 `lp user X parent add` 手动叠加组，否则会造成权限判定异常
 - 结案申请记录每玩家自动保留最近 10 条，历史记录自动裁剪（文件大小有上限）
 - 详细设计见 [权限系统方案文档](reports/permission-system-v2.md)
+
+### 15.7 坐牢治理（作弊玩家隔离，prison）
+
+作弊玩家可被强制移入独立的 `prison` 组（**不参与** default→member→builder→admin 四级 track）：
+
+- **权限全禁**：仅保留基础连接权限，所有开放命令被执行前被拦截（`PrisonDenyInterceptor`）
+- **传送牢房**：入狱即传送至 `prison.cell_location`（`world,x,y,z[,yaw,pitch]`）；未配置或世界未加载时回退玩家当前世界出生点
+- **防自动回四级**：prison 玩家不参与自动晋升/申请审核，出狱后从 default 重新开始
+
+| 命令 | 权限 | 说明 |
+|:--|:--|:--|
+| `/prison <玩家> on` | 管理员 | 将玩家关入监狱（LP 异步执行，结果回显命令发起者） |
+| `/prison <玩家> off` | 管理员 | 释放玩家出狱 |
+
+> prison 功能依赖 LuckPerms；无 LP 时自动降级（判定恒非囚犯）。完整权限组设计见 [permission-groups.md](permission-groups.md) 的 P0 节。
 
 ## 十六、插件自更新
 
