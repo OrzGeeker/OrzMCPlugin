@@ -48,46 +48,50 @@ final class ImCommandRegistrar {
         return im.build();
     }
 
-    /** bind 子树：platform chat_type chat_id role（role 层执行）。 */
+    /** bind 子树：platform chat_type chat_id role（剩余整段 greedyString 收下，服务端 split 归一空白，免多空格解析失败）。 */
     private static ArgumentBuilder<CommandSourceStack, ?> bindSubtree(ImAdminService svc) {
-        RequiredArgumentBuilder<CommandSourceStack, String> role = argument("role", StringArgumentType.word());
-        role.executes(ctx -> {
-            svc.bind(
-                    sender(ctx),
-                    ctx.getArgument("platform", String.class),
-                    ctx.getArgument("chat_type", String.class),
-                    ctx.getArgument("chat_id", String.class),
-                    ctx.getArgument("role", String.class));
+        RequiredArgumentBuilder<CommandSourceStack, String> args =
+                argument("arguments", StringArgumentType.greedyString());
+        args.executes(ctx -> {
+            CommandSender s = sender(ctx);
+            String[] t = splitTokens(ctx.getArgument("arguments", String.class));
+            if (t.length != 4) {
+                s.sendMessage(Component.text("用法: /config im bind <平台> <group|user> <会话id> "
+                        + "<admin_group|player_group|admin_dm>（参数用单个或多个空格分隔均可）"));
+                return 1;
+            }
+            svc.bind(s, t[0], t[1], t[2], t[3]);
             return 1;
         });
-        RequiredArgumentBuilder<CommandSourceStack, String> chatId = argument("chat_id", StringArgumentType.word());
-        chatId.then(role);
-        RequiredArgumentBuilder<CommandSourceStack, String> chatType = argument("chat_type", StringArgumentType.word());
-        chatType.then(chatId);
-        RequiredArgumentBuilder<CommandSourceStack, String> platform = argument("platform", StringArgumentType.word());
-        platform.then(chatType);
-        return literal("bind").then(platform);
+        return literal("bind").then(args);
     }
 
-    /** test 子树：platform chat_type chat_id text（text 层执行）。 */
+    /** test 子树：platform chat_type chat_id text（text 可含空格并保留；前面 3 参数多空格亦免疫）。 */
     private static ArgumentBuilder<CommandSourceStack, ?> testSubtree(ImAdminService svc) {
-        RequiredArgumentBuilder<CommandSourceStack, String> text = argument("text", StringArgumentType.greedyString());
-        text.executes(ctx -> {
-            svc.test(
-                    sender(ctx),
-                    ctx.getArgument("platform", String.class),
-                    ctx.getArgument("chat_type", String.class),
-                    ctx.getArgument("chat_id", String.class),
-                    ctx.getArgument("text", String.class));
+        RequiredArgumentBuilder<CommandSourceStack, String> args =
+                argument("arguments", StringArgumentType.greedyString());
+        args.executes(ctx -> {
+            CommandSender s = sender(ctx);
+            // 前 3 个结构化 token 按空白切，第 4 段起为自由文本（保留内部空格）
+            String[] t = ctx.getArgument("arguments", String.class) == null
+                    ? new String[0]
+                    : ctx.getArgument("arguments", String.class).trim().split("\\s+", 4);
+            if (t.length < 3) {
+                s.sendMessage(Component.text("用法: /config im test <平台> <group|user> <会话id> <文本>"));
+                return 1;
+            }
+            svc.test(s, t[0], t[1], t[2], t.length >= 4 ? t[3] : "");
             return 1;
         });
-        RequiredArgumentBuilder<CommandSourceStack, String> chatId = argument("chat_id", StringArgumentType.word());
-        chatId.then(text);
-        RequiredArgumentBuilder<CommandSourceStack, String> chatType = argument("chat_type", StringArgumentType.word());
-        chatType.then(chatId);
-        RequiredArgumentBuilder<CommandSourceStack, String> platform = argument("platform", StringArgumentType.word());
-        platform.then(chatType);
-        return literal("test").then(platform);
+        return literal("test").then(args);
+    }
+
+    /** 按任意连续空白切分并去首尾空白（多空格/前导/尾随统一归一；chat_id 等不含空格）。 */
+    private static String[] splitTokens(String raw) {
+        if (raw == null) {
+            return new String[0];
+        }
+        return raw.trim().split("\\s+");
     }
 
     private static CommandSender sender(com.mojang.brigadier.context.CommandContext<CommandSourceStack> ctx) {
