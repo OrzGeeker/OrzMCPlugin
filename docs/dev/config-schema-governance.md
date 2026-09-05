@@ -1,4 +1,5 @@
 # 配置 Schema 升级治理规范
+> **状态：现行**（config.yml/templates.yml/easybot.yml schema 治理规范） ｜ **最后更新**：2026-09-06（状态头规范补注）
 
 > 适用范围：`config.yml` / `templates.yml` / `easybot.yml` 三个 **schema 文件**。
 > 运行时数据文件（`portals.yml` / `access_rules.yml` / `permission.yml` / `guide_book.yml`）由插件
