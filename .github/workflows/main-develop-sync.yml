@@ -5,7 +5,14 @@
 #
 # 机制：push main → 比较两分支内容，main 确有领先内容时自动开反向 PR（head=main base=develop）
 # 并 enable 原生 auto-merge（squash）→ 分支保护的 CI（build + folia-smoke）绿后 GitHub 自动合并。
-# 里程碑（develop→main）合并后两分支内容一致 → diff 为空自动跳过，不产生空 PR 噪音。
+# 里程碑（develop→main）合并后两分支内容一致 → tree 相同自动跳过，不产生空 PR 噪音。
+#
+# 内容一致性判定（#314/#321/#331/#338/#344 五次空转/误报教训后定稿）：
+#   取 main/develop 两分支最新 commit 的 tree sha 比较——相等 ⟺ 树逐文件相同（内容一致）。
+#   - 不用 GitHub compare API：仅三点（merge-base 语义），里程碑 squash 后 merge-base 陈旧会误报
+#     文件差异（曾误报 107 文件创建空 PR #344）；两点形式 404 不可用。
+#   - 不用本地 git diff 作主判定：依赖 refs 新鲜度，存在判定→创建窗口竞态（#331/#338）。
+#   tree sha 判定服务器端实时、与创建动作同源，无竞态窗口；复核复用同函数做二线保险。
 #
 # 说明：
 # - auto-merge 须用个人级 PAT（secrets.BOT_PAT）；Actions 内 GITHUB_TOKEN 无法 enable auto-merge（实测）。
@@ -35,14 +42,14 @@ jobs:
         with:
           fetch-depth: 0   # 需要完整历史以 diff 两分支
 
-      - name: 若无内容差异则跳过
+      - name: 若无内容差异则跳过（快速预筛）
         run: |
           git fetch origin develop --quiet
           if git diff --quiet origin/main origin/develop; then
             echo "两分支内容一致，无需同步（里程碑合并后即此态）"
             exit 0
           fi
-          echo "main 有 develop 缺失内容，继续同步"
+          echo "本地 git diff 显示有差异（以创建步骤的 tree sha 主闸为准）"
 
       - name: 创建/复用反向同步 PR 并 enable auto-merge
         env:
@@ -50,10 +57,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          # 内容一致性判定函数（主闸 + 复核共用）：比较 main/develop 两分支最新 commit 的 tree sha——
-          # 相等 ⟺ 树逐文件相同（内容一致）。服务器端实时、无本地 refs 竞态。
-          # 注：GitHub compare API 仅三点（merge-base 语义，里程碑 squash 后 merge-base 陈旧会误报差异，
-          # #344 教训：曾误报 107 文件创建空 PR）；两点形式 404。故用 tree sha 精确判定。
+          # 内容一致性判定（主闸 + 复核共用）：main/develop 两分支最新 commit 的 tree sha 比较——
+          # 相等 ⟺ 树逐文件相同（内容一致）。服务器端实时、与创建动作同源，无 refs 竞态。
           trees_differ() {
             main_tree="$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq '.commit.tree.sha')"
             dev_tree="$(gh api "repos/$GITHUB_REPOSITORY/commits/develop" --jq '.commit.tree.sha')"
@@ -63,12 +68,6 @@ jobs:
           # 创建前判定（空转防御主闸）：tree 相同 = 内容一致（纯历史拓扑）→ 不创建 PR。
           if ! trees_differ; then
             echo "main/develop commit tree 相同：内容一致（里程碑 squash 后常态），不创建同步 PR"
-            exit 0
-          fi
-          # 消除本地 git diff 的 refs 新鲜度竞态）。files = 0 = 纯历史拓扑噪音（内容已一致）→ 不创建。
-          changed_files="$(gh api "repos/$GITHUB_REPOSITORY/compare/develop..main" --jq '.files | length')"
-          if [ "$changed_files" = "0" ]; then
-            echo "compare 文件差异为 0：main/develop 内容一致（里程碑 squash 后常态），不创建同步 PR"
             exit 0
           fi
           echo "main/develop tree 不同（内容有差异），创建/复用同步 PR"
@@ -86,17 +85,14 @@ jobs:
             echo "复用已有同步 PR: $pr"
           fi
 
-          # 创建后复核（二线保险）：复用场景下旧 PR 可能已因内容同步变空，或创建瞬间有并发同步——
-          # 此刻文件差异已为 0 则关闭，不 enable auto-merge。
-          changed_files="$(gh api "repos/$GITHUB_REPOSITORY/compare/develop..main" --jq '.files | length')"
-          if [ "$changed_files" = "0" ]; then
+          # 创建后复核（二线保险）：复用旧 PR 变空 / 创建瞬间并发同步场景——tree 已相同则关闭不 enable。
+          if ! trees_differ; then
             gh pr close "$pr" --repo "$GITHUB_REPOSITORY" \
-              --comment "空转同步 PR：head=main 相对 develop 无文件差异（内容已一致，纯历史拓扑）——自动关闭。"
-            echo "⚠️ 空转同步 PR #$pr 已自动关闭（复核文件差异为 0）"
+              --comment "空转同步 PR：main/develop 内容已一致（纯历史拓扑）——自动关闭。"
+            echo "⚠️ 空转同步 PR #$pr 已自动关闭（复核 tree 相同）"
             exit 0
           fi
-          echo "复核文件差异: $changed_files 个，继续 auto-merge"
-          echo "compare 文件差异: $changed_files 个，继续 auto-merge"
+          echo "复核 tree 不同（内容有差异），继续 auto-merge"
 
           # 内容冲突时不 auto-merge，留人工处理（PR 保持打开并注明）
           state="$(gh pr view "$pr" --repo "$GITHUB_REPOSITORY" --json mergeable,mergeStateStatus \
