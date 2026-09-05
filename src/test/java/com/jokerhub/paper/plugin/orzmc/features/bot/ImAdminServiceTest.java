@@ -180,6 +180,8 @@ class ImAdminServiceTest {
         assertTrue(text.contains("qq:group:G-1"), text);
         assertTrue(text.contains("qq:user:U-1"), text);
         assertTrue(text.contains("qq:group:G-STRANGER"), "候选应出现在 status（D11）");
+        assertTrue(text.contains("/config im bind qq group G-STRANGER admin_group"), "候选区应给出可复制执行的完整 bind 命令（UX）");
+        assertTrue(text.contains("/config im bind qq group G-STRANGER player_group"), "群候选应含玩家群建议命令");
     }
 
     @Test
