@@ -76,7 +76,7 @@
 
 ### 2.2 Bot 命令一览
 
-所有命令使用可配置前缀（`easybot.cmd_prompt_char`，默认 `$`），在命令后加 `?` 可查看详细用法。
+所有命令使用可配置前缀（config.yml `bot.cmd_prompt_char`，默认 `$`；v12 前位于 easybot.yml，启动自动搬迁），在命令后加 `?` 可查看详细用法。
 
 | 命令 | 功能 | 权限 |
 |------|------|------|
@@ -408,12 +408,12 @@
 |---------|------|--------|------|
 | `rank_colors.tab_enabled` | Boolean | false | Tab 列表着色开关 |
 
-**Bot（来源：easybot.yml）**
+**Bot（来源：config.yml `bot:` 段；v12 前位于 easybot.yml，启动自动搬迁）**
 | 配置路径 | 类型 | 默认值 | 描述 |
 |---------|------|--------|------|
-| `cmd_prompt_char` | String | $ | Bot 命令前缀符 |
-| `discord_server_link` | String | null | Discord 邀请链接 |
-| `qq_group_id` | String | null | QQ 群号 |
+| `bot.cmd_prompt_char` | String | $ | Bot 命令前缀符 |
+| `bot.discord_server_link` | String | null | Discord 邀请链接 |
+| `bot.qq_group_id` | String | null | QQ 群号 |
 
 **模板（来源：templates.yml）**
 | 配置路径 | 类型 | 默认值 | 描述 |

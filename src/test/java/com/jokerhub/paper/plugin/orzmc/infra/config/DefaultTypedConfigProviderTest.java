@@ -31,10 +31,36 @@ class DefaultTypedConfigProviderTest {
 
     @Test
     void bot_returnsBotConfig() {
+        FileConfiguration configFile = mock(FileConfiguration.class);
         FileConfiguration botConfig = mock(FileConfiguration.class);
+        when(configService.getConfig("config")).thenReturn(configFile);
         when(configService.getConfig("easybot")).thenReturn(botConfig);
+        // config.yml bot: 段缺失、easybot 无旧键 → 回退默认
+        when(configFile.getConfigurationSection("bot")).thenReturn(null);
         BotConfig result = provider.bot();
         assertNotNull(result);
+        assertEquals("$", result.cmdPromptChar());
+    }
+
+    @Test
+    void bot_prefersConfigBotSectionOverEasybotFallback() {
+        FileConfiguration configFile = mock(FileConfiguration.class);
+        org.bukkit.configuration.ConfigurationSection botSection =
+                mock(org.bukkit.configuration.ConfigurationSection.class);
+        FileConfiguration easybot = mock(FileConfiguration.class);
+        when(configService.getConfig("config")).thenReturn(configFile);
+        when(configFile.getConfigurationSection("bot")).thenReturn(botSection);
+        when(configService.getConfig("easybot")).thenReturn(easybot);
+        when(botSection.contains("cmd_prompt_char")).thenReturn(true);
+        when(botSection.getString("cmd_prompt_char")).thenReturn("!");
+        when(botSection.contains("discord_server_link")).thenReturn(true);
+        when(botSection.getString("discord_server_link")).thenReturn("https://discord.gg/new");
+        when(botSection.contains("qq_group_id")).thenReturn(true);
+        when(botSection.getString("qq_group_id")).thenReturn("123");
+        BotConfig result = provider.bot();
+        assertEquals("!", result.cmdPromptChar());
+        assertEquals("https://discord.gg/new", result.discordServerLink());
+        assertEquals("123", result.qqGroupId());
     }
 
     @Test
