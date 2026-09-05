@@ -62,6 +62,19 @@ jobs:
             echo "复用已有同步 PR: $pr"
           fi
 
+          # 内容核验（空转防御 I3：#314/#321/#331/#338——里程碑 squash merge 后两分支树相同，但
+          # 偶发在「判定通过→创建」窗口内创建出无文件差异的空 PR）——用 GitHub compare API 文件级比对：
+          # files 为空 = 纯历史拓扑噪音（内容已一致）→ 自动关闭不 enable；有真实文件差异才走 auto-merge。
+          changed_files="$(gh api --repo "$GITHUB_REPOSITORY" "repos/$GITHUB_REPOSITORY/compare/develop...main" \
+            --jq '.files | length')"
+          if [ "$changed_files" = "0" ]; then
+            gh pr close "$pr" --repo "$GITHUB_REPOSITORY" \
+              --comment "空转同步 PR：head=main 相对 develop 无文件差异（里程碑 squash 后内容已一致，纯历史拓扑）——自动关闭。"
+            echo "⚠️ 空转同步 PR #$pr 已自动关闭（compare 文件差异为 0）"
+            exit 0
+          fi
+          echo "compare 文件差异: $changed_files 个，继续 auto-merge"
+
           # 内容冲突时不 auto-merge，留人工处理（PR 保持打开并注明）
           state="$(gh pr view "$pr" --repo "$GITHUB_REPOSITORY" --json mergeable,mergeStateStatus \
                    -q '"\(.mergeable):\(.mergeStateStatus)"')"
