@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### 📝 文档
+- **Discord builtin 接入操作手册（真机验收版）**：`features.md` 新增 §2.9 Discord 平台接入手册（差异速览——开发者门户即时建 bot/MESSAGE CONTENT 特权 intent/会话粒度=频道/Gateway WS 出站免公网/代理出墙；阶段 A 平台侧——建应用+BOT、开 MESSAGE CONTENT INTENT、拉 bot 进服务器并建议 Administrator 角色；阶段 B 配置含全局 proxy；阶段 C 会话发现与绑定；阶段 D 验收清单；常见问题——@提及 snowflake 标记剥离/#4004 token 停用；出站域名 discord.com + gateway.discord.gg；能力边界）；§2.1 改述「QQ/飞书/Telegram/Discord 已落地」
 - **Telegram builtin 接入操作手册（真机验收版）**：`features.md` 新增 §2.8 Telegram 平台接入手册（差异速览——BotFather 即时创建/长轮询免公网入站/chat_id 负整数群语义/代理出墙 D13；阶段 A 平台侧——BotFather 建 bot+关 Privacy mode 收群普通消息；阶段 B 配置含全局 proxy 段；阶段 C 会话发现与绑定；阶段 D 验收清单；常见问题——@提及剥离/主动私聊限制/代理；出站域名 api.telegram.org；能力边界）；§2.1 改述「QQ/飞书/Telegram 已落地」；§2.6 跳转指引补 §2.8
 - **飞书 builtin 接入操作手册（真机验收版）**：`features.md` 新增 §2.7 飞书平台接入手册（差异速览/阶段 A 平台侧——企业自建应用+权限+长连接事件订阅/阶段 B 配置/阶段 C 会话发现与绑定/阶段 D 验收清单/常见问题/出站域名 R11/能力边界）；§2.1 改述双通道「QQ/飞书已落地」；§2.6 加跳转指引并同步 B4 期望日志为多平台通用文案（顺带 Provider 启用日志改为列出实际可用平台 qq/feishu）
 - **发布流程验证（2026-09-04）**：里程碑 PR（develop→main）原生 auto-merge 探针（纯文档，不发版）
