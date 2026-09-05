@@ -122,6 +122,22 @@ class QqInboundProcessorTest {
     }
 
     @Test
+    void unboundSession_logsCopyableBindCommands() {
+        // UX：未绑定候选日志直接给出可复制执行的完整 bind 命令（无需管理员自行拼接）
+        var logs = new CopyOnWriteArrayList<String>();
+        QqInboundProcessor p =
+                new QqInboundProcessor(captureLogger(logs), scheduler, () -> BOUND, handler, formatter, outbound);
+        p.onGatewayEvent(
+                "GROUP_AT_MESSAGE_CREATE",
+                groupFrame("GROUP_AT_MESSAGE_CREATE", "G-3", "member", false, "m3", "$help"));
+
+        String joined = String.join("\n", logs);
+        assertTrue(joined.contains("qq:group:G-3"), "日志应含目标会话");
+        assertTrue(joined.contains("/config im bind qq group G-3 admin_group"), "日志应直接给出管理群绑定命令：\n" + joined);
+        assertTrue(joined.contains("/config im bind qq group G-3 player_group"), "日志应给出玩家群绑定命令");
+    }
+
+    @Test
     void disabledConversation_rejectsEverything() {
         processor(new ImConversation(false, "qq:group:G-1", "", ""))
                 .onGatewayEvent(
@@ -219,6 +235,26 @@ class QqInboundProcessorTest {
         Logger raw = Logger.getLogger("qq-inbound-processor-test");
         raw.setUseParentHandlers(false);
         raw.setLevel(java.util.logging.Level.OFF);
+        return raw;
+    }
+
+    /** 捕获 INFO 日志到列表（供日志文案断言）。 */
+    private static Logger captureLogger(java.util.List<String> into) {
+        Logger raw = Logger.getLogger("qq-inbound-processor-test-capture");
+        raw.setUseParentHandlers(false);
+        raw.setLevel(java.util.logging.Level.INFO);
+        raw.addHandler(new java.util.logging.Handler() {
+            @Override
+            public void publish(java.util.logging.LogRecord record) {
+                into.add(record.getMessage());
+            }
+
+            @Override
+            public void flush() {}
+
+            @Override
+            public void close() {}
+        });
         return raw;
     }
 }

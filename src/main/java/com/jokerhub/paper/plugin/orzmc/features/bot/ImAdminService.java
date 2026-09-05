@@ -153,7 +153,7 @@ public final class ImAdminService {
         for (ImConversation c : convs) {
             lines.add("  " + describe(c));
         }
-        lines.add("--- 未绑定候选（D11，绑定后自动清除）---");
+        lines.add("--- 未绑定候选（D11，绑定后自动清除；复制对应 bind 命令执行即完成）---");
         List<ImDiscoveryCandidates.Candidate> candidates = builtin == null || builtin.candidates() == null
                 ? List.of()
                 : builtin.candidates().snapshot();
@@ -162,6 +162,14 @@ public final class ImAdminService {
         }
         for (ImDiscoveryCandidates.Candidate c : candidates) {
             lines.add("  " + c.target());
+            List<String> cmds = ImDiscoveryCandidates.bindCommands(c.target());
+            if (cmds.isEmpty()) {
+                continue;
+            }
+            lines.add("    admin_group=管理群（群主/管理员发管理指令）| player_group=玩家群（公开通知，可略）| admin_dm=管理员私聊");
+            for (String cmd : cmds) {
+                lines.add("    " + cmd);
+            }
         }
         return lines;
     }
