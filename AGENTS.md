@@ -171,6 +171,15 @@ feature|fix|hotfix/<主题> ── 临时分支，从对应基线拉出，PR 合
   `gh pr merge <编号> --auto --squash`（须用个人 token；Actions 内 GITHUB_TOKEN 无法 enable auto-merge）→
   GitHub 原生 auto-merge 在分支保护的 build/folia-smoke 绿后自动 squash 合并 → push main 触发 publish：
   含代码改动 → `{version}-dev.{run}` beta；纯 docs/`*.md`/`.github` 改动被 paths-ignore 跳过不发版。
+  **拓扑冲突时改用解决分支（#320 教训，2026-09-05）**：若 head=develop 被 GitHub 判 CONFLICTING/DIRTY（开发中
+  文档/代码合 develop 与 main 侧旧内容在相邻区域各自演进——与 #314 内容一致误报不同，本地 merge-tree 有真冲突）：
+  ① 本地模拟确认：`git worktree add /tmp/mt origin/main` + `git merge origin/develop -X theirs`——冲突按 develop
+     内容解决（main 无 develop 缺失内容时，develop ⊇ main 由反向同步保证）；
+  ② 核验合并树 == develop：`git diff origin/develop --name-only` 空；
+  ③ 弃 head=develop 方案，改在仓库内建 `milestone-content` 分支：
+     `git checkout -b milestone-content origin/main && git merge origin/develop -X theirs`（内容同上核验）
+     → push → `gh pr create --base main --head milestone-content` → `gh pr merge <n> --auto --squash`；
+  ④ head 含 main 全部历史 → GitHub 判 MERGEABLE，auto-merge 正常；合并后 PR head 分支自动删除。
 - **hotfix**：仅 owner 批准（线上紧急）。从 `origin/main` 拉 `hotfix/<主题>` → PR base=main（不自动合并，
   owner 手动 squash，同样产生 1 个 beta）→ **合后必须把 main 并回 develop**（见下方「main→develop 反向同步」），
   保证后续开发基线含该修复。
