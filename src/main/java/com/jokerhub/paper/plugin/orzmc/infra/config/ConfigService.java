@@ -60,6 +60,11 @@ public final class ConfigService {
         // 必须发生在任何 getConfig 消费之前，否则 ConfigHealthCheck 仍会对缺段持续告警。
         upgradeSchemaFiles();
 
+        // v12 键搬迁：业务层 bot 参数（cmd_prompt_char/discord_server_link/qq_group_id）权威位置
+        // 从 easybot.yml 迁至 config.yml bot: 段——升级深合并会为 config bot: 段补默认值，若不搬迁会遮蔽
+        // easybot.yml 中的老装自定义值。幂等：搬迁后清掉 easybot 旧键，二次启动零动作。
+        migrateBotParamsToConfig();
+
         // 遗留的按功能拆分 YAML 不再读取，全部合并到 config.yml。
         // 文件仍在磁盘时配置会静默失效，须显式告警。
         warnLegacyConfigFiles();
@@ -77,6 +82,54 @@ public final class ConfigService {
      * 对 schema 文件执行自动升级。内置默认源取注入的 {@code resourceProvider}（生产 = 插件 jar 资源；
      * 单测可注入 classpath 资源，使「升级补默认」路径可真实复现）。
      */
+    /**
+     * v12 一次性键搬迁（幂等）：easybot.yml 顶层旧 bot 参数 → config.yml {@code bot:} 段。
+     * 规则：config bot 段键缺失或仍为默认值时，若 easybot 旧键存在——非默认值搬入 bot 段，默认/空旧键直接清；
+     * config bot 段已被用户手改（非默认）→ 以 config 为准，easybot 旧键一并清除（双读回退防御可移除）。
+     */
+    private void migrateBotParamsToConfig() {
+        FileConfiguration config = configManager.getConfig("config");
+        FileConfiguration easybot = configManager.getConfig("easybot");
+        if (config == null || easybot == null) {
+            return;
+        }
+        org.bukkit.configuration.ConfigurationSection bot = config.getConfigurationSection("bot");
+        if (bot == null) {
+            return;
+        }
+        boolean changed = false;
+        changed |= migrateBotKey(bot, easybot, "cmd_prompt_char", "$");
+        changed |= migrateBotKey(bot, easybot, "discord_server_link", "");
+        changed |= migrateBotKey(bot, easybot, "qq_group_id", "");
+        if (changed) {
+            if (!configManager.saveConfig("config")) {
+                plugin.getLogger().warning("config.yml bot 参数搬迁未能落盘，下次启动将重新搬迁");
+            }
+            if (!configManager.saveConfig("easybot")) {
+                plugin.getLogger().warning("easybot.yml 旧 bot 键清理未能落盘，下次启动将重新清理");
+            }
+        }
+    }
+
+    private static boolean migrateBotKey(
+            org.bukkit.configuration.ConfigurationSection bot,
+            FileConfiguration easybot,
+            String key,
+            String defaultValue) {
+        if (!easybot.contains(key)) {
+            return false; // 旧键本就不在，无搬迁
+        }
+        Object old = easybot.get(key);
+        String oldStr = old == null ? null : String.valueOf(old);
+        // bot 段该键处于默认态（缺失或=默认）时，easybot 非默认旧值才有搬迁价值；否则以 config（用户手改）为准
+        boolean botIsDefault = !bot.contains(key) || defaultValue.equals(bot.getString(key));
+        if (botIsDefault && oldStr != null && !oldStr.equals(defaultValue)) {
+            bot.set(key, oldStr); // 老装自定义值 → 搬入 config bot: 段
+        }
+        easybot.set(key, null); // 删除旧键（无论是否已搬，config 为唯一权威；未搬说明 config 手改优先）
+        return true;
+    }
+
     private void upgradeSchemaFiles() {
         for (Map.Entry<String, String> entry : ConfigSchema.SCHEMA_FILES.entrySet()) {
             String name = entry.getKey();

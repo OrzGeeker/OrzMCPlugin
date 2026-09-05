@@ -172,7 +172,9 @@ class ConfigServiceTest {
 
         FileConfiguration diskEasybot = YamlConfiguration.loadConfiguration(new File(tempDir, "easybot.yml"));
         assertEquals(ConfigSchema.LATEST_VERSION, diskEasybot.getInt(ConfigSchema.VERSION_KEY));
-        assertEquals("#", diskEasybot.getString("cmd_prompt_char"), "自定义值不得被覆盖");
+        // v12 bot 参数搬迁：easybot 自定义 '#' 应迁入 config.yml bot: 段，easybot 旧键被清理（config 为唯一权威）
+        assertEquals("#", diskConfig.getString("bot.cmd_prompt_char"), "easybot 自定义前缀应搬迁至 config.yml bot:");
+        assertFalse(diskEasybot.contains("cmd_prompt_char"), "搬迁后 easybot.yml 旧键应被清理");
 
         // 迁移后健康检查不得再报模板 key 缺失（PR3 解除的持久告警不应回归）
         List<String> issues = ConfigHealthCheck.validateAll(upgraded.manager());
