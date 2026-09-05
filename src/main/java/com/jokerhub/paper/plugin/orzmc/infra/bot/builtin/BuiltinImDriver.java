@@ -12,6 +12,7 @@ import com.jokerhub.paper.plugin.orzmc.infra.bot.ImMessageRouter;
 import com.jokerhub.paper.plugin.orzmc.infra.bot.MessageFormatter;
 import com.jokerhub.paper.plugin.orzmc.infra.bot.builtin.telegram.TelegramBuiltinAdapter;
 import com.jokerhub.paper.plugin.orzmc.infra.config.ConfigService;
+import com.jokerhub.paper.plugin.orzmc.infra.config.configs.DiscordPlatformConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.FeishuPlatformConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.QqPlatformConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.TelegramPlatformConfig;
@@ -83,6 +84,16 @@ public final class BuiltinImDriver implements BotMessageService {
                 health,
                 cfg,
                 this.discovery));
+        // 批次5b：Discord 平台（Gateway WS 入站 + REST 出站；D13 出墙代理在 cfg.proxy 已合并全局段）
+        registerDiscord(cfg -> new DiscordBuiltinAdapter(
+                logger,
+                scheduler,
+                inbound,
+                formatter,
+                () -> this.bindings().conversation("discord"),
+                health,
+                cfg,
+                this.discovery));
     }
 
     /** 测试用：注入替身 QQ 平台工厂（避免单元测试触发真实网络）。 */
@@ -110,6 +121,12 @@ public final class BuiltinImDriver implements BotMessageService {
     private void registerTelegram(Function<TelegramPlatformConfig, BuiltinPlatform> factory) {
         register(new PlatformSlot<>(
                 "telegram", cs -> readTelegramConfig(), TelegramPlatformConfig::usable, factory, logger));
+    }
+
+    /** 注册 Discord 平台槽（批次5b；会话绑定实时读）。 */
+    private void registerDiscord(Function<DiscordPlatformConfig, BuiltinPlatform> factory) {
+        register(new PlatformSlot<>(
+                "discord", cs -> readDiscordConfig(), DiscordPlatformConfig::usable, factory, logger));
     }
 
     /** 注册飞书平台槽（批次4；会话绑定实时读）。 */
@@ -214,6 +231,16 @@ public final class BuiltinImDriver implements BotMessageService {
         // 全局 proxy 段兜底 + 平台级覆盖：两段都传给 from 合并（平台段优先）
         return TelegramPlatformConfig.from(
                 im.getConfigurationSection("platforms.telegram"), im.getConfigurationSection("proxy"));
+    }
+
+    private DiscordPlatformConfig readDiscordConfig() {
+        if (configService.getConfig("im") == null) {
+            return DiscordPlatformConfig.DISABLED;
+        }
+        ConfigurationSection im = configService.getConfig("im");
+        // 全局 proxy 段兜底 + 平台级覆盖（对齐 Telegram）
+        return DiscordPlatformConfig.from(
+                im.getConfigurationSection("platforms.discord"), im.getConfigurationSection("proxy"));
     }
 
     private ImBindings bindings() {

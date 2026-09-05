@@ -34,3 +34,10 @@ platforms:
     #   enabled: false
     #   host: ''
     #   port: 0
+  discord:
+    enabled: false
+    token: ''             # Discord 开发者门户 Bot Token（长期有效；鉴权失败=配置错误）
+    # proxy:              # 平台级代理覆盖（可省略 = 用全局 proxy 段）
+    #   enabled: false
+    #   host: ''
+    #   port: 0
