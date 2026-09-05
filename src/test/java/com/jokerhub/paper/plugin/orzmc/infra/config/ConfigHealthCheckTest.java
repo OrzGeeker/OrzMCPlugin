@@ -19,6 +19,7 @@ class ConfigHealthCheckTest {
     private YamlConfiguration portals;
     private YamlConfiguration easybot;
     private YamlConfiguration accessRules;
+    private final YamlConfiguration im = new YamlConfiguration();
     private Function<String, FileConfiguration> provider;
 
     @BeforeEach
@@ -36,6 +37,7 @@ class ConfigHealthCheckTest {
             case "portals" -> portals;
             case "easybot" -> easybot;
             case "access_rules" -> accessRules;
+            case "im" -> im;
             default -> null;
         };
     }
@@ -1363,5 +1365,75 @@ class ConfigHealthCheckTest {
                 .set("success", null);
         List<String> issues = runValidate();
         assertTrue(issues.contains("缺失: styles.colors.success"));
+    }
+
+    // =====================================================================
+    // im.yml 校验（评审 C1）
+    // =====================================================================
+
+    private void addImPlatform(String id, String[] credKeys) {
+        ConfigurationSection p = im.createSection("platforms").createSection(id);
+        p.set("enabled", true);
+        for (String k : credKeys) {
+            p.set(k, "v-" + k);
+        }
+    }
+
+    private void assertIssue(String fragment) {
+        List<String> issues = runValidate();
+        assertTrue(issues.stream().anyMatch(s -> s.contains(fragment)), "应产出包含「" + fragment + "」的 im 告警，实际: " + issues);
+    }
+
+    private void assertNoImIssue() {
+        List<String> issues = runValidate();
+        assertTrue(
+                issues.stream().noneMatch(s -> s.contains("im.backend") || s.contains("platforms.")),
+                "不应有 im 告警，实际: " + issues);
+    }
+
+    @Test
+    void im_invalidBackend_reports() {
+        im.set("backend", "buildin"); // 拼错
+        assertIssue("im.backend");
+    }
+
+    @Test
+    void im_validBackend_noIssue() {
+        im.set("backend", "builtin");
+        im.set("platforms", null);
+        assertNoImIssue();
+    }
+
+    @Test
+    void im_enabledPlatform_missingCredential_reports() {
+        im.set("backend", "builtin");
+        ConfigurationSection telegram = im.createSection("platforms").createSection("telegram");
+        telegram.set("enabled", true);
+        telegram.set("tokne", "xxx"); // 凭据键拼错 → token 缺失
+        assertIssue("platforms.telegram.token");
+    }
+
+    @Test
+    void im_enabledPlatform_withCredential_noIssue() {
+        im.set("backend", "builtin");
+        addImPlatform("discord", new String[] {"token"});
+        assertNoImIssue();
+    }
+
+    @Test
+    void im_disabledPlatform_missingCredential_noIssue() {
+        im.set("backend", "builtin");
+        im.createSection("platforms").createSection("qq"); // 未 enabled 不校验凭据
+        assertNoImIssue();
+    }
+
+    @Test
+    void im_proxyPortOutOfRange_reports() {
+        im.set("backend", "builtin");
+        ConfigurationSection proxy = im.createSection("proxy");
+        proxy.set("enabled", true);
+        proxy.set("host", "127.0.0.1");
+        proxy.set("port", 99999);
+        assertIssue("proxy.port");
     }
 }

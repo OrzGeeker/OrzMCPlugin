@@ -35,6 +35,7 @@ public final class ConfigHealthCheck {
         FileConfiguration config = provider.apply("config");
         validateConfig(config, provider, issues);
         validateEasyBot(provider.apply("easybot"), issues);
+        validateIm(provider.apply("im"), issues);
         validateBotSection(config, provider.apply("easybot"), issues);
         validateTemplates(provider.apply("templates"), issues);
         validatePortals(provider.apply("portals"), issues);
@@ -88,6 +89,82 @@ public final class ConfigHealthCheck {
                         || easybotCfg.contains("qq_group_id"))) {
             issues.add("建议迁移: bot 业务参数仍位于 easybot.yml（v12 起权威位置为 config.yml bot: 段，"
                     + "当前按回退读取生效）——迁移由插件启动自动完成，或手动配置 config.yml bot: 后删除 easybot 旧键");
+        }
+    }
+
+    /**
+     * im.yml 校验（IM 双通道配置；此前无任何校验——backend 拼错/平台段凭据键写错会静默不可用，评审 C1）：
+     * backend 取值域；builtin 模式下 platforms 段类型与已知平台段凭据键存在性；proxy 段 host/port 类型。
+     */
+    private static void validateIm(FileConfiguration cfg, List<String> issues) {
+        if (cfg == null) {
+            return; // im.yml 未加载（测试/旧装无 im 不阻断）
+        }
+        Object backend = cfg.get("backend");
+        if (backend != null && !(backend instanceof String)) {
+            issues.add("类型错误: im.backend 需为字符串（easybot | builtin）");
+        } else if (backend != null) {
+            String b = String.valueOf(backend);
+            if (!b.equals("easybot") && !b.equals("builtin")) {
+                issues.add("非法: im.backend=\"" + b + "\"（仅支持 easybot | builtin）——通道选择失败将按 builtin 路径处理");
+            }
+        }
+        ConfigurationSection platforms = cfg.getConfigurationSection("platforms");
+        // 顶层全局 proxy 段类型（与平台段是否存在无关）
+        validateProxySection(cfg.getConfigurationSection("proxy"), "proxy", issues);
+        if (platforms == null) {
+            return;
+        }
+        // 已知 builtin 平台段：启用时凭据键必须齐备（拼写错误/缺键 → 显性告警而非静默默认）
+        validateImPlatform(platforms, "qq", new String[] {"app_id", "client_secret"}, issues);
+        validateImPlatform(platforms, "feishu", new String[] {"app_id", "app_secret"}, issues);
+        validateImPlatform(platforms, "telegram", new String[] {"token"}, issues);
+        validateImPlatform(platforms, "discord", new String[] {"token"}, issues);
+        // 平台级 proxy 段类型
+        for (String p : new String[] {"qq", "feishu", "telegram", "discord"}) {
+            ConfigurationSection proxy = platforms.getConfigurationSection(p + ".proxy");
+            validateProxySection(proxy, "platforms." + p + ".proxy", issues);
+        }
+    }
+
+    private static void validateImPlatform(
+            ConfigurationSection platforms, String id, String[] requiredKeys, List<String> issues) {
+        if (!platforms.contains(id) || !platforms.isConfigurationSection(id)) {
+            return; // 未配置该平台段
+        }
+        ConfigurationSection sec = platforms.getConfigurationSection(id);
+        if (sec == null) {
+            return;
+        }
+        if (!sec.getBoolean("enabled", false)) {
+            return; // 未启用不校验凭据
+        }
+        for (String key : requiredKeys) {
+            Object v = sec.get(key);
+            if (v == null || (v instanceof String && String.valueOf(v).isBlank())) {
+                issues.add("缺失: platforms." + id + "." + key + "（平台已启用但凭据缺失）——builtin 平台不可用");
+            }
+        }
+    }
+
+    private static void validateProxySection(ConfigurationSection proxy, String path, List<String> issues) {
+        if (proxy == null) {
+            return;
+        }
+        Object host = proxy.get("host");
+        if (host != null && !(host instanceof String)) {
+            issues.add("类型错误: " + path + ".host 需为字符串");
+        }
+        Object port = proxy.get("port");
+        if (port != null) {
+            if (!(port instanceof Number)) {
+                issues.add("类型错误: " + path + ".port 需为数字");
+            } else {
+                int p = ((Number) port).intValue();
+                if (p <= 0 || p >= 65536) {
+                    issues.add("非法: " + path + ".port=" + p + "（需在 1..65535）");
+                }
+            }
         }
     }
 

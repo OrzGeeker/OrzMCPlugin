@@ -179,6 +179,15 @@ class ConfigServiceTest {
         // 迁移后健康检查不得再报模板 key 缺失（PR3 解除的持久告警不应回归）
         List<String> issues = ConfigHealthCheck.validateAll(upgraded.manager());
         assertTrue(issues.stream().noneMatch(s -> s.startsWith("缺失: templates.")), "升级后不应有模板 key 缺失告警: " + issues);
+
+        // 原子写（评审 C2）：落盘后不应残留 .tmp 临时文件
+        assertEquals(
+                List.of(),
+                java.util.Arrays.stream(tempDir.listFiles((d, n) -> n.endsWith(".tmp")))
+                        .map(File::getName)
+                        .sorted()
+                        .toList(),
+                "原子写不应残留 .tmp 临时文件");
     }
 
     /** 已是最新版的 schema 文件再次启动（setup 二次运行）必须零写入——UP_TO_DATE 路径的落盘级验证。 */

@@ -1,13 +1,23 @@
 # ==================================================
 #              OrzMC 核心配置 (合并)
 # ==================================================
+#
+# 组织：段落按功能域聚类（与 features.md 章节对应），改配置先定位到域再找键。
+#   · 玩家名单        whitelist
+#   · Bot 与命令      bot / command_policies
+#   · 移动与防爆      entity_teleport / tnt
+#   · 安全与访问控制  geoip / guard / chat / login_rate_limit / exploit_hardening
+#   · 玩家权限与治理  rank_colors / prison / gamemode-correction
+#   · 事件通知        player_notify
+#   · 维护与生命周期  maintenance / update
+# IM 通道（backend/平台凭据）在 im.yml 与 easybot.yml，不在此文件。
 
 # 配置 schema 版本：插件启动时若磁盘版本低于内置版本，会自动补齐缺失默认键并升级
 # （原文件备份为 config.yml.bak）。版本号由插件维护，无需手动修改。
 config-version: 12
 
 # ==================================================
-#             服务器白名单配置
+#          一、玩家名单（features 一）
 # ==================================================
 whitelist:
   force_whitelist: true
@@ -23,63 +33,32 @@ whitelist:
         name: 'OrzMC'
 
 # ==================================================
-#             地图优化/备份
+#          二、Bot 与命令（features 二/十一）
 # ==================================================
-maintenance:
-  optimize_enabled: false
-  optimize_tick_time_threshold: 300
-  backup_retention_count: 5
-  # 维护场景文案与进度行已迁移到 templates.yml（maintenance_motd_backup/optimize/manual/
-  # maintenance_motd_progress_line，2026-09-02）：MOTD / 登录拦截 / 踢人统一读取模板渲染，
-  # 支持占位符 {stage} {percent} {eta}；本段不再含 motd 键。
-  # 定时自动备份间隔（小时）：0 = 关闭；>0 表示每 N 小时自动备份一次。
-  # 该字段支持 /config reload 热重载：修改后无需重启，下一个检查点（每分钟）即生效。
-  backup_interval_hours: 0
+# 业务层属性（双 IM 通道共用，与 IM 通道实现无关）——v12 起权威位置：
+# 旧版曾置于 easybot.yml 顶层（仍保留读取回退，见 ConfigHealthCheck 迁移提示）。
+bot:
+  # 群聊/频道 Bot 命令前缀（默认 $；在命令后加 ? 查看用法）
+  cmd_prompt_char: '$'
+  # 对外联系方式：Discord 邀请链接（可点击，用于白名单拒绝/帮助提示等）
+  discord_server_link: ''
+  # QQ 群号（白名单事件推送等引用的对外联系方式）
+  qq_group_id: ''
+
+# 命令策略：按命令名配置冷却与权限（tpbow/menu/portal 等自定义命令）
+command_policies:
+  tpbow:
+    cooldown_secs: 3
+    admin_only: false
+  menu:
+    cooldown_secs: 0
+    admin_only: false
+  portal:
+    cooldown_secs: 5
+    admin_only: true
 
 # ==================================================
-#                   TNT 检查配置
-# ==================================================
-tnt:
-  enable: false
-  enable_respawn_anchor: false
-  place_cooldown: 5
-  # TNT/爆炸告警聚合窗口(ms)：同一区域(128×128×64区块)同类型事件在窗口内合并为一条告警(带 ×N 和首个坐标)；
-  # 既是突发合并也限制持续刷屏频率。单发事件仍立即发，不受窗口延迟。
-  notify_aggregate_ms: 3000
-  # 放行区域列表（空 = 全图禁止 TNT 放置/点燃；条目格式 {minX,maxX,minY,maxY,minZ,maxZ,world}）
-  whitelist: []
-  # 豁免实体由代码内置兜底（TntEventService.DEFAULT_EXEMPT_ENTITIES 11 项），如需自定义在此填 EntityType 大写名列表
-
-# ==================================================
-#                IP 地区白名单
-# ==================================================
-geoip:
-  # 允许访问的地区国家码（空列表 = 不限制）
-  # 填写大写两位 ISO 国家码，例如：
-  #   allow_country_code: [CN, JP, TW]
-  allow_country_code: []
-  # GeoIP 查询失败/超时/无法定位国家码时的登录策略（默认 fail-close，安全优先）：
-  #   false = fail-close：无法验证地区 → 拒绝进入，防绕过地区白名单
-  #   true  = fail-open ：无法验证地区 → 放行并告警管理员，防误拦（可用性优先）
-  fail_open: false
-
-# ==================================================
-#             玩家上下线通知（2026-08-16）
-# ==================================================
-player_notify:
-  # 各类型通知开关：关闭后该类型事件不再产生群消息
-  enabled_join: true
-  enabled_quit: true
-  enabled_kick: true
-  # 聚合窗口(ms)：窗口内所有上下线事件合并为一条消息，限制高频上下线刷屏。
-  # 单条事件仍按原模板单发（延迟一个窗口），多条事件渲染 player_digest 摘要。
-  # 消息频率被限制为最多 1 条/窗口，事件不丢失（逐条精确计数）。
-  window_ms: 1000
-  # 聚合摘要最多列出的玩家名数量，超出用 "+等N人" 截断（仅显示截断，计数不受影响）
-  max_list_items: 6
-
-# ==================================================
-#              实体传送策略（2026-08-09）
+#          三、移动与防爆（features 三/四/六）
 # ==================================================
 # 实体传送开关：true = 允许命令/插件传送所有实体。
 # false = 仅白名单内实体可被命令/插件传送（默认，防 @e 选择器误用把海量实体传送到虚空/岩浆造成地图灾难）。
@@ -107,23 +86,33 @@ entity_teleport_whitelist:
   - BEE
   - IRON_GOLEM
 
-# ==================================================
-#              命令策略
-# ==================================================
-command_policies:
-  tpbow:
-    cooldown_secs: 3
-    admin_only: false
-  menu:
-    cooldown_secs: 0
-    admin_only: false
-  portal:
-    cooldown_secs: 5
-    admin_only: true
+# TNT 放置/爆炸保护
+tnt:
+  enable: false
+  enable_respawn_anchor: false
+  place_cooldown: 5
+  # TNT/爆炸告警聚合窗口(ms)：同一区域(128×128×64区块)同类型事件在窗口内合并为一条告警(带 ×N 和首个坐标)；
+  # 既是突发合并也限制持续刷屏频率。单发事件仍立即发，不受窗口延迟。
+  notify_aggregate_ms: 3000
+  # 放行区域列表（空 = 全图禁止 TNT 放置/点燃；条目格式 {minX,maxX,minY,maxY,minZ,maxZ,world}）
+  whitelist: []
+  # 豁免实体由代码内置兜底（TntEventService.DEFAULT_EXEMPT_ENTITIES 11 项），如需自定义在此填 EntityType 大写名列表
 
 # ==================================================
-#             危险命令拦截（安全加固）
+#          四、安全与访问控制（features 五）
 # ==================================================
+# --- IP 地区限制 ---
+geoip:
+  # 允许访问的地区国家码（空列表 = 不限制）
+  # 填写大写两位 ISO 国家码，例如：
+  #   allow_country_code: [CN, JP, TW]
+  allow_country_code: []
+  # GeoIP 查询失败/超时/无法定位国家码时的登录策略（默认 fail-close，安全优先）：
+  #   false = fail-close：无法验证地区 → 拒绝进入，防绕过地区白名单
+  #   true  = fail-open ：无法验证地区 → 放行并告警管理员，防误拦（可用性优先）
+  fail_open: false
+
+# --- 危险命令拦截与审计 ---
 # 高危命令 deny-list：命中即拦截执行并（可选）私信管理员。
 # 仅默认拦截非管理员即可造成提权/信息泄露的命令：
 #   op      —— 误给 OP / 影子管理员
@@ -145,9 +134,7 @@ guard:
   # 是否记录命令审计到 audit/command_audit.log
   audit_enabled: true
 
-# ==================================================
-#             聊天反垃圾/反广告（安全加固）
-# ==================================================
+# --- 聊天反垃圾/反广告 ---
 # 在异步聊天事件（AsyncChatEvent）上做三类拦截，命中即丢弃该条消息：
 #   max_messages_per_minute —— 60s 滑动窗口内最多发言条数（限流）
 #   detect_links            —— 检测并丢弃含链接（http/https/www.）的消息（反广告）
@@ -165,9 +152,7 @@ chat:
   # 命中时的提示文案
   message: "请勿刷屏或发送广告"
 
-# ==================================================
-#             进服限流/反 bot（安全加固）
-# ==================================================
+# --- 进服限流/反 bot ---
 # 在异步登录事件（AsyncPlayerPreLoginEvent）上按 IP 做两类拦截，命中即拒绝进入：
 #   max_login_attempts_per_minute —— 60s 滑动窗口内最多登录尝试次数（频率，反 bot 群刷）
 #   max_concurrent_per_ip        —— 同 IP 最大在线上限（并发，反多开/alt 农场）
@@ -184,9 +169,7 @@ login_rate_limit:
   # 命中时的提示文案
   message: "登录过于频繁，请稍后再试"
 
-# ==================================================
-#             已知漏洞加固（安全加固 P2-3）
-# ==================================================
+# --- 已知漏洞加固（P2-3）---
 # 三类已知利用的插件侧兜底（对应站点文章《PaperMC 开放服务器检查清单》§4）：
 #   book_enabled / book_max_pages           —— 书与笔页数上限（防超大书页/大量书崩溃）
 #   item_enabled / item_max_attribute_modifiers —— 物品属性修饰符数量上限（防 32k：NBT 叠加超量属性）
@@ -211,8 +194,9 @@ exploit_hardening:
   message: "检测到异常内容，已自动处理"
 
 # ==================================================
-#             玩家名颜色（按权限等级，2026-08-21）
+#          五、玩家权限与治理（features 十五）
 # ==================================================
+# 玩家名颜色（按权限等级）
 # 三个界面生效：头顶名（计分板队伍颜色）、聊天、Tab 列表。
 # 纯颜色区分等级，不加前缀文字。OP 与四级权限独立：是 OP 优先显示 op_color，
 # 非 OP 才显示所属等级组颜色（colors）。计分板队伍颜色协议仅 16 个命名色，
@@ -237,20 +221,14 @@ rank_colors:
     member: "aqua"
     default: "gray"
 
-# ==================================================
-#          坐牢（作弊玩家，2026-09-02）
-# ==================================================
-# 作弊玩家强制进入独立 prison 组（完全独立于四级 track：不继承、不在晋升链），
+# 坐牢（作弊玩家）：强制独立 prison 组（完全独立于四级 track：不继承、不在晋升链），
 # 仅保留 essentials.msg 私聊权限，其余全部禁用；重进仍保持 prison 并强制传回牢房。
 prison:
   # 牢房传送坐标（world,x,y,z[,yaw,pitch]）；未配置/世界未加载时回退玩家当前世界出生点
   cell_location: "world,0,100,0,0,0"
 
-# ==================================================
-#          游戏模式矫正（权限组变化后，2026-08-29）
-# ==================================================
-# 玩家被降级后若当前游戏模式（创造/观察/冒险）已无对应权限，自动切回生存，
-# 杜绝「普通玩家保留创造能力」的权限漏洞。三级触发：
+# 游戏模式矫正（权限组变化后）：玩家被降级后若当前游戏模式（创造/观察/冒险）已无对应权限，
+# 自动切回生存，杜绝「普通玩家保留创造能力」的权限漏洞。三级触发：
 #   审核通过 / 手动升降级 / LP 权限重算（覆盖手动 lp 命令）/ 登录兜底（覆盖离线期间被改组）。
 # 矫正前先检查 Essentials 对应 gamemode 权限，有权限则不处理。
 gamemode-correction:
@@ -263,9 +241,37 @@ gamemode-correction:
   teleport-to-spawn-on-spectator-fix: true
 
 # ==================================================
-#              插件自更新（2026-09-03）
+#          六、事件通知（features 二.3 / 八）
 # ==================================================
-# 插件在启用后异步查询 Hangar 项目通道最新版本；发现新版本时按下方策略自动下载到
+# 玩家上下线通知：各类型开关 + 聚合窗口（防高频上下线刷屏）
+player_notify:
+  # 各类型通知开关：关闭后该类型事件不再产生群消息
+  enabled_join: true
+  enabled_quit: true
+  enabled_kick: true
+  # 聚合窗口(ms)：窗口内所有上下线事件合并为一条消息，限制高频上下线刷屏。
+  # 单条事件仍按原模板单发（延迟一个窗口），多条事件渲染 player_digest 摘要。
+  # 消息频率被限制为最多 1 条/窗口，事件不丢失（逐条精确计数）。
+  window_ms: 1000
+  # 聚合摘要最多列出的玩家名数量，超出用 "+等N人" 截断（仅显示截断，计数不受影响）
+  max_list_items: 6
+
+# ==================================================
+#          七、维护与生命周期（features 七/十六）
+# ==================================================
+# 地图优化/世界备份
+maintenance:
+  optimize_enabled: false
+  optimize_tick_time_threshold: 300
+  backup_retention_count: 5
+  # 维护场景文案与进度行已迁移到 templates.yml（maintenance_motd_backup/optimize/manual/
+  # maintenance_motd_progress_line，2026-09-02）：MOTD / 登录拦截 / 踢人统一读取模板渲染，
+  # 支持占位符 {stage} {percent} {eta}；本段不再含 motd 键。
+  # 定时自动备份间隔（小时）：0 = 关闭；>0 表示每 N 小时自动备份一次。
+  # 该字段支持 /config reload 热重载：修改后无需重启，下一个检查点（每分钟）即生效。
+  backup_interval_hours: 0
+
+# 插件自更新：启用后异步查询 Hangar 项目通道最新版本；发现新版本时按下方策略自动下载到
 # plugins/update/（Paper 重启时自动应用并删除旧 jar）。下载前按 Hangar 返回的
 # sha256 校验，校验失败不落盘。全部网络/文件 IO 在异步线程执行，不阻塞服务器主线程。
 update:
@@ -279,17 +285,3 @@ update:
   # 发现新版本后自动下载到 plugins/update/（下次重启生效）；
   # false = 仅控制台提示有新版 + 管理员执行 /update now 手动下载
   auto_download: false
-
-
-# ==================================================
-#            Bot 业务层配置（命令前缀/对外联系方式）
-# ==================================================
-# 业务层属性（双 IM 通道共用，与 IM 通道实现无关）——v12 起权威位置：
-# 旧版曾置于 easybot.yml 顶层（仍保留读取回退，见 ConfigHealthCheck 迁移提示）。
-bot:
-  # 群聊/频道 Bot 命令前缀（默认 $；在命令后加 ? 查看用法）
-  cmd_prompt_char: '$'
-  # 对外联系方式：Discord 邀请链接（可点击，用于白名单拒绝/帮助提示等）
-  discord_server_link: ''
-  # QQ 群号（白名单事件推送等引用的对外联系方式）
-  qq_group_id: ''

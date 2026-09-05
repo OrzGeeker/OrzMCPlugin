@@ -2,7 +2,9 @@
 
 ## [Unreleased]
 
-### 📝 文档
+### ✨ 新功能 / 🛠 改进（配置体系）
+- **配置评审剩余项落地（2026-09-06）**：① C2 原子写——`ConfigManager.saveConfig` 改「tmp + 原子改名」落盘（运行时高频写文件 portals/access_rules/permission/im_bindings 防中断损坏）；② C1 im.yml 健康校验——`ConfigHealthCheck.validateIm`（backend 取值域 / builtin 平台段启用时凭据键存在性 / proxy host+port 类型），配置拼错从静默默认变显性告警；③ C4 config-schema-governance 增 §3.6 命名约定（snake_case 为准 / gamemode-correction 段与旧 record 命名例外登记）
+- **config.yml 结构化重排（2026-09-06）**：段落按功能域聚类并加分区标题（一玩家名单 / 二 Bot 与命令 / 三移动与防爆 / 四安全与访问控制 / 五玩家权限与治理 / 六事件通知 / 七维护与生命周期），与 features.md 章节对应；纯文本重排（键路径集合校验一致、零语义变更、不抬 schema 版本）；文件头加组织导读注释
 - **文档体系重构（2026-09-06）**：① 接入手册从 features.md §2 独立为 [`docs/manuals/`](docs/manuals/README.md)（公共骨架 bot-builtin-common + EasyBot 网关 + QQ/飞书/TG/DC 四平台册；各册只写平台差异，公共流程不重复）——features.md 1318→592 行回归「功能清单」定位，§2 为概览+手册索引；② features 补 TOC / §12 开发中徽记 / 状态头；③ 删除 sync-probe×2 探针残留；④ architecture/permission-groups/publishing-platforms/features 补状态头；⑤ docs/README 导航登记 manuals
 - **Discord builtin 接入操作手册（真机验收版）**：`features.md` 新增 §2.9 Discord 平台接入手册（差异速览——开发者门户即时建 bot/MESSAGE CONTENT 特权 intent/会话粒度=频道/Gateway WS 出站免公网/代理出墙；阶段 A 平台侧——建应用+BOT、开 MESSAGE CONTENT INTENT、拉 bot 进服务器并建议 Administrator 角色；阶段 B 配置含全局 proxy；阶段 C 会话发现与绑定；阶段 D 验收清单；常见问题——@提及 snowflake 标记剥离/#4004 token 停用；出站域名 discord.com + gateway.discord.gg；能力边界）；§2.1 改述「QQ/飞书/Telegram/Discord 已落地」
 - **Telegram builtin 接入操作手册（真机验收版）**：`features.md` 新增 §2.8 Telegram 平台接入手册（差异速览——BotFather 即时创建/长轮询免公网入站/chat_id 负整数群语义/代理出墙 D13；阶段 A 平台侧——BotFather 建 bot+关 Privacy mode 收群普通消息；阶段 B 配置含全局 proxy 段；阶段 C 会话发现与绑定；阶段 D 验收清单；常见问题——@提及剥离/主动私聊限制/代理；出站域名 api.telegram.org；能力边界）；§2.1 改述「QQ/飞书/Telegram 已落地」；§2.6 跳转指引补 §2.8
