@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.0.24] - 2026-09-06
+
 ### ✨ 新功能 / 🛠 改进（配置体系）
 - **配置评审剩余项落地（2026-09-06）**：① C2 原子写——`ConfigManager.saveConfig` 改「tmp + 原子改名」落盘（运行时高频写文件 portals/access_rules/permission/im_bindings 防中断损坏）；② C1 im.yml 健康校验——`ConfigHealthCheck.validateIm`（backend 取值域 / builtin 平台段启用时凭据键存在性 / proxy host+port 类型），配置拼错从静默默认变显性告警；③ C4 config-schema-governance 增 §3.6 命名约定（snake_case 为准 / gamemode-correction 段与旧 record 命名例外登记）
 - **config.yml 结构化重排（2026-09-06）**：段落按功能域聚类并加分区标题（一玩家名单 / 二 Bot 与命令 / 三移动与防爆 / 四安全与访问控制 / 五玩家权限与治理 / 六事件通知 / 七维护与生命周期），与 features.md 章节对应；纯文本重排（键路径集合校验一致、零语义变更、不抬 schema 版本）；文件头加组织导读注释
