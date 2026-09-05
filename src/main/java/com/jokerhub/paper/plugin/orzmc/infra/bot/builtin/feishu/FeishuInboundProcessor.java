@@ -156,7 +156,19 @@ public final class FeishuInboundProcessor implements FeishuEventSink {
         long now = System.currentTimeMillis();
         if (now - lastUnboundLogMs >= UNBOUND_LOG_INTERVAL_MS) {
             lastUnboundLogMs = now;
-            log.info("[feishu] 忽略未绑定会话消息 target=" + message.target() + "（绑定见 /config im bind，候选入 status）");
+            // 只进控制台日志（D11）：提示管理员用 /config im bind 绑定该会话，并直接给出可复制命令
+            StringBuilder sb = new StringBuilder("[feishu] 未绑定会话消息 " + message.target());
+            java.util.List<String> cmds = ImDiscoveryCandidates.bindCommands(message.target());
+            if (cmds.isEmpty()) {
+                sb.append("（绑定见 /config im bind，候选入 status）");
+            } else {
+                sb.append("，绑定命令（复制执行任一条即完成，即时生效；admin_group=管理群 / player_group=玩家群 / admin_dm=管理员私聊）:");
+                for (String c : cmds) {
+                    sb.append("\n  ").append(c);
+                }
+                sb.append("\n绑定后本会话自动从 status 候选清除");
+            }
+            log.info(sb.toString());
         }
     }
 
