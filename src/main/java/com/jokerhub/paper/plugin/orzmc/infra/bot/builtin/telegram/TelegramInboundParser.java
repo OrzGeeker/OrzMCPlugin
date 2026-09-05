@@ -83,11 +83,31 @@ public final class TelegramInboundParser {
         }
         long senderId = from.get("id").getAsLong();
         boolean senderBot = from.has("is_bot") && from.get("is_bot").getAsBoolean();
-        String trimmed = text.trim();
+        String trimmed = stripMentions(text);
         if (trimmed.isEmpty()) {
             return null;
         }
         return new TelegramInboundMessage(chatType, chatId, msgId, trimmed, senderId, senderBot);
+    }
+
+    /**
+     * 剥离文本开头的 @提及 token（TG 群 @机器人触发时 text 为 {@code "@EasyBotTestBot $l"}，
+     * 非纯命令——与飞书 @占位符同源问题，实测 #323 后群 @无回复）。
+     *
+     * <p>仅剥离开头连续 @token（如 {@code @bot} / {@code @bot $cmd}），中间/结尾 @ 保留（可能是玩家名）。
+     * 剥离后 trim。纯 @提及无正文 → 空。</p>
+     */
+    private static String stripMentions(String text) {
+        String t = text == null ? "" : text.trim();
+        while (t.startsWith("@")) {
+            // 跳过 @ 及后续非空白（username 可能含下划线/数字）
+            int end = t.indexOf(' ');
+            if (end < 0) {
+                return ""; // 纯 @token 无正文
+            }
+            t = t.substring(end).trim();
+        }
+        return t;
     }
 
     private static String normalizeChatType(String type) {
