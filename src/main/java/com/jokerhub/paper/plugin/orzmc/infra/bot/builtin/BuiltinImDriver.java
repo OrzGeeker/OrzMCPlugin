@@ -10,13 +10,16 @@ import com.jokerhub.paper.plugin.orzmc.infra.bot.ImConversation;
 import com.jokerhub.paper.plugin.orzmc.infra.bot.ImDiscoveryCandidates;
 import com.jokerhub.paper.plugin.orzmc.infra.bot.ImMessageRouter;
 import com.jokerhub.paper.plugin.orzmc.infra.bot.MessageFormatter;
+import com.jokerhub.paper.plugin.orzmc.infra.bot.builtin.telegram.TelegramBuiltinAdapter;
 import com.jokerhub.paper.plugin.orzmc.infra.config.ConfigService;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.FeishuPlatformConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.QqPlatformConfig;
+import com.jokerhub.paper.plugin.orzmc.infra.config.configs.TelegramPlatformConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.health.HealthRegistry;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
+import org.bukkit.configuration.ConfigurationSection;
 
 /**
  * builtin 双通道驱动（方案 §2/§3：BotMessageService 的第二个实现，backend=builtin 时由 Provider 返回）。
@@ -70,6 +73,16 @@ public final class BuiltinImDriver implements BotMessageService {
                 health,
                 cfg,
                 this.discovery));
+        // 批次5a：Telegram 平台（长轮询免公网入站；D13 出墙代理在 cfg.proxy 已合并全局段）
+        registerTelegram(cfg -> new TelegramBuiltinAdapter(
+                logger,
+                scheduler,
+                inbound,
+                formatter,
+                () -> this.bindings().conversation("telegram"),
+                health,
+                cfg,
+                this.discovery));
     }
 
     /** 测试用：注入替身 QQ 平台工厂（避免单元测试触发真实网络）。 */
@@ -91,6 +104,12 @@ public final class BuiltinImDriver implements BotMessageService {
 
     private void registerQq(Function<QqPlatformConfig, BuiltinPlatform> factory) {
         register(new PlatformSlot<>("qq", cs -> readQqConfig(), QqPlatformConfig::usable, factory, logger));
+    }
+
+    /** 注册 Telegram 平台槽（批次5a；会话绑定实时读）。 */
+    private void registerTelegram(Function<TelegramPlatformConfig, BuiltinPlatform> factory) {
+        register(new PlatformSlot<>(
+                "telegram", cs -> readTelegramConfig(), TelegramPlatformConfig::usable, factory, logger));
     }
 
     /** 注册飞书平台槽（批次4；会话绑定实时读）。 */
@@ -185,6 +204,16 @@ public final class BuiltinImDriver implements BotMessageService {
             return FeishuPlatformConfig.DISABLED;
         }
         return FeishuPlatformConfig.from(configService.getConfig("im").getConfigurationSection("platforms.feishu"));
+    }
+
+    private TelegramPlatformConfig readTelegramConfig() {
+        if (configService.getConfig("im") == null) {
+            return TelegramPlatformConfig.DISABLED;
+        }
+        ConfigurationSection im = configService.getConfig("im");
+        // 全局 proxy 段兜底 + 平台级覆盖：两段都传给 from 合并（平台段优先）
+        return TelegramPlatformConfig.from(
+                im.getConfigurationSection("platforms.telegram"), im.getConfigurationSection("proxy"));
     }
 
     private ImBindings bindings() {

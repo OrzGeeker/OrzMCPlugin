@@ -8,6 +8,7 @@ import com.jokerhub.paper.plugin.orzmc.infra.config.ConfigService;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.FeishuPlatformConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.ImGatewayConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.QqPlatformConfig;
+import com.jokerhub.paper.plugin.orzmc.infra.config.configs.TelegramPlatformConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.health.HealthRegistry;
 import com.jokerhub.paper.plugin.orzmc.infra.logging.ThrottledLogger;
 
@@ -30,7 +31,8 @@ public final class BotMessageServiceProvider {
                         logger, scheduler, configService, inboundHandler, new PlainMessageFormatter(), healthRegistry);
             }
             logger.logger()
-                    .warning("IM backend=builtin 已选择，但无任何可用平台（QQ/飞书需 enabled 且凭据齐备）" + "——已停用群功能（D3，可改回 easybot）。");
+                    .warning("IM backend=builtin 已选择，但无任何可用平台（QQ/飞书/Telegram 需 enabled 且凭据齐备）"
+                            + "——已停用群功能（D3，可改回 easybot）。");
             return new UnavailableBotMessageService(logger, healthRegistry);
         }
         return new OrzEasyBot(
@@ -49,13 +51,20 @@ public final class BotMessageServiceProvider {
             }
             names.append("feishu");
         }
+        if (telegramPlatform(configService).usable()) {
+            if (names.length() > 0) {
+                names.append(", ");
+            }
+            names.append("telegram");
+        }
         return names.length() == 0 ? "-" : names.toString();
     }
 
     /** backend=builtin 时是否有任一可用平台（builtin 内部逐平台 reconcile；全部不可用才返回 Unavailable）。 */
     private static boolean anyPlatformUsable(ConfigService configService) {
         return qqPlatform(configService).usable()
-                || feishuPlatform(configService).usable();
+                || feishuPlatform(configService).usable()
+                || telegramPlatform(configService).usable();
     }
 
     private static QqPlatformConfig qqPlatform(ConfigService configService) {
@@ -70,5 +79,14 @@ public final class BotMessageServiceProvider {
             return FeishuPlatformConfig.DISABLED;
         }
         return FeishuPlatformConfig.from(configService.getConfig("im").getConfigurationSection("platforms.feishu"));
+    }
+
+    private static TelegramPlatformConfig telegramPlatform(ConfigService configService) {
+        if (configService.getConfig("im") == null) {
+            return TelegramPlatformConfig.DISABLED;
+        }
+        org.bukkit.configuration.ConfigurationSection im = configService.getConfig("im");
+        return TelegramPlatformConfig.from(
+                im.getConfigurationSection("platforms.telegram"), im.getConfigurationSection("proxy"));
     }
 }

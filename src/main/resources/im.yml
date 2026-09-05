@@ -8,6 +8,15 @@
 # 会话绑定（admin_group / player_group / admin_dm）见 im_bindings.yml（由 /orzmc im bind 维护）。
 backend: easybot
 
+# 出墙平台（Telegram/Discord）网络代理——全局兜底（D13）：
+#   不配置本段 或 enabled: false → 直连；平台级 platforms.<id>.proxy 可覆盖全局。
+#   QQ/飞书为国内可达平台，不读此配置，始终直连。
+# proxy:
+#   enabled: false       # 是否启用代理（false/缺省 = 直连）
+#   type: http           # 代理类型（默认 http）
+#   host: ''             # 代理主机
+#   port: 0              # 代理端口
+
 # builtin 直连平台凭据（backend: builtin 且平台 enabled + 凭据齐备时启用；缺任一即该平台不可用）
 platforms:
   qq:
@@ -18,3 +27,10 @@ platforms:
     enabled: false
     app_id: ''            # 飞书开放平台 App ID（cli_ 前缀）
     app_secret: ''        # 飞书开放平台 App Secret
+  telegram:
+    enabled: false
+    token: ''             # BotFather 下发的 bot token（<bot_id>:<auth>；长期有效，401=配置错误）
+    # proxy:              # 平台级代理覆盖（可省略 = 用全局 proxy 段）
+    #   enabled: false
+    #   host: ''
+    #   port: 0
