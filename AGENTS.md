@@ -93,7 +93,7 @@ OrzMC/
   纯文档/CI/流程改动（`docs/**`、`*.md`、`.github/**` 等）被 paths-ignore 跳过发布；tag → release。
   分支模型与 feature/bugfix/hotfix/里程碑/发版完整流程见「开发工作流与发布」一节。
 - **纯文档/CI/流程改动不发版**：`publish.yml` 对 `docs/**`、`*.md`、`.github/**` 等路径改动跳过发布
-  （docs PR 直接合 main 也不会产生 beta）；
+  （此类 PR 走 develop 随里程碑并 main，或 owner 特批直合 main，均不会产生 beta）；
 - Tag 使用严格 SemVer，**不加 `v` 前缀**。本地构建产物为 `{version}-dev`，PR 构建产物为 `{version}-pr.{PR}.{RUN}`。
 
 ### 关键设计决策
@@ -156,7 +156,15 @@ feature|fix|hotfix/<主题> ── 临时分支，从对应基线拉出，PR 合
 
 **标准流程**
 
-- **feature / bugfix**：`git fetch origin develop && git checkout -b feature/<主题> origin/develop` → 实现（本地
+> **动分支前置（A，防 fetch 竞态 / BEHIND 误判）**：本仓库曾多次因本地 `remote.origin.fetch` refspec 只含 main
+> （`+refs/heads/main:refs/remotes/origin/main`）导致 `git fetch origin develop` 不刷新 develop 引用——PR 被误判 BEHIND、
+> `--force-with-lease` 因 stale tracking 被拒。动分支前先自检并全量 fetch：
+> ① `git config --get-all remote.origin.fetch` 应为 `+refs/heads/*:refs/remotes/origin/*`（不是则
+>    `git config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'` 修复——克隆/换机后必查）；
+> ② 一律 `git fetch origin --prune` 全量刷新（勿用裸 `git fetch origin <分支>`，会被残缺 refspec 静默坑）；
+> ③ fetch 后如需验证引用新鲜度：`git rev-parse origin/develop` 与 `git ls-remote origin develop` 对比。
+
+- **feature / bugfix**：`git fetch origin --prune && git checkout -b feature/<主题> origin/develop` → 实现（本地
   `./gradlew spotlessApply && ./gradlew test` 全绿）→ push → PR base=develop → CI（check + folia-smoke）绿 →
   squash 合并。多个 PR 在 develop 聚合，等里程碑统一验收。
 - **里程碑发布（一次 = 一个 beta）**：owner 在 develop 聚合态验收 → 开 PR（base=main、head=develop）→ 执行
@@ -172,10 +180,17 @@ feature|fix|hotfix/<主题> ── 临时分支，从对应基线拉出，PR 合
   比较两分支内容，main 确有领先内容 → 自动开反向 PR（head=main base=develop）+ enable 原生 auto-merge
   （squash，CI 绿自动合）；内容一致（里程碑后常态）→ 自动跳过；冲突 → 不开 auto-merge 留人工。
   人工兜底步骤（自动化不可用时手动执行）：
-  ① `git fetch origin main develop && git diff origin/main origin/develop --stat` 确认 main 确有领先内容；
-  ② `gh pr create --base develop --head main --title "chore(sync): main → develop 同步"`；
-  ③ CI（build + folia-smoke）绿后 `gh pr merge <编号> --squash`（不用 auto-merge，仅里程碑 develop→main 用）。
+  ① `git fetch origin --prune`（先刷新全部引用，勿在陈旧 tracking 上判断）；
+  ② `git diff origin/main origin/develop --stat` 确认 main 确有领先内容；
+  ③ `gh pr create --base develop --head main --title "chore(sync): main → develop 同步"`；
+  ④ CI（build + folia-smoke）绿后 `gh pr merge <编号> --squash`（不用 auto-merge，仅里程碑 develop→main 用）。
   重复合并不冲突：即使内容先直合 main、又经里程碑从 develop 带回，git 对两侧相同新增视为干净合并。
+  **冲突人工判定清单（B，#314 教训）**：sync PR 报 CONFLICTING/DIRTY 时按序判定，勿直接改代码：
+  ① `git fetch origin --prune`；
+  ② `git diff origin/main origin/develop --stat`——**空 = 两分支内容一致**（里程碑 squash 后常态），PR 无可同步内容，关闭即可；
+  ③ 本地实测三方合并：`git merge-tree $(git merge-base origin/main origin/develop) origin/main origin/develop`
+     输出 0 冲突 = GitHub 历史拓扑误报（里程碑 squash 使两侧相对旧 base 各自演进），内容一致即可安全关闭；
+  ④ 确有真实冲突 → 取 develop 优先人工合并（#293/#301 教训：先并 main 独有内容，再人工解冲突）。
 - **正式发版**：owner 打 SemVer tag（如 `1.0.25`，不加 `v`）→ tag 触发：完整 `./gradlew check` →
   Hangar/Modrinth release → GitHub Release → 版本号自增 commit 回 main。
 
@@ -189,13 +204,17 @@ feature|fix|hotfix/<主题> ── 临时分支，从对应基线拉出，PR 合
   工作区被 reset --hard 静默清掉；根因是旧版「动分支前先 reset 基线」诱导了危险多步操作）：
   1. 每完成一处修改并验证绿后**立即 commit 到当前分支**（哪怕没想好开 PR）；绝不带着未提交改动跨命令。
   2. 开新 PR 分支**严禁**先切基线再 reset——直接一步完成（天然不碰工作区）：
-     `git fetch origin <基线> && git checkout -b <分支> origin/<基线>`
+     `git fetch origin --prune && git checkout -b <分支> origin/<基线>`
   3. `git reset --hard` 仅用于强制对齐本地基线分支，且执行前强制检查工作区干净：
      `git status --porcelain | grep . && echo "⚠️ 工作区有改动，禁止 reset（先 commit/stash）"`（有输出即停）。
   4. 工作区已有改动又必须切分支时：`git stash push -u` → 切 → `git stash pop`；**禁止 reset 丢弃**。
   5. 任何分支操作后核验 `git diff origin/<基线> --stat` 确认改动完整（#315 曾靠二次确认发现改动被吞）。
 - 防止脏工作区把错误内容带进 PR（#286/#290 教训：错误树被 squash 合入 remote）：PR 分支基于
   `origin/<基线>` 干净拉出（上条 2），合入前核验 `git diff origin/<基线>`。
+- **合并后收尾惯例（C）**：PR squash 合并后立即：① 删本地分支（`git branch -D <分支>`）；②
+  `git fetch origin --prune`（清理远端已删分支的 tracking 引用——refspec 修复前 stale 引用会残留并引发
+  force-with-lease 误拒）；③ 本地基线分支同步 `git checkout <基线> && git reset --hard origin/<基线>`
+  （执行前先跑守卫 `git status --porcelain | grep .`，有输出即停——见「未提交改动严禁跨分支操作」第 3 条）；④ 顺手清理孤儿实验分支（无 PR 关联的 `ci/*`/`fix/*` 历史分支可删）。
 - beta 只对应「验收过的功能集」；纯文档/CI/流程改动合 main 不发版，无需为「怕发版」而卡文档 PR。
 
 ## 多 AI Agent 协作约定（不同厂商工具交叉使用）
@@ -207,7 +226,9 @@ feature|fix|hotfix/<主题> ── 临时分支，从对应基线拉出，PR 合
 3. **开发流程**（仓库级规范，所有 agent 遵守）：
    - **分支与提交流程**：完整规范见「开发工作流与发布」一节。要点：日常分支一律从 `origin/develop` 拉出
      （`feature/<主题>` / `fix/<主题>`），PR 目标 base=`develop`，squash 合并，**禁止直接 push `main`/`develop`**；
-     纯文档/CI 改动可直接 PR 合 main（publish 已按路径跳过，不发版）；
+     纯文档/CI 改动**默认也走 develop**（E：直合 main 会触发 main→develop 反向同步空转 PR，
+     #314 误报冲突教训；publish 对纯文档路径跳过发布故不发版，随下次里程碑并 main 即可）；
+     仅 owner 特批的紧急文档（如 AGENTS 流程修正需立即生效、README 修复线上指引）可直接 PR 合 main；
    - CI 门禁：PR 必须 CI 绿（`./gradlew check`：spotless + test + integrationTest + shadowJar；
      PR→develop 与 PR→main 同样要求）；
    - 本地提交前：`./gradlew spotlessApply && ./gradlew test` 全绿。
