@@ -37,6 +37,8 @@ public final class TelegramApiClient {
 
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(15);
+    /** getUpdates 长轮询请求超时（须 > 轮询挂起秒数，否则自身超时先掐断长轮询）。 */
+    private static final Duration POLL_REQUEST_TIMEOUT = Duration.ofSeconds(50);
 
     private final String apiBase;
     private final String token;
@@ -77,7 +79,7 @@ public final class TelegramApiClient {
         if (offset > 0) {
             url += "&offset=" + offset;
         }
-        HttpResponse<String> resp = sendGet(url);
+        HttpResponse<String> resp = sendGet(url, POLL_REQUEST_TIMEOUT);
         if (resp == null) {
             return new GetUpdatesResult(false, List.of(), new ApiError(-1, "network error"));
         }
@@ -213,8 +215,12 @@ public final class TelegramApiClient {
     }
 
     private HttpResponse<String> sendGet(String url) {
+        return sendGet(url, REQUEST_TIMEOUT);
+    }
+
+    private HttpResponse<String> sendGet(String url, Duration requestTimeout) {
         try {
-            return AsyncHttp.get(url, Map.of(), CONNECT_TIMEOUT, REQUEST_TIMEOUT, 0, proxy)
+            return AsyncHttp.get(url, Map.of(), CONNECT_TIMEOUT, requestTimeout, 0, proxy)
                     .join();
         } catch (CompletionException e) {
             log.warning("[telegram] Bot API 网络异常: " + e.getCause());
