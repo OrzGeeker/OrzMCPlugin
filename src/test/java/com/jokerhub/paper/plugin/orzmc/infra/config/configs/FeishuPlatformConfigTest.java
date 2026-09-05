@@ -37,4 +37,46 @@ class FeishuPlatformConfigTest {
     void from_missingSection_returnsDisabled() {
         assertEquals(FeishuPlatformConfig.DISABLED, FeishuPlatformConfig.from(null));
     }
+
+    @Test
+    void platformProxyOverridesGlobal() {
+        YamlConfiguration global = new YamlConfiguration();
+        global.set("enabled", true);
+        global.set("host", "global.proxy");
+        global.set("port", 7890);
+        YamlConfiguration section = new YamlConfiguration();
+        section.set("enabled", true);
+        section.set("app_id", "cli-test");
+        section.set("app_secret", "sec-test");
+        org.bukkit.configuration.ConfigurationSection platformProxy = section.createSection("proxy");
+        platformProxy.set("enabled", true);
+        platformProxy.set("host", "plat.proxy");
+        platformProxy.set("port", 7891);
+        FeishuPlatformConfig cfg = FeishuPlatformConfig.from(section, global);
+        assertTrue(cfg.usable());
+        assertTrue(cfg.proxy().effective());
+        assertEquals("plat.proxy", cfg.proxy().host());
+    }
+
+    @Test
+    void noPlatformProxy_fallsBackToGlobal() {
+        YamlConfiguration global = new YamlConfiguration();
+        global.set("enabled", true);
+        global.set("host", "global.proxy");
+        global.set("port", 7890);
+        YamlConfiguration section = new YamlConfiguration();
+        section.set("enabled", true);
+        section.set("app_id", "cli-test");
+        section.set("app_secret", "sec-test");
+        FeishuPlatformConfig cfg = FeishuPlatformConfig.from(section, global);
+        assertTrue(cfg.proxy().effective());
+        assertEquals("global.proxy", cfg.proxy().host());
+    }
+
+    @Test
+    void threeArgConvenience_directProxy() {
+        FeishuPlatformConfig cfg = new FeishuPlatformConfig(true, "cli-a", "s-1");
+        assertTrue(cfg.usable());
+        assertFalse(cfg.proxy().effective());
+    }
 }
