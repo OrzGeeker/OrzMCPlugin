@@ -50,14 +50,28 @@ jobs:
         run: |
           set -euo pipefail
 
-          # 创建前判定（空转防御主闸 I3）：GitHub compare API 文件级比对（服务器端实时、与创建动作同源，
+          # 内容一致性判定函数（主闸 + 复核共用）：比较 main/develop 两分支最新 commit 的 tree sha——
+          # 相等 ⟺ 树逐文件相同（内容一致）。服务器端实时、无本地 refs 竞态。
+          # 注：GitHub compare API 仅三点（merge-base 语义，里程碑 squash 后 merge-base 陈旧会误报差异，
+          # #344 教训：曾误报 107 文件创建空 PR）；两点形式 404。故用 tree sha 精确判定。
+          trees_differ() {
+            main_tree="$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq '.commit.tree.sha')"
+            dev_tree="$(gh api "repos/$GITHUB_REPOSITORY/commits/develop" --jq '.commit.tree.sha')"
+            [ -n "$main_tree" ] && [ -n "$dev_tree" ] && [ "$main_tree" != "$dev_tree" ]
+          }
+
+          # 创建前判定（空转防御主闸）：tree 相同 = 内容一致（纯历史拓扑）→ 不创建 PR。
+          if ! trees_differ; then
+            echo "main/develop commit tree 相同：内容一致（里程碑 squash 后常态），不创建同步 PR"
+            exit 0
+          fi
           # 消除本地 git diff 的 refs 新鲜度竞态）。files = 0 = 纯历史拓扑噪音（内容已一致）→ 不创建。
-          changed_files="$(gh api "repos/$GITHUB_REPOSITORY/compare/develop...main" --jq '.files | length')"
+          changed_files="$(gh api "repos/$GITHUB_REPOSITORY/compare/develop..main" --jq '.files | length')"
           if [ "$changed_files" = "0" ]; then
             echo "compare 文件差异为 0：main/develop 内容一致（里程碑 squash 后常态），不创建同步 PR"
             exit 0
           fi
-          echo "compare 文件差异: $changed_files 个，创建/复用同步 PR"
+          echo "main/develop tree 不同（内容有差异），创建/复用同步 PR"
 
           # 复用已存在且未合并的同步 PR（多次 main push 幂等）
           pr="$(gh pr list --repo "$GITHUB_REPOSITORY" --base develop --head main \
@@ -74,7 +88,7 @@ jobs:
 
           # 创建后复核（二线保险）：复用场景下旧 PR 可能已因内容同步变空，或创建瞬间有并发同步——
           # 此刻文件差异已为 0 则关闭，不 enable auto-merge。
-          changed_files="$(gh api "repos/$GITHUB_REPOSITORY/compare/develop...main" --jq '.files | length')"
+          changed_files="$(gh api "repos/$GITHUB_REPOSITORY/compare/develop..main" --jq '.files | length')"
           if [ "$changed_files" = "0" ]; then
             gh pr close "$pr" --repo "$GITHUB_REPOSITORY" \
               --comment "空转同步 PR：head=main 相对 develop 无文件差异（内容已一致，纯历史拓扑）——自动关闭。"
