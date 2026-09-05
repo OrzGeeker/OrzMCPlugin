@@ -185,8 +185,17 @@ feature|fix|hotfix/<主题> ── 临时分支，从对应基线拉出，PR 合
 **铁律**
 
 - 禁止直接 push main/develop；一切改动经 PR（squash 合并）。
-- 本地动分支前先 `git reset --hard origin/<基线>`，防止脏工作区把错误内容带进 PR（#286/#290 教训：
-  错误树被 squash 合入 remote）。任何分支操作后核验 `git ls-tree`/`git diff origin/<基线>` 再开 PR。
+- **未提交改动严禁跨分支操作；先落地再动分支**（#315/#316 三次吞改动教训——改完未 commit 就 checkout/reset，
+  工作区被 reset --hard 静默清掉；根因是旧版「动分支前先 reset 基线」诱导了危险多步操作）：
+  1. 每完成一处修改并验证绿后**立即 commit 到当前分支**（哪怕没想好开 PR）；绝不带着未提交改动跨命令。
+  2. 开新 PR 分支**严禁**先切基线再 reset——直接一步完成（天然不碰工作区）：
+     `git fetch origin <基线> && git checkout -b <分支> origin/<基线>`
+  3. `git reset --hard` 仅用于强制对齐本地基线分支，且执行前强制检查工作区干净：
+     `git status --porcelain | grep . && echo "⚠️ 工作区有改动，禁止 reset（先 commit/stash）"`（有输出即停）。
+  4. 工作区已有改动又必须切分支时：`git stash push -u` → 切 → `git stash pop`；**禁止 reset 丢弃**。
+  5. 任何分支操作后核验 `git diff origin/<基线> --stat` 确认改动完整（#315 曾靠二次确认发现改动被吞）。
+- 防止脏工作区把错误内容带进 PR（#286/#290 教训：错误树被 squash 合入 remote）：PR 分支基于
+  `origin/<基线>` 干净拉出（上条 2），合入前核验 `git diff origin/<基线>`。
 - beta 只对应「验收过的功能集」；纯文档/CI/流程改动合 main 不发版，无需为「怕发版」而卡文档 PR。
 
 ## 多 AI Agent 协作约定（不同厂商工具交叉使用）
