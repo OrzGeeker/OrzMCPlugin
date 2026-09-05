@@ -213,14 +213,19 @@ public final class BuiltinImDriver implements BotMessageService {
         if (configService.getConfig("im") == null) {
             return QqPlatformConfig.DISABLED;
         }
-        return QqPlatformConfig.from(configService.getConfig("im").getConfigurationSection("platforms.qq"));
+        ConfigurationSection im = configService.getConfig("im");
+        // 全局 proxy 段兜底 + 平台级覆盖（批次 5c：海外部署 QQ 走代理回国）
+        return QqPlatformConfig.from(im.getConfigurationSection("platforms.qq"), im.getConfigurationSection("proxy"));
     }
 
     private FeishuPlatformConfig readFeishuConfig() {
         if (configService.getConfig("im") == null) {
             return FeishuPlatformConfig.DISABLED;
         }
-        return FeishuPlatformConfig.from(configService.getConfig("im").getConfigurationSection("platforms.feishu"));
+        ConfigurationSection im = configService.getConfig("im");
+        // 全局 proxy 段兜底 + 平台级覆盖（批次 5c：海外部署飞书走代理回国）
+        return FeishuPlatformConfig.from(
+                im.getConfigurationSection("platforms.feishu"), im.getConfigurationSection("proxy"));
     }
 
     private TelegramPlatformConfig readTelegramConfig() {

@@ -11,10 +11,16 @@ import org.bukkit.configuration.ConfigurationSection;
  * @param enabled 是否启用 QQ 平台
  * @param appId QQ 开放平台 app_id
  * @param clientSecret QQ 开放平台 client_secret
+ * @param proxy 生效代理（平台级覆盖优先，否则全局段；DIRECT = 直连）。从 {@link #from} 解析时已合并。
  */
-public record QqPlatformConfig(boolean enabled, String appId, String clientSecret) {
+public record QqPlatformConfig(boolean enabled, String appId, String clientSecret, ImProxyConfig proxy) {
 
-    /** 默认（禁用，无凭据）。 */
+    /** 便捷：无代理（直连；老调用兼容）。 */
+    public QqPlatformConfig(boolean enabled, String appId, String clientSecret) {
+        this(enabled, appId, clientSecret, ImProxyConfig.DIRECT);
+    }
+
+    /** 默认（禁用，无凭据，直连）。 */
     public static final QqPlatformConfig DISABLED = new QqPlatformConfig(false, "", "");
 
     /** 是否「已启用且凭据齐备」（可作为 builtin 可用平台）。 */
@@ -26,14 +32,29 @@ public record QqPlatformConfig(boolean enabled, String appId, String clientSecre
         return s == null || s.trim().isEmpty();
     }
 
-    /** 从 {@code platforms.qq} 段创建；null/缺失 → 禁用。 */
+    /** 从 {@code platforms.qq} 段创建（无全局段，代理仅看平台级）；null/缺失 → 禁用。 */
     public static QqPlatformConfig from(ConfigurationSection section) {
+        return from(section, null);
+    }
+
+    /** 从 {@code platforms.qq} 段创建（全局 proxy 段由调用方传入合并）；null/缺失 → 禁用。 */
+    public static QqPlatformConfig from(ConfigurationSection section, ConfigurationSection globalProxySection) {
         if (section == null) {
             return DISABLED;
         }
         String appId = section.getString("app_id", "");
         String secret = section.getString("client_secret", "");
+        ConfigurationSection proxySection = section.getConfigurationSection("proxy");
+        // 平台级代理段覆盖全局（平台段存在则用平台段，否则全局段；两者均无 → 直连）
+        ImProxyConfig proxy;
+        if (proxySection != null) {
+            proxy = ImProxyConfig.from(proxySection);
+        } else if (globalProxySection != null) {
+            proxy = ImProxyConfig.from(globalProxySection);
+        } else {
+            proxy = ImProxyConfig.DIRECT;
+        }
         return new QqPlatformConfig(
-                section.getBoolean("enabled", false), appId == null ? "" : appId, secret == null ? "" : secret);
+                section.getBoolean("enabled", false), appId == null ? "" : appId, secret == null ? "" : secret, proxy);
     }
 }

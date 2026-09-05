@@ -37,13 +37,24 @@ public final class QqApiClient implements QqGatewayUrlFetcher {
     private final String clientSecret;
     private final String authBase;
     private final String apiBase;
+    private final java.net.Proxy proxy;
     private final Logger log;
 
     public QqApiClient(String appId, String clientSecret, Logger log) {
-        this(appId, clientSecret, DEFAULT_AUTH_BASE, DEFAULT_API_BASE, log);
+        this(appId, clientSecret, DEFAULT_AUTH_BASE, DEFAULT_API_BASE, java.net.Proxy.NO_PROXY, log);
+    }
+
+    /** 便捷：默认端点 + 指定代理（海外/受限网络经 HTTP 代理回国访问 QQ API，D13）。 */
+    public QqApiClient(String appId, String clientSecret, java.net.Proxy proxy, Logger log) {
+        this(appId, clientSecret, DEFAULT_AUTH_BASE, DEFAULT_API_BASE, proxy, log);
     }
 
     public QqApiClient(String appId, String clientSecret, String authBase, String apiBase, Logger log) {
+        this(appId, clientSecret, authBase, apiBase, java.net.Proxy.NO_PROXY, log);
+    }
+
+    public QqApiClient(
+            String appId, String clientSecret, String authBase, String apiBase, java.net.Proxy proxy, Logger log) {
         if (appId == null || appId.isBlank()) {
             throw new IllegalArgumentException("appId must not be blank");
         }
@@ -57,6 +68,7 @@ public final class QqApiClient implements QqGatewayUrlFetcher {
         this.clientSecret = clientSecret;
         this.authBase = authBase == null || authBase.isBlank() ? DEFAULT_AUTH_BASE : authBase;
         this.apiBase = apiBase == null || apiBase.isBlank() ? DEFAULT_API_BASE : apiBase;
+        this.proxy = proxy == null ? java.net.Proxy.NO_PROXY : proxy;
         this.log = log;
     }
 
@@ -72,7 +84,7 @@ public final class QqApiClient implements QqGatewayUrlFetcher {
         String url = authBase + "/app/getAppAccessToken";
         try {
             HttpResponse<String> resp = AsyncHttp.postJson(
-                            url, body.toString(), Map.of(), CONNECT_TIMEOUT, REQUEST_TIMEOUT, 0)
+                            url, body.toString(), Map.of(), CONNECT_TIMEOUT, REQUEST_TIMEOUT, 0, proxy)
                     .join();
             String text = resp.body() == null ? "" : resp.body();
             if (resp.statusCode() < 200 || resp.statusCode() >= 300) {
@@ -106,7 +118,12 @@ public final class QqApiClient implements QqGatewayUrlFetcher {
         String url = apiBase + "/gateway/bot";
         try {
             HttpResponse<String> resp = AsyncHttp.get(
-                            url, Map.of("Authorization", "QQBot " + accessToken), CONNECT_TIMEOUT, REQUEST_TIMEOUT, 0)
+                            url,
+                            Map.of("Authorization", "QQBot " + accessToken),
+                            CONNECT_TIMEOUT,
+                            REQUEST_TIMEOUT,
+                            0,
+                            proxy)
                     .join();
             String text = resp.body() == null ? "" : resp.body();
             int status = resp.statusCode();

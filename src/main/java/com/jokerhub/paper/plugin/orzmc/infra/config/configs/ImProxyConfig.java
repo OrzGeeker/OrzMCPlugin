@@ -8,10 +8,11 @@ import org.bukkit.configuration.ConfigurationSection;
 /**
  * builtin 平台网络代理配置（im.yml，方案 D13，批次 5 起通用能力）。
  *
- * <p>供需出墙的平台（Telegram/Discord 等）可选走 HTTP 代理：顶层全局兜底 + 平台级
+ * <p>四平台（QQ/飞书/Telegram/Discord）可选走 HTTP 代理：顶层全局兜底 + 平台级
  * {@code platforms.<id>.proxy} 覆盖。两者均以 {@code enabled} 门控——<b>不配置 proxy 段或
- * {@code enabled: false} 一律直连</b>（QQ/飞书为国内可达平台，不读此配置，始终直连）。
- * 平台级覆盖规则：平台段配了 proxy 段（无论 enabled 与否）→ 用平台段；否则用全局段。</p>
+ * {@code enabled: false} 一律直连</b>。用途：Telegram/Discord 国内服务器出墙必需；QQ/飞书
+ * 海外部署（访问国内 API 不稳/被挡）可配代理回国。平台级覆盖规则：平台段配了 proxy 段
+ * （无论 enabled 与否）→ 用平台段；否则用全局段。</p>
  *
  * <p>凭据安全（R5）：本类不打印任何值。仅支持 HTTP/HTTPS 代理（{@code type} 预留，默认 http）。</p>
  *

@@ -17,6 +17,7 @@ import com.jokerhub.paper.plugin.orzmc.infra.bot.builtin.feishu.FeishuSender;
 import com.jokerhub.paper.plugin.orzmc.infra.bot.builtin.token.RefreshableTokenProvider;
 import com.jokerhub.paper.plugin.orzmc.infra.bot.builtin.token.TokenProvider;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.FeishuPlatformConfig;
+import com.jokerhub.paper.plugin.orzmc.infra.config.configs.ImProxyConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.health.HealthRegistry;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
@@ -76,9 +77,10 @@ public final class FeishuBuiltinAdapter implements BuiltinPlatform {
         }
         this.log = serverLogger.logger();
         this.health = health;
-        FeishuApiClient api = new FeishuApiClient(cfg.appId(), cfg.appSecret(), log);
+        java.net.Proxy proxy = resolveProxy(cfg);
+        FeishuApiClient api = new FeishuApiClient(cfg.appId(), cfg.appSecret(), proxy, log);
         TokenProvider tokens = new RefreshableTokenProvider(api::fetchTenantToken, TOKEN_TTL, TOKEN_REFRESH_AHEAD);
-        this.sender = new FeishuSender(log, tokens);
+        this.sender = new FeishuSender(log, tokens, proxy);
         FeishuInboundProcessor processor = new FeishuInboundProcessor(
                 log,
                 scheduler,
@@ -88,8 +90,14 @@ public final class FeishuBuiltinAdapter implements BuiltinPlatform {
                 new FeishuRoleResolver(log, api, tokens),
                 this::sendReply,
                 discovery);
-        this.gateway =
-                new FeishuGatewayClient(serverLogger, ReconnectPolicy.defaults(), api, processor, new HealthListener());
+        this.gateway = new FeishuGatewayClient(
+                serverLogger, ReconnectPolicy.defaults(), api, processor, new HealthListener(), proxy);
+    }
+
+    /** 生效代理解析（cfg.proxy 已合并全局段；null/DIRECT → 直连）。 */
+    private static java.net.Proxy resolveProxy(FeishuPlatformConfig cfg) {
+        ImProxyConfig proxy = cfg.proxy();
+        return proxy == null ? java.net.Proxy.NO_PROXY : proxy.toProxy();
     }
 
     @Override
