@@ -5,6 +5,7 @@ import com.jokerhub.paper.plugin.orzmc.core.ports.server.ServerLogger;
 import com.jokerhub.paper.plugin.orzmc.core.ports.server.ServerScheduler;
 import com.jokerhub.paper.plugin.orzmc.infra.bot.builtin.BuiltinImDriver;
 import com.jokerhub.paper.plugin.orzmc.infra.config.ConfigService;
+import com.jokerhub.paper.plugin.orzmc.infra.config.configs.DiscordPlatformConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.FeishuPlatformConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.ImGatewayConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.QqPlatformConfig;
@@ -31,7 +32,7 @@ public final class BotMessageServiceProvider {
                         logger, scheduler, configService, inboundHandler, new PlainMessageFormatter(), healthRegistry);
             }
             logger.logger()
-                    .warning("IM backend=builtin 已选择，但无任何可用平台（QQ/飞书/Telegram 需 enabled 且凭据齐备）"
+                    .warning("IM backend=builtin 已选择，但无任何可用平台（QQ/飞书/Telegram/Discord 需 enabled 且凭据齐备）"
                             + "——已停用群功能（D3，可改回 easybot）。");
             return new UnavailableBotMessageService(logger, healthRegistry);
         }
@@ -57,6 +58,12 @@ public final class BotMessageServiceProvider {
             }
             names.append("telegram");
         }
+        if (discordPlatform(configService).usable()) {
+            if (names.length() > 0) {
+                names.append(", ");
+            }
+            names.append("discord");
+        }
         return names.length() == 0 ? "-" : names.toString();
     }
 
@@ -64,7 +71,8 @@ public final class BotMessageServiceProvider {
     private static boolean anyPlatformUsable(ConfigService configService) {
         return qqPlatform(configService).usable()
                 || feishuPlatform(configService).usable()
-                || telegramPlatform(configService).usable();
+                || telegramPlatform(configService).usable()
+                || discordPlatform(configService).usable();
     }
 
     private static QqPlatformConfig qqPlatform(ConfigService configService) {
@@ -88,5 +96,14 @@ public final class BotMessageServiceProvider {
         org.bukkit.configuration.ConfigurationSection im = configService.getConfig("im");
         return TelegramPlatformConfig.from(
                 im.getConfigurationSection("platforms.telegram"), im.getConfigurationSection("proxy"));
+    }
+
+    private static DiscordPlatformConfig discordPlatform(ConfigService configService) {
+        if (configService.getConfig("im") == null) {
+            return DiscordPlatformConfig.DISABLED;
+        }
+        org.bukkit.configuration.ConfigurationSection im = configService.getConfig("im");
+        return DiscordPlatformConfig.from(
+                im.getConfigurationSection("platforms.discord"), im.getConfigurationSection("proxy"));
     }
 }
