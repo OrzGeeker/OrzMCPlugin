@@ -97,6 +97,29 @@ class BotMessageServiceProviderTest {
     }
 
     @Test
+    void builtinBackend_withUsableTelegram_selectsBuiltinDriver() {
+        // 仅 Telegram 凭据齐备 → builtin 应启用（批次5a：任一平台可用即可）
+        YamlConfiguration yaml = new YamlConfiguration();
+        yaml.set("backend", "builtin");
+        yaml.set("platforms.telegram.enabled", true);
+        yaml.set("platforms.telegram.token", "123456:ABC");
+        when(configService.getConfig("im")).thenReturn(yaml);
+
+        assertTrue(create() instanceof BuiltinImDriver);
+    }
+
+    @Test
+    void builtinBackend_telegramWithoutToken_isUnavailable() {
+        // telegram enabled 但 token 空 → 无可用平台（D3）
+        YamlConfiguration yaml = new YamlConfiguration();
+        yaml.set("backend", "builtin");
+        yaml.set("platforms.telegram.enabled", true);
+        when(configService.getConfig("im")).thenReturn(yaml);
+
+        assertTrue(create() instanceof UnavailableBotMessageService);
+    }
+
+    @Test
     void invalidBackend_fallsBackToEasybotDriver() {
         backend("hybrid");
 
