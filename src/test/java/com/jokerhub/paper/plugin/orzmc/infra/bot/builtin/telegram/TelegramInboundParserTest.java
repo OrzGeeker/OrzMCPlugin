@@ -110,6 +110,39 @@ class TelegramInboundParserTest {
     }
 
     @Test
+    void parse_groupMentionPrefix_stripped() {
+        // TG 群 @机器人触发：text 含 @bot 前缀（同飞书 @占位符问题）——须剥离才能以 $ 进命令层
+        String raw = "{\"update_id\":9,\"message\":{\"message_id\":1,"
+                + "\"from\":{\"id\":11,\"is_bot\":false},"
+                + "\"chat\":{\"id\":-100,\"type\":\"group\"},"
+                + "\"text\":\"@EasyBotTestBot $l\"}}";
+        TelegramInboundMessage m = TelegramInboundParser.parse(raw).message();
+        assertNotNull(m);
+        assertEquals("$l", m.text(), "@提及剥离后剩命令本体");
+    }
+
+    @Test
+    void parse_mentionOnly_noCommand_dropped() {
+        String raw = "{\"update_id\":10,\"message\":{\"message_id\":1,"
+                + "\"from\":{\"id\":11,\"is_bot\":false},"
+                + "\"chat\":{\"id\":-100,\"type\":\"group\"},"
+                + "\"text\":\"@EasyBotTestBot\"}}";
+        assertNull(TelegramInboundParser.parse(raw).message(), "纯 @提及无正文 → 丢弃");
+    }
+
+    @Test
+    void parse_inlineMentionNotAtStart_kept() {
+        // 文本中间的 @（非触发位置）保留——只剥开头连续 @token
+        String raw = "{\"update_id\":11,\"message\":{\"message_id\":1,"
+                + "\"from\":{\"id\":11,\"is_bot\":false},"
+                + "\"chat\":{\"id\":-100,\"type\":\"group\"},"
+                + "\"text\":\"$l 给 @player 看看\"}}";
+        TelegramInboundMessage m = TelegramInboundParser.parse(raw).message();
+        assertNotNull(m);
+        assertEquals("$l 给 @player 看看", m.text(), "中间 @ 保留");
+    }
+
+    @Test
     void parse_malformedJson_returnsInvalidUpdate() {
         TelegramInboundParser.TelegramUpdate u = TelegramInboundParser.parse("{not-json");
         assertEquals(-1, u.updateId());
