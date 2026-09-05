@@ -2,6 +2,7 @@ package com.jokerhub.paper.plugin.orzmc.infra.bot.builtin.conn;
 
 import com.jokerhub.paper.plugin.orzmc.core.ports.server.ServerLogger;
 import com.jokerhub.paper.plugin.orzmc.infra.bot.builtin.conn.TokenRefresher.RefreshOutcome;
+import java.net.Proxy;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Map;
@@ -194,6 +195,14 @@ public abstract class ReconnectingGateway {
 
     /** 连接已建立（每次成功建连都会回调，含自动重连）：子类在此发送 identify 帧、根据 hello 配置心跳等。 */
     protected abstract void onGatewayOpen();
+
+    /**
+     * 生效网络代理（D13 批次 5b 起：Telegram/Discord 等出墙平台经 HTTP 代理 CONNECT 连 WS）。
+     * 默认直连（NO_PROXY）；子类按 {@code ImProxyConfig} 覆写。仅 HTTP 代理（Java-WebSocket 1.6 CONNECT 隧道）。
+     */
+    protected Proxy proxy() {
+        return Proxy.NO_PROXY;
+    }
 
     /** 收到一条文本帧（opcode 分发由子类完成）。QQ 等文本协议实现。 */
     protected abstract void onGatewayPayload(String payload);
@@ -418,6 +427,11 @@ public abstract class ReconnectingGateway {
         };
         // TCP 层 ping 关闭：本类以协议心跳（应用层）为准，避免与测试服务端/平台网关冲突
         client.setConnectionLostTimeout(0);
+        // D13：出墙平台（Telegram/Discord）WS 经 HTTP 代理 CONNECT 隧道（默认 NO_PROXY 直连）
+        Proxy effectiveProxy = proxy();
+        if (effectiveProxy != null && effectiveProxy != Proxy.NO_PROXY) {
+            client.setProxy(effectiveProxy);
+        }
         return client;
     }
 

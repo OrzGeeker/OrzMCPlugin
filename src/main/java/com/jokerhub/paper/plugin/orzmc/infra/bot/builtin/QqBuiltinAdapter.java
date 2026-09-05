@@ -14,6 +14,7 @@ import com.jokerhub.paper.plugin.orzmc.infra.bot.builtin.qq.QqInboundProcessor;
 import com.jokerhub.paper.plugin.orzmc.infra.bot.builtin.qq.QqSender;
 import com.jokerhub.paper.plugin.orzmc.infra.bot.builtin.token.RefreshableTokenProvider;
 import com.jokerhub.paper.plugin.orzmc.infra.bot.builtin.token.TokenProvider;
+import com.jokerhub.paper.plugin.orzmc.infra.config.configs.ImProxyConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.QqPlatformConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.health.HealthRegistry;
 import java.time.Duration;
@@ -74,13 +75,27 @@ public final class QqBuiltinAdapter implements BuiltinPlatform {
         }
         this.log = serverLogger.logger();
         this.health = health;
-        QqApiClient api = new QqApiClient(cfg.appId(), cfg.clientSecret(), log);
+        java.net.Proxy proxy = resolveProxy(cfg);
+        QqApiClient api = new QqApiClient(cfg.appId(), cfg.clientSecret(), proxy, log);
         this.tokens = new RefreshableTokenProvider(api::fetchAccessToken, TOKEN_TTL, TOKEN_REFRESH_AHEAD);
-        this.sender = new QqSender(log, tokens);
+        this.sender = new QqSender(log, tokens, proxy);
         QqInboundProcessor processor =
                 new QqInboundProcessor(log, scheduler, conversation, inbound, formatter, this::sendReply, discovery);
         this.gateway = new QqGatewayClient(
-                serverLogger, ReconnectPolicy.defaults(), tokens, api, processor, new HealthListener());
+                serverLogger,
+                ReconnectPolicy.defaults(),
+                tokens,
+                api,
+                QqGatewayClient.INTENT_GROUP_AND_C2C,
+                processor,
+                new HealthListener(),
+                proxy);
+    }
+
+    /** 生效代理解析（cfg.proxy 已合并全局段；null/DIRECT → 直连）。 */
+    private static java.net.Proxy resolveProxy(QqPlatformConfig cfg) {
+        ImProxyConfig proxy = cfg.proxy();
+        return proxy == null ? java.net.Proxy.NO_PROXY : proxy.toProxy();
     }
 
     @Override

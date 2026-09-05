@@ -45,8 +45,8 @@
 
 - **EasyBot 网关（默认，`backend: easybot`）**：外部网关服务统一接入 QQ、Telegram、Discord、飞书和微信；
   EasyBot 使用 WebSocket 向插件推送入站消息，插件通过 HTTP API 发送回复和服务器通知；
-- **内置直连（`backend: builtin`，QQ / 飞书已落地）**：插件直连各平台官方 API（WS 网关 + REST），不再依赖外部网关进程；
-  业务层命令/通知语义与 EasyBot 通道完全一致。⚠️ 会话值体系不同：EasyBot 通道用后台分配的「会话 key」（如 `qq:conv_xxx`，见 §2.5），builtin 通道用**平台原生会话标识**（QQ 为 `group:<OpenID>` / `user:<OpenID>`，飞书为 `group:<chat_id>` / `user:<chat_id>`；接入见 §2.6 QQ、§2.7 飞书）——切 backend 后需按新通道重新绑定会话。
+- **内置直连（`backend: builtin`，QQ / 飞书 / Telegram / Discord 已落地）**：插件直连各平台官方 API（QQ/Discord WS 网关 + REST，飞书长连接 WS，Telegram 长轮询），不再依赖外部网关进程；
+  业务层命令/通知语义与 EasyBot 通道完全一致。⚠️ 会话值体系不同：EasyBot 通道用后台分配的「会话 key」（如 `qq:conv_xxx`，见 §2.5），builtin 通道用**平台原生会话标识**（QQ 为 `group:<OpenID>` / `user:<OpenID>`，飞书为 `group:<chat_id>` / `user:<chat_id>`，Telegram 为 `group:<chat_id>` / `user:<chat_id>`，Discord 为 `group:<channel_id>` / `user:<user_id>`；接入见 §2.6 QQ、§2.7 飞书、§2.8 Telegram、§2.9 Discord）——切 backend 后需按新通道重新绑定会话。
 
 ### 2.2 Bot 命令一览
 
@@ -168,7 +168,7 @@ PUBLIC；异常告警（含 GeoIP 上游异常私信）与维护失败事件走 
 
 ### 2.6 builtin 内置直连（backend=builtin）· QQ 接入操作手册
 
-> 本节为 **QQ** 平台接入手册；飞书平台接入见 **§2.7**（平台侧准备不同，插件侧配置/会话绑定/验收流程同构）。
+> 本节为 **QQ** 平台接入手册；飞书平台接入见 **§2.7**、Telegram 见 **§2.8**、Discord 见 **§2.9**（平台侧准备不同，插件侧配置/会话绑定/验收流程同构）。
 
 > **适用范围**：服务器管理员。跟随本手册从零把 QQ 机器人接入插件内置直连通道（不依赖 EasyBot 网关）。
 > **验证状态**：QQ 平台全流程已真机验收通过（2026-09-04，本地 Paper 26.2；Paper/Folia 同一 JAR）。
@@ -336,7 +336,7 @@ QQ 群/私聊的 OpenID **在平台界面查不到**，由插件自动发现（D
 - **仅文本**（D6）：图片/文件/语音不支持；
 - **发送尽力一次不重试**（D7）：失败经健康告警，无投递对账；
 - 被动回复窗口、主动消息配额、单条文本上限按 QQ 官方当前规则（被动回复窗口实测参考 ~分钟级，R7 常量待沙箱实测固化）；
-- Discord/Telegram 平台按同一骨架后续接入，届时本文档相应平台小节同步更新。
+- Discord/Telegram 平台按同一骨架后续接入，届时本文档相应平台小节同步更新。Telegram 接入手册见 **§2.8**（长轮询免公网入站 + 代理出墙，与 QQ/飞书同构）。
 
 ---
 
@@ -490,6 +490,373 @@ platforms:
 - **发送尽力一次不重试**（D7）：失败经健康告警，无投递对账；
 - 飞书无 QQ 式被动回复窗口/msg_id 语义：回复均以 chat_id 直发，受应用消息权限约束；
 - 群成员角色查询带 30s 缓存；应用需在群内才能收发该群消息。
+
+---
+
+### 2.8 builtin 内置直连（backend=builtin）· Telegram 接入操作手册
+
+> **适用范围**：服务器管理员。跟随本手册从零把 Telegram 机器人接入插件内置直连通道（不依赖 EasyBot 网关）。
+> **验证状态**：Telegram 平台全流程已真机验收通过（2026-09-05，本地 Paper 26.2）。三类会话均已实测闭环：
+> 管理群（上行问答 + @提及剥离 + 管理指令权限）、玩家群（PUBLIC 广播接收）、管理员私聊（PRIVATE 下行 + 绑定后私聊问答）。
+> **预计耗时**：约 15 分钟（Telegram 机器人即时开通，无平台审核等待）。文末附「验收清单」与「常见问题」。
+> Telegram 界面名称以当前版本为准；平台操作通过 [@BotFather](https://t.me/BotFather) 对话完成。
+
+---
+
+#### 0. 与 QQ / 飞书接入的差异速览
+
+Telegram 接入流程与 §2.6 QQ / §2.7 飞书手册同构（插件侧 `im.yml` 配置、`/config im bind` 会话绑定、
+`/config im status` 健康查看均一致），差异在**平台侧准备**、**入站通道**与**会话值**：
+
+| 维度 | QQ（§2.6） | 飞书（§2.7） | Telegram（本节） |
+|------|-----------|-------------|-------------------|
+| 应用形态 | 开放平台机器人（实名/审核） | 企业自建应用（需租户+审核） | **BotFather 创建 bot**（即时开通，免审核实名） |
+| 凭据 | BotAppID + AppSecret | App ID + App Secret | **bot token**（`<bot_id>:<auth>`，如 `123456789:AAF...`） |
+| 入站通道 | 出站 WS 网关 | 事件长连接 WS | **长轮询 getUpdates**（免公网入站，无 WS/Webhook） |
+| 会话值 | `group:<GroupOpenID>` / `user:<UserOpenID>` | `group:<chat_id>` / `user:<chat_id>`（`oc_...`） | `group:<chat_id>` / `user:<chat_id>`——群 chat_id 为**负整数**（超级群 `-100...`），私聊 chat_id = 用户 id（正整数） |
+| @提及 | 独立 AT 事件（无占位符） | 文本含 `@_user_N` 占位符 | 文本为纯 `@bot $cmd` 前缀（插件剥离开头 @token，见常见问题） |
+| 角色判定 | 事件自带 `member_role` | 查群信息 API（owner_id+管理员列表） | **getChatAdministrators**（creator/administrator，60s 缓存+单飞） |
+| 群普通消息 | 需「群内全部消息」权限 | 需 `im:message.group_msg` 敏感权限 | 需 bot **关闭 Privacy mode** 或设为群管理员（见 A3） |
+| 主动私聊 | 受平台限制 | 受平台限制 | **bot 不能主动私聊从未联系它的用户**（TG 平台限制，见 D5/FAQ） |
+| 网络可达 | 国内可达 | 国内可达 | `api.telegram.org` 国内**不可达**，需配代理（D13，见 A5/B2） |
+
+涉及文件（与 QQ/飞书相同）：
+
+- `plugins/OrzMC/im.yml` —— 通道与平台凭据（`backend` / `platforms.telegram` / 可选顶层 `proxy`），**改后重启生效**；
+- `plugins/OrzMC/im_bindings.yml` —— 会话绑定（`sessions.telegram.*`），`/config im bind` 写入后**即时生效**。
+
+权限红线：**bind/status/test 仅控制台或游戏内 op 可用**（D10）；一个 bot token 只允许一个实例消费事件（R3），
+且长轮询为**抢占式拉取**——若你同时在跑 EasyBot/其他脚本拉同一 bot 的 getUpdates，事件会被抢走，请先停用其一再切 builtin。
+
+#### 阶段 A · Telegram 平台侧准备（一次性，约 5 分钟）
+
+**A1 用 BotFather 创建机器人**
+1. Telegram 内打开 [@BotFather](https://t.me/BotFather) → 发送 `/newbot`；
+2. 按提示填 bot 显示名称 → 填**用户名**（须以 `bot` 结尾，如 `MyServerBot`）；
+3. 创建成功会立即返回 **bot token**（见 A2）——即时可用，无需审核。
+
+**A2 获取凭据（bot token）**
+- BotFather 成功消息里 `Use this token to access the HTTP API:` 一行即为 token（`<bot_id>:<auth>` 格式）；
+  对应插件 `platforms.telegram.token`。⚠️ 妥善保管，勿提交到版本库/分享（R5）。
+
+**A3 关闭 Privacy mode（必须，收群内普通消息）**
+TG bot 默认开启 Privacy mode——只收 **@提及**和**斜杠命令**消息，收不到群里普通 `$h` 文本。二选一：
+1. **关闭 Privacy**：@BotFather → `/mybots` → 选你的 bot → `Bot Settings` → `Group Privacy` → `Turn off`；或
+2. **把 bot 设为测试群管理员**（群设置 → 管理员 → 添加 bot）——管理员天然可见全部消息，且能查到成员列表。
+
+> ⚠️ 只开 A3 之一即可。真机测试 bot 用方法 1（Privacy off）验证通过：群内直接发 `$l` 有回复。
+
+**A4 把 bot 拉进测试群**
+- Telegram 目标群 → 群信息 → 添加成员 → 搜索 bot 用户名（`@...`）→ 添加。
+
+**A5 准备代理（国内服务器必需，出墙）**
+- TG Bot API 域名 `api.telegram.org` 国内不可达。服务器能直连可跳过；否则准备一个 **HTTP 代理**（Surge/Clash 等
+  本地代理软件或服务器出口代理），代理地址填入 B2 的 `proxy` 段。**判断是否需要**：B4 启动若报 getMe 自检失败
+  /网络不可达 → 需代理。
+
+> **阶段 A 完成标志**：能私聊 bot 得到 TG 自带“开始”类回复；bot 在测试群内。
+
+#### 阶段 B · 插件侧配置（一次重启）
+
+**B1 定位配置文件**：服务器 `plugins/OrzMC/im.yml`。
+
+**B2 填写配置**（国内服务器示例，含全局代理兜底 + 平台凭据）：
+
+```yaml
+backend: builtin
+
+# 全局代理（出墙兜底，D13）：不配或 enabled: false = 直连；平台级 platforms.telegram.proxy 可覆盖本段
+proxy:
+  enabled: true
+  type: http        # 默认 http（socks 预留未落地）
+  host: '127.0.0.1' # 你的代理主机
+  port: 7890        # 你的代理端口
+
+platforms:
+  telegram:
+    enabled: true
+    token: '123456789:AAFxxxx你的botToken'
+    # 也可只在此平台级覆盖代理（省略 = 用全局 proxy 段）：
+    # proxy:
+    #   enabled: true
+    #   host: '...'
+    #   port: 7890
+```
+
+> 能直连 `api.telegram.org` 的海外服务器可省略整个 `proxy` 段（默认直连）。
+
+**B3 重启服务器**（backend/凭据/代理在启动时装配；改这些**必须重启**）。
+
+**B4 确认通道启用**：重启后看控制台出现：
+
+```
+[OrzMC] [telegram] 启动成功（bot @MyServerBot），开始长轮询
+```
+
+> **阶段 B 完成标志**：控制台出现上述“启动成功”行。也可 `/config im status` 复核：`telegram 平台: 启用`。
+> 若报 `getMe 自检失败（token 无效或网络不可达）`：token 抄错，或需 A5 代理（见常见问题）。
+
+#### 阶段 C · 会话发现与绑定（10 分钟）
+
+TG 的 chat_id（群为负整数、私聊为正整数用户 id）同样由插件自动发现（D11），无需在平台侧查：
+
+**C1 触发发现**：在**群**和 **bot 私聊**里各发一条任意消息（如 `hi`）。控制台出现：
+
+```
+[OrzMC] [telegram] 未绑定会话消息 telegram:group:-1001234567890，绑定命令（复制执行任一条即完成，即时生效；admin_group=管理群 / player_group=玩家群 / admin_dm=管理员私聊）:
+  /config im bind telegram group -1001234567890 admin_group
+  /config im bind telegram group -1001234567890 player_group
+绑定后本会话自动从 status 候选清除
+```
+
+末尾 `-100...`（群）/ `5668266914` 形（私聊）就是该会话 chat_id（也会出现在 `/config im status` 候选列表）。
+
+**C2 绑定会话**（控制台或游戏内 op 执行）：
+
+```
+/config im bind telegram group -1001234567890 admin_group
+/config im bind telegram group -1001234567890 player_group   # 玩家群（可略；留空则公开通知降级发管理群）
+/config im bind telegram user 5668266914 admin_dm            # 管理员私聊：先在 TG 单聊 bot 发一条消息，取候选中的私聊 chat_id
+```
+
+成功提示：`telegram 会话绑定已写入并持久化：admin_dm = user:5668266914（im_bindings.yml；入站/广播即时生效）`。
+绑定即时生效，**无需重启**；绑定后该会话自动从候选清除。
+
+#### 阶段 D · 端到端验证（验收清单）
+
+按顺序执行并在“期望结果”处打勾；全部通过即接入完成：
+
+| # | 验证项 | 操作 | 期望结果 |
+|---|--------|------|----------|
+| 1 | 通道健康 | `/config im status` | `telegram 平台: 启用` + 无 lastError |
+| 2 | 上行一问一答（私聊） | bot 私聊发 `$h` | bot 回复命令帮助 |
+| 3 | 上行群消息（普通文本） | 群内直接发 `$l`（不 @） | 返回在线玩家列表（依赖 A3 Privacy off/管理员） |
+| 4 | 上行 @提及 | 群内 @bot 发 `$l` | 返回玩家列表（插件自动剥离 @token 前缀） |
+| 5 | 管理指令权限 | 群主/管理员发 `$e help`（示例） | 非群主/管理员成员被拒（fail-closed）；群主/管理员正常执行 |
+| 6 | 下行主动发言 | `/config im test telegram user <私聊id> 你好` | 私聊收到“你好” |
+| 7 | 绑定持久化 | 重启服务器后 `/config im status` | 绑定仍在（sessions.telegram.* 已落盘） |
+| 8 | 通知推送 | 触发一条服务器通知（如玩家上下线） | player_group/admin_dm 收到对应通知（按你的绑定与事件类型） |
+
+> **完成标志**：1–7 全过即完成 Telegram 平台接入；第 8 项用于核验广播/通知路径。
+> 第 6 项下行到私聊：TG 限制 bot 只能给**先私聊过它的用户**发消息——若失败请先在 bot 私聊发一条再试。
+
+#### 常见问题（真机踩坑实录）
+
+| 现象 | 原因 / 处理 |
+|------|------------|
+| 启动报 `getMe 自检失败…已停用轮询` | token 抄错（A2），或 `api.telegram.org` 不可达需配代理（A5/B2）。修好后**重启** |
+| 私聊 bot 无“开始”类回复 / 发消息 bot 没反应 | token 无效（BotFather 重新生成）；或 401 后已停用轮询（见上） |
+| 群里直接发 `$h` 没回复，但 @bot 有回复 | 这是**反了**的典型：bot Privacy mode 开启只能收 @/命令——按 A3 关 Privacy 或设管理员，普通群消息才可达 |
+| @bot 发 `$l` 无回复，普通 `$l` 正常 | 老版本缺 @token 剥离（TG @提及是纯文本 `@bot $l` 前缀）——2026-09-05 真机发现并修复，请升级到含该修复的版本 |
+| 管理指令被拒 / 群主也被当非管理 | A3 方法 2 未把 bot 设为管理员时 getChatAdministrators 拿不到完整列表会 fail-closed；或发送者确实非群主/管理员 |
+| `/config im test` 下行私聊失败 | TG 限制 bot 不能主动私聊从未联系它的用户：先在 bot 私聊窗口发一条消息建立会话再测 |
+| 重启后日志提示无平台可用 / 未启用 telegram | `platforms.telegram.enabled` 非 true 或 token 为空（D3 停群告警不自动回退）；修好**重启** |
+| 轮询断断续续 / 频繁退避 | 网络抖动或代理不稳（getUpdates 失败 5s 退避重试）；持续则换更稳代理或检查出口 |
+| EasyBot 与 builtin 同时拉同一 bot | 长轮询抢占式：事件会被先拉的客户端抢走（R3）——切通道前先停用其一 |
+
+#### 出站域名放行清单（R11，有防火墙/白名单的服务器需放行）
+
+| 用途 | 域名 | 方向 |
+|------|------|------|
+| Telegram Bot API（getMe / getUpdates 长轮询 / sendMessage / getChatAdministrators） | `api.telegram.org` | HTTPS 出站（走 A5 代理时仅需代理可达） |
+
+> Telegram 无需 WS/公网入站——长轮询全部走 `api.telegram.org` 一个 HTTPS 域名（D13 代理透传）。
+
+#### 能力边界
+
+- **仅文本**（D6）：图片/文件/语音等无 `text` 字段的媒体消息丢弃；channel（频道）消息不入会话；
+- **发送尽力一次不重试**（D7）：失败经健康告警，无投递对账；
+- **长轮询免公网入站**（R8）：每轮 getUpdates 挂起 30s，超时无事件立即续轮（无需 WS/Webhook/公网 URL），
+  适合无公网入站的服务器；401（token 无效）→ 健康降级停用轮询；
+- **主动私聊限制**：TG bot 不能主动私聊从未联系它的用户（D5 下行到陌生 user 会失败）；群消息读取依赖
+  Privacy off 或 bot 为群管理员（A3）；
+- 群角色判定基于 getChatAdministrators（creator/administrator），带 60s 缓存+并发单飞，查不到按非管理 fail-closed；
+- 群 chat_id 为负整数（超级群 `-100` 开头）、私聊 chat_id = 用户 id 正整数；两者都需先发消息触发 D11 发现。
+
+---
+
+### 2.9 builtin 内置直连（backend=builtin）· Discord 接入操作手册
+
+> **适用范围**：服务器管理员。跟随本手册从零把 Discord 机器人接入插件内置直连通道（不依赖 EasyBot 网关）。
+> **验证状态**：Discord 平台全流程已真机验收通过（2026-09-06，本地 Paper 26.2）。三类会话均已实测闭环：
+> 频道（上行问答 + @提及剥离 + 管理指令权限）、玩家广播（通知推送）、bot 私聊 DM（下行 + 上行问答）。
+> **预计耗时**：约 15 分钟（Discord 应用即时创建，无审核等待）。文末附「验收清单」与「常见问题」。
+> Discord 界面名称以[开发者门户](https://discord.com/developers/applications)当前版本为准。
+
+---
+
+#### 0. 与 QQ / 飞书 / Telegram 接入的差异速览
+
+Discord 接入流程与 §2.6–§2.8 手册同构（插件侧 `im.yml` 配置、`/config im bind` 会话绑定、
+`/config im status` 健康查看均一致），差异在**平台侧准备**、**入站通道**、**会话粒度**与**@提及形态**：
+
+| 维度 | QQ / 飞书 / Telegram | Discord（本节） |
+|------|---------------------|-----------------|
+| 应用形态 | QQ 开放平台 / 飞书自建 / BotFather | **开发者门户 Application + Bot**（即时创建，免审核实名） |
+| 凭据 | AppID+Secret / AppID+Secret / bot token | **Bot Token**（开发者门户 → Bot → Reset Token） |
+| 入站通道 | WS 网关 / 长连接 WS / 长轮询 | **Gateway WS v10**（identify/resume + 心跳，免公网入站） |
+| 会话粒度 | 群/私聊单层 | 服务器内**每文本频道一个 `group` 会话**（一服务器多频道各自绑定） |
+| 会话值 | `group:<chat_id>` / `user:<user_id>` | `group:<channel_id>`（频道，snowflake）/ `user:<user_id>`（DM 用户） |
+| @提及 | TG 纯文本 `@bot` 前缀、飞书占位符 | **snowflake 标记** `<@bot_id>` 内嵌 content（2026-09-06 修复：剥离开头连续提及） |
+| 角色判定 | 群主/管理员名单 | **guild owner 或成员角色含 ADMINISTRATOR/MANAGE_GUILD 权限位**（REST 查询+缓存） |
+| 群普通消息 | 需平台权限/隐私设置 | 需开发者门户开启 **MESSAGE CONTENT INTENT**（特权） |
+| 网络可达 | TG 不可达需代理 | `discord.com` 国内不可达需代理（D13，A5/B2） |
+
+涉及文件（与其它平台相同）：
+
+- `plugins/OrzMC/im.yml` —— 通道与平台凭据（`backend` / `platforms.discord` / 可选顶层 `proxy`），**改后重启生效**；
+- `plugins/OrzMC/im_bindings.yml` —— 会话绑定（`sessions.discord.*`），`/config im bind` 写入后**即时生效**。
+
+权限红线：**bind/status/test 仅控制台或游戏内 op 可用**（D10）；一个 bot token 只允许一个实例消费事件（R3），
+Gateway 会话为抢占式——若你同时在跑 EasyBot/其他程序连同一 bot，请先停用其一再切 builtin。
+
+#### 阶段 A · Discord 平台侧准备（一次性，约 10 分钟）
+
+**A1 创建 Application 与 Bot**
+1. 打开 [Discord 开发者门户](https://discord.com/developers/applications) → **New Application**（填名字）；
+2. 左侧 **Bot** → **Add Bot** → 建 bot（免审核）。
+
+**A2 获取凭据（Bot Token）**
+- Bot 页 → **Reset Token** → 复制 token（对应插件 `platforms.discord.token`）。⚠️ 妥善保管，
+  只显示一次；泄露后立即 Reset（勿提交版本库/分享，R5）。
+
+**A3 开启 MESSAGE CONTENT INTENT（必须，收群普通消息文本）**
+- Bot 页 → **Privileged Gateway Intents** → 打开 **MESSAGE CONTENT INTENT**。
+  ⚠️ 不开则 gateway 收得到事件但 `content` 为空——`$l`/`$h` 等文本命令全部静默无响应
+  （插件的 intents 已含 MESSAGE_CONTENT=1<<15，特权开启后才能拿到文本）。
+
+**A4 把 bot 拉进测试服务器**
+1. 目标服务器 → 服务器设置 → **成员** → 邀请 bot（或经 OAuth2 URL：`https://discord.com/api/oauth2/authorize?client_id=<应用ID>&permissions=0&scope=bot`）；
+2. ⚠️ **建议授予 bot 一个含 Administrator 的角色**（或至少让它能查成员/角色）：
+   - 群主判定（guild owner）不依赖权限；
+   - 但<b>成员角色权限位判定</b>需 bot 能读服务器角色（GET /guilds/{id}/roles）——普通 bot 无权限时
+     该查询 403，按 fail-closed 处理（仅群主可发管理指令）；
+3. 建一个文本频道（如「开发测试」）作为测试会话。
+
+> **阶段 A 完成标志**：bot 在测试服务器内、能读频道消息（频道里能看到 bot 上线状态）。
+
+#### 阶段 B · 插件侧配置（一次重启）
+
+**B1 定位配置文件**：服务器 `plugins/OrzMC/im.yml`。
+
+**B2 填写配置**（国内服务器示例，含全局代理兜底 + 平台凭据）：
+
+```yaml
+backend: builtin
+
+# 全局代理（出墙兜底，D13）：不配或 enabled: false = 直连；平台级 platforms.discord.proxy 可覆盖本段
+proxy:
+  enabled: true
+  type: http        # 默认 http（socks 预留未落地）
+  host: '127.0.0.1' # 你的代理主机
+  port: 7890        # 你的代理端口
+
+platforms:
+  discord:
+    enabled: true
+    token: '你的BotToken'
+    # 也可只在此平台级覆盖代理（省略 = 用全局 proxy 段）：
+    # proxy:
+    #   enabled: true
+    #   host: '...'
+    #   port: 7890
+```
+
+> 能直连 `discord.com` / `gateway.discord.gg` 的海外服务器可省略整个 `proxy` 段（默认直连）。
+
+**B3 重启服务器**（backend/凭据/代理在启动时装配；改这些**必须重启**）。
+
+**B4 确认通道启用**：重启后看控制台出现：
+
+```
+[OrzMC] IM backend=builtin：启用内置直连（可用平台：discord）。
+[OrzMC] [discord] 网关连接已建立
+[OrzMC] [discord] 发送 identify（intents=37376）
+[OrzMC] [discord] 网关 READY（会话已建立，bot @MyBot）
+```
+
+> **阶段 B 完成标志**：控制台出现 `[discord] 网关 READY`。也可 `/config im status` 复核：`discord 平台: 启用`。
+> 若一直见不到 READY / 反复退避：token 无效（4004 后自动停用，见常见问题），或网络/代理不可达。
+
+#### 阶段 C · 会话发现与绑定（10 分钟）
+
+Discord 的 channel_id / user_id 同样由插件自动发现（D11），无需在平台侧查：
+
+**C1 触发发现**：在目标**频道**和 bot **私聊**里各发一条任意消息（如 `hi`）。控制台出现：
+
+```
+[OrzMC] [discord] 未绑定会话消息 discord:group:1101910610033250468，绑定命令（复制执行任一条即完成，即时生效；admin_group=管理群 / player_group=玩家群 / admin_dm=管理员私聊）:
+  /config im bind discord group 1101910610033250468 admin_group
+  /config im bind discord group 1101910610033250468 player_group
+绑定后本会话自动从 status 候选清除
+```
+
+末尾那串 snowflake（频道/用户 id）就是该会话 id（也会出现在 `/config im status` 候选列表）。
+
+**C2 绑定会话**（控制台或游戏内 op 执行）：
+
+```
+/config im bind discord group <频道id> admin_group
+/config im bind discord group <频道id> player_group   # 玩家频道（可略；留空则公开通知降级发管理频道）
+/config im bind discord user <用户id> admin_dm         # 管理员私聊：先在 bot 私聊发一条消息，取候选中的用户 id
+```
+
+> Discord 一服务器多频道：每个频道独立会话（绑定哪个频道，该频道内命令才响应；其它频道发消息仅 D11 提示）。
+> 绑定即时生效，**无需重启**；绑定后该会话自动从候选清除。
+
+#### 阶段 D · 端到端验证（验收清单）
+
+按顺序执行并在“期望结果”处打勾；全部通过即接入完成：
+
+| # | 验证项 | 操作 | 期望结果 |
+|---|--------|------|----------|
+| 1 | 通道健康 | `/config im status` | `discord 平台: 启用` + 无 lastError |
+| 2 | 上行一问一答（频道） | 频道发 `$h` | bot 回复命令帮助 |
+| 3 | 上行 @提及 | 频道 @bot 发 `$l` | 返回玩家列表（插件自动剥离 `<@bot_id>` snowflake 标记） |
+| 4 | 管理指令权限 | 群主/管理员频道发 `$e help`（示例） | 非群主/管理角色被拒（fail-closed）；群主/管理员正常执行 |
+| 5 | DM 上行问答 | bot 私聊发 `$h` | bot 回复（admin_dm 会话） |
+| 6 | 下行主动发言 | `/config im test discord user <用户id> 你好` | bot 私聊发给你“你好” |
+| 7 | 绑定持久化 | 重启服务器后 `/config im status` | 绑定仍在（sessions.discord.* 已落盘） |
+| 8 | 通知推送 | 触发一条服务器通知（如启动/停止/玩家上下线） | player_group/admin_dm 收到对应通知 |
+
+> **完成标志**：1–7 全过即完成 Discord 平台接入；第 8 项用于核验广播/通知路径。
+> 第 6 项下行 DM：bot 只能私聊与它<b>共享服务器</b>的用户（Discord 平台限制；真机 owner 验证通过）。
+
+#### 常见问题（真机踩坑实录）
+
+| 现象 | 原因 / 处理 |
+|------|------------|
+| 启动后一直见不到 `[discord] READY`，日志反复 `网关地址不可用` | token 无效（403/4004 停用）或网络/代理不可达 `discord.com` |
+| 网关 4004 关闭后不再重连 | token 无效（Discord 4004 Authentication failed）——静态凭据无刷新语义：控制台重启前先检查 token（Bot → Reset Token 重新生成） |
+| 频道发 `$l` 有回复，但 @bot 发 `$l` 无反应 | Discord @提及是 snowflake 标记 `<@bot_id>`（非纯文本 @bot）——2026-09-06 真机发现并修复（插件自动剥离开头连续提及），请升级到含该修复的版本 |
+| 频道发 `$h`/`$l` 全部静默无响应（连不 @ 的也没反应） | A3 MESSAGE CONTENT INTENT 未开（content 为空）；开发者门户 → Bot → Privileged Gateway Intents 开启后重启 |
+| 管理指令被拒 / 群主也被当非管理 | A4 建议给 bot Administrator 角色——非群主成员的「角色权限位」判定需 bot 能读服务器角色，读不到按非管理 fail-closed；群主（guild owner）判定不依赖该权限 |
+| `/config im test` 下行 DM 失败 | Discord bot 只能私聊与它共享服务器的用户；且该用户需未屏蔽私信 |
+| 重启后日志提示无平台可用 / 未启用 discord | `platforms.discord.enabled` 非 true 或 token 为空（D3 停群告警不自动回退）；修好**重启** |
+| gateway 反复断连/心跳超时 | 网络/代理不稳；Discord 会自动 resume（op7/op9 决策内置）；持续异常检查代理与出口 |
+| EasyBot 与 builtin 同时连同一 bot | Gateway 会话抢占式：同一 token 两处 identify 会互踢（R3）——切通道前先停用其一 |
+
+#### 出站域名放行清单（R11，有防火墙/白名单的服务器需放行）
+
+| 用途 | 域名 | 方向 |
+|------|------|------|
+| Discord REST API（/gateway/bot 引导 / 发消息 / DM / 角色查询） | `discord.com` | HTTPS 出站（走 A5 代理时仅需代理可达） |
+| Discord Gateway WS（事件长连接） | `gateway.discord.gg` | WSS 出站（同代理） |
+
+> Discord 无公网入站需求——gateway 为出站 WS 长连接（D13 代理透传，REST 与 WS 同一代理）。
+
+#### 能力边界
+
+- **仅文本**（D6）：图片/文件等无 `content` 文本的媒体消息丢弃；
+- **发送尽力一次不重试**（D7）：失败经健康告警，无投递对账；
+- **会话粒度 = 频道**：Discord 服务器内每文本频道独立 `group` 会话（子频道/帖子同构，channel_id 全局唯一）；
+  未绑定频道消息仅 D11 提示不回复；
+- **主动私聊限制**：bot 只能私聊与它共享服务器的用户（D5）；DM 会话以用户 id 绑定，出站经
+  `/users/@me/channels` 建/取 DM 通道（每用户缓存）；
+- **角色判定**：群主（guild owner）或成员角色含 ADMINISTRATOR/MANAGE_GUILD 权限位（REST+60s 缓存+单飞）；
+  查不到/无权限按非管理 fail-closed；DM 恒非管理；
+- **@提及为 snowflake 标记**：剥离开头连续 `<@id>`/`<@!id>`/`<@&id>`（中间提及保留），纯提及无正文丢弃；
+- 消息内容读取依赖 A3 MESSAGE CONTENT INTENT（特权）；intents=37376（GUILD_MESSAGES+DIRECT_MESSAGES+MESSAGE_CONTENT）。
 
 ---
 

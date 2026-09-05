@@ -36,12 +36,22 @@ public final class QqSender {
     private final Logger log;
     private final TokenProvider tokens;
     private final String apiBase;
+    private final java.net.Proxy proxy;
 
     public QqSender(Logger log, TokenProvider tokens) {
-        this(log, tokens, QqApiClient.DEFAULT_API_BASE);
+        this(log, tokens, QqApiClient.DEFAULT_API_BASE, java.net.Proxy.NO_PROXY);
     }
 
     public QqSender(Logger log, TokenProvider tokens, String apiBase) {
+        this(log, tokens, apiBase, java.net.Proxy.NO_PROXY);
+    }
+
+    /** 便捷：默认端点 + 指定代理（海外/受限网络经 HTTP 代理回国访问 QQ API，D13）。 */
+    public QqSender(Logger log, TokenProvider tokens, java.net.Proxy proxy) {
+        this(log, tokens, QqApiClient.DEFAULT_API_BASE, proxy);
+    }
+
+    public QqSender(Logger log, TokenProvider tokens, String apiBase, java.net.Proxy proxy) {
         if (log == null) {
             throw new IllegalArgumentException("log must not be null");
         }
@@ -51,6 +61,7 @@ public final class QqSender {
         this.log = log;
         this.tokens = tokens;
         this.apiBase = apiBase == null || apiBase.isBlank() ? QqApiClient.DEFAULT_API_BASE : apiBase;
+        this.proxy = proxy == null ? java.net.Proxy.NO_PROXY : proxy;
     }
 
     /**
@@ -126,7 +137,13 @@ public final class QqSender {
             body.addProperty("msg_id", replyMsgId); // 被动回复通道（D14）
         }
         return AsyncHttp.postJson(
-                url, body.toString(), Map.of("Authorization", "QQBot " + token), CONNECT_TIMEOUT, REQUEST_TIMEOUT, 0);
+                url,
+                body.toString(),
+                Map.of("Authorization", "QQBot " + token),
+                CONNECT_TIMEOUT,
+                REQUEST_TIMEOUT,
+                0,
+                proxy);
     }
 
     private static boolean is2xx(HttpResponse<String> resp) {

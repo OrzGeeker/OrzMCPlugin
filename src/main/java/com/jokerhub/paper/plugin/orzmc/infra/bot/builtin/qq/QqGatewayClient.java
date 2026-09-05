@@ -55,6 +55,7 @@ public final class QqGatewayClient extends ReconnectingGateway {
     private final QqGatewayUrlFetcher urlFetcher;
     private final int intents;
     private final QqEventSink sink;
+    private final java.net.Proxy proxy;
     private final Logger log;
 
     /** 客户端最新事件序号（随每个带 s 的入站帧推进），用于心跳 d 与 resume seq。 */
@@ -83,7 +84,7 @@ public final class QqGatewayClient extends ReconnectingGateway {
             QqGatewayUrlFetcher urlFetcher,
             QqEventSink sink,
             GatewayStateListener listener) {
-        this(server, policy, tokens, urlFetcher, INTENT_GROUP_AND_C2C, sink, listener);
+        this(server, policy, tokens, urlFetcher, INTENT_GROUP_AND_C2C, sink, listener, java.net.Proxy.NO_PROXY);
     }
 
     public QqGatewayClient(
@@ -94,6 +95,18 @@ public final class QqGatewayClient extends ReconnectingGateway {
             int intents,
             QqEventSink sink,
             GatewayStateListener listener) {
+        this(server, policy, tokens, urlFetcher, intents, sink, listener, java.net.Proxy.NO_PROXY);
+    }
+
+    public QqGatewayClient(
+            ServerLogger server,
+            ReconnectPolicy policy,
+            TokenProvider tokens,
+            QqGatewayUrlFetcher urlFetcher,
+            int intents,
+            QqEventSink sink,
+            GatewayStateListener listener,
+            java.net.Proxy proxy) {
         super("qq", server, policy, refresherFor(tokens), listener);
         if (tokens == null) {
             throw new IllegalArgumentException("tokens must not be null");
@@ -108,6 +121,7 @@ public final class QqGatewayClient extends ReconnectingGateway {
         this.urlFetcher = urlFetcher;
         this.intents = intents;
         this.sink = sink;
+        this.proxy = proxy == null ? java.net.Proxy.NO_PROXY : proxy;
         this.log = server.logger();
     }
 
@@ -155,6 +169,12 @@ public final class QqGatewayClient extends ReconnectingGateway {
     @Override
     protected void onGatewayOpen() {
         // QQ 建连后由服务端先发 hello（op10）；identify/resume 与心跳配置在 onGatewayPayload 中随 hello 完成
+    }
+
+    /** 生效网络代理（D13：海外服务器访问 QQ 网关 WS 经 HTTP 代理 CONNECT；默认直连）。 */
+    @Override
+    protected java.net.Proxy proxy() {
+        return proxy;
     }
 
     @Override

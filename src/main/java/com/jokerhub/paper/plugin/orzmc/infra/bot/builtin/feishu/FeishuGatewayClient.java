@@ -38,6 +38,7 @@ public final class FeishuGatewayClient extends ReconnectingGateway {
     private final Logger log;
     private final FeishuApiClient api;
     private final FeishuEventSink sink;
+    private final java.net.Proxy proxy;
     /** 最近一次引导的服务端 ping 间隔（毫秒；引导缺省 ClientConfig → 120s，SDK 默认）。 */
     private volatile long pingIntervalMs = 120_000;
     /** 最近一次引导的 service_id（端点 URL query 参数，SDK 用其构造心跳帧）。 */
@@ -56,6 +57,24 @@ public final class FeishuGatewayClient extends ReconnectingGateway {
             FeishuApiClient api,
             FeishuEventSink sink,
             GatewayStateListener listener) {
+        this(server, policy, api, sink, listener, java.net.Proxy.NO_PROXY);
+    }
+
+    /**
+     * @param server 服务端日志门面
+     * @param policy 重连退避策略（null → 骨架默认）
+     * @param api 飞书 REST 客户端（fetchWsEndpoint 引导，REST 经其内部代理）
+     * @param sink 事件回调（可为 null：仅连接不上报事件）
+     * @param listener 连接状态观察者（可为 null）
+     * @param proxy 生效网络代理（D13：海外服务器访问飞书长连接 WS 经 HTTP 代理 CONNECT；默认直连）
+     */
+    public FeishuGatewayClient(
+            ServerLogger server,
+            ReconnectPolicy policy,
+            FeishuApiClient api,
+            FeishuEventSink sink,
+            GatewayStateListener listener,
+            java.net.Proxy proxy) {
         super("feishu", server, policy, null, listener);
         if (server == null) {
             throw new IllegalArgumentException("server must not be null");
@@ -66,6 +85,13 @@ public final class FeishuGatewayClient extends ReconnectingGateway {
         this.log = server.logger();
         this.api = api;
         this.sink = sink;
+        this.proxy = proxy == null ? java.net.Proxy.NO_PROXY : proxy;
+    }
+
+    /** 生效网络代理（D13：飞书长连接 WS 经 HTTP 代理 CONNECT；默认直连）。 */
+    @Override
+    protected java.net.Proxy proxy() {
+        return proxy;
     }
 
     @Override
