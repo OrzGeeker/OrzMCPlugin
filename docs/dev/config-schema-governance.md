@@ -127,3 +127,18 @@ schema 文件顶层统一携带 `config-version: N`，三个文件共享同一�
     `.bak` 原始内容、翻转与自定义保留、缺键补齐**全部落盘可从磁盘重读验证**，且健康检查不再报模板 key 缺失；
   - `setup_secondRun_isNoop_doesNotRewriteSchemaFiles`：已最新版二次启动（setup 再运行）对三个 schema 文件
     **零写入**（字节与 mtime 不变）——UP_TO_DATE 路径的落盘级保证。
+
+### 3.6 命名约定（2026-09-06 增补）
+
+配置**键/段名一律 snake_case**（Bukkit `FileConfiguration` 路径惯例；现有顶层 16 段均为此）。
+例外登记：
+
+- `config.yml` 顶层 `gamemode-correction:` —— 历史遗留 kebab-case（#238 合并前旧文件命名），
+  **不扩新键**；新功能段一律 snake_case；
+- typed record 命名：新配置类统一 `XxxConfig` 后缀（如 `DiscordPlatformConfig`）；历史
+  `Styles`/`Templates`/`Portals`/`IpWhitelist` 不带后缀——**不回改旧名**（波及广），仅登记；
+- 业务层参数与 IM 通道配置分层：bot 业务参数在 config.yml `bot:`（见 §3.4 搬迁实例）、
+  IM 通道连接在 easybot.yml / im.yml（backend 在 im.yml）——新配置键归属按此分层落位。
+
+新增键开发时对照：先在对应层资源文件补默认 + `TemplateKeys`（模板事件）→ 抬 `LATEST_VERSION` →
+按本表自查命名/归属合规 → 跑 `ConfigSchemaResourceTest`。
