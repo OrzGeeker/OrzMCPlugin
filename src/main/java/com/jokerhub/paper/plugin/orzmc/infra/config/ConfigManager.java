@@ -68,12 +68,37 @@ public class ConfigManager {
             return false;
         }
         try {
-            configs.get(name).save(configFiles.get(name));
+            atomicSave(configs.get(name), configFiles.get(name));
             dirtyConfigs.remove(name);
             return true;
         } catch (IOException e) {
             plugin.getLogger().severe("保存配置文件失败: " + name + " - " + e.getMessage());
             return false;
+        }
+    }
+
+    /**
+     * 原子落盘：先写同目录 {@code <file>.tmp} 再原子改名覆盖目标——进程中断不会留下半写损坏的目标文件
+     * （运行时高频写文件 portals/access_rules/permission/im_bindings 尤其需要；评审 C2）。
+     * 同目录 rename 跨文件系统不存在，ATOMIC_MOVE 失败时退化为 REPLACE_EXISTING move（同目录仍近似原子）。
+     */
+    private static void atomicSave(FileConfiguration cfg, File target) throws IOException {
+        File tmp = new File(target.getParentFile(), target.getName() + ".tmp");
+        try {
+            cfg.save(tmp);
+            try {
+                java.nio.file.Files.move(
+                        tmp.toPath(),
+                        target.toPath(),
+                        java.nio.file.StandardCopyOption.REPLACE_EXISTING,
+                        java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+            } catch (java.nio.file.AtomicMoveNotSupportedException amnse) {
+                // 罕见文件系统不支持原子改名：退化普通 move（仍写满 tmp 后才替换，不会半写）
+                java.nio.file.Files.move(
+                        tmp.toPath(), target.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            }
+        } finally {
+            java.nio.file.Files.deleteIfExists(tmp.toPath()); // 落盘失败也清理 tmp，不残留
         }
     }
 

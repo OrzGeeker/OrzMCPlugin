@@ -4,14 +4,18 @@
 # EasyBot 是一个统一的 IM 网关，支持 QQ / Telegram / Discord / 飞书 / 微信，
 # 对外暴露统一的 REST API + WebSocket 事件推送。
 #
-# 全局开关已取消，插件自动检测是否有任一平台 enabled=true 来决定连接。
+# 【职责声明】本文件 = EasyBot 通道层（连接参数 + 会话绑定）+ 跨 backend 兼容旧键。
+#  - backend 通道选择在 im.yml；
+#  - 业务层 bot 参数（cmd_prompt_char / discord_server_link / qq_group_id）v12 起
+#    权威在 config.yml bot: 段——此处保留仅作老装回退读取（新装请配置 config.yml bot:）。
+#  - 全局开关已取消，插件自动检测是否有任一平台 enabled=true 来决定连接。
 # ===========================================================================
 
 # 配置 schema 版本：插件启动时若磁盘版本低于内置版本，会自动补齐缺失默认键并升级
 # （原文件备份为 easybot.yml.bak）。版本号由插件维护，无需手动修改。
-config-version: 11
+config-version: 12
 
-# Bot 命令前缀
+# Bot 命令前缀【已迁 config.yml bot:，此处保留回退读取】
 cmd_prompt_char: '$'
 
 # 展示给玩家的社区入口（可选，不参与 EasyBot 消息路由）

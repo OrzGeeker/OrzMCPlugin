@@ -1,4 +1,5 @@
 # 配置 Schema 升级治理规范
+> **状态：现行**（config.yml/templates.yml/easybot.yml schema 治理规范） ｜ **最后更新**：2026-09-06（状态头规范补注）
 
 > 适用范围：`config.yml` / `templates.yml` / `easybot.yml` 三个 **schema 文件**。
 > 运行时数据文件（`portals.yml` / `access_rules.yml` / `permission.yml` / `guide_book.yml`）由插件
@@ -24,8 +25,8 @@ schema 文件顶层统一携带 `config-version: N`，三个文件共享同一�
 | `== LATEST_VERSION` | 最新 | 零动作（不写文件、不告警、不备份） |
 | `> LATEST_VERSION` | 插件降级 | 跳过，告警提示可能降级，**不做逆向迁移** |
 
-当前 `MIN_TRUSTED_VERSION == LATEST_VERSION == 10`：首个可信版本即最新版本，不存在「可信但落后」区间，
-也不存在版本链上的受控翻转。见 §3.3。
+当前 `MIN_TRUSTED_VERSION = 10`、`LATEST_VERSION = 12`：v10/v11 为已发布的可信中间版本（v11 曾随
+一次配置改动发布），存在「可信但落后」区间——可信旧装升级只做深合并补缺（不跑 legacy 翻转）。见 §3.3。
 
 ## 2. 升级流水线（顺序有讲究，勿打乱）
 
@@ -73,7 +74,11 @@ schema 文件顶层统一携带 `config-version: N`，三个文件共享同一�
 `LegacyDefaultFlips` 只在「磁盘版本 < `MIN_TRUSTED_VERSION`」时执行，语义是**一次性收编不可信旧装**
 （无标记 / 旧 `2` → v10）。它**不是**版本链迁移表：
 
-- 当前不存在可信中间版本（`MIN_TRUSTED == LATEST == 10`），所以表内条目 = v10 发布时的旧默认收编。
+- 当前可信中间版本 v10/v11（`MIN_TRUSTED = 10`）——`LegacyDefaultFlips` 条目 = v10 发布时的旧默认
+  收编（仅对无标记/旧 `2` 的 legacy 安装生效）；v10/v11 老装走可信深合并路径（§1 判定表第三行）。
+- **键搬迁（§3.4 场景）示例**：v12 将业务层 bot 参数（`cmd_prompt_char`/`discord_server_link`/`qq_group_id`）
+  从 easybot.yml 迁至 config.yml `bot:` 段——一次性搬迁器在 `ConfigService.migrateBotParamsToConfig`（幂等，
+  升级后自动执行），配合 BotConfig 双读回退与健康检查迁移提示，老装自定义值不丢。
 - 将来 v10 → v11 若需要**再次翻转默认值**，本机制不会对 v10 安装生效（v10 已 trusted，不跑 legacy 翻转）。
   届时请扩展为**按源版本门控的翻转表**（例：给 FlipSpec 增加 `minFromVersion` 语义），不要在
   `LegacyDefaultFlips` 里堆叠新条目——那只会影响「无标记/旧 2」的安装，达不到 v10 老装目的。
@@ -122,3 +127,18 @@ schema 文件顶层统一携带 `config-version: N`，三个文件共享同一�
     `.bak` 原始内容、翻转与自定义保留、缺键补齐**全部落盘可从磁盘重读验证**，且健康检查不再报模板 key 缺失；
   - `setup_secondRun_isNoop_doesNotRewriteSchemaFiles`：已最新版二次启动（setup 再运行）对三个 schema 文件
     **零写入**（字节与 mtime 不变）——UP_TO_DATE 路径的落盘级保证。
+
+### 3.6 命名约定（2026-09-06 增补）
+
+配置**键/段名一律 snake_case**（Bukkit `FileConfiguration` 路径惯例；现有顶层 16 段均为此）。
+例外登记：
+
+- `config.yml` 顶层 `gamemode-correction:` —— 历史遗留 kebab-case（#238 合并前旧文件命名），
+  **不扩新键**；新功能段一律 snake_case；
+- typed record 命名：新配置类统一 `XxxConfig` 后缀（如 `DiscordPlatformConfig`）；历史
+  `Styles`/`Templates`/`Portals`/`IpWhitelist` 不带后缀——**不回改旧名**（波及广），仅登记；
+- 业务层参数与 IM 通道配置分层：bot 业务参数在 config.yml `bot:`（见 §3.4 搬迁实例）、
+  IM 通道连接在 easybot.yml / im.yml（backend 在 im.yml）——新配置键归属按此分层落位。
+
+新增键开发时对照：先在对应层资源文件补默认 + `TemplateKeys`（模板事件）→ 抬 `LATEST_VERSION` →
+按本表自查命名/归属合规 → 跑 `ConfigSchemaResourceTest`。
