@@ -265,7 +265,7 @@ AccessTokenProvider 接口
 
 | 卡 | 目标 | 改动点 | 验收 | 状态 |
 |----|------|--------|------|------|
-| I3 | 反向同步空转 PR 收敛（#314/#321/#331 三次） | sync workflow 以 `git diff` 判定应跳过空 PR，但竞态/历史拓扑偶发创建内容一致 PR（head=main 有 squash 历史、树相同）——评估 PR 创建后二次核验/自动关闭 | 里程碑后不再产生空转 PR | ⏳ 低优先（人工按 AGENTS B① 关闭即可） |
+| I3 | 反向同步空转 PR 收敛（#314/#321/#331/#338 四次） | sync workflow 加 compare API 文件级核验（.github/workflows/main-develop-sync.yml）：创建/复用 PR 后 `compare/develop...main` 文件差异为 0 → 自动关闭不 enable auto-merge | 里程碑后不再残留空转 PR | ✅ 已修复（2026-09-06） |
 
 ### P3 外部/owner 项（非 builtin 代码）
 
