@@ -46,7 +46,12 @@ public final class DiscordInboundParser {
             if (text == null || text.isBlank()) {
                 return null;
             }
-            text = text.trim();
+            // Discord @提及为 snowflake 标记（<@id> / <@!id> 用户、<@&id> 角色），剥除后命令文本才能被识别
+            // （对齐 TG/飞书 @提及剥离：#324 同源问题，2026-09-06 真机发现）
+            text = stripMentions(text);
+            if (text.isEmpty()) {
+                return null; // 纯 @提及无正文
+            }
             if (text.length() > MAX_TEXT_LENGTH) {
                 return null; // 超长文本不入会话（防御；Discord 单条 2000，此处留富余）
             }
@@ -64,6 +69,19 @@ public final class DiscordInboundParser {
         } catch (JsonSyntaxException | IllegalStateException | UnsupportedOperationException e) {
             return null; // 非 JSON / 结构异常 → 忽略
         }
+    }
+
+    /**
+     * 剥除文本<b>开头</b>的连续 Discord 提及并 trim：{@code <@id>}（用户）、{@code <@!id>}（旧式昵称提及）、
+     * {@code <@&id>}（角色提及）。群 @bot 命令形如 {@code <@151590...> $l}——剥除后命令文本才能被命令层识别
+     * （对齐 TG/飞书 @提及剥离：#324 同源问题，2026-09-06 真机发现）。中间/结尾提及保留原样
+     * （可能是引用他人/角色，命令解析以文本 {@code $} 开头为准）。
+     */
+    static String stripMentions(String text) {
+        if (text == null) {
+            return "";
+        }
+        return text.replaceAll("^(?:<@[!&]?\\d+>\\s*)+", "").trim();
     }
 
     /** DM 判定：channel_type=1（DM）或无 guild_id（非服务器消息）视为私聊。 */

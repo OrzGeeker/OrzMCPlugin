@@ -66,6 +66,36 @@ class DiscordInboundParserTest {
     }
 
     @Test
+    void guildMention_strippedBeforeDispatch() {
+        // Discord @提及 = snowflake 标记前缀（2026-09-06 真机发现，对齐 TG/飞书剥离）
+        DiscordInboundMessage m = DiscordInboundParser.parseMessageCreate(
+                frame("111", "222", "333", false, "<@1515905813489782835> $l", 0));
+        assertEquals("$l", m.text(), "用户提及 <@id> 剥离");
+    }
+
+    @Test
+    void legacyAndRoleMentions_stripped() {
+        DiscordInboundMessage m = DiscordInboundParser.parseMessageCreate(
+                frame("111", "222", "333", false, "<@!151590> <@&998877> $h", 0));
+        assertEquals("$h", m.text(), "旧式 <@!id> 与角色 <@&id> 提及均剥离");
+    }
+
+    @Test
+    void pureMention_dropped() {
+        assertNull(
+                DiscordInboundParser.parseMessageCreate(frame("111", "222", "333", false, "<@1515905813489782835>", 0)),
+                "纯 @提及无正文 → 丢弃");
+    }
+
+    @Test
+    void mentionMidText_keptAsIs() {
+        // 中间提及保留（可能是引用他人；命令识别以 $ 开头为准，对齐 TG 只剥开头决策）
+        DiscordInboundMessage m =
+                DiscordInboundParser.parseMessageCreate(frame("111", "222", "333", false, "hi <@123> there", 0));
+        assertEquals("hi <@123> there", m.text());
+    }
+
+    @Test
     void botAuthor_notFilteredByParserButFlagged() {
         DiscordInboundMessage m = DiscordInboundParser.parseMessageCreate(frame("111", "222", "999", true, "$l", 0));
         assertTrue(m != null && m.isBot(), "parser 保留 bot 标记，由 processor 滤除（R4）");
