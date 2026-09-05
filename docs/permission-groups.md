@@ -1,4 +1,5 @@
 # 权限组节点配置表（Rank & Review）
+> **状态：现行**（权限组节点权威表；随 Rank & Review 功能变更同步） ｜ **最后更新**：2026-09-06（状态头规范补注）
 
 > 基于本地测试服（与线上插件一致：EssentialsX 2.22.0/GetMeHome 3.0.0-4/GriefPrevention 16.18.7/WorldEdit 7.4.5/WorldGuard 7.0.18/DeathChest 3.0.1/EzShops 2.5.9/BackOnDeath 0.4/LoginSecurity 3.3.2-SNAPSHOT/OrzMC 1.0.16 等 16 插件）**逐权限名核对 plugin.yml 与 jar 字节码后**设计。
 > 配置命令：`lp group <组> permission set <节点> true`（LP 继承链 admin→builder→member→default，各组只配增量）。
