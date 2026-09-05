@@ -49,6 +49,17 @@ jobs:
           GH_TOKEN: ${{ secrets.BOT_PAT }}
         run: |
           set -euo pipefail
+
+          # 创建前判定（空转防御主闸 I3）：GitHub compare API 文件级比对（服务器端实时、与创建动作同源，
+          # 消除本地 git diff 的 refs 新鲜度竞态）。files = 0 = 纯历史拓扑噪音（内容已一致）→ 不创建。
+          changed_files="$(gh api --repo "$GITHUB_REPOSITORY" "repos/$GITHUB_REPOSITORY/compare/develop...main" \
+            --jq '.files | length')"
+          if [ "$changed_files" = "0" ]; then
+            echo "compare 文件差异为 0：main/develop 内容一致（里程碑 squash 后常态），不创建同步 PR"
+            exit 0
+          fi
+          echo "compare 文件差异: $changed_files 个，创建/复用同步 PR"
+
           # 复用已存在且未合并的同步 PR（多次 main push 幂等）
           pr="$(gh pr list --repo "$GITHUB_REPOSITORY" --base develop --head main \
                  --state open --json number,title -q \
@@ -61,6 +72,19 @@ jobs:
           else
             echo "复用已有同步 PR: $pr"
           fi
+
+          # 创建后复核（二线保险）：复用场景下旧 PR 可能已因内容同步变空，或创建瞬间有并发同步——
+          # 此刻文件差异已为 0 则关闭，不 enable auto-merge。
+          changed_files="$(gh api --repo "$GITHUB_REPOSITORY" "repos/$GITHUB_REPOSITORY/compare/develop...main" \
+            --jq '.files | length')"
+          if [ "$changed_files" = "0" ]; then
+            gh pr close "$pr" --repo "$GITHUB_REPOSITORY" \
+              --comment "空转同步 PR：head=main 相对 develop 无文件差异（内容已一致，纯历史拓扑）——自动关闭。"
+            echo "⚠️ 空转同步 PR #$pr 已自动关闭（复核文件差异为 0）"
+            exit 0
+          fi
+          echo "复核文件差异: $changed_files 个，继续 auto-merge"
+          echo "compare 文件差异: $changed_files 个，继续 auto-merge"
 
           # 内容冲突时不 auto-merge，留人工处理（PR 保持打开并注明）
           state="$(gh pr view "$pr" --repo "$GITHUB_REPOSITORY" --json mergeable,mergeStateStatus \
