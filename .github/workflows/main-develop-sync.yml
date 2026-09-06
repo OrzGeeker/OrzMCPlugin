@@ -3,16 +3,16 @@
 # 语义：main 单独承载的提交（hotfix / 纯文档 / CI 直合 main / tag 版本号 bump 等）需同步进 develop，
 # 保证 develop ⊇ main，否则下次 develop→main 里程碑会因两侧同文件各自演进冲突（#293 教训）。
 #
-# 机制：push main → 比较两分支内容，main 确有领先内容时自动开反向 PR（head=main base=develop）
-# 并 enable 原生 auto-merge（squash）→ 分支保护的 CI（build + folia-smoke）绿后 GitHub 自动合并。
-# 里程碑（develop→main）合并后两分支内容一致 → tree 相同自动跳过，不产生空 PR 噪音。
+# 机制：push main → 在 runner 上建「develop 基线 + merge main 内容」的内容同步分支 sync-content
+# → 开 PR（base=develop head=sync-content）+ enable 原生 auto-merge（squash）→ CI 绿自动合入 develop。
 #
-# 内容一致性判定（#314/#321/#331/#338/#344 五次空转/误报教训后定稿）：
-#   取 main/develop 两分支最新 commit 的 tree sha 比较——相等 ⟺ 树逐文件相同（内容一致）。
-#   - 不用 GitHub compare API：仅三点（merge-base 语义），里程碑 squash 后 merge-base 陈旧会误报
-#     文件差异（曾误报 107 文件创建空 PR #344）；两点形式 404 不可用。
-#   - 不用本地 git diff 作主判定：依赖 refs 新鲜度，存在判定→创建窗口竞态（#331/#338）。
-#   tree sha 判定服务器端实时、与创建动作同源，无竞态窗口；复核复用同函数做二线保险。
+# 架构决策（2026-09-06 定稿，取代 head=main 方案）：
+#   旧方案 PR head=main：main 的 squash 历史与 develop 逐提交历史拓扑分叉，GitHub 合并预检会判
+#   DIRTY/CONFLICTING 无法 auto-merge（#347/#351 教训），只能人工 develop 侧 merge main 兜底。
+#   新方案 head=sync-content：分支从 origin/develop 检出 → 祖先含 develop 全部历史 → 合并预检必
+#   MERGEABLE，全自动闭环；内容用 merge origin/main 带入（-X theirs 冲突取 main 版本 = 同步方向，
+#   develop 独有的未冲突内容自然保留）。
+#   空转判定：sync-content 与 origin/develop 树相同（main ⊆ develop 已满足）→ 不创建 PR。
 #
 # 说明：
 # - auto-merge 须用个人级 PAT（secrets.BOT_PAT）；Actions 内 GITHUB_TOKEN 无法 enable auto-merge（实测）。
@@ -26,10 +26,10 @@ on:
 
 concurrency:
   group: main-develop-sync
-  cancel-in-progress: false   # 连续 main push 不互相取消：PR head=main 始终反映最新 main
+  cancel-in-progress: false   # 连续 main push 不互相取消：sync-content 以最新 main 重建
 
 permissions:
-  contents: read
+  contents: write
   pull-requests: write
 
 jobs:
@@ -40,61 +40,54 @@ jobs:
       - name: checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # 需要完整历史以 diff 两分支
+          fetch-depth: 0        # 需要完整历史与全部分支 refs
+          token: ${{ secrets.BOT_PAT }}   # push sync-content 分支需要写权限
 
-      - name: 若无内容差异则跳过（快速预筛）
-        run: |
-          git fetch origin develop --quiet
-          if git diff --quiet origin/main origin/develop; then
-            echo "两分支内容一致，无需同步（里程碑合并后即此态）"
-            exit 0
-          fi
-          echo "本地 git diff 显示有差异（以创建步骤的 tree sha 主闸为准）"
-
-      - name: 创建/复用反向同步 PR 并 enable auto-merge
+      - name: 内容同步分支 + 同步 PR
         env:
           GH_TOKEN: ${{ secrets.BOT_PAT }}
         run: |
           set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # 内容一致性判定（主闸 + 复核共用）：main/develop 两分支最新 commit 的 tree sha 比较——
-          # 相等 ⟺ 树逐文件相同（内容一致）。服务器端实时、与创建动作同源，无 refs 竞态。
-          trees_differ() {
-            main_tree="$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq '.commit.tree.sha')"
-            dev_tree="$(gh api "repos/$GITHUB_REPOSITORY/commits/develop" --jq '.commit.tree.sha')"
-            [ -n "$main_tree" ] && [ -n "$dev_tree" ] && [ "$main_tree" != "$dev_tree" ]
-          }
-
-          # 创建前判定（空转防御主闸）：tree 相同 = 内容一致（纯历史拓扑）→ 不创建 PR。
-          if ! trees_differ; then
-            echo "main/develop commit tree 相同：内容一致（里程碑 squash 后常态），不创建同步 PR"
+          # 快速预筛：两分支树相同（内容一致）→ 无需同步
+          if git diff --quiet origin/main origin/develop; then
+            echo "两分支内容一致，无需同步（里程碑合并后常态）"
             exit 0
           fi
-          echo "main/develop tree 不同（内容有差异），创建/复用同步 PR"
 
-          # 复用已存在且未合并的同步 PR（多次 main push 幂等）
-          pr="$(gh pr list --repo "$GITHUB_REPOSITORY" --base develop --head main \
+          # 建内容同步分支：develop 基线 + merge main 内容（冲突取 main = 同步方向；develop 独有保留）
+          git fetch origin main develop --quiet   # 确保 refs 最新（checkout fetch-depth 0 已拉全量，双保险）
+          git checkout -q -B sync-content origin/develop
+          if ! git merge --no-edit -X theirs origin/main; then
+            echo "⚠️ merge main 失败，需人工检查 develop 与 main 的冲突"
+            exit 1
+          fi
+
+          # 空转判定：合并后与 develop 树相同（无净内容）→ 不创建 PR
+          if git diff --quiet origin/develop HEAD; then
+            echo "sync-content 与 develop 无内容差异（main 内容已含于 develop），不创建同步 PR"
+            exit 0
+          fi
+          echo "sync-content 领先 develop，推送并开同步 PR"
+
+          git push --force origin HEAD:sync-content
+
+          # 复用已存在且未合并的同步 PR（幂等；force 更新其 head 分支）
+          pr="$(gh pr list --repo "$GITHUB_REPOSITORY" --base develop --head sync-content \
                  --state open --json number,title -q \
                  '.[] | select(.title | startswith("chore(sync):")) | .number' | head -1)"
           if [ -z "$pr" ]; then
-            pr="$(gh pr create --repo "$GITHUB_REPOSITORY" --base develop --head main \
+            pr="$(gh pr create --repo "$GITHUB_REPOSITORY" --base develop --head sync-content \
                   --title "chore(sync): main → develop 自动同步" \
-                  --body "自动同步 PR：main 有 develop 缺失的提交（hotfix/文档/CI 直合）。CI 绿后经原生 auto-merge 自动合并。若冲突请人工解决后合并。")"
+                  --body "自动同步 PR（develop 侧内容分支）：把 main 独有提交（hotfix/文档/CI 直合/bump）同步进 develop。CI 绿后经原生 auto-merge 自动合并。")"
             echo "已创建同步 PR: $pr"
           else
             echo "复用已有同步 PR: $pr"
           fi
 
-          # 创建后复核（二线保险）：复用旧 PR 变空 / 创建瞬间并发同步场景——tree 已相同则关闭不 enable。
-          if ! trees_differ; then
-            gh pr close "$pr" --repo "$GITHUB_REPOSITORY" \
-              --comment "空转同步 PR：main/develop 内容已一致（纯历史拓扑）——自动关闭。"
-            echo "⚠️ 空转同步 PR #$pr 已自动关闭（复核 tree 相同）"
-            exit 0
-          fi
-          echo "复核 tree 不同（内容有差异），继续 auto-merge"
-
-          # 内容冲突时不 auto-merge，留人工处理（PR 保持打开并注明）
+          # 冲突时不 auto-merge，留人工处理
           state="$(gh pr view "$pr" --repo "$GITHUB_REPOSITORY" --json mergeable,mergeStateStatus \
                    -q '"\(.mergeable):\(.mergeStateStatus)"')"
           case "$state" in
@@ -102,6 +95,6 @@ jobs:
                          echo "✅ 已 enable auto-merge（CI 绿后自动合并）" ;;
             *)
               gh pr comment "$pr" --repo "$GITHUB_REPOSITORY" \
-                --body "⚠️ 同步 PR 当前不可合并（$state）。已跳过 auto-merge，请人工解决冲突/检查后合并。"
+                --body "⚠️ 同步 PR 当前不可合并（$state）。已跳过 auto-merge，请人工处理。"
               echo "⚠️ PR 不可合并（$state），已跳过 auto-merge" ;;
           esac
