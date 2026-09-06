@@ -11,6 +11,9 @@ on:
       - 'CHANGELOG.md'
       - '.github/**'
       - 'e2e/**'
+      # tag 后 bump version 的自增 commit 只改版本号（paper-plugin.yml）→ 不应产生 beta 噪音；
+      # paths-ignore 语义 = 本次 push 改动全部落在忽略集才不触发——纯 bump push 跳过，混合改动仍发布
+      - 'src/main/resources/paper-plugin.yml'
     tags:
       - '*.*.*'             # → Release 发布 (release channel, 纯 SemVer)
 
