@@ -58,7 +58,7 @@ I18nService          ← 组合根注入；只读不可变 Map + 原子热重载
   ├─ Lang            ← 值类型：归一化语言码（zh-CN / en-US）
   ├─ MessageTable    ← 单语言包：Map<String,String>，编译期无、运行时缺 key 走兜底
   ├─ I18nLoader      ← bundled(资源) ⊕ custom(数据目录 overlay，可选)
-  └─ I18nOptions     ← config.yml `i18n:` 段（default_lang / platform_langs）
+  └─ I18nConfig      ← config.yml `i18n:` 段（default_lang / platform_langs / aliases；snake_case 合规）
 渲染引擎：TemplateRenderer.render(template, vars)（复用，不新建）
 ```
 
@@ -146,7 +146,7 @@ public final class I18nService {
     boolean has(Lang lang, String key);
     // 生命周期 / 健康
     void reloadCustom();                 // 重读数据目录 overlay（挂现有 reload 链）
-    List<String> health();               // key/占位符差异 → 汇总进 ConfigHealthCheck
+    List<String> health();               // key/占位符差异 → 启动 warning（PlatformModule.setup，与 ConfigService 同风格）
 }
 ```
 
@@ -171,7 +171,7 @@ public final class I18nService {
 
 | 机制 | 内容 | 时机 |
 |:--|:--|:--|
-| key 集校验 | 每 bundled 包与 zh 主目录 key 集**完全一致**（缺/多均报）；值不得为空 | 启动 `ConfigHealthCheck` + 单测 |
+| key 集校验 | 每 bundled 包与 zh 主目录 key 集**完全一致**（缺/多均报）；值不得为空 | 启动 warning（PlatformModule.setup，随 ConfigService 风格）+ 单测 |
 | 占位符校验 | 同 key 跨语言 `{...}` 集合一致 | 同上 |
 | 运行时兜底 | 缺 key → zh → key 本体 + 去重 warn 一次；custom 空串 = 屏蔽 | 运行时 |
 | 单测 | `I18nCatalogConsistencyTest`（资源两包 key/占位符/空值）+ Lang 归一化/决议链用例 | `./gradlew test` |
