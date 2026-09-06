@@ -87,9 +87,18 @@ jobs:
             echo "复用已有同步 PR: $pr"
           fi
 
+          # 等待 GitHub 合并预检完成再 enable：新 PR mergeable 初始 UNKNOWN，过早检查会误判
+          # 「不可合并」跳过 auto-merge（#354 教训）
+          state="UNKNOWN:UNKNOWN"
+          for _ in 1 2 3 4 5 6 7 8 9 10; do
+            state="$(gh pr view "$pr" --repo "$GITHUB_REPOSITORY" --json mergeable,mergeStateStatus \
+                     -q '"\(.mergeable):\(.mergeStateStatus)"')"
+            case "$state" in
+              UNKNOWN:*) sleep 3 ;;
+              *) break ;;
+            esac
+          done
           # 冲突时不 auto-merge，留人工处理
-          state="$(gh pr view "$pr" --repo "$GITHUB_REPOSITORY" --json mergeable,mergeStateStatus \
-                   -q '"\(.mergeable):\(.mergeStateStatus)"')"
           case "$state" in
             MERGEABLE:*) gh pr merge "$pr" --repo "$GITHUB_REPOSITORY" --auto --squash
                          echo "✅ 已 enable auto-merge（CI 绿后自动合并）" ;;
