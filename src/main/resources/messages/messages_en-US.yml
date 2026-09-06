@@ -1,0 +1,19 @@
+# ==================================================
+#          OrzMC Language Pack: English (US)
+# ==================================================
+#
+# 【This file is a TRANSLATION of messages_zh-CN.yml — do not invent keys】
+# Key set and {var} placeholders per key MUST match the zh-CN master exactly;
+# enforced at startup health check and by I18nCatalogConsistencyTest.
+#
+# 【Placeholders】Use {var} tokens (same syntax as templates.yml, \n escapes work).
+# Missing keys fall back to zh-CN at runtime, so keep this file complete per release.
+#
+# 【Editing】Server owners may override any message via data-folder
+# messages_custom_en-US.yml (empty value "" = suppress the message).
+#
+# 【Adding a language】Add messages/messages_<code>.yml resource + one line in
+# I18nLoader.CODES — no business code changes needed.
+#
+# Keys are populated incrementally per migration PR (docs/dev/i18n-plan.md §5);
+# currently an empty skeleton, structurally identical to the zh-CN master.

@@ -8,13 +8,32 @@
 #   · 移动与防爆      entity_teleport / tnt
 #   · 安全与访问控制  geoip / guard / chat / login_rate_limit / exploit_hardening
 #   · 玩家权限与治理  rank_colors / prison / gamemode-correction
+#   · 多语言          i18n
 #   · 事件通知        player_notify
 #   · 维护与生命周期  maintenance / update
 # IM 通道（backend/平台凭据）在 im.yml 与 easybot.yml，不在此文件。
 
 # 配置 schema 版本：插件启动时若磁盘版本低于内置版本，会自动补齐缺失默认键并升级
 # （原文件备份为 config.yml.bak）。版本号由插件维护，无需手动修改。
-config-version: 12
+config-version: 13
+
+# ==================================================
+#          〇、多语言（i18n）
+# ==================================================
+# 语言决议：游戏内 = 客户端 locale；Bot 交互回复 = 来源平台（platform_langs）；
+# 事件通知广播 = default_lang。未安装语言码一律回落 default_lang → zh-CN。
+# 语言包本体为内置资源 messages/messages_<code>.yml（随插件发布），服主可改。
+i18n:
+  default_lang: zh-CN
+  # 群平台语言覆盖（key 为 IM 平台 id：qq / discord / telegram / feishu / wechat）。
+  # 不配置的平台跟随 default_lang。示例：
+  # platform_langs:
+  #   qq: zh-CN
+  #   discord: en-US
+  platform_langs: {}
+  # 可选：把未安装语言码指向已安装语言（如 zh-TW: zh-CN）。
+  # aliases:
+  #   zh-TW: zh-CN
 
 # ==================================================
 #          一、玩家名单（features 一）

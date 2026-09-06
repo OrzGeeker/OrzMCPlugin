@@ -9,7 +9,9 @@ import com.jokerhub.paper.plugin.orzmc.features.security.CommandAuditService;
 import com.jokerhub.paper.plugin.orzmc.features.security.CommandGuardService;
 import com.jokerhub.paper.plugin.orzmc.infra.config.ConfigService;
 import com.jokerhub.paper.plugin.orzmc.infra.config.DefaultTypedConfigProvider;
+import com.jokerhub.paper.plugin.orzmc.infra.config.configs.I18nConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.health.HealthRegistry;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nService;
 import com.jokerhub.paper.plugin.orzmc.infra.logging.LogCaptureService;
 import com.jokerhub.paper.plugin.orzmc.infra.logging.OrzLog4JCaptureAppender;
 import com.jokerhub.paper.plugin.orzmc.infra.logging.ThrottledLogger;
@@ -17,6 +19,7 @@ import com.jokerhub.paper.plugin.orzmc.infra.net.AsyncHttp;
 import com.jokerhub.paper.plugin.orzmc.infra.notify.ThrottledNotifier;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
+import java.util.List;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.LoggerContext;
 
@@ -32,6 +35,9 @@ public final class PlatformModule implements ServiceModule {
     private final ConfigService configService;
     private final DefaultTypedConfigProvider configs;
     private final OrzTextStyles textStyles;
+    /** 多语言服务（P0）：内置语料 bundled ⊕ 数据目录覆盖层 custom；语言决议 + 文案读取。 */
+    private final I18nService i18nService;
+
     private final ThrottledLogger throttledLogger;
     private final ThrottledNotifier throttledNotifier;
     private final HealthRegistry healthRegistry;
@@ -47,6 +53,11 @@ public final class PlatformModule implements ServiceModule {
         this.configService = new ConfigService(plugin);
         this.configs = new DefaultTypedConfigProvider(configService);
         this.textStyles = new OrzTextStyles(configService);
+        this.i18nService = new I18nService(
+                plugin.getClass().getClassLoader(),
+                configService.dataFolder().toPath(),
+                () -> I18nConfig.from(configService.getConfig("config").getConfigurationSection("i18n")),
+                plugin.getLogger());
         this.throttledLogger = new ThrottledLogger(configService, plugin.getLogger());
         this.throttledNotifier = new ThrottledNotifier();
         this.healthRegistry = new HealthRegistry();
@@ -66,7 +77,19 @@ public final class PlatformModule implements ServiceModule {
     @Override
     public void setup() {
         configService.setup();
+        reportI18nHealth();
         attachLogCaptureAppender();
+    }
+
+    /** 内置语言包一致性检查（启动告警；运行时单测由 I18nCatalogConsistencyTest 守护）。 */
+    private void reportI18nHealth() {
+        List<String> issues = i18nService.health();
+        if (!issues.isEmpty()) {
+            serverFacade.logger().warning("i18n 语言包健康检查发现问题:");
+            for (String issue : issues) {
+                serverFacade.logger().warning(" - " + issue);
+            }
+        }
     }
 
     @Override
@@ -138,6 +161,10 @@ public final class PlatformModule implements ServiceModule {
 
     public OrzTextStyles textStyles() {
         return textStyles;
+    }
+
+    public I18nService i18nService() {
+        return i18nService;
     }
 
     public ThrottledLogger throttledLogger() {
