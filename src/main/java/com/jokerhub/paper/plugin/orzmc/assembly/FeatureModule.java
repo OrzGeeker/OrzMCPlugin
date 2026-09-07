@@ -144,7 +144,8 @@ public final class FeatureModule implements ServiceModule {
                 commandAuditService,
                 org.bukkit.Bukkit.getLogger(),
                 platform.i18nService());
-        this.guideService = new GuideService(platform.serverFacade(), platform.configService(), platform.textStyles());
+        this.guideService = new GuideService(
+                platform.serverFacade(), platform.configService(), platform.textStyles(), platform.i18nService());
         // 上下线通知：窗口聚合限流（不丢消息），单发走原模板、多发走 player_digest 摘要
         this.playerEventService = new PlayerEventService(
                 platform.serverFacade(),
@@ -182,7 +183,7 @@ public final class FeatureModule implements ServiceModule {
                 botModule.notifier(),
                 platform.throttledNotifier(), // whitelist_block 群通知限频（防刷屏打爆 QQ 频控）
                 platform.i18nService());
-        this.menuEventService = new MenuEventService(platform.textStyles());
+        this.menuEventService = new MenuEventService(platform.textStyles(), platform.i18nService());
         this.teleportBowService =
                 new TeleportBowService(platform.serverFacade(), platform.textStyles(), platform.i18nService());
         this.teleportBowEventService = new TeleportBowEventService(teleportBowService);
@@ -218,7 +219,7 @@ public final class FeatureModule implements ServiceModule {
                 botModule.notifier(),
                 platform.textStyles(),
                 platform.i18nService());
-        this.menuCommandService = new MenuCommandService(platform.textStyles());
+        this.menuCommandService = new MenuCommandService(platform.textStyles(), platform.i18nService());
         this.portalCommandService =
                 new PortalCommandService(portalModule.portalService(), platform.textStyles(), platform.i18nService());
         this.maintenanceCommandService =

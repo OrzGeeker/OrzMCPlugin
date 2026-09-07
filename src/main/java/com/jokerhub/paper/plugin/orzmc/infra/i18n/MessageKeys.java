@@ -110,6 +110,11 @@ public final class MessageKeys {
     public static final String MAINTENANCE_CMD_REASON_OPTIMIZE = "maintenance.cmd.reason_optimize";
     public static final String MAINTENANCE_CMD_REASON_MANUAL = "maintenance.cmd.reason_manual";
 
+    // ---- guide / menu（P2h1） ----
+    public static final String GUIDE_NOT_CONFIGURED = "guide.not_configured";
+    public static final String GUIDE_GOT = "guide.got";
+    public static final String MENU_WIP = "menu.wip";
+
     // ---- teleport.bow.*：传送弓（P2a） ----
     public static final String TELEPORT_BOW_NAME = "teleport.bow.name";
     public static final String TELEPORT_BOW_TAG = "teleport.bow.tag";

@@ -219,3 +219,10 @@ maintenance:
     reason_backup: "地图备份中"
     reason_optimize: "地图优化中"
     reason_manual: "手动维护中"
+
+# --- guide/menu.*（新手指南/菜单提示；P2h1 按玩家语言） ---
+guide:
+  not_configured: "服主未配置新手指南"
+  got: "获得新手指南"
+menu:
+  wip: "功能开发中"
