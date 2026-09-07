@@ -164,7 +164,11 @@ public final class FeatureModule implements ServiceModule {
                 platform.serverFacade(),
                 platform.throttledNotifier()); // IP 黑名单/玩家名规则拦截私信限频（防重连刷屏打爆 QQ 频控）
         this.tntEventService = new TntEventService(
-                platform.configs(), platform.textStyles(), botModule.notifier(), platform.serverScheduler());
+                platform.configs(),
+                platform.textStyles(),
+                botModule.notifier(),
+                platform.serverScheduler(),
+                platform.i18nService());
         this.whitelistEventService = new WhitelistEventService(
                 platform.configs(),
                 platform.textStyles(),

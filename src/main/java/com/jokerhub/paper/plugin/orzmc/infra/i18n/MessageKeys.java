@@ -35,4 +35,27 @@ public final class MessageKeys {
     public static final String WHITELIST_KICK_DISCORD_JOIN = "whitelist.kick.discord_join";
     public static final String WHITELIST_NOTIFY_BLOCKED = "whitelist.notify.blocked";
     public static final String WHITELIST_NOTIFY_TOGGLE_OFF = "whitelist.notify.toggle_off";
+
+    // ---- portal.*：/portal 命令反馈（P2c） ----
+    public static final String PORTAL_USAGE = "portal.usage";
+    public static final String PORTAL_USAGE_REMOVE = "portal.usage_remove";
+    public static final String PORTAL_PORT_REQUIRED = "portal.port_required";
+    public static final String PORTAL_NOT_FOUND = "portal.not_found";
+    public static final String PORTAL_REMOVED = "portal.removed";
+    public static final String PORTAL_CREATED = "portal.created";
+    public static final String PORTAL_COMMAND_DESC = "portal.command_desc";
+
+    // ---- tnt.*：TNT 防护提示/告警标签（P2c） ----
+    public static final String TNT_ANCHOR_DISABLED = "tnt.anchor_disabled";
+    public static final String TNT_PLACE_COOLDOWN = "tnt.place_cooldown";
+    public static final String TNT_COOLDOWN_SECONDS = "tnt.cooldown_seconds";
+    public static final String TNT_PLACE_DISABLED = "tnt.place_disabled";
+    public static final String TNT_PRIME_DENIED = "tnt.prime_denied";
+    public static final String TNT_PRIME = "tnt.prime";
+    public static final String TNT_DISPENSE_FORBIDDEN = "tnt.dispense_forbidden";
+    public static final String TNT_EXPLODE = "tnt.explode";
+    public static final String TNT_BLOCK_EXPLODE = "tnt.block_explode";
+    public static final String TNT_PLACEMENT_MSG = "tnt.placement_msg";
+    public static final String TNT_AT = "tnt.at";
+    public static final String TNT_PLACED = "tnt.placed";
 }
