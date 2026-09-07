@@ -303,4 +303,18 @@ bot:
     down_fail: "{player} 无法降级：已达最低等级或权限数据异常（详见服务器日志）。"
     up_ok: "已将 {player} 升级为 {group}。"
     down_ok: "已将 {player} 降级为 {group}。"
+  v:
+    svc_unavailable: "审核服务不可用"
+    list_empty: "当前没有待审核的申请。"
+    list_header: "------待审核申请------"
+    current_group: "（当前组：{group}）"
+    list_item: "[{type}] {player}{group}：{summary}（{time} 提交）"
+    reviewer_fallback: "群管理员"
+    not_found: "找不到待审申请: {criteria}"
+    error: "审核处理异常: {detail}"
+    unknown_error: "未知错误"
+    just_now: "刚刚"
+    minutes_ago: "{count}分钟前"
+    hours_ago: "{count}小时前"
+    days_ago: "{count}天前"
 

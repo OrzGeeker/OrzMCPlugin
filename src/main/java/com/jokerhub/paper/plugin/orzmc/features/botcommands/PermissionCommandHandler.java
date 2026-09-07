@@ -99,18 +99,4 @@ final class PermissionCommandHandler extends BotCommandContext {
             }
         });
     }
-
-    /** 发送单条消息（默认语言 R1）；key 指定 reply 模板键。 */
-    private void emitMsg(
-            java.util.function.Consumer<com.jokerhub.paper.plugin.orzmc.core.bot.MessageEnvelope> callback,
-            String message) {
-        emitMsg(callback, "command_review_result", message);
-    }
-
-    private void emitMsg(
-            java.util.function.Consumer<com.jokerhub.paper.plugin.orzmc.core.bot.MessageEnvelope> callback,
-            String templateKey,
-            String message) {
-        emit(callback, templateKey, Map.of("message", message), message);
-    }
 }
