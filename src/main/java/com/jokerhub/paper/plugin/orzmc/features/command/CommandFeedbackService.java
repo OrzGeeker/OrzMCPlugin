@@ -39,14 +39,6 @@ public final class CommandFeedbackService {
         return tip(sender, MessageKeys.COMMON_PRISON_DENIED);
     }
 
-    public TextComponent usageTip(String text) {
-        return Component.text(text);
-    }
-
-    public TextComponent portNumberRequiredTip() {
-        return Component.text("端口需为数字");
-    }
-
     public TextComponent securityBlockedTip(String reason) {
         return Component.text(reason);
     }

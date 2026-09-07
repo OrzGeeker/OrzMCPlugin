@@ -1,6 +1,5 @@
 package com.jokerhub.paper.plugin.orzmc.features.command;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nService;
@@ -39,17 +38,5 @@ class CommandFeedbackServiceTest {
     void prisonDeniedTip_defaultLang() {
         String text = PlainTextComponentSerializer.plainText().serialize(service.prisonDeniedTip(null));
         assertTrue(text.contains("坐牢"));
-    }
-
-    @Test
-    void usageTip() {
-        String text = PlainTextComponentSerializer.plainText().serialize(service.usageTip("/cmd <arg>"));
-        assertEquals("/cmd <arg>", text);
-    }
-
-    @Test
-    void portNumberRequiredTip() {
-        String text = PlainTextComponentSerializer.plainText().serialize(service.portNumberRequiredTip());
-        assertTrue(text.contains("数字"));
     }
 }

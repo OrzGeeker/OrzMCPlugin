@@ -50,3 +50,29 @@ whitelist:
     blocked: "{player} 尝试加入服务器，被白名单拦截"
     toggle_off: "白名单关闭"
 
+# --- portal.*（/portal 命令玩家反馈；P2c） ---
+portal:
+  usage: "用法: /portal <host> [port] 或 /portal remove <host> [port]"
+  usage_remove: "用法: /portal remove <host> [port]"
+  port_required: "端口需为数字"
+  not_found: "没有匹配的传送门: {target}"
+  removed: "已移除 {count} 个传送门 -> {target}"
+  created: "已创建传送门 -> {host}:{port} @ [{world}] {x} {y} {z} 轴向:{axis} 框架:4x5"
+
+  command_desc: "创建或移除传送门"
+
+# --- tnt.*（TNT 防护玩家提示/告警标签；P2c。爆炸/放置告警为服务端广播与群通知，随默认语言） ---
+tnt:
+  anchor_disabled: "重生锚放置已被管理员禁用"
+  place_cooldown: "放置TNT冷却中，请等待 "
+  cooldown_seconds: "{secs}秒"
+  place_disabled: "TNT放置已被管理员禁用"
+  prime_denied: "TNT被点燃（已禁止）"
+  prime: "TNT被点燃"
+  dispense_forbidden: "发射{item}被禁止"
+  explode: "{type}爆炸"
+  block_explode: "方块爆炸"
+  placement_msg: "放置TNT"
+  at: "在"
+  placed: "放置了 TNT"
+

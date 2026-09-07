@@ -11,6 +11,7 @@ import com.jokerhub.paper.plugin.orzmc.features.command.binding.CommandIntercept
 import com.jokerhub.paper.plugin.orzmc.features.portal.PortalCommandService;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.CommandPolicies;
 import com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nService;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.MessageKeys;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -65,9 +66,9 @@ final class PortalCommandRegistrar implements CommandGroup {
 
         // /portal (no args → show usage)
         Command<CommandSourceStack> usageExec = guardedExec("portal", interceptors, ctx -> {
-            ctx.getSource()
-                    .getSender()
-                    .sendMessage(styles.info("用法: /portal <host> [port] 或 /portal remove <host> [port]"));
+            CommandSender sender = ctx.getSource().getSender();
+            sender.sendMessage(styles.info(
+                    i18n.msg(sender instanceof Player p ? i18n.langFor(p) : i18n.langFor(), MessageKeys.PORTAL_USAGE)));
             return 1;
         });
 
@@ -81,7 +82,7 @@ final class PortalCommandRegistrar implements CommandGroup {
                                 .executes(createExec))
                         .executes(usageExec)
                         .build(),
-                "创建或移除传送门",
+                i18n.msg(i18n.langFor(), MessageKeys.PORTAL_COMMAND_DESC),
                 List.of());
     }
 

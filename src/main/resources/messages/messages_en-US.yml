@@ -51,3 +51,30 @@ whitelist:
     blocked: "{player} attempted to join but was blocked by the whitelist."
     toggle_off: "Whitelist disabled."
 
+# --- portal.* (/portal command player feedback; P2c) ---
+portal:
+  usage: "Usage: /portal <host> [port] or /portal remove <host> [port]"
+  usage_remove: "Usage: /portal remove <host> [port]"
+  port_required: "Port must be a number."
+  not_found: "No matching portal for {target}."
+  removed: "Removed {count} portal(s) -> {target}"
+  created: "Created portal -> {host}:{port} @ [{world}] {x} {y} {z} axis: {axis} frame:4x5"
+
+  command_desc: "Create or remove portals"
+
+# --- tnt.* (TNT protection player hints / alert labels; P2c. Explosion/placement alerts are
+#     server broadcasts and group notifications, so they follow the default language) ---
+tnt:
+  anchor_disabled: "Respawn Anchor placement has been disabled by an admin."
+  place_cooldown: "TNT placing is on cooldown. Please wait "
+  cooldown_seconds: "{secs} s"
+  place_disabled: "TNT placing has been disabled by an admin."
+  prime_denied: "TNT ignited (forbidden)"
+  prime: "TNT ignited"
+  dispense_forbidden: "Dispensing {item} is forbidden"
+  explode: "{type} explosion"
+  block_explode: "Block explosion"
+  placement_msg: "Placed TNT"
+  at: "at "
+  placed: "placed TNT"
+
