@@ -74,7 +74,10 @@ final class ReviewCommandHandler extends BotCommandContext {
             RankService rank = rankService.get();
             String group = rank == null
                     ? ""
-                    : "（当前组：" + RankService.groupDisplayName(rank.currentGroup(r.applicantId())) + "）";
+                    : "（当前组："
+                            + com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nServiceHolder.msg(
+                                    "rank.group." + rank.currentGroup(r.applicantId()))
+                            + "）";
             String summary = reviewService
                     .get()
                     .typeById(r.typeId())

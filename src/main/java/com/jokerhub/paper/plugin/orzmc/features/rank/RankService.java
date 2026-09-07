@@ -299,7 +299,7 @@ public final class RankService {
      */
     public static String groupDisplayName(String group, I18nService i18n) {
         if (i18n == null) {
-            return groupDisplayName(group);
+            return group; // 未注入（旧测试构造）时按 token 原样展示
         }
         String key =
                 switch (group) {
@@ -309,18 +309,5 @@ public final class RankService {
                     default -> MessageKeys.RANK_GROUP_DEFAULT;
                 };
         return i18n.msg(i18n.langFor(), key);
-    }
-
-    /**
-     * 兼容静态版（中文映射，P3 迁移 $p/$v 后随 botcommands 移除）。
-     * 新代码请用 {@link #groupDisplayName(String, I18nService)}。
-     */
-    public static String groupDisplayName(String group) {
-        return switch (group) {
-            case "admin" -> "管理员";
-            case "builder" -> "建造者";
-            case "member" -> "成员";
-            default -> "访客";
-        };
     }
 }
