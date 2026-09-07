@@ -310,4 +310,18 @@ bot:
     down_fail: "{player} could not be demoted: already at the lowest rank or permission data is invalid (see server logs)."
     up_ok: "Promoted {player} to {group}."
     down_ok: "Demoted {player} to {group}."
+  v:
+    svc_unavailable: "Review service is unavailable."
+    list_empty: "There are no pending applications."
+    list_header: "------ Pending applications ------"
+    current_group: " (current group: {group})"
+    list_item: "[{type}] {player}{group}: {summary} (submitted {time})"
+    reviewer_fallback: "group admin"
+    not_found: "No pending application found: {criteria}"
+    error: "Review processing error: {detail}"
+    unknown_error: "unknown error"
+    just_now: "just now"
+    minutes_ago: "{count} minutes ago"
+    hours_ago: "{count} hours ago"
+    days_ago: "{count} days ago"
 

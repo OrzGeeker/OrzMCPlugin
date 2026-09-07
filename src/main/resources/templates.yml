@@ -84,7 +84,7 @@ templates:
   prison_released: "🔓 {player} 已解除坐牢（恢复组 {group}）"
   rank_status: "{message}"
   command_review_list: "{message}"
-  command_review_list_empty: "当前没有待审核的申请。"
+  command_review_list_empty: "{message}"
   command_review_result: "{message}"
   command_review_error: "{message}"
   server_load: "{message}"
