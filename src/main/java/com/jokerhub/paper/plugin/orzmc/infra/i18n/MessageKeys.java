@@ -28,4 +28,11 @@ public final class MessageKeys {
     public static final String TELEPORT_BOW_BAD_HEIGHT = "teleport.bow.bad_height";
     public static final String TELEPORT_BOW_NO_LANDING = "teleport.bow.no_landing";
     public static final String TELEPORT_BOW_DONE = "teleport.bow.done";
+
+    // ---- whitelist.*：登录踢出提示/群通知（P2b） ----
+    public static final String WHITELIST_KICK_JOIN_HINT_PREFIX = "whitelist.kick.join_hint_prefix";
+    public static final String WHITELIST_KICK_JOIN_HINT_SUFFIX = "whitelist.kick.join_hint_suffix";
+    public static final String WHITELIST_KICK_DISCORD_JOIN = "whitelist.kick.discord_join";
+    public static final String WHITELIST_NOTIFY_BLOCKED = "whitelist.notify.blocked";
+    public static final String WHITELIST_NOTIFY_TOGGLE_OFF = "whitelist.notify.toggle_off";
 }

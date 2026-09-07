@@ -40,3 +40,13 @@ teleport:
     no_landing: "目标位置不可站立!"
     done: "传送完成!"
 
+# --- whitelist.*（登录踢出提示/群通知；P2b。kick 为登录前无客户端 locale，随默认语言） ---
+whitelist:
+  kick:
+    join_hint_prefix: "不在服务器白名单中，请先加入QQ群:"
+    join_hint_suffix: "，联系管理员添加白名单"
+    discord_join: "you can also join the discord server: "
+  notify:
+    blocked: "{player} 尝试加入服务器，被白名单拦截"
+    toggle_off: "白名单关闭"
+

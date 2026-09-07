@@ -40,3 +40,14 @@ teleport:
     no_landing: "No safe landing spot at the target location!"
     done: "Teleport complete!"
 
+# --- whitelist.* (login kick hints / group notifications; P2b. Kick is pre-login with no
+#     client locale, so it follows the server default language) ---
+whitelist:
+  kick:
+    join_hint_prefix: "You are not on the whitelist. Please join the QQ group "
+    join_hint_suffix: " and ask an admin to add you."
+    discord_join: "You can also join the Discord server: "
+  notify:
+    blocked: "{player} attempted to join but was blocked by the whitelist."
+    toggle_off: "Whitelist disabled."
+
