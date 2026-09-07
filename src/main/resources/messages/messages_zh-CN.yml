@@ -317,4 +317,30 @@ bot:
     minutes_ago: "{count}分钟前"
     hours_ago: "{count}小时前"
     days_ago: "{count}天前"
+  d:
+    svc_unavailable: "黑名单服务不可用"
+    exec_error: "执行出错: {detail}"
+    usage_minus_player: "用法: {name} -player <type> <value>"
+    usage_player: "用法: {name} player <type> <value>"
+    usage_remove_all: "用法: {name} -<IP>（移除 IP）/ {name} -player <type> <value>（移除玩家名规则）"
+    hint_minus_player: "玩家名规则请使用: {name} -player <type> <value>"
+    hint_player: "玩家名规则请使用: {name} player <type> <value>"
+    removed: "已移除: {pattern}"
+    not_found: "未在黑名单中找到: {pattern}"
+    added: "已添加: {pattern}"
+    exists: "黑名单已存在: {pattern}"
+    empty_all: "访问规则为空"
+    empty_player_rules: "玩家名规则为空"
+    list_section_ip: "IP黑名单:"
+    list_section_rules: "玩家名规则:"
+
+# --- access_rule.*（访问规则管理反馈；游戏 /blacklist 与 bot $d 共用，P3d3） ---
+access_rule:
+  value_empty: "规则值不能为空"
+  invalid_type: "无效匹配类型: {type}（支持 exact/prefix/suffix/contains/glob/regex）"
+  invalid_regex: "无效的正则表达式: {value}"
+  removed: "已移除玩家名规则: {rule}"
+  not_found: "未找到该玩家名规则: {rule}"
+  added: "已添加玩家名规则: {rule}"
+  exists: "玩家名规则已存在，未重复添加: {rule}"
 

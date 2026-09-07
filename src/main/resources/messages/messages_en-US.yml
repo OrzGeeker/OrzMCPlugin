@@ -324,4 +324,30 @@ bot:
     minutes_ago: "{count} minutes ago"
     hours_ago: "{count} hours ago"
     days_ago: "{count} days ago"
+  d:
+    svc_unavailable: "Blacklist service is unavailable."
+    exec_error: "Execution error: {detail}"
+    usage_minus_player: "Usage: {name} -player <type> <value>"
+    usage_player: "Usage: {name} player <type> <value>"
+    usage_remove_all: "Usage: {name} -<IP> (remove IP) / {name} -player <type> <value> (remove player-name rules)"
+    hint_minus_player: "Player-name rules require: {name} -player <type> <value>"
+    hint_player: "Player-name rules require: {name} player <type> <value>"
+    removed: "Removed: {pattern}"
+    not_found: "Not found in the blacklist: {pattern}"
+    added: "Added: {pattern}"
+    exists: "Already in the blacklist: {pattern}"
+    empty_all: "No access rules."
+    empty_player_rules: "No player-name rules."
+    list_section_ip: "IP blacklist:"
+    list_section_rules: "Player-name rules:"
+
+# --- access_rule.* (rule-management feedback shared by /blacklist and bot $d; P3d3) ---
+access_rule:
+  value_empty: "Rule value must not be empty."
+  invalid_type: "Invalid match type: {type} (supported: exact/prefix/suffix/contains/glob/regex)"
+  invalid_regex: "Invalid regular expression: {value}"
+  removed: "Removed player-name rule: {rule}"
+  not_found: "Player-name rule not found: {rule}"
+  added: "Added player-name rule: {rule}"
+  exists: "Player-name rule already exists; not added again: {rule}"
 

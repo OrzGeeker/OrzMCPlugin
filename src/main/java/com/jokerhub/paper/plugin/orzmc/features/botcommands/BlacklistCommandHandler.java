@@ -5,6 +5,7 @@ import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
 import com.jokerhub.paper.plugin.orzmc.features.security.AccessRuleService;
 import com.jokerhub.paper.plugin.orzmc.features.security.PlayerNameRule;
 import com.jokerhub.paper.plugin.orzmc.features.security.PlayerNameRuleFeedback;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nServiceHolder;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import java.util.ArrayList;
 import java.util.List;
@@ -43,11 +44,10 @@ final class BlacklistCommandHandler extends BotCommandContext {
         } catch (Exception e) {
             server.logger().warning("$d 访问规则命令执行异常: " + e);
             try {
-                emit(
+                emitMsg(
                         callback,
                         "command_blacklist_error",
-                        Map.of("message", "执行出错: " + e.getMessage()),
-                        "执行出错，请查看服务端日志");
+                        I18nServiceHolder.msg("bot.d.exec_error", Map.of("detail", String.valueOf(e.getMessage()))));
             } catch (Exception ignored) {
                 // renderTemplate 本身异常时不再二次抛出
             }
@@ -59,7 +59,7 @@ final class BlacklistCommandHandler extends BotCommandContext {
         if (!guardAdminCommand(cmd, isAdmin, callback)) return;
         AccessRuleService svc = accessRuleService.get();
         if (svc == null) {
-            emit(callback, "command_blacklist_error", Map.of("message", "黑名单服务不可用"), "黑名单服务不可用");
+            emitMsg(callback, "command_blacklist_error", I18nServiceHolder.msg("bot.d.svc_unavailable"));
             return;
         }
         // 玩家名子命令大小写不敏感（$d Player exact foo 不应被当成 IP 规则误加）
@@ -75,11 +75,7 @@ final class BlacklistCommandHandler extends BotCommandContext {
         if (lower.startsWith("-player")) {
             String rest = rawArgs.substring("-player".length());
             if (!rest.isEmpty() && !rest.startsWith(" ")) {
-                emit(
-                        callback,
-                        "command_blacklist_error",
-                        Map.of("message", "用法: $d -player <type> <value>"),
-                        "用法: $d -player <type> <value>");
+                emitMsg(callback, "command_blacklist_error", usageTip("bot.d.usage_minus_player"));
                 return;
             }
             handlePlayerRule(callback, svc, true, rest.trim());
@@ -88,11 +84,7 @@ final class BlacklistCommandHandler extends BotCommandContext {
         if (lower.startsWith("player")) {
             String rest = rawArgs.substring("player".length());
             if (!rest.isEmpty() && !rest.startsWith(" ")) {
-                emit(
-                        callback,
-                        "command_blacklist_error",
-                        Map.of("message", "用法: $d player <type> <value>"),
-                        "用法: $d player <type> <value>");
+                emitMsg(callback, "command_blacklist_error", usageTip("bot.d.usage_player"));
                 return;
             }
             handlePlayerRule(callback, svc, false, rest.trim());
@@ -102,45 +94,29 @@ final class BlacklistCommandHandler extends BotCommandContext {
             // trim：`$d - exact foo` 破折号后带空格时，去掉空格再判玩家名规则语法，避免首词空串绕过守卫
             String pattern = rawArgs.substring(1).trim();
             if (pattern.isEmpty()) {
-                emit(
-                        callback,
-                        "command_blacklist_error",
-                        Map.of("message", "用法: $d -<IP>（移除 IP）/ $d -player <type> <value>（移除玩家名规则）"),
-                        "用法: $d -<IP>（移除 IP）/ $d -player <type> <value>（移除玩家名规则）");
+                emitMsg(callback, "command_blacklist_error", usageTip("bot.d.usage_remove_all"));
                 return;
             }
             if (PlayerNameRule.looksLikePlayerRuleSyntax(pattern)) {
-                emit(
-                        callback,
-                        "command_blacklist_error",
-                        Map.of("message", "玩家名规则请使用: $d -player <type> <value>"),
-                        "玩家名规则请使用: $d -player <type> <value>");
+                emitMsg(callback, "command_blacklist_error", usageTip("bot.d.hint_minus_player"));
                 return;
             }
             if (svc.removeIpPattern(pattern)) {
-                emit(callback, "command_blacklist_remove", Map.of("message", "已移除: " + pattern), "已移除: " + pattern);
+                emitMsg(callback, "command_blacklist_remove", patternMsg("bot.d.removed", pattern));
             } else {
-                emit(
-                        callback,
-                        "command_blacklist_error",
-                        Map.of("message", "未在黑名单中找到: " + pattern),
-                        "未在黑名单中找到: " + pattern);
+                emitMsg(callback, "command_blacklist_error", patternMsg("bot.d.not_found", pattern));
             }
         } else {
             // trim：与 AccessRuleService 归一化口径一致（greedyString 保留尾随空格，群消息亦可能带空格）
             String pattern = rawArgs.trim();
             if (PlayerNameRule.looksLikePlayerRuleSyntax(pattern)) {
-                emit(
-                        callback,
-                        "command_blacklist_error",
-                        Map.of("message", "玩家名规则请使用: $d player <type> <value>"),
-                        "玩家名规则请使用: $d player <type> <value>");
+                emitMsg(callback, "command_blacklist_error", usageTip("bot.d.hint_player"));
                 return;
             }
             if (svc.addIpPattern(pattern)) {
-                emit(callback, "command_blacklist_add", Map.of("message", "已添加: " + pattern), "已添加: " + pattern);
+                emitMsg(callback, "command_blacklist_add", patternMsg("bot.d.added", pattern));
             } else {
-                emit(callback, "command_blacklist_add", Map.of("message", "黑名单已存在: " + pattern), "黑名单已存在: " + pattern);
+                emitMsg(callback, "command_blacklist_add", patternMsg("bot.d.exists", pattern));
             }
         }
     }
@@ -150,15 +126,19 @@ final class BlacklistCommandHandler extends BotCommandContext {
         List<String> ips = svc.getIpPatterns();
         List<PlayerNameRule> rules = svc.getPlayerNameRules();
         if (ips.isEmpty() && rules.isEmpty()) {
-            emit(callback, "command_blacklist_list", Map.of("patterns", "访问规则为空"), "访问规则为空");
+            emit(
+                    callback,
+                    "command_blacklist_list",
+                    Map.of("patterns", I18nServiceHolder.msg("bot.d.empty_all")),
+                    I18nServiceHolder.msg("bot.d.empty_all"));
             return;
         }
         if (!ips.isEmpty()) {
-            lines.add("IP黑名单:");
+            lines.add(I18nServiceHolder.msg("bot.d.list_section_ip"));
             ips.forEach(line -> lines.add("  " + line));
         }
         if (!rules.isEmpty()) {
-            lines.add("玩家名规则:");
+            lines.add(I18nServiceHolder.msg("bot.d.list_section_rules"));
             rules.forEach(rule -> lines.add("  " + rule.display()));
         }
         String content = String.join("\n", lines);
@@ -168,7 +148,8 @@ final class BlacklistCommandHandler extends BotCommandContext {
     private void listPlayerRules(Consumer<MessageEnvelope> callback, AccessRuleService svc) {
         List<PlayerNameRule> rules = svc.getPlayerNameRules();
         if (rules.isEmpty()) {
-            emit(callback, "command_blacklist_list", Map.of("patterns", "玩家名规则为空"), "玩家名规则为空");
+            String empty = I18nServiceHolder.msg("bot.d.empty_player_rules");
+            emit(callback, "command_blacklist_list", Map.of("patterns", empty), empty);
             return;
         }
         String content = rules.stream()
@@ -182,11 +163,10 @@ final class BlacklistCommandHandler extends BotCommandContext {
             Consumer<MessageEnvelope> callback, AccessRuleService svc, boolean remove, String raw) {
         String[] parts = raw.split("\\s+", 2);
         if (parts.length != 2 || parts[0].isBlank() || parts[1].isBlank()) {
-            emit(
+            emitMsg(
                     callback,
                     "command_blacklist_error",
-                    Map.of("message", "用法: $d " + (remove ? "-" : "") + "player <type> <value>"),
-                    "用法: $d " + (remove ? "-" : "") + "player <type> <value>");
+                    usageTip(remove ? "bot.d.usage_minus_player" : "bot.d.usage_player"));
             return;
         }
         // 反馈统一走 PlayerNameRuleFeedback（与游戏 /blacklist 共用）；未找到用 error 键而非 remove 键
@@ -195,5 +175,15 @@ final class BlacklistCommandHandler extends BotCommandContext {
                 ? (remove ? "command_blacklist_remove" : "command_blacklist_add")
                 : "command_blacklist_error";
         emit(callback, key, Map.of("message", outcome.message()), outcome.message());
+    }
+
+    /** 带 {@code {name}}（提示符+命令字母）的用法/提示文案（默认语言 R1）。 */
+    private String usageTip(String key) {
+        return I18nServiceHolder.msg(key, Map.of("name", botConfig().cmdPromptChar() + "d"));
+    }
+
+    /** 带 {@code {pattern}} 的增删结果文案（默认语言 R1）。 */
+    private String patternMsg(String key, String pattern) {
+        return I18nServiceHolder.msg(key, Map.of("pattern", pattern));
     }
 }
