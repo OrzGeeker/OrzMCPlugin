@@ -1,10 +1,11 @@
 # i18n 多语言迁移 交接
-> 状态：现行 ｜ 最后更新：2026-09-16（P2d 完成）
+> 状态：现行 ｜ 最后更新：2026-09-16（P2e 完成）
 
 ## 任务与目标
 仓库级 i18n 一期（中英双语 + 可扩展语言包）：游戏内 + Bot 交互 + 事件通知全部用户可见文案迁入语言包（zh 原文零回归基线）。方案：docs/dev/i18n-plan.md（§4 决策全拍板）。验收：见方案 §7。
 
 ## 已完成（倒序）
+- PR(本) P2e：security 域 guard/exploit/ratelimit 文案 + 样式命令反馈（待 CI/合入标记）
 - PR #368 P2d2：LoginAccessControlService（IP 黑名单/玩家名规则）登录拦截 ✓ 已合 —— **features/player 域全部完成**
 - PR #366 P2d1：player 聚合摘要 + geoip ✓ 已合
 - PR #366 P2d1：player 聚合摘要标签 + geoip 拦截/告警（已开，待 CI）
@@ -17,7 +18,7 @@
 - PR #357 方案定稿 ✓ 已合
 
 ## 进行中卡
-- P2e security/chat：features/security 各服务玩家提示、聊天/命令拦截提示代码措辞（先 grep 各文件中文清单再定键域；含 guard/chat 前缀）。
+- P2f review/rank/prison + 残留样式文案收口（unknownLabel / coordComponent hover「点击复制坐标」等 styles 内嵌文本迁出，D9 清零）
 
 ## 未完成清单（顺序）
 1. P2e security/chat：features/security 各服务玩家提示、OrzChatEvent/CommandGuard 聊天提示、command_guard_blocked 相关代码措辞

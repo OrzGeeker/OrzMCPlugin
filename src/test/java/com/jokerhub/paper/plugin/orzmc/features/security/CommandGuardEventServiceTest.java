@@ -44,12 +44,13 @@ class CommandGuardEventServiceTest {
         when(configs.renderTemplate(eq(TemplateKeys.COMMAND_GUARD_BLOCKED), anyMap(), anyString()))
                 .thenReturn(MessageEnvelope.publicMessage("envelope"));
         service = new CommandGuardEventService(
-                new CommandGuardService(() -> configs.securityGuard()),
+                new CommandGuardService(() -> configs.securityGuard(), TestI18n.newService()),
                 configs,
                 notifier,
                 new CommandFeedbackService(TestI18n.newService()),
                 audit,
-                logger);
+                logger,
+                TestI18n.newService());
     }
 
     private static PlayerCommandPreprocessEvent playerEvent(String command, Player player) {
@@ -240,14 +241,15 @@ class CommandGuardEventServiceTest {
         ThrottledNotifier logThrottle = mock(ThrottledNotifier.class);
         when(logThrottle.shouldRun("command_guard_warn_log", 5000)).thenReturn(true, false, false);
         service = new CommandGuardEventService(
-                new CommandGuardService(() -> configs.securityGuard()),
+                new CommandGuardService(() -> configs.securityGuard(), TestI18n.newService()),
                 configs,
                 notifier,
                 new CommandFeedbackService(TestI18n.newService()),
                 audit,
                 logger,
                 logThrottle,
-                mock(ThrottledNotifier.class));
+                mock(ThrottledNotifier.class),
+                TestI18n.newService());
         Player player = mock(Player.class);
         when(player.getName()).thenReturn("steve");
         PlayerCommandPreprocessEvent event = playerEvent("/kill @e", player);
@@ -268,14 +270,15 @@ class CommandGuardEventServiceTest {
         ThrottledNotifier notifyThrottle = mock(ThrottledNotifier.class);
         when(notifyThrottle.shouldRun("command_guard_block_notify", 10000)).thenReturn(false);
         service = new CommandGuardEventService(
-                new CommandGuardService(() -> configs.securityGuard()),
+                new CommandGuardService(() -> configs.securityGuard(), TestI18n.newService()),
                 configs,
                 notifier,
                 new CommandFeedbackService(TestI18n.newService()),
                 audit,
                 logger,
                 mock(ThrottledNotifier.class),
-                notifyThrottle);
+                notifyThrottle,
+                TestI18n.newService());
         Player player = mock(Player.class);
         when(player.getName()).thenReturn("steve");
         PlayerCommandPreprocessEvent event = playerEvent("/op steve", player);
@@ -293,14 +296,15 @@ class CommandGuardEventServiceTest {
         ThrottledNotifier notifyThrottle = mock(ThrottledNotifier.class);
         when(notifyThrottle.shouldRun("command_guard_block_notify", 10000)).thenReturn(true);
         service = new CommandGuardEventService(
-                new CommandGuardService(() -> configs.securityGuard()),
+                new CommandGuardService(() -> configs.securityGuard(), TestI18n.newService()),
                 configs,
                 notifier,
                 new CommandFeedbackService(TestI18n.newService()),
                 audit,
                 logger,
                 mock(ThrottledNotifier.class),
-                notifyThrottle);
+                notifyThrottle,
+                TestI18n.newService());
         Player player = mock(Player.class);
         when(player.getName()).thenReturn("steve");
         PlayerCommandPreprocessEvent event = playerEvent("/op steve", player);
