@@ -4,12 +4,13 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import com.jokerhub.paper.plugin.orzmc.testutil.ServiceTestBase;
+import com.jokerhub.paper.plugin.orzmc.testutil.TestI18n;
 import org.bukkit.entity.Player;
 import org.junit.jupiter.api.Test;
 
 class CommandPermissionServiceTest extends ServiceTestBase {
 
-    private final CommandPermissionService service = new CommandPermissionService();
+    private final CommandPermissionService service = new CommandPermissionService(TestI18n.newService());
 
     @Test
     void requireAdmin_opPlayer_allowed() {

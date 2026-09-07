@@ -10,6 +10,7 @@ import com.jokerhub.paper.plugin.orzmc.features.command.binding.CommandIntercept
 import com.jokerhub.paper.plugin.orzmc.features.security.AccessRuleService;
 import com.jokerhub.paper.plugin.orzmc.features.security.PlayerNameRule;
 import com.jokerhub.paper.plugin.orzmc.features.security.PlayerNameRuleFeedback;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nService;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
@@ -24,16 +25,18 @@ final class BlacklistCommandRegistrar implements CommandGroup {
 
     private final AccessRuleService svc;
     private final OrzTextStyles styles;
+    private final I18nService i18n;
 
-    BlacklistCommandRegistrar(AccessRuleService svc, OrzTextStyles styles) {
+    BlacklistCommandRegistrar(AccessRuleService svc, OrzTextStyles styles, I18nService i18n) {
         this.svc = svc;
         this.styles = styles;
+        this.i18n = i18n;
     }
 
     /** Blacklist: /blacklist list|add|remove <pattern>，并支持 player 玩家名规则子命令。 */
     @Override
     public void register(Commands commands) {
-        List<CommandInterceptor> interceptors = adminInterceptors("blacklist");
+        List<CommandInterceptor> interceptors = adminInterceptors("blacklist", i18n);
         Predicate<CommandSourceStack> req = requirement(interceptors);
 
         commands.register(

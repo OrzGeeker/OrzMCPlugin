@@ -3,6 +3,7 @@ package com.jokerhub.paper.plugin.orzmc.features.command.binding;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import com.jokerhub.paper.plugin.orzmc.testutil.TestI18n;
 import net.kyori.adventure.text.Component;
 import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.entity.Player;
@@ -10,7 +11,7 @@ import org.junit.jupiter.api.Test;
 
 class PlayerOnlyInterceptorTest {
 
-    private final PlayerOnlyInterceptor interceptor = new PlayerOnlyInterceptor();
+    private final PlayerOnlyInterceptor interceptor = new PlayerOnlyInterceptor(TestI18n.newService());
 
     @Test
     void preHandle_player_returnsNull() {

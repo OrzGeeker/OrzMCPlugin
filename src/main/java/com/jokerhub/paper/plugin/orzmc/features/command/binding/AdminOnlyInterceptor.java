@@ -1,26 +1,33 @@
 package com.jokerhub.paper.plugin.orzmc.features.command.binding;
 
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.CommandPolicy;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nService;
 import java.util.function.Supplier;
 import net.kyori.adventure.text.Component;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
+/**
+ * AdminOnly 拦截器：策略经 {@link Supplier} 惰性读取（{@code /orzmc config set
+ * command_policies.*.admin_only} 改动即时生效）；拒绝文案经 {@link I18nService} 按发送者语言渲染。
+ */
 public class AdminOnlyInterceptor implements CommandInterceptor {
+
     private final Supplier<CommandPolicy> policy;
-    private final CommandPermissionService permissionService = new CommandPermissionService();
+    private final CommandPermissionService permissionService;
 
     /** 静态策略（历史构造器，委托为惰性读取）：等价于固定 {@code adminOnly}。 */
-    public AdminOnlyInterceptor(boolean adminOnly) {
-        this(() -> new CommandPolicy(0, adminOnly));
+    public AdminOnlyInterceptor(boolean adminOnly, I18nService i18n) {
+        this(() -> new CommandPolicy(0, adminOnly), i18n);
     }
 
     /**
      * 惰性策略：每次 {@code preHandle}/{@code canUse} 都重新读取 {@link CommandPolicy#adminOnly()}，
      * 使 {@code /orzmc config set command_policies.*.admin_only} 改动即时生效，无需重启。
      */
-    public AdminOnlyInterceptor(Supplier<CommandPolicy> policy) {
+    public AdminOnlyInterceptor(Supplier<CommandPolicy> policy, I18nService i18n) {
         this.policy = policy;
+        this.permissionService = new CommandPermissionService(i18n);
     }
 
     @Override
