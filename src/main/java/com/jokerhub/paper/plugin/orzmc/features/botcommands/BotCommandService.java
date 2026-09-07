@@ -8,6 +8,7 @@ import com.jokerhub.paper.plugin.orzmc.features.security.AccessRuleService;
 import com.jokerhub.paper.plugin.orzmc.features.security.CommandAuditService;
 import com.jokerhub.paper.plugin.orzmc.features.security.CommandGuardService;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.BotConfig;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nService;
 import com.jokerhub.paper.plugin.orzmc.infra.logging.LogCaptureService;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import java.util.Map;
@@ -53,7 +54,13 @@ public final class BotCommandService extends BotCommandContext implements BotInb
     }
 
     public BotCommandService(ServerFacade server, TypedConfigProvider configs) {
+        this(server, configs, null);
+    }
+
+    /** @param i18n 组合根注入的真实文案服务（含数据目录 overlay；null 时 feedback 回落默认 zh）。 */
+    public BotCommandService(ServerFacade server, TypedConfigProvider configs, I18nService i18n) {
         super(server, configs);
+        BotCommandFeedbackService.init(i18n);
         this.listFeedbackService = new BotCommandListFeedbackService(server, configs);
         this.reviewCommandHandler = new ReviewCommandHandler(server, configs, () -> reviewService, () -> rankService);
         this.permissionCommandHandler = new PermissionCommandHandler(server, configs, () -> rankService);
