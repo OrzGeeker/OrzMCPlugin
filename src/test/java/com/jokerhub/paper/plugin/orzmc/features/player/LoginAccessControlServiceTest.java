@@ -18,6 +18,7 @@ import com.jokerhub.paper.plugin.orzmc.infra.notify.ThrottledNotifier;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
 import com.jokerhub.paper.plugin.orzmc.testutil.ServiceTestBase;
+import com.jokerhub.paper.plugin.orzmc.testutil.TestI18n;
 import java.net.InetAddress;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -95,7 +96,8 @@ class LoginAccessControlServiceTest extends ServiceTestBase {
                 configs,
                 styles,
                 server,
-                blockNotifier);
+                blockNotifier,
+                TestI18n.newService());
     }
 
     @Test
