@@ -299,6 +299,8 @@ bot:
     whitelist_header: "------ Whitelisted players ({count}) ------" 
     cleanup_title: "------ Whitelist cleanup ------" 
     page_meta: "Page {page}/{total}"
+  e:
+    overflow: "⚠️ Log buffer overflow; output may be incomplete."
   p:
     svc_unavailable: "Permission service is unavailable."
     no_lp: "LuckPerms was not detected; permission management is unavailable."

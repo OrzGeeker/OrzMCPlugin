@@ -4,6 +4,7 @@ import com.jokerhub.paper.plugin.orzmc.core.bot.MessageEnvelope;
 import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
 import com.jokerhub.paper.plugin.orzmc.features.security.CommandAuditService;
 import com.jokerhub.paper.plugin.orzmc.features.security.CommandGuardService;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nServiceHolder;
 import com.jokerhub.paper.plugin.orzmc.infra.logging.LogCaptureService;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import java.util.List;
@@ -91,7 +92,9 @@ final class ConsoleCommandHandler extends BotCommandContext {
                         // 缺口检测独立于输出内容：即使窗口内有效行全被驱逐/过滤也要提示
                         String message;
                         if (capture.hasGapSince(watermark)) {
-                            message = assembled.isEmpty() ? "⚠️ 日志缓冲溢出，输出可能不完整" : "⚠️ 日志缓冲溢出，输出可能不完整\n" + assembled;
+                            message = assembled.isEmpty()
+                                    ? I18nServiceHolder.msg("bot.e.overflow")
+                                    : I18nServiceHolder.msg("bot.e.overflow") + "\n" + assembled;
                         } else {
                             message = assembled.isEmpty() ? result.message() : assembled;
                         }
