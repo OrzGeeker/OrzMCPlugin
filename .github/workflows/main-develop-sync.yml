@@ -38,7 +38,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0        # 需要完整历史与全部分支 refs
           token: ${{ secrets.BOT_PAT }}   # push sync-content 分支需要写权限
