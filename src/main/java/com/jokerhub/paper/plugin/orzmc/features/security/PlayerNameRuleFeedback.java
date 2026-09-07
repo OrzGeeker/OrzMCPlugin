@@ -1,10 +1,14 @@
 package com.jokerhub.paper.plugin.orzmc.features.security;
 
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nServiceHolder;
+import java.util.Map;
+
 /**
  * 玩家名规则的增删反馈构建（bot {@code $d} 与游戏内 {@code /blacklist} 共用，消除重复）。
  *
  * <p>两端各自负责参数形状差异（bot 拆原始串、游戏 Brigadier 分参）与空值守卫，
- * 本类统一「解析 → 合法/非法反馈 → 增/删与成功/未找到反馈」，避免两边实现漂移。</p>
+ * 本类统一「解析 → 合法/非法反馈 → 增/删与成功/未找到反馈」，避免两边实现漂移。
+ * 文案走语言包 {@code access_rule.*}（默认语言 R1，P3d3）。</p>
  */
 public final class PlayerNameRuleFeedback {
 
@@ -22,23 +26,25 @@ public final class PlayerNameRuleFeedback {
      */
     public static Outcome feedback(AccessRuleService svc, String typeRaw, String valueRaw, boolean remove) {
         if (valueRaw == null || valueRaw.isBlank()) {
-            return new Outcome(false, "规则值不能为空");
+            return new Outcome(false, I18nServiceHolder.msg("access_rule.value_empty"));
         }
         String value = valueRaw.trim();
         PlayerNameRule.ParsedRule parsed = PlayerNameRule.parse(typeRaw, value);
         if (!parsed.valid()) {
             String msg = parsed.type() == null
-                    ? "无效匹配类型: " + typeRaw + "（支持 exact/prefix/suffix/contains/glob/regex）"
-                    : "无效的正则表达式: " + value;
+                    ? I18nServiceHolder.msg("access_rule.invalid_type", Map.of("type", typeRaw))
+                    : I18nServiceHolder.msg("access_rule.invalid_regex", Map.of("value", value));
             return new Outcome(false, msg);
         }
         String display = parsed.rule().display();
         if (remove) {
             return svc.removePlayerNameRule(parsed.type(), value)
-                    ? new Outcome(true, "已移除玩家名规则: " + display)
-                    : new Outcome(false, "未找到该玩家名规则: " + display);
+                    ? new Outcome(true, I18nServiceHolder.msg("access_rule.removed", Map.of("rule", display)))
+                    : new Outcome(false, I18nServiceHolder.msg("access_rule.not_found", Map.of("rule", display)));
         }
         boolean added = svc.addPlayerNameRule(parsed.type(), value);
-        return added ? new Outcome(true, "已添加玩家名规则: " + display) : new Outcome(true, "玩家名规则已存在，未重复添加: " + display);
+        return added
+                ? new Outcome(true, I18nServiceHolder.msg("access_rule.added", Map.of("rule", display)))
+                : new Outcome(true, I18nServiceHolder.msg("access_rule.exists", Map.of("rule", display)));
     }
 }
