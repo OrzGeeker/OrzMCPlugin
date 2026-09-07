@@ -244,7 +244,10 @@ public final class FeatureModule implements ServiceModule {
         var playerLookup = new com.jokerhub.paper.plugin.orzmc.infra.player.BukkitPlayerLookup();
         // 游戏模式矫正：权限组变化后把已无权限的模式切回生存（config 经 Supplier 热重载）
         this.gamemodeCorrectionService = new com.jokerhub.paper.plugin.orzmc.features.rank.GamemodeCorrectionService(
-                platform.serverFacade().plugin(), () -> platform.configs().gamemodeCorrection(), platform.textStyles());
+                platform.serverFacade().plugin(),
+                () -> platform.configs().gamemodeCorrection(),
+                platform.textStyles(),
+                platform.i18nService());
         // 坐牢（prison）：独立 prison 组（不继承、不在四级 track），作弊玩家关入后仅保留
         // essentials.msg 私聊；原组/原位置写入 LP 用户元数据，解除坐牢恢复。LP 操作用异步执行器
         // （非服务器线程），杜绝「调度线程同步等 LP future」自锁。
@@ -254,7 +257,8 @@ public final class FeatureModule implements ServiceModule {
                 () -> platform.configs().prison(),
                 platform.textStyles(),
                 reviewNotifier,
-                playerId -> org.bukkit.Bukkit.getOfflinePlayer(playerId).getName());
+                playerId -> org.bukkit.Bukkit.getOfflinePlayer(playerId).getName(),
+                platform.i18nService());
         this.rankService = new com.jokerhub.paper.plugin.orzmc.features.rank.RankService(
                 permissionStore,
                 rankPromoter,
@@ -279,7 +283,7 @@ public final class FeatureModule implements ServiceModule {
         this.rankCommandService = new com.jokerhub.paper.plugin.orzmc.features.rank.RankCommandService(
                 rankService, reviewService, platform.textStyles());
         this.prisonCommandService = new com.jokerhub.paper.plugin.orzmc.features.prison.PrisonCommandService(
-                prisonService, platform.textStyles(), rankService::resolvePlayerId);
+                prisonService, platform.textStyles(), rankService::resolvePlayerId, platform.i18nService());
         this.reviewCommandService = new com.jokerhub.paper.plugin.orzmc.features.review.ReviewCommandService(
                 reviewService, platform.textStyles());
         // 玩家名颜色（按权限等级）：rankService 创建后装配；LP 启用时桥接等级变更实时刷新。

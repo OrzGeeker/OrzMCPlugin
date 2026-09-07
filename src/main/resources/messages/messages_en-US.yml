@@ -24,6 +24,8 @@ common:
   admin_required: "Administrator permission required."
   player_required: "This command can only be used by a player."
   prison_denied: "You are imprisoned and cannot use this command."
+  unknown_player: "Unknown player"
+  copy_coords: "Click to copy coordinates"
 
 # --- teleport.* (teleport bow; migrated with the teleport domain, P2a) ---
 teleport:
@@ -77,6 +79,8 @@ tnt:
   placement_msg: "Placed TNT"
   at: "at "
   placed: "placed TNT"
+  prefix_tnt: "[TNT Alert] "
+  prefix_explosion: "[Explosion Alert] "
 
 # --- player.notify.* (player join/quit digest section labels; P2d. Group messages use R1 default lang) ---
 player:
@@ -127,3 +131,21 @@ ratelimit:
   reason_frequency: "Rate exceeded ({limit} attempts/min)"
   reason_concurrent: "Concurrent connections per IP exceeded ({limit})"
   alert_blocked: "⚠ Login rate limited\nIP: {ip}\nPlayer: {player}\nReason: {reason}"
+
+# --- prison.* (prison; P2f1. Admin results follow the default language R1; the prisoner's
+#     direct message follows that player's language) ---
+prison:
+  lp_unavailable: "LuckPerms is unavailable; cannot run the prison command."
+  lp_unavailable_release: "LuckPerms is unavailable; cannot run the release command."
+  imprison_failed: "Failed to imprison (data write failed; retry or contact an admin)."
+  release_failed: "Failed to release from prison (data write failed; retry or contact an admin)."
+  not_prisoner: "That player is not in prison."
+  imprison_player_msg: "You have been imprisoned."
+  release_player_msg: "You have been released from prison."
+  imprison_ok: "Imprisoned {player} (original group {group})."
+  release_ok: "Released {player} from prison (restored group {group})."
+  player_not_found: "Player not found: {player}"
+
+# --- gamemode.* (auto survival-mode switch notice; P2f1) ---
+gamemode:
+  fix_message: "Your permission group changed; game mode switched to survival."

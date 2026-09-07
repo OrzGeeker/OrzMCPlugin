@@ -42,22 +42,22 @@ public final class GamemodeCorrectionService {
 
     private static final Logger LOGGER = Logger.getLogger("OrzMC.GamemodeCorrection");
 
-    /** 矫正成功后的玩家提示文案。 */
-    public static final String FIX_MESSAGE = "你的权限组已变化，游戏模式已切换为生存模式。";
-
     private final org.bukkit.plugin.java.JavaPlugin plugin;
     private final Supplier<GamemodeCorrectionConfig> configSupplier;
     private final OrzTextStyles styles;
+    private final com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nService i18n;
     /** 玩家 UUID → 上次矫正时间戳（防抖，compute 原子更新）。 */
     private final Map<UUID, Long> lastCorrected = new ConcurrentHashMap<>();
 
     public GamemodeCorrectionService(
             org.bukkit.plugin.java.JavaPlugin plugin,
             Supplier<GamemodeCorrectionConfig> configSupplier,
-            OrzTextStyles styles) {
+            OrzTextStyles styles,
+            com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nService i18n) {
         this.plugin = plugin;
         this.configSupplier = configSupplier;
         this.styles = styles;
+        this.i18n = i18n;
     }
 
     /** 异步矫正：经玩家所属实体调度器投递（Folia 实体操作必须在该实体 region 线程），线程无关可安全从任意上下文调用。 */
@@ -148,7 +148,8 @@ public final class GamemodeCorrectionService {
             LOGGER.log(Level.WARNING, "切换玩家生存模式失败: " + player.getUniqueId(), e);
             return false;
         }
-        player.sendMessage(styles.info(FIX_MESSAGE));
+        player.sendMessage(styles.info(i18n.msg(
+                i18n.langFor(player), com.jokerhub.paper.plugin.orzmc.infra.i18n.MessageKeys.GAMEMODE_FIX_MESSAGE)));
         return true;
     }
 

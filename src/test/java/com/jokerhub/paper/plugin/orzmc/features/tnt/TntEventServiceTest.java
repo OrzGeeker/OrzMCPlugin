@@ -70,11 +70,8 @@ class TntEventServiceTest extends ServiceTestBase {
                 List.of()); // exemptEntities
 
         when(configs.tnt()).thenReturn(tntConfig);
-        when(styles.tntPrefix()).thenReturn(Component.text("[TNT]"));
-        when(styles.explosionPrefix()).thenReturn(Component.text("[爆炸]"));
         when(styles.playerName(any())).thenReturn(Component.text("player"));
-        when(styles.unknownLabel()).thenReturn(Component.text("unknown"));
-        when(styles.coordComponent(anyString())).thenReturn(Component.text("(0,0,0)"));
+        when(styles.coordComponent(anyString(), anyString())).thenReturn(Component.text("(0,0,0)"));
         when(styles.coordString(any())).thenReturn("(0,0,0)");
 
         TemplateOptions templateOpts = mock(TemplateOptions.class);

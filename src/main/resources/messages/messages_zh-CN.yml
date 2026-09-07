@@ -24,6 +24,8 @@ common:
   admin_required: "需要管理员权限"
   player_required: "需要玩家执行"
   prison_denied: "你正在坐牢，无法使用该命令"
+  unknown_player: "未知玩家"
+  copy_coords: "点击复制坐标"
 
 # --- teleport.*（传送弓；P2a 随 teleport 域迁入） ---
 teleport:
@@ -75,6 +77,8 @@ tnt:
   placement_msg: "放置TNT"
   at: "在"
   placed: "放置了 TNT"
+  prefix_tnt: "[TNT警报] "
+  prefix_explosion: "[爆炸警报] "
 
 # --- player.notify.*（上下线聚合摘要版块标签；P2d。群消息随默认语言 R1） ---
 player:
@@ -123,3 +127,20 @@ ratelimit:
   reason_frequency: "频率超限（{limit} 次/分钟）"
   reason_concurrent: "同 IP 并发超限（{limit} 人）"
   alert_blocked: "⚠ 登录限流\nIP: {ip}\n玩家: {player}\n原因: {reason}"
+
+# --- prison.*（坐牢；P2f1。管理员结果文案随默认语言 R1，当事人私聊随当事人语言） ---
+prison:
+  lp_unavailable: "LuckPerms 不可用，无法执行坐牢操作"
+  lp_unavailable_release: "LuckPerms 不可用，无法执行解除坐牢操作"
+  imprison_failed: "坐牢失败（数据写入失败，请重试或联系管理员）"
+  release_failed: "解除坐牢失败（数据写入失败，请重试或联系管理员）"
+  not_prisoner: "该玩家不在牢房中"
+  imprison_player_msg: "你已被关入牢房。"
+  release_player_msg: "你已解除坐牢。"
+  imprison_ok: "已将 {player} 关入牢房（原组 {group}）"
+  release_ok: "已解除 {player} 的坐牢（恢复组 {group}）"
+  player_not_found: "找不到玩家: {player}"
+
+# --- gamemode.*（权限组变化自动切生存提示；P2f1） ---
+gamemode:
+  fix_message: "你的权限组已变化，游戏模式已切换为生存模式。"

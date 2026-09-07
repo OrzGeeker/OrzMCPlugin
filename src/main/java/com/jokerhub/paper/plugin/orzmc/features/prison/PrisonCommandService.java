@@ -1,6 +1,9 @@
 package com.jokerhub.paper.plugin.orzmc.features.prison;
 
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nService;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.MessageKeys;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
@@ -18,11 +21,14 @@ public final class PrisonCommandService {
     private final PrisonService service;
     private final OrzTextStyles styles;
     private final Function<String, UUID> playerIdResolver;
+    private final I18nService i18n;
 
-    public PrisonCommandService(PrisonService service, OrzTextStyles styles, Function<String, UUID> playerIdResolver) {
+    public PrisonCommandService(
+            PrisonService service, OrzTextStyles styles, Function<String, UUID> playerIdResolver, I18nService i18n) {
         this.service = service;
         this.styles = styles;
         this.playerIdResolver = playerIdResolver;
+        this.i18n = i18n;
     }
 
     /** 命令结果（成功/失败文案）。 */
@@ -32,11 +38,16 @@ public final class PrisonCommandService {
         record Failure(Component message) implements Result {}
     }
 
+    private CompletableFuture<Result> notFound(String playerName) {
+        return CompletableFuture.completedFuture(new Result.Failure(styles.error(
+                i18n.msg(i18n.langFor(), MessageKeys.PRISON_PLAYER_NOT_FOUND, Map.of("player", playerName)))));
+    }
+
     /** /prison &lt;玩家&gt; on — 坐牢。 */
     public CompletableFuture<Result> imprison(String playerName) {
         UUID id = resolvePlayer(playerName);
         if (id == null) {
-            return CompletableFuture.completedFuture(new Result.Failure(styles.error("找不到玩家: " + playerName)));
+            return notFound(playerName);
         }
         return service.imprison(id).thenApply(PrisonCommandService::toResult);
     }
@@ -45,7 +56,7 @@ public final class PrisonCommandService {
     public CompletableFuture<Result> release(String playerName) {
         UUID id = resolvePlayer(playerName);
         if (id == null) {
-            return CompletableFuture.completedFuture(new Result.Failure(styles.error("找不到玩家: " + playerName)));
+            return notFound(playerName);
         }
         return service.release(id).thenApply(PrisonCommandService::toResult);
     }
