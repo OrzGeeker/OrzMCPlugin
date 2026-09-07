@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import com.jokerhub.paper.plugin.orzmc.features.review.ReviewNotifier;
+import com.jokerhub.paper.plugin.orzmc.testutil.TestI18n;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,7 +32,7 @@ class RankServiceTest {
         store = mock(RankStore.class);
         promoter = mock(RankPromoter.class);
         notifier = mock(ReviewNotifier.class);
-        service = new RankService(store, promoter, 10, notifier);
+        service = new RankService(store, promoter, 10, notifier, null, null, null, TestI18n.newService());
     }
 
     // ---- 自动晋升（default→member）----

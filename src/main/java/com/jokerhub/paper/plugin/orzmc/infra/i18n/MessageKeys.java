@@ -78,6 +78,28 @@ public final class MessageKeys {
     public static final String REVIEW_REJECTED_OK = "review.rejected_ok";
     public static final String REVIEW_REASON_ARG = "review.reason_arg";
 
+    // ---- rank.*：/rank 状态 / 升降级提示 / 权限组名（P2f3） ----
+    public static final String RANK_HEADER_CURRENT = "rank.header_current";
+    public static final String RANK_TIMELINE_WITH_PROGRESS = "rank.timeline_with_progress";
+    public static final String RANK_TIMELINE_DONE = "rank.timeline_done";
+    public static final String RANK_TIMELINE_PLAIN = "rank.timeline_plain";
+    public static final String RANK_PROGRESS_MET = "rank.progress_met";
+    public static final String RANK_PROGRESS_LEFT = "rank.progress_left";
+    public static final String RANK_NEXT_AUTO = "rank.next_auto";
+    public static final String RANK_NEXT_APPLY = "rank.next_apply";
+    public static final String RANK_TOP_LEVEL = "rank.top_level";
+    public static final String RANK_UNKNOWN_GROUP = "rank.unknown_group";
+    public static final String RANK_NO_APPLICABLE = "rank.no_applicable";
+    public static final String RANK_TYPE_ENTRY = "rank.type_entry";
+    public static final String RANK_LIST_SEP = "rank.list_sep";
+    public static final String RANK_PROMOTE_NOTIFY = "rank.promote_notify";
+    public static final String RANK_DEMOTE_NOTIFY = "rank.demote_notify";
+    public static final String RANK_GROUP_PREFIX = "rank.group.";
+    public static final String RANK_GROUP_ADMIN = "rank.group.admin";
+    public static final String RANK_GROUP_BUILDER = "rank.group.builder";
+    public static final String RANK_GROUP_MEMBER = "rank.group.member";
+    public static final String RANK_GROUP_DEFAULT = "rank.group.default";
+
     // ---- teleport.bow.*：传送弓（P2a） ----
     public static final String TELEPORT_BOW_NAME = "teleport.bow.name";
     public static final String TELEPORT_BOW_TAG = "teleport.bow.tag";

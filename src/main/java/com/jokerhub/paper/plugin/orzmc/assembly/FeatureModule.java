@@ -266,9 +266,11 @@ public final class FeatureModule implements ServiceModule {
                 reviewNotifier,
                 platform.serverFacade()::runSync,
                 gamemodeCorrectionService,
-                prisonService);
+                prisonService,
+                platform.i18nService());
         // 在线列表格式化注入权限组解析（$l 命令与上下线广播共用，一次注入两处生效）
         this.listFormatter.setRankService(this.rankService);
+        this.listFormatter.setI18nService(platform.i18nService());
         this.reviewService = new com.jokerhub.paper.plugin.orzmc.features.review.ReviewService(
                 permissionStore,
                 reviewNotifier,
@@ -282,7 +284,7 @@ public final class FeatureModule implements ServiceModule {
         this.reviewService.register(promotionType("builder-promotion", "晋升建造者", "builder", "member"));
         this.reviewService.register(promotionType("admin-promotion", "晋升管理员", "admin", "builder"));
         this.rankCommandService = new com.jokerhub.paper.plugin.orzmc.features.rank.RankCommandService(
-                rankService, reviewService, platform.textStyles());
+                rankService, reviewService, platform.textStyles(), platform.i18nService());
         this.prisonCommandService = new com.jokerhub.paper.plugin.orzmc.features.prison.PrisonCommandService(
                 prisonService, platform.textStyles(), rankService::resolvePlayerId, platform.i18nService());
         this.reviewCommandService = new com.jokerhub.paper.plugin.orzmc.features.review.ReviewCommandService(
