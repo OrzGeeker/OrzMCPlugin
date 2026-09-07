@@ -274,7 +274,8 @@ public final class FeatureModule implements ServiceModule {
                 reviewNotifier,
                 playerLookup,
                 platform.serverFacade()::runSync,
-                gamemodeCorrectionService);
+                gamemodeCorrectionService,
+                platform.i18nService());
         // 注册审核类型：handler 由 rank 模块注入（LP 授权），框架零 LP 依赖。
         // 审核通过 = track 升一级；异步授权（LP 操作在非服务器线程），结果 null/异常 视为
         // 授权失败 → 保持 PENDING 不落 APPROVED（避免「已通过但未生效」漂移）。

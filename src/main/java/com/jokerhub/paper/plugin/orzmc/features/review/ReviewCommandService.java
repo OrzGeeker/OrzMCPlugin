@@ -40,7 +40,8 @@ public final class ReviewCommandService {
         Lang lang = i18n.langFor(player);
         List<String> lines = reviewService.registeredTypes().stream()
                 .filter(t -> t.isEligible(player.getUniqueId()))
-                .map(t -> "· " + t.displayName() + " — /apply " + t.commandKey() + " [理由]")
+                .map(t -> "· " + t.displayName() + " — /apply " + t.commandKey() + " "
+                        + i18n.msg(lang, MessageKeys.REVIEW_REASON_ARG))
                 .collect(Collectors.toList());
         if (lines.isEmpty()) {
             return new Result.Failure(styles.error(i18n.msg(lang, MessageKeys.REVIEW_NO_TYPES)));
