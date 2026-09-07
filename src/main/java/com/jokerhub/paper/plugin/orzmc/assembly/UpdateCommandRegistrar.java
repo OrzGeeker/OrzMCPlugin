@@ -7,6 +7,7 @@ import static io.papermc.paper.command.brigadier.Commands.literal;
 
 import com.jokerhub.paper.plugin.orzmc.features.command.binding.CommandInterceptor;
 import com.jokerhub.paper.plugin.orzmc.features.update.UpdateCommandService;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nService;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
@@ -18,16 +19,18 @@ final class UpdateCommandRegistrar implements CommandGroup {
 
     private final UpdateCommandService svc;
     private final OrzTextStyles styles;
+    private final I18nService i18n;
 
-    UpdateCommandRegistrar(UpdateCommandService svc, OrzTextStyles styles) {
+    UpdateCommandRegistrar(UpdateCommandService svc, OrzTextStyles styles, I18nService i18n) {
         this.svc = svc;
         this.styles = styles;
+        this.i18n = i18n;
     }
 
     /** Update: /update check|now（插件自更新，管理员专属）。 */
     @Override
     public void register(Commands commands) {
-        List<CommandInterceptor> interceptors = adminInterceptors("update");
+        List<CommandInterceptor> interceptors = adminInterceptors("update", i18n);
         Predicate<CommandSourceStack> req = requirement(interceptors);
         commands.register(
                 literal("update")

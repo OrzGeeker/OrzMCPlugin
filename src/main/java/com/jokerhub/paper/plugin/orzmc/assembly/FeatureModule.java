@@ -140,7 +140,7 @@ public final class FeatureModule implements ServiceModule {
                 platform.commandGuardService(),
                 platform.configs(),
                 botModule.notifier(),
-                new CommandFeedbackService(),
+                new CommandFeedbackService(platform.i18nService()),
                 commandAuditService,
                 org.bukkit.Bukkit.getLogger());
         this.guideService = new GuideService(platform.serverFacade(), platform.configService(), platform.textStyles());
@@ -204,7 +204,8 @@ public final class FeatureModule implements ServiceModule {
                 botModule.notifier(),
                 platform.textStyles());
         this.menuCommandService = new MenuCommandService(platform.textStyles());
-        this.portalCommandService = new PortalCommandService(portalModule.portalService(), platform.textStyles());
+        this.portalCommandService =
+                new PortalCommandService(portalModule.portalService(), platform.textStyles(), platform.i18nService());
         this.maintenanceCommandService =
                 new com.jokerhub.paper.plugin.orzmc.features.maintenance.MaintenanceCommandService(
                         platform.serverFacade(),

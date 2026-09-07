@@ -10,6 +10,7 @@ import static io.papermc.paper.command.brigadier.Commands.literal;
 import com.jokerhub.paper.plugin.orzmc.features.command.binding.CommandInterceptor;
 import com.jokerhub.paper.plugin.orzmc.features.portal.PortalCommandService;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.CommandPolicies;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nService;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -28,23 +29,26 @@ final class PortalCommandRegistrar implements CommandGroup {
     private final OrzTextStyles styles;
     private final Supplier<CommandPolicies> cpSupplier;
     private final Predicate<Player> prisonCheck;
+    private final I18nService i18n;
 
     PortalCommandRegistrar(
             PortalCommandService svc,
             OrzTextStyles styles,
             Supplier<CommandPolicies> cpSupplier,
-            Predicate<Player> prisonCheck) {
+            Predicate<Player> prisonCheck,
+            I18nService i18n) {
         this.svc = svc;
         this.styles = styles;
         this.cpSupplier = cpSupplier;
         this.prisonCheck = prisonCheck;
+        this.i18n = i18n;
     }
 
     /** Portal: /portal [remove] <host> [port] */
     @Override
     public void register(Commands commands) {
         List<CommandInterceptor> interceptors =
-                withPrisonDeny(commandInterceptors("portal", cpSupplier, false), prisonCheck);
+                withPrisonDeny(commandInterceptors("portal", cpSupplier, false, i18n), prisonCheck, i18n);
         Predicate<CommandSourceStack> req = requirement(interceptors);
 
         // /portal remove <host> [port]

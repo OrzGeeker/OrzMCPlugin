@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.CommandPolicy;
+import com.jokerhub.paper.plugin.orzmc.testutil.TestI18n;
 import java.util.concurrent.atomic.AtomicReference;
 import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.entity.Player;
@@ -15,14 +16,14 @@ class AdminOnlyInterceptorTest {
 
     @Test
     void preHandle_notAdminOnly_returnsNull() {
-        AdminOnlyInterceptor interceptor = new AdminOnlyInterceptor(false);
+        AdminOnlyInterceptor interceptor = new AdminOnlyInterceptor(false, TestI18n.newService());
         Player player = mock(Player.class);
         assertNull(interceptor.preHandle(player, "test"));
     }
 
     @Test
     void preHandle_adminOnly_opPlayer_returnsNull() {
-        AdminOnlyInterceptor interceptor = new AdminOnlyInterceptor(true);
+        AdminOnlyInterceptor interceptor = new AdminOnlyInterceptor(true, TestI18n.newService());
         Player player = mock(Player.class);
         when(player.isOp()).thenReturn(true);
         assertNull(interceptor.preHandle(player, "test"));
@@ -30,14 +31,14 @@ class AdminOnlyInterceptorTest {
 
     @Test
     void preHandle_adminOnly_nonOpPlayer_returnsMessage() {
-        AdminOnlyInterceptor interceptor = new AdminOnlyInterceptor(true);
+        AdminOnlyInterceptor interceptor = new AdminOnlyInterceptor(true, TestI18n.newService());
         Player player = mock(Player.class);
         assertNotNull(interceptor.preHandle(player, "test"));
     }
 
     @Test
     void preHandle_adminOnly_console_returnsNull() {
-        AdminOnlyInterceptor interceptor = new AdminOnlyInterceptor(true);
+        AdminOnlyInterceptor interceptor = new AdminOnlyInterceptor(true, TestI18n.newService());
         ConsoleCommandSender console = mock(ConsoleCommandSender.class);
         assertNull(interceptor.preHandle(console, "test"));
     }
@@ -50,7 +51,7 @@ class AdminOnlyInterceptorTest {
         "false, false, null" // not adminOnly + nonOp = allowed
     })
     void preHandle_parameterized(boolean adminOnly, boolean isOp, String expected) {
-        AdminOnlyInterceptor interceptor = new AdminOnlyInterceptor(adminOnly);
+        AdminOnlyInterceptor interceptor = new AdminOnlyInterceptor(adminOnly, TestI18n.newService());
         Player player = mock(Player.class);
         when(player.isOp()).thenReturn(isOp);
         if ("null".equals(expected)) {
@@ -64,7 +65,7 @@ class AdminOnlyInterceptorTest {
     void supplierPolicy_hotFlip_reEvaluatedPerCall() {
         // P3：command_policies 热生效——admin_only 通过 supplier 变更后，无需重建拦截器即即时生效
         AtomicReference<CommandPolicy> ref = new AtomicReference<>(new CommandPolicy(0, false));
-        AdminOnlyInterceptor interceptor = new AdminOnlyInterceptor(ref::get);
+        AdminOnlyInterceptor interceptor = new AdminOnlyInterceptor(ref::get, TestI18n.newService());
         Player player = mock(Player.class);
 
         assertNull(interceptor.preHandle(player, "test")); // 初始非 adminOnly，放行
@@ -79,7 +80,7 @@ class AdminOnlyInterceptorTest {
     void supplierPolicy_hotFlip_nonOpPlayer_blockedAfterFlip() {
         // 与上面互补：切到 adminOnly 后非 OP 玩家被 canUse 拒绝（Tab 补全不可见）
         AtomicReference<CommandPolicy> ref = new AtomicReference<>(new CommandPolicy(0, true));
-        AdminOnlyInterceptor interceptor = new AdminOnlyInterceptor(ref::get);
+        AdminOnlyInterceptor interceptor = new AdminOnlyInterceptor(ref::get, TestI18n.newService());
         Player player = mock(Player.class);
         when(player.isOp()).thenReturn(false);
 

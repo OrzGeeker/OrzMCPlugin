@@ -17,3 +17,11 @@
 # 【新增语言】在 resources/messages/ 添加 messages_<code>.yml + I18nLoader.CODES 追加一行。
 #
 # 各域 key 随迁移 PR 分批补入（见 docs/dev/i18n-plan.md §5），当前为空骨架。
+#
+# --- common.*（跨渠道通用反馈；P1 随命令拦截器迁入） ---
+common:
+  cooldown: "命令冷却中，请稍后再试"
+  admin_required: "需要管理员权限"
+  player_required: "需要玩家执行"
+  prison_denied: "你正在坐牢，无法使用该命令"
+

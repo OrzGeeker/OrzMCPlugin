@@ -203,7 +203,7 @@ public final class I18nService {
 | 阶段 | 内容 | 规模 | 验收 |
 |:--|:--|:--|:--|
 | P0 基础设施 | `infra/i18n/`（Lang/MessageTable/I18nService/Loader/Options）+ zh/en 空语料骨架 + `i18n:` 配置段 + custom 覆盖层 + `MessageKeys` 常量类 + 健康检查 & 一致性单测 + 组合根装配 | 1 PR ~500–650 行 | 决议链/兜底/覆盖/护栏单测全绿；未迁移文案时零缺 key |
-| P1 通用文案 + 样式纯化 | `common.*`、命令拦截器提示、`OrzConfigCommand` 反馈；迁出 `OrzTextStyles`/`OrzConstants` 文案 | 1–2 PR | 游戏内双语可见；样式类零文案 |
+| P1 通用文案（拦截器链） | `common.*`（cooldown/admin/player/prison）+ `MessageKeys` 常量；拦截器/权限服务经 i18n 按发送者语言渲染（I18nService 注入 BrigadierSupport 工厂与 7 个注册器）；`OrzTextStyles`/`OrzConstants` 文案迁出归入各自功能域 PR，`OrzConfigCommand` 反馈归入 P2 分域 | 1 PR | 拦截器提示双语可见（zh 原文零回归）；`CommandFeedbackService` 通用提示零中文 |
 | P2 分域迁移（每域 1–3 PR，域内测试同步改） | teleport → whitelist → portal/tnt → player 事件聚合 → security/chat → review/rank/prison → maintenance → guide/menu → update/feature 命令 | 8–12 PR | 每域：中文输出逐条与迁移前 diff 一致；en 包同步补齐 |
 | P3 botcommands | 11 个 `$cmd` 帮助/反馈/列表/分页；入站分派处按平台决议 Lang 并透传 | 2–4 PR | 交互回复按 `platform_langs` 双语；`$cmd ?` 全量双语 |
 | P4 事件通知正文平移 | 正文 → `event.*`；stage 名 → `maintenance.stage.*`；`TemplateKeys` 改名 `event.*`；templates.yml 瘦身；**legacy 自定义正文自动迁移到 custom 层**（复用 config-version 升级链，防服主定制丢失） | 1–2 PR | 通知格式/路由不变；双语样例实机验证 |

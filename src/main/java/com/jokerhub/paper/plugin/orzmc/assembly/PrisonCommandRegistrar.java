@@ -8,6 +8,7 @@ import static io.papermc.paper.command.brigadier.Commands.literal;
 
 import com.jokerhub.paper.plugin.orzmc.features.command.binding.CommandInterceptor;
 import com.jokerhub.paper.plugin.orzmc.features.prison.PrisonCommandService;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nService;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
@@ -21,16 +22,18 @@ final class PrisonCommandRegistrar implements CommandGroup {
 
     private final PrisonCommandService svc;
     private final OrzTextStyles styles;
+    private final I18nService i18n;
 
-    PrisonCommandRegistrar(PrisonCommandService svc, OrzTextStyles styles) {
+    PrisonCommandRegistrar(PrisonCommandService svc, OrzTextStyles styles, I18nService i18n) {
         this.svc = svc;
         this.styles = styles;
+        this.i18n = i18n;
     }
 
     /** 坐牢: /prison <玩家> on（关入）/ off（释放）。仅 OP/orzmc.admin 可用（adminInterceptors）。 */
     @Override
     public void register(Commands commands) {
-        List<CommandInterceptor> interceptors = adminInterceptors("prison");
+        List<CommandInterceptor> interceptors = adminInterceptors("prison", i18n);
         Predicate<CommandSourceStack> req = requirement(interceptors);
 
         // 玩家名用 word（MC 名无空格）；子命令 on/off 收尾，对齐 /prison <玩家> on|off 语法

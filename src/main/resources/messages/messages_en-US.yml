@@ -17,3 +17,11 @@
 #
 # Keys are populated incrementally per migration PR (docs/dev/i18n-plan.md §5);
 # currently an empty skeleton, structurally identical to the zh-CN master.
+#
+# --- common.* (cross-channel generic feedback; migrated with command interceptors, P1) ---
+common:
+  cooldown: "Command is on cooldown, please try again later."
+  admin_required: "Administrator permission required."
+  player_required: "This command can only be used by a player."
+  prison_denied: "You are imprisoned and cannot use this command."
+
