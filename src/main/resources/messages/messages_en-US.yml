@@ -98,3 +98,12 @@ geoip:
   alert_exception: "Region lookup service error: {detail}"
   alert_lookup_failed: "Region lookup failed ({outcome}): {player} ({ip})"
   alert_timeout: "Region lookup timed out ({timeout} ms), {outcome}: {player} ({ip})"
+
+# --- login.* (IP blacklist / player-name rule login blocks and notifications; P2d2.
+#     Pre-login has no client locale, so text follows the server default language) ---
+login:
+  unknown_player: "Unknown player"
+  ip_banned: "Your IP address is banned."
+  name_rule_denied: "Your player name does not match the server access rules."
+  alert_ip_block: "⚠ IP blacklist blocked\nPlayer: {player}\nIP: {ip}\nMatched rule: {pattern}"
+  alert_name_block: "⚠ Player-name rule blocked\nPlayer: {player}\nMatched rule: {rule}"

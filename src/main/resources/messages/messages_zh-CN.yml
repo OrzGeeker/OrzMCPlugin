@@ -95,3 +95,11 @@ geoip:
   alert_exception: "IP地址解析服务异常: {detail}"
   alert_lookup_failed: "IP地址解析服务异常，{outcome}: {player}({ip})"
   alert_timeout: "IP地址解析超时({timeout}ms)，{outcome}: {player}({ip})"
+
+# --- login.*（IP 黑名单/玩家名规则登录拦截与通知；P2d2。登录前无客户端 locale → 默认语言） ---
+login:
+  unknown_player: "未知玩家"
+  ip_banned: "你的IP已被禁止访问"
+  name_rule_denied: "你的玩家名不符合服务器访问规则"
+  alert_ip_block: "⚠ IP 黑名单拦截\n玩家: {player}\nIP: {ip}\n命中规则: {pattern}"
+  alert_name_block: "⚠ 玩家名规则拦截\n玩家: {player}\n命中规则: {rule}"

@@ -75,4 +75,11 @@ public final class MessageKeys {
     public static final String GEOIP_ALERT_EXCEPTION = "geoip.alert_exception";
     public static final String GEOIP_ALERT_LOOKUP_FAILED = "geoip.alert_lookup_failed";
     public static final String GEOIP_ALERT_TIMEOUT = "geoip.alert_timeout";
+
+    // ---- login.*：登录访问控制（P2d2；pre-login 无客户端 locale → 默认语言） ----
+    public static final String LOGIN_UNKNOWN_PLAYER = "login.unknown_player";
+    public static final String LOGIN_IP_BANNED = "login.ip_banned";
+    public static final String LOGIN_NAME_RULE_DENIED = "login.name_rule_denied";
+    public static final String LOGIN_ALERT_IP_BLOCK = "login.alert_ip_block";
+    public static final String LOGIN_ALERT_NAME_BLOCK = "login.alert_name_block";
 }

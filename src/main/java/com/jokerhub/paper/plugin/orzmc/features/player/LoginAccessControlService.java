@@ -10,6 +10,8 @@ import com.jokerhub.paper.plugin.orzmc.features.security.AccessRuleService;
 import com.jokerhub.paper.plugin.orzmc.features.security.GeoIpAccessService;
 import com.jokerhub.paper.plugin.orzmc.features.security.PlayerNameRule;
 import com.jokerhub.paper.plugin.orzmc.infra.config.TemplateKeys;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nService;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.MessageKeys;
 import com.jokerhub.paper.plugin.orzmc.infra.notify.Notifier;
 import com.jokerhub.paper.plugin.orzmc.infra.notify.ThrottledNotifier;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
@@ -39,6 +41,7 @@ public final class LoginAccessControlService {
     private final OrzTextStyles styles;
     private final ServerFacade server;
     private final ThrottledNotifier blockNotifier;
+    private final I18nService i18n;
 
     public LoginAccessControlService(
             MaintenanceModeService maintenanceModeService,
@@ -49,7 +52,8 @@ public final class LoginAccessControlService {
             TypedConfigProvider configs,
             OrzTextStyles styles,
             ServerFacade server,
-            ThrottledNotifier blockNotifier) {
+            ThrottledNotifier blockNotifier,
+            I18nService i18n) {
         this.maintenanceModeService = maintenanceModeService;
         this.accessRuleService = accessRuleService;
         this.geoIpAccessService = geoIpAccessService;
@@ -59,6 +63,16 @@ public final class LoginAccessControlService {
         this.styles = styles;
         this.server = server;
         this.blockNotifier = blockNotifier;
+        this.i18n = i18n;
+    }
+
+    /** 登录前通知文案（默认语言 R1；无客户端 locale）。 */
+    private String text(String key) {
+        return i18n.msg(i18n.langFor(), key);
+    }
+
+    private String text(String key, Map<String, String> vars) {
+        return i18n.msg(i18n.langFor(), key, vars);
     }
 
     public void handlePreLogin(AsyncPlayerPreLoginEvent event) {
@@ -74,10 +88,11 @@ public final class LoginAccessControlService {
         java.net.InetAddress address = event.getAddress();
         String ipAddress = address == null ? "" : address.getHostAddress();
         String playerName = playerName(event); // 可能为 null / 空串（离线模式 profile 未上报名称）
-        String displayName = (playerName == null || playerName.isEmpty()) ? "未知玩家" : playerName;
+        String displayName =
+                (playerName == null || playerName.isEmpty()) ? text(MessageKeys.LOGIN_UNKNOWN_PLAYER) : playerName;
         String matchedPattern = accessRuleService.matchedIpPattern(ipAddress);
         if (matchedPattern != null) {
-            event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_OTHER, styles.error("你的IP已被禁止访问"));
+            event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_OTHER, styles.error(text(MessageKeys.LOGIN_IP_BANNED)));
             notifyBanHit(displayName, ipAddress, matchedPattern);
             return;
         }
@@ -87,7 +102,8 @@ public final class LoginAccessControlService {
                 ? null
                 : accessRuleService.matchedPlayerNameRule(playerName);
         if (matchedNameRule != null) {
-            event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_OTHER, styles.error("你的玩家名不符合服务器访问规则"));
+            event.disallow(
+                    AsyncPlayerPreLoginEvent.Result.KICK_OTHER, styles.error(text(MessageKeys.LOGIN_NAME_RULE_DENIED)));
             notifyPlayerNameBlocked(displayName, matchedNameRule);
             return;
         }
@@ -122,7 +138,8 @@ public final class LoginAccessControlService {
 
     /** 封禁命中（安全加固 P2-4）：PRIVATE 私信管理员 + 服务端日志。私信限频防重连刷屏，日志每次保留。 */
     private void notifyBanHit(String player, String ip, String pattern) {
-        String fallback = "⚠ IP 黑名单拦截\n玩家: " + player + "\nIP: " + ip + "\n命中规则: " + pattern;
+        String fallback =
+                text(MessageKeys.LOGIN_ALERT_IP_BLOCK, Map.of("player", player, "ip", ip, "pattern", pattern));
         MessageEnvelope env = configs.renderTemplate(
                 TemplateKeys.IP_BLACKLIST_BLOCK, Map.of("player", player, "ip", ip, "pattern", pattern), fallback);
         if (blockNotifier.shouldRun("ip_blacklist_block", ACCESS_RULE_BLOCK_THROTTLE_MS)) {
@@ -132,7 +149,7 @@ public final class LoginAccessControlService {
     }
 
     private void notifyPlayerNameBlocked(String player, PlayerNameRule rule) {
-        String fallback = "⚠ 玩家名规则拦截\n玩家: " + player + "\n命中规则: " + rule.display();
+        String fallback = text(MessageKeys.LOGIN_ALERT_NAME_BLOCK, Map.of("player", player, "rule", rule.display()));
         MessageEnvelope env = configs.renderTemplate(
                 TemplateKeys.PLAYER_NAME_BLOCK, Map.of("player", player, "rule", rule.display()), fallback);
         if (blockNotifier.shouldRun("player_name_block", ACCESS_RULE_BLOCK_THROTTLE_MS)) {
