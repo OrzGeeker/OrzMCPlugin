@@ -78,10 +78,6 @@ public final class OrzTextStyles {
         return prefix(OrzConstants.PREFIX_EXPLOSION_ALERT, colorAlertExplosion());
     }
 
-    public TextComponent tpbowPrefix() {
-        return Component.text("[传送弓]").color(colorWarn());
-    }
-
     public TextComponent coordComponent(String locString) {
         return Component.text(locString)
                 .color(colorCoord())

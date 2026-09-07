@@ -109,12 +109,6 @@ class OrzTextStylesTest {
     }
 
     @Test
-    void tpbowPrefix_returnsNonNull() {
-        Component component = styles.tpbowPrefix();
-        assertNotNull(component);
-    }
-
-    @Test
     void success_returnsComponent() {
         Component component = styles.success("done");
         assertNotNull(component);

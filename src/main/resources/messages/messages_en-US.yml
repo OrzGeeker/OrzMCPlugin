@@ -25,3 +25,18 @@ common:
   player_required: "This command can only be used by a player."
   prison_denied: "You are imprisoned and cannot use this command."
 
+# --- teleport.* (teleport bow; migrated with the teleport domain, P2a) ---
+teleport:
+  bow:
+    name: "Teleport Bow"
+    tag: "[Teleport Bow]"
+    lore: "Teleports you to where the arrow lands."
+    given: "You received {name}."
+    disabled: "Teleport bow is disabled. Please contact an administrator."
+    hit_water: "The arrow landed in water!"
+    hit_lava: "The arrow landed in lava!"
+    cross_world: "Cannot teleport across worlds!"
+    bad_height: "Target height is out of bounds!"
+    no_landing: "No safe landing spot at the target location!"
+    done: "Teleport complete!"
+

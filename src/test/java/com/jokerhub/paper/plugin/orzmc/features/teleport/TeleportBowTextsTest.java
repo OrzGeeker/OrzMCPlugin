@@ -1,23 +1,31 @@
 package com.jokerhub.paper.plugin.orzmc.features.teleport;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nService;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.Lang;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
-import com.jokerhub.paper.plugin.orzmc.testutil.ServiceTestBase;
+import com.jokerhub.paper.plugin.orzmc.testutil.TestI18n;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.junit.jupiter.api.Test;
 
-class TeleportBowTextsTest extends ServiceTestBase {
+class TeleportBowTextsTest {
+
+    private final I18nService i18n = TestI18n.newService();
+
+    private TeleportBowTexts texts() {
+        OrzTextStyles styles = mock(OrzTextStyles.class);
+        when(styles.colorWarn()).thenReturn(NamedTextColor.GOLD);
+        return new TeleportBowTexts(i18n, styles);
+    }
 
     @Test
-    void logText_withContent_includesPrefix() {
-        OrzTextStyles styles = mock(OrzTextStyles.class);
-        when(styles.tpbowPrefix()).thenReturn(Component.text("[传送弓]"));
-
-        TeleportBowTexts texts = new TeleportBowTexts(styles);
-        Component result = texts.logText("传送完成!");
+    void logText_includesTagAndContentInTargetLang() {
+        Component result = texts().logText(Lang.ZH_CN, "teleport.bow.done");
 
         String plain = PlainTextComponentSerializer.plainText().serialize(result);
         assertTrue(plain.contains("[传送弓]"));
@@ -25,10 +33,11 @@ class TeleportBowTextsTest extends ServiceTestBase {
     }
 
     @Test
-    void logText_emptyContent_returnsEmpty() {
-        OrzTextStyles styles = mock(OrzTextStyles.class);
-        TeleportBowTexts texts = new TeleportBowTexts(styles);
+    void logText_englishTarget_usesEnglishCatalog() {
+        Component result = texts().logText(Lang.of("en-US"), "teleport.bow.done");
 
-        assertEquals(Component.empty(), texts.logText(""));
+        String plain = PlainTextComponentSerializer.plainText().serialize(result);
+        assertTrue(plain.contains("[Teleport Bow]"));
+        assertTrue(plain.contains("Teleport complete!"));
     }
 }

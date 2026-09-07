@@ -15,4 +15,17 @@ public final class MessageKeys {
     public static final String COMMON_ADMIN_REQUIRED = "common.admin_required";
     public static final String COMMON_PLAYER_REQUIRED = "common.player_required";
     public static final String COMMON_PRISON_DENIED = "common.prison_denied";
+
+    // ---- teleport.bow.*：传送弓（P2a） ----
+    public static final String TELEPORT_BOW_NAME = "teleport.bow.name";
+    public static final String TELEPORT_BOW_TAG = "teleport.bow.tag";
+    public static final String TELEPORT_BOW_LORE = "teleport.bow.lore";
+    public static final String TELEPORT_BOW_GIVEN = "teleport.bow.given";
+    public static final String TELEPORT_BOW_DISABLED = "teleport.bow.disabled";
+    public static final String TELEPORT_BOW_HIT_WATER = "teleport.bow.hit_water";
+    public static final String TELEPORT_BOW_HIT_LAVA = "teleport.bow.hit_lava";
+    public static final String TELEPORT_BOW_CROSS_WORLD = "teleport.bow.cross_world";
+    public static final String TELEPORT_BOW_BAD_HEIGHT = "teleport.bow.bad_height";
+    public static final String TELEPORT_BOW_NO_LANDING = "teleport.bow.no_landing";
+    public static final String TELEPORT_BOW_DONE = "teleport.bow.done";
 }
