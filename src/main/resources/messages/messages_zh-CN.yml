@@ -1,0 +1,19 @@
+# ==================================================
+#          OrzMC 多语言包：简体中文（主目录）
+# ==================================================
+#
+# 【本文件是 key 完整性基线】所有用户可见文案以此文件为准：代码迁移时把原文抄入
+# messages_zh-CN.yml（中文输出零回归），en-US 及其他语言包只做翻译、不允许自造结构。
+#
+# 【结构】顶层按功能域分组（common.* / teleport.* / whitelist.* / event.* ...），
+# 代码按完整 dot key 读取（如 teleport.bow.name）。
+#
+# 【占位符】动态部分一律 {var}（与 templates.yml 同语法，支持 \n 转义）；
+# 同 key 跨语言占位符集合必须一致（启动健康检查 + I18nCatalogConsistencyTest 强制）。
+#
+# 【屏蔽/覆盖】本内置文件不允许空值；服主如需屏蔽某条消息，请在数据目录
+# messages_custom_zh-CN.yml 中把该 key 覆盖为空串 ""。
+#
+# 【新增语言】在 resources/messages/ 添加 messages_<code>.yml + I18nLoader.CODES 追加一行。
+#
+# 各域 key 随迁移 PR 分批补入（见 docs/dev/i18n-plan.md §5），当前为空骨架。

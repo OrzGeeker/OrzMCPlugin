@@ -389,6 +389,9 @@ public final class FeatureModule implements ServiceModule {
         // command_policies.* 运行时改动（/orzmc config set/reset/reload）→ 刷新命令拦截器策略快照，
         // 即改即生效且热路径不再全量重解析
         orzConfigCommand.setCommandPoliciesReload(commandRegistrar::refreshCommandPolicies);
+        // i18n 覆盖层运行时改动（/orzmc config reload）→ 重读数据目录 messages_custom_<lang>.yml，
+        // 手动编辑即改即生效（无需重启）
+        orzConfigCommand.setI18nCustomReload(platform.i18nService()::reloadCustom);
     }
 
     // --- Command Registration ---

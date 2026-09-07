@@ -31,6 +31,8 @@ public class OrzConfigCommand implements CommandExecutor {
     private Runnable rankColorsReload = () -> {};
     private Runnable accessRulesReload = () -> {};
     private Runnable commandPoliciesReload = () -> {};
+    /** 数据目录 i18n 覆盖层（messages_custom_<lang>.yml）改动后的回调（组合根注入）。 */
+    private Runnable i18nCustomReload = () -> {};
 
     public OrzConfigCommand(ConfigService configService, OrzTextStyles textStyles) {
         this(configService, textStyles, () -> {});
@@ -65,6 +67,14 @@ public class OrzConfigCommand implements CommandExecutor {
      */
     public void setCommandPoliciesReload(Runnable commandPoliciesReload) {
         this.commandPoliciesReload = commandPoliciesReload == null ? () -> {} : commandPoliciesReload;
+    }
+
+    /**
+     * 注册 i18n 覆盖层重读回调（组合根注入：{@code /orzmc config reload} 后重读
+     * 数据目录 {@code messages_custom_<lang>.yml}，手动编辑即改即生效，无需重启）。
+     */
+    public void setI18nCustomReload(Runnable i18nCustomReload) {
+        this.i18nCustomReload = i18nCustomReload == null ? () -> {} : i18nCustomReload;
     }
 
     @Override
@@ -218,6 +228,7 @@ public class OrzConfigCommand implements CommandExecutor {
             rankColorsReload.run();
             accessRulesReload.run();
             commandPoliciesReload.run();
+            i18nCustomReload.run();
             sender.sendMessage(textStyles.success("所有配置文件已重新加载"));
         }
     }
