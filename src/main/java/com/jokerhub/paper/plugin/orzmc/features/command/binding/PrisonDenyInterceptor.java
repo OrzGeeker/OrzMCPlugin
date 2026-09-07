@@ -1,6 +1,7 @@
 package com.jokerhub.paper.plugin.orzmc.features.command.binding;
 
 import com.jokerhub.paper.plugin.orzmc.features.command.CommandFeedbackService;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nService;
 import java.util.function.Predicate;
 import net.kyori.adventure.text.Component;
 import org.bukkit.command.CommandSender;
@@ -14,21 +15,22 @@ import org.bukkit.entity.Player;
  * 玩家是坐牢状态时 preHandle 返回提示文案，guardedExec 发送后短路命令（不执行 delegate）。</p>
  *
  * <p>判定的 {@code prisonCheck} 由装配层注入（{@code prisonService::isPrisoner}，LP 软依赖
- * 条件实例化，LP 缺失时恒 false 不拦截）。</p>
+ * 条件实例化，LP 缺失时恒 false 不拦截）；拒绝文案经 {@link I18nService} 按玩家语言渲染。</p>
  */
 public final class PrisonDenyInterceptor implements CommandInterceptor {
 
     private final Predicate<Player> prisonCheck;
-    private final CommandFeedbackService feedbackService = new CommandFeedbackService();
+    private final CommandFeedbackService feedbackService;
 
-    public PrisonDenyInterceptor(Predicate<Player> prisonCheck) {
+    public PrisonDenyInterceptor(Predicate<Player> prisonCheck, I18nService i18n) {
         this.prisonCheck = prisonCheck;
+        this.feedbackService = new CommandFeedbackService(i18n);
     }
 
     @Override
     public Component preHandle(CommandSender sender, String commandName) {
         if (sender instanceof Player player && prisonCheck.test(player)) {
-            return feedbackService.prisonDeniedTip();
+            return feedbackService.prisonDeniedTip(sender);
         }
         return null;
     }

@@ -1,0 +1,100 @@
+# ==================================================
+#          OrzMC Language Pack: English (US)
+# ==================================================
+#
+# 【This file is a TRANSLATION of messages_zh-CN.yml — do not invent keys】
+# Key set and {var} placeholders per key MUST match the zh-CN master exactly;
+# enforced at startup health check and by I18nCatalogConsistencyTest.
+#
+# 【Placeholders】Use {var} tokens (same syntax as templates.yml, \n escapes work).
+# Missing keys fall back to zh-CN at runtime, so keep this file complete per release.
+#
+# 【Editing】Server owners may override any message via data-folder
+# messages_custom_en-US.yml (empty value "" = suppress the message).
+#
+# 【Adding a language】Add messages/messages_<code>.yml resource + one line in
+# I18nLoader.CODES — no business code changes needed.
+#
+# Keys are populated incrementally per migration PR (docs/dev/i18n-plan.md §5);
+# currently an empty skeleton, structurally identical to the zh-CN master.
+#
+# --- common.* (cross-channel generic feedback; migrated with command interceptors, P1) ---
+common:
+  cooldown: "Command is on cooldown, please try again later."
+  admin_required: "Administrator permission required."
+  player_required: "This command can only be used by a player."
+  prison_denied: "You are imprisoned and cannot use this command."
+
+# --- teleport.* (teleport bow; migrated with the teleport domain, P2a) ---
+teleport:
+  bow:
+    name: "Teleport Bow"
+    tag: "[Teleport Bow]"
+    lore: "Teleports you to where the arrow lands."
+    given: "You received {name}."
+    disabled: "Teleport bow is disabled. Please contact an administrator."
+    hit_water: "The arrow landed in water!"
+    hit_lava: "The arrow landed in lava!"
+    cross_world: "Cannot teleport across worlds!"
+    bad_height: "Target height is out of bounds!"
+    no_landing: "No safe landing spot at the target location!"
+    done: "Teleport complete!"
+
+# --- whitelist.* (login kick hints / group notifications; P2b. Kick is pre-login with no
+#     client locale, so it follows the server default language) ---
+whitelist:
+  kick:
+    join_hint_prefix: "You are not on the whitelist. Please join the QQ group "
+    join_hint_suffix: " and ask an admin to add you."
+    discord_join: "You can also join the Discord server: "
+  notify:
+    blocked: "{player} attempted to join but was blocked by the whitelist."
+    toggle_off: "Whitelist disabled."
+
+# --- portal.* (/portal command player feedback; P2c) ---
+portal:
+  usage: "Usage: /portal <host> [port] or /portal remove <host> [port]"
+  usage_remove: "Usage: /portal remove <host> [port]"
+  port_required: "Port must be a number."
+  not_found: "No matching portal for {target}."
+  removed: "Removed {count} portal(s) -> {target}"
+  created: "Created portal -> {host}:{port} @ [{world}] {x} {y} {z} axis: {axis} frame:4x5"
+
+  command_desc: "Create or remove portals"
+
+# --- tnt.* (TNT protection player hints / alert labels; P2c. Explosion/placement alerts are
+#     server broadcasts and group notifications, so they follow the default language) ---
+tnt:
+  anchor_disabled: "Respawn Anchor placement has been disabled by an admin."
+  place_cooldown: "TNT placing is on cooldown. Please wait "
+  cooldown_seconds: "{secs} s"
+  place_disabled: "TNT placing has been disabled by an admin."
+  prime_denied: "TNT ignited (forbidden)"
+  prime: "TNT ignited"
+  dispense_forbidden: "Dispensing {item} is forbidden"
+  explode: "{type} explosion"
+  block_explode: "Block explosion"
+  placement_msg: "Placed TNT"
+  at: "at "
+  placed: "placed TNT"
+
+# --- player.notify.* (player join/quit digest section labels; P2d. Group messages use R1 default lang) ---
+player:
+  notify:
+    join_label: "Joined"
+    quit_label: "Left"
+    kick_label: "Kicked"
+    hidden_more: "and {count} more"
+
+# --- geoip.* (region whitelist player hints / admin alerts; P2d. Pre-login has no client
+#     locale, so text follows the server default language) ---
+geoip:
+  kick_region: "{name} ({ip})\nCountry: {country}\nIP location is not in the supported region{allow}"
+  kick_unverifiable: "{name} ({ip})\nRegion lookup is temporarily unavailable, so your region cannot be verified. Please try logging in again later."
+  outcome_allowed_failopen: "allowed (fail-open)"
+  outcome_denied_failclose: "denied (fail-close)"
+  outcome_allowed: "allowed"
+  outcome_denied: "denied"
+  alert_exception: "Region lookup service error: {detail}"
+  alert_lookup_failed: "Region lookup failed ({outcome}): {player} ({ip})"
+  alert_timeout: "Region lookup timed out ({timeout} ms), {outcome}: {player} ({ip})"

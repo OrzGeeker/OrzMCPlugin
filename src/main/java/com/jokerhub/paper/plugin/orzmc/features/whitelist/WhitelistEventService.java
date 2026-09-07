@@ -7,6 +7,8 @@ import com.jokerhub.paper.plugin.orzmc.core.bot.MessageEnvelope;
 import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.WhitelistKickMessage;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.WhitelistKickMessage.WhitelistKickMessageItem;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nService;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.MessageKeys;
 import com.jokerhub.paper.plugin.orzmc.infra.notify.Notifier;
 import com.jokerhub.paper.plugin.orzmc.infra.notify.ThrottledNotifier;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
@@ -25,15 +27,21 @@ public final class WhitelistEventService {
 
     private final TypedConfigProvider configs;
     private final OrzTextStyles styles;
+    private final I18nService i18n;
     private final Notifier notifier;
     private final ThrottledNotifier throttledNotifier;
 
     public WhitelistEventService(
-            TypedConfigProvider configs, OrzTextStyles styles, Notifier notifier, ThrottledNotifier throttledNotifier) {
+            TypedConfigProvider configs,
+            OrzTextStyles styles,
+            Notifier notifier,
+            ThrottledNotifier throttledNotifier,
+            I18nService i18n) {
         this.configs = configs;
         this.styles = styles;
         this.notifier = notifier;
         this.throttledNotifier = throttledNotifier;
+        this.i18n = i18n;
     }
 
     public void handleVerify(ProfileWhitelistVerifyEvent event) {
@@ -45,6 +53,8 @@ public final class WhitelistEventService {
             return;
         }
         TextComponent.Builder kickMsgBuilder = Component.text();
+        // 踢出消息发生在登录前（无客户端 locale），语言随服务器默认（i18n P2b）
+        var lang = i18n.langFor();
         // QQ 群号单一事实源：easybot.qq_group_id（whitelist.kick_message.qq_group_id 已废弃删除，2026-09-02）
         String qqGroupId = configs.bot().qqGroupId();
         if (qqGroupId != null && !qqGroupId.isEmpty()) {
@@ -54,11 +64,11 @@ public final class WhitelistEventService {
             kickMsgBuilder
                     .append(styles.playerName(player.getName()).decorate(TextDecoration.BOLD))
                     .append(Component.space())
-                    .append(styles.warn("不在服务器白名单中，请先加入QQ群:"))
+                    .append(styles.warn(i18n.msg(lang, MessageKeys.WHITELIST_KICK_JOIN_HINT_PREFIX)))
                     .append(Component.space())
                     .append(styles.success(qqGroupId).decorate(TextDecoration.BOLD))
                     .append(Component.space())
-                    .append(styles.warn("，联系管理员添加白名单"));
+                    .append(styles.warn(i18n.msg(lang, MessageKeys.WHITELIST_KICK_JOIN_HINT_SUFFIX)));
         }
         String discordServerLink = configs.bot().discordServerLink();
         if (discordServerLink != null && !discordServerLink.isEmpty()) {
@@ -66,7 +76,7 @@ public final class WhitelistEventService {
                 kickMsgBuilder.append(Component.newline()).append(Component.newline());
             }
             kickMsgBuilder
-                    .append(styles.info("you can also join the discord server: "))
+                    .append(styles.info(i18n.msg(lang, MessageKeys.WHITELIST_KICK_DISCORD_JOIN)))
                     .append(Component.text(discordServerLink)
                             .color(NamedTextColor.BLUE)
                             .decorate(TextDecoration.UNDERLINED)
@@ -83,10 +93,12 @@ public final class WhitelistEventService {
             event.kickMessage(kickMsgBuilder.build());
         }
 
-        String playChatGroupMsg = player.getName() + " 尝试加入服务器，被白名单拦截";
+        // 群通知按默认语言渲染（R1）：拦截被节流，但消息文案经语言包
+        String blockedText =
+                i18n.msg(i18n.langFor(), MessageKeys.WHITELIST_NOTIFY_BLOCKED, Map.of("player", player.getName()));
         // 节流：恶意脚本反复登录会在窗口内高频触发，固定周期内最多发 1 条，防 QQ 主动消息频控被打爆
         if (throttledNotifier.shouldRun("whitelist_block", WHITELIST_BLOCK_THROTTLE_MS)) {
-            MessageEnvelope env = configs.renderEvent("whitelist_block", Map.of("message", playChatGroupMsg));
+            MessageEnvelope env = configs.renderEvent("whitelist_block", Map.of("message", blockedText));
             notifier.event("whitelist_block", env);
         }
     }
@@ -94,7 +106,7 @@ public final class WhitelistEventService {
     public void handleToggle(WhitelistToggleEvent event) {
         if (isEnableForceWhitelist() && !event.isEnabled()) {
             // 模板已提供「⚠️ 服务器异常 + 分割线」外壳，这里只传具体异常项
-            String msg = "白名单关闭";
+            String msg = i18n.msg(i18n.langFor(), MessageKeys.WHITELIST_NOTIFY_TOGGLE_OFF);
             MessageEnvelope env = configs.renderEvent("whitelist_toggle_alert", Map.of("message", msg));
             notifier.event("whitelist_toggle_alert", env);
         }
