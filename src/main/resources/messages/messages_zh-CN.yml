@@ -144,3 +144,17 @@ prison:
 # --- gamemode.*（权限组变化自动切生存提示；P2f1） ---
 gamemode:
   fix_message: "你的权限组已变化，游戏模式已切换为生存模式。"
+
+# --- review.*（/apply 命令文案；P2f2 按执行玩家语言。类型名 displayName 为配置数据不迁） ---
+review:
+  list_header: "可申请："
+  no_types: "当前没有可申请的审核类型。"
+  type_unknown: "未知申请类型: {type}（/apply 查看可申请项）"
+  type_unknown_bare: "未知申请类型: {type}"
+  my_applications: "你的申请："
+  no_applications: "你还没有提交过申请。"
+  status_pending: "⏳ 待审核"
+  status_approved: "✅ 已通过"
+  status_rejected: "❌ 已拒绝"
+  status_cancelled: "↩️ 已撤回"
+  reviewer_suffix: "（{reviewer}）"

@@ -1,5 +1,8 @@
 package com.jokerhub.paper.plugin.orzmc.features.review;
 
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nService;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.Lang;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.MessageKeys;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
 import java.util.List;
 import java.util.Map;
@@ -18,10 +21,12 @@ public final class ReviewCommandService {
 
     private final ReviewService reviewService;
     private final OrzTextStyles styles;
+    private final I18nService i18n;
 
-    public ReviewCommandService(ReviewService reviewService, OrzTextStyles styles) {
+    public ReviewCommandService(ReviewService reviewService, OrzTextStyles styles, I18nService i18n) {
         this.reviewService = reviewService;
         this.styles = styles;
+        this.i18n = i18n;
     }
 
     public sealed interface Result permits Result.Success, Result.Failure {
@@ -32,25 +37,29 @@ public final class ReviewCommandService {
 
     /** /apply — 列出可申请类型（注册表驱动 + 按当前玩家资格过滤，自动生成帮助）。 */
     public Result listTypes(Player player) {
+        Lang lang = i18n.langFor(player);
         List<String> lines = reviewService.registeredTypes().stream()
                 .filter(t -> t.isEligible(player.getUniqueId()))
                 .map(t -> "· " + t.displayName() + " — /apply " + t.commandKey() + " [理由]")
                 .collect(Collectors.toList());
         if (lines.isEmpty()) {
-            return new Result.Failure(styles.error("当前没有可申请的审核类型。"));
+            return new Result.Failure(styles.error(i18n.msg(lang, MessageKeys.REVIEW_NO_TYPES)));
         }
-        return new Result.Success(styles.info("可申请：\n" + String.join("\n", lines)));
+        return new Result.Success(
+                styles.info(i18n.msg(lang, MessageKeys.REVIEW_LIST_HEADER) + "\n" + String.join("\n", lines)));
     }
 
     /** /apply &lt;type&gt; [理由] — 提交申请。 */
     public Result apply(Player player, String typeKey, String rawArgs) {
         UUID id = player.getUniqueId();
+        Lang lang = i18n.langFor(player);
         ReviewType type = reviewService.registeredTypes().stream()
                 .filter(t -> t.commandKey().equalsIgnoreCase(typeKey))
                 .findFirst()
                 .orElse(null);
         if (type == null) {
-            return new Result.Failure(styles.error("未知申请类型: " + typeKey + "（/apply 查看可申请项）"));
+            return new Result.Failure(
+                    styles.error(i18n.msg(lang, MessageKeys.REVIEW_TYPE_UNKNOWN, Map.of("type", typeKey))));
         }
         Map<String, String> data = type.parseArgs(rawArgs);
         ReviewService.Result result = reviewService.submit(type, id, data);
@@ -62,17 +71,22 @@ public final class ReviewCommandService {
     /** /apply status — 查看自己的申请及状态。 */
     public Result status(Player player) {
         UUID id = player.getUniqueId();
+        Lang lang = i18n.langFor(player);
         List<ReviewRequest> requests = reviewService.listByApplicant(id);
         if (requests.isEmpty()) {
-            return new Result.Success(styles.info("你还没有提交过申请。"));
+            return new Result.Success(styles.info(i18n.msg(lang, MessageKeys.REVIEW_NO_APPLICATIONS)));
         }
-        StringBuilder sb = new StringBuilder("你的申请：\n");
+        StringBuilder sb = new StringBuilder(i18n.msg(lang, MessageKeys.REVIEW_MY_APPLICATIONS)).append('\n');
         for (ReviewRequest r : requests) {
             String typeName = reviewService
                     .typeById(r.typeId())
                     .map(ReviewType::displayName)
                     .orElse(r.typeId());
-            sb.append("· ").append(typeName).append(" — ").append(statusText(r)).append("\n");
+            sb.append("· ")
+                    .append(typeName)
+                    .append(" — ")
+                    .append(statusText(lang, r))
+                    .append("\n");
         }
         return new Result.Success(styles.info(sb.toString().trim()));
     }
@@ -80,12 +94,14 @@ public final class ReviewCommandService {
     /** /apply cancel &lt;type&gt; — 撤回自己的待审申请。 */
     public Result cancel(Player player, String typeKey) {
         UUID id = player.getUniqueId();
+        Lang lang = i18n.langFor(player);
         ReviewType type = reviewService.registeredTypes().stream()
                 .filter(t -> t.commandKey().equalsIgnoreCase(typeKey))
                 .findFirst()
                 .orElse(null);
         if (type == null) {
-            return new Result.Failure(styles.error("未知申请类型: " + typeKey));
+            return new Result.Failure(
+                    styles.error(i18n.msg(lang, MessageKeys.REVIEW_TYPE_UNKNOWN_BARE, Map.of("type", typeKey))));
         }
         ReviewService.Result result = reviewService.cancelForApplicant(type, id);
         return result.success()
@@ -108,12 +124,17 @@ public final class ReviewCommandService {
                         : new Result.Failure(styles.error(result.message())));
     }
 
-    private String statusText(ReviewRequest r) {
-        return switch (r.status()) {
-            case PENDING -> "⏳ 待审核";
-            case APPROVED -> "✅ 已通过" + (r.reviewerName() == null ? "" : "（" + r.reviewerName() + "）");
-            case REJECTED -> "❌ 已拒绝" + (r.reviewerName() == null ? "" : "（" + r.reviewerName() + "）");
-            case CANCELLED -> "↩️ 已撤回";
-        };
+    private String statusText(Lang lang, ReviewRequest r) {
+        String base =
+                switch (r.status()) {
+                    case PENDING -> i18n.msg(lang, MessageKeys.REVIEW_STATUS_PENDING);
+                    case APPROVED -> i18n.msg(lang, MessageKeys.REVIEW_STATUS_APPROVED);
+                    case REJECTED -> i18n.msg(lang, MessageKeys.REVIEW_STATUS_REJECTED);
+                    case CANCELLED -> i18n.msg(lang, MessageKeys.REVIEW_STATUS_CANCELLED);
+                };
+        if (r.reviewerName() == null) {
+            return base;
+        }
+        return base + i18n.msg(lang, MessageKeys.REVIEW_REVIEWER_SUFFIX, Map.of("reviewer", r.reviewerName()));
     }
 }

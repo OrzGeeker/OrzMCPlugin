@@ -37,6 +37,19 @@ public final class MessageKeys {
     public static final String TNT_PREFIX_TNT = "tnt.prefix_tnt";
     public static final String TNT_PREFIX_EXPLOSION = "tnt.prefix_explosion";
 
+    // ---- review.*：/apply 命令文案（P2f2） ----
+    public static final String REVIEW_LIST_HEADER = "review.list_header";
+    public static final String REVIEW_NO_TYPES = "review.no_types";
+    public static final String REVIEW_TYPE_UNKNOWN = "review.type_unknown";
+    public static final String REVIEW_TYPE_UNKNOWN_BARE = "review.type_unknown_bare";
+    public static final String REVIEW_MY_APPLICATIONS = "review.my_applications";
+    public static final String REVIEW_NO_APPLICATIONS = "review.no_applications";
+    public static final String REVIEW_STATUS_PENDING = "review.status_pending";
+    public static final String REVIEW_STATUS_APPROVED = "review.status_approved";
+    public static final String REVIEW_STATUS_REJECTED = "review.status_rejected";
+    public static final String REVIEW_STATUS_CANCELLED = "review.status_cancelled";
+    public static final String REVIEW_REVIEWER_SUFFIX = "review.reviewer_suffix";
+
     // ---- teleport.bow.*：传送弓（P2a） ----
     public static final String TELEPORT_BOW_NAME = "teleport.bow.name";
     public static final String TELEPORT_BOW_TAG = "teleport.bow.tag";
