@@ -167,6 +167,7 @@ class PlayerEventAggregatorTest extends ServiceTestBase {
         RankService rankService = mock(RankService.class);
         OnlineListFormatter formatterWithRank = new OnlineListFormatter();
         formatterWithRank.setRankService(rankService);
+        formatterWithRank.setI18nService(TestI18n.newService());
         aggregator = new PlayerEventAggregator(server, configs, notifier, formatterWithRank, TestI18n.newService());
 
         Player p1 = mockPlayer("Alice");

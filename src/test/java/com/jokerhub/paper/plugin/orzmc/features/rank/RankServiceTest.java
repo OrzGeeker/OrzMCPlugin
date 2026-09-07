@@ -206,9 +206,9 @@ class RankServiceTest {
 
     @Test
     void groupDisplayName_coversAllTiers() {
-        assertEquals("管理员", RankService.groupDisplayName("admin"));
-        assertEquals("建造者", RankService.groupDisplayName("builder"));
-        assertEquals("成员", RankService.groupDisplayName("member"));
-        assertEquals("访客", RankService.groupDisplayName("default"));
+        assertEquals("管理员", RankService.groupDisplayName("admin", TestI18n.newService()));
+        assertEquals("建造者", RankService.groupDisplayName("builder", TestI18n.newService()));
+        assertEquals("成员", RankService.groupDisplayName("member", TestI18n.newService()));
+        assertEquals("访客", RankService.groupDisplayName("default", TestI18n.newService()));
     }
 }

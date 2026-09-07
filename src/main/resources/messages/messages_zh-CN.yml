@@ -292,4 +292,13 @@ bot:
     whitelist_header: "------当前白名单玩家({count})------"
     cleanup_title: "------白名单清理------"
     page_meta: "第{page}/{total}页"
+  p:
+    svc_unavailable: "权限服务不可用"
+    no_lp: "未检测到 LuckPerms，权限管理功能不可用"
+    player_not_found: "找不到玩家: {player}"
+    op_error: "{player} 权限操作异常（详见服务器日志）。"
+    up_fail: "{player} 无法升级：已达最高等级或权限数据异常（详见服务器日志）。"
+    down_fail: "{player} 无法降级：已达最低等级或权限数据异常（详见服务器日志）。"
+    up_ok: "已将 {player} 升级为 {group}。"
+    down_ok: "已将 {player} 降级为 {group}。"
 

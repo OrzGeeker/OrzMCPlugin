@@ -299,4 +299,13 @@ bot:
     whitelist_header: "------ Whitelisted players ({count}) ------" 
     cleanup_title: "------ Whitelist cleanup ------" 
     page_meta: "Page {page}/{total}"
+  p:
+    svc_unavailable: "Permission service is unavailable."
+    no_lp: "LuckPerms was not detected; permission management is unavailable."
+    player_not_found: "Player not found: {player}"
+    op_error: "Permission operation failed for {player} (see server logs)."
+    up_fail: "{player} could not be promoted: already at the highest rank or permission data is invalid (see server logs)."
+    down_fail: "{player} could not be demoted: already at the lowest rank or permission data is invalid (see server logs)."
+    up_ok: "Promoted {player} to {group}."
+    down_ok: "Demoted {player} to {group}."
 

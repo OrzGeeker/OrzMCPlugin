@@ -3,6 +3,7 @@ package com.jokerhub.paper.plugin.orzmc.features.botcommands;
 import com.jokerhub.paper.plugin.orzmc.core.bot.MessageEnvelope;
 import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
 import com.jokerhub.paper.plugin.orzmc.features.rank.RankService;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nServiceHolder;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -28,15 +29,11 @@ final class PermissionCommandHandler extends BotCommandContext {
         if (!guardAdminCommand(cmd, isAdmin, callback)) return;
         RankService rank = rankService.get();
         if (rank == null) {
-            emit(callback, "command_review_error", Map.of("message", "权限服务不可用"), "权限服务不可用");
+            emitMsg(callback, "command_review_error", I18nServiceHolder.msg("bot.p.svc_unavailable"));
             return;
         }
         if (!rank.isLuckPermsAvailable()) {
-            emit(
-                    callback,
-                    "command_review_error",
-                    Map.of("message", "未检测到 LuckPerms，权限管理功能不可用"),
-                    "未检测到 LuckPerms，权限管理功能不可用");
+            emitMsg(callback, "command_review_error", I18nServiceHolder.msg("bot.p.no_lp"));
             return;
         }
         if (rawArgs.isBlank()) {
@@ -68,7 +65,10 @@ final class PermissionCommandHandler extends BotCommandContext {
         }
         var playerId = rank.resolvePlayerId(playerName);
         if (playerId == null) {
-            emit(callback, "command_review_error", Map.of("message", "找不到玩家: " + playerName), "找不到玩家: " + playerName);
+            emitMsg(
+                    callback,
+                    "command_review_error",
+                    I18nServiceHolder.msg("bot.p.player_not_found", Map.of("player", playerName)));
             return;
         }
         final var id = playerId;
@@ -77,34 +77,40 @@ final class PermissionCommandHandler extends BotCommandContext {
         java.util.concurrent.CompletableFuture<String> future = upgrade ? rank.promoteAsync(id) : rank.demoteAsync(id);
         future.whenComplete((target, err) -> {
             if (err != null) {
-                emit(
+                emitMsg(
                         callback,
                         "command_review_error",
-                        Map.of("message", playerName + " 权限操作异常（详见服务器日志）。"),
-                        playerName + " 权限操作异常（详见服务器日志）。");
+                        I18nServiceHolder.msg("bot.p.op_error", Map.of("player", playerName)));
                 return;
             }
             if (target == null) {
-                emit(
+                emitMsg(
                         callback,
                         "command_review_error",
-                        Map.of(
-                                "message",
-                                playerName
-                                        + (upgrade
-                                                ? " 无法升级：已达最高等级或权限数据异常（详见服务器日志）。"
-                                                : " 无法降级：已达最低等级或权限数据异常（详见服务器日志）。")),
-                        playerName + (upgrade ? " 无法升级：已达最高等级或权限数据异常（详见服务器日志）。" : " 无法降级：已达最低等级或权限数据异常（详见服务器日志）。"));
+                        I18nServiceHolder.msg(
+                                upgrade ? "bot.p.up_fail" : "bot.p.down_fail", Map.of("player", playerName)));
             } else {
-                emit(
+                String group = I18nServiceHolder.msg("rank.group." + target);
+                emitMsg(
                         callback,
-                        "command_review_result",
-                        Map.of(
-                                "message",
-                                "已将 " + playerName + (upgrade ? " 升级为" : " 降级为") + RankService.groupDisplayName(target)
-                                        + "。"),
-                        "已将 " + playerName + (upgrade ? " 升级为" : " 降级为") + RankService.groupDisplayName(target) + "。");
+                        I18nServiceHolder.msg(
+                                upgrade ? "bot.p.up_ok" : "bot.p.down_ok",
+                                Map.of("player", playerName, "group", group)));
             }
         });
+    }
+
+    /** 发送单条消息（默认语言 R1）；key 指定 reply 模板键。 */
+    private void emitMsg(
+            java.util.function.Consumer<com.jokerhub.paper.plugin.orzmc.core.bot.MessageEnvelope> callback,
+            String message) {
+        emitMsg(callback, "command_review_result", message);
+    }
+
+    private void emitMsg(
+            java.util.function.Consumer<com.jokerhub.paper.plugin.orzmc.core.bot.MessageEnvelope> callback,
+            String templateKey,
+            String message) {
+        emit(callback, templateKey, Map.of("message", message), message);
     }
 }
