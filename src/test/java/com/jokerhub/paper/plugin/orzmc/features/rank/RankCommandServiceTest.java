@@ -8,6 +8,7 @@ import com.jokerhub.paper.plugin.orzmc.features.review.ReviewService;
 import com.jokerhub.paper.plugin.orzmc.features.review.ReviewType;
 import com.jokerhub.paper.plugin.orzmc.infra.config.ConfigService;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
+import com.jokerhub.paper.plugin.orzmc.testutil.TestI18n;
 import java.util.List;
 import java.util.UUID;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
@@ -40,7 +41,7 @@ class RankCommandServiceTest {
         when(configService.getConfig("templates")).thenReturn(templatesConfig);
         when(templatesConfig.getConfigurationSection("styles")).thenReturn(null);
         styles = new OrzTextStyles(configService);
-        command = new RankCommandService(service, reviewService, styles);
+        command = new RankCommandService(service, reviewService, styles, TestI18n.newService());
     }
 
     private String text(UUID id) {

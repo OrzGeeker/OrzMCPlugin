@@ -2,6 +2,8 @@ package com.jokerhub.paper.plugin.orzmc.features.rank;
 
 import com.jokerhub.paper.plugin.orzmc.features.prison.PrisonService;
 import com.jokerhub.paper.plugin.orzmc.features.review.ReviewNotifier;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nService;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.MessageKeys;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -39,17 +41,19 @@ public final class RankService {
     private final GamemodeCorrectionService gamemodeCorrection;
     /** 坐牢服务（可空：不注入则不做 prison 拦截）。 */
     private final PrisonService prisonService;
+    /** 文案服务（可空：旧测试构造时按 token 原样展示）。 */
+    private final I18nService i18n;
 
     public RankService(RankStore store, RankPromoter promoter) {
-        this(store, promoter, DEFAULT_MEMBER_THRESHOLD_HOURS, null);
+        this(store, promoter, DEFAULT_MEMBER_THRESHOLD_HOURS, null, null, null, null, null);
     }
 
     public RankService(RankStore store, RankPromoter promoter, int memberThresholdHours) {
-        this(store, promoter, memberThresholdHours, null);
+        this(store, promoter, memberThresholdHours, null, null, null, null, null);
     }
 
     public RankService(RankStore store, RankPromoter promoter, int memberThresholdHours, ReviewNotifier notifier) {
-        this(store, promoter, memberThresholdHours, notifier, null, null);
+        this(store, promoter, memberThresholdHours, notifier, null, null, null, null);
     }
 
     public RankService(
@@ -59,7 +63,7 @@ public final class RankService {
             ReviewNotifier notifier,
             Executor syncExecutor,
             GamemodeCorrectionService gamemodeCorrection) {
-        this(store, promoter, memberThresholdHours, notifier, syncExecutor, gamemodeCorrection, null);
+        this(store, promoter, memberThresholdHours, notifier, syncExecutor, gamemodeCorrection, null, null);
     }
 
     /**
@@ -67,6 +71,7 @@ public final class RankService {
      *     非服务器线程，矫正需切回同步线程）；生产传入 {@code serverFacade::runSync}。
      * @param gamemodeCorrection 升降级后的游戏模式矫正（可空；不注入则跳过）。
      * @param prisonService     坐牢服务（可空；不注入则不做 prison 玩家晋升拦截）。
+     * @param i18n             文案服务（rank 通知/组名；为空时按 token 原样展示，仅供旧测试构造）。
      */
     public RankService(
             RankStore store,
@@ -75,7 +80,8 @@ public final class RankService {
             ReviewNotifier notifier,
             Executor syncExecutor,
             GamemodeCorrectionService gamemodeCorrection,
-            PrisonService prisonService) {
+            PrisonService prisonService,
+            I18nService i18n) {
         this.store = store;
         this.promoter = promoter;
         this.memberThresholdHours = memberThresholdHours;
@@ -83,6 +89,16 @@ public final class RankService {
         this.syncExecutor = syncExecutor;
         this.gamemodeCorrection = gamemodeCorrection;
         this.prisonService = prisonService;
+        this.i18n = i18n;
+    }
+
+    /** rank 文案（默认语言 R1）。 */
+    private String t(String key, Map<String, String> vars) {
+        return i18n == null ? key : i18n.msg(i18n.langFor(), key, vars);
+    }
+
+    private String t(String key) {
+        return i18n == null ? key : i18n.msg(i18n.langFor(), key);
     }
 
     /** 玩家在线则发游戏内消息；通知端口未注入或玩家离线时静默。 */
@@ -190,12 +206,12 @@ public final class RankService {
             if (to == null) {
                 return null; // 链顶（END_OF_TRACK）或失败
             }
-            notifyPlayer(playerId, "你的权限已升级：" + groupDisplayName(to) + "。");
+            notifyPlayer(playerId, t(MessageKeys.RANK_PROMOTE_NOTIFY, Map.of("group", groupLabel(to))));
             notifyGroup(
                     "rank_promoted",
                     Map.of(
                             "player", promoter.playerName(playerId).orElse(playerId.toString()),
-                            "group", groupDisplayName(to)));
+                            "group", groupLabel(to)));
             correctGamemode(playerId);
             return to;
         });
@@ -232,12 +248,12 @@ public final class RankService {
             if (to == null) {
                 return null; // 链底（REMOVED_FROM_FIRST_GROUP / NOT_ON_TRACK）或失败
             }
-            notifyPlayer(playerId, "你的权限已被降级：" + groupDisplayName(to) + "。");
+            notifyPlayer(playerId, t(MessageKeys.RANK_DEMOTE_NOTIFY, Map.of("group", groupLabel(to))));
             notifyGroup(
                     "rank_demoted",
                     Map.of(
                             "player", promoter.playerName(playerId).orElse(playerId.toString()),
-                            "group", groupDisplayName(to)));
+                            "group", groupLabel(to)));
             correctGamemode(playerId);
             return to;
         });
@@ -270,11 +286,34 @@ public final class RankService {
         return promoter.resolvePlayerId(playerName);
     }
 
+    /** 组名展示标签（默认语言 R1；未知组回退 guest）。 */
+    private String groupLabel(String group) {
+        return groupDisplayName(group, i18n);
+    }
+
     /**
-     * 当前权限组展示名（权限组 → 中文名的<b>唯一事实源</b>）。
+     * 当前权限组展示名（权限组 → 语言包 key 的<b>唯一事实源</b>）。
      *
-     * <p>新增/修改组名只改这里；$l 在线列表、上下线广播、rank 通知、
+     * <p>新增/修改组名只改语言包 {@code rank.group.*}；$l 在线列表、上下线广播、rank 通知、
      * /rank、$p 反馈全部走本方法。未知组一律回退「访客」。</p>
+     */
+    public static String groupDisplayName(String group, I18nService i18n) {
+        if (i18n == null) {
+            return groupDisplayName(group);
+        }
+        String key =
+                switch (group) {
+                    case "admin" -> MessageKeys.RANK_GROUP_ADMIN;
+                    case "builder" -> MessageKeys.RANK_GROUP_BUILDER;
+                    case "member" -> MessageKeys.RANK_GROUP_MEMBER;
+                    default -> MessageKeys.RANK_GROUP_DEFAULT;
+                };
+        return i18n.msg(i18n.langFor(), key);
+    }
+
+    /**
+     * 兼容静态版（中文映射，P3 迁移 $p/$v 后随 botcommands 移除）。
+     * 新代码请用 {@link #groupDisplayName(String, I18nService)}。
      */
     public static String groupDisplayName(String group) {
         return switch (group) {

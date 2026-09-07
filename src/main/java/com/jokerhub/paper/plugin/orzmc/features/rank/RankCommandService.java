@@ -2,8 +2,11 @@ package com.jokerhub.paper.plugin.orzmc.features.rank;
 
 import com.jokerhub.paper.plugin.orzmc.features.review.ReviewService;
 import com.jokerhub.paper.plugin.orzmc.features.review.ReviewType;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nService;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.MessageKeys;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import net.kyori.adventure.text.Component;
@@ -20,11 +23,14 @@ public final class RankCommandService {
     private final RankService service;
     private final ReviewService reviewService;
     private final OrzTextStyles styles;
+    private final I18nService i18n;
 
-    public RankCommandService(RankService service, ReviewService reviewService, OrzTextStyles styles) {
+    public RankCommandService(
+            RankService service, ReviewService reviewService, OrzTextStyles styles, I18nService i18n) {
         this.service = service;
         this.reviewService = reviewService;
         this.styles = styles;
+        this.i18n = i18n;
     }
 
     public sealed interface Result permits Result.Success, Result.Failure {
@@ -38,11 +44,12 @@ public final class RankCommandService {
         return statusOf(player.getUniqueId());
     }
 
-    /** /rank &lt;玩家&gt; — admin 查指定玩家。 */
+    /** /rank &lt;玩家&gt; — admin 查指定玩家。
+     *  状态/进度文案统一默认语言 R1（与审核业务一致）。 */
     public Result statusOf(UUID playerId) {
         String group = service.currentGroup(playerId);
         long minutes = service.playtimeMinutes(playerId);
-        String displayName = RankService.groupDisplayName(group);
+        String displayName = RankService.groupDisplayName(group, i18n);
 
         // 状态描述按当前权限组动态化：时长/阈值行只在尚未完成自动晋升的组展示，
         // 「下一步」按组给对应引导（自动晋升 / 申请 / 无更高项 / 链顶）
@@ -51,30 +58,56 @@ public final class RankCommandService {
         switch (group) {
             case "default" -> {
                 long threshold = service.memberThresholdMinutes();
-                String progress = minutes >= threshold ? "✅ 已达标（下次上线将自动晋升为成员）" : "还需 " + (threshold - minutes) + " 分钟";
-                timeLine = "已在线时长：" + minutes + " 分钟 / 晋升成员阈值 " + threshold + " 分钟（" + progress + "）";
-                nextLine = "下一步：在线时长达标后自动晋升为成员";
+                String progress = minutes >= threshold
+                        ? i18n.msg(i18n.langFor(), MessageKeys.RANK_PROGRESS_MET)
+                        : i18n.msg(
+                                i18n.langFor(),
+                                MessageKeys.RANK_PROGRESS_LEFT,
+                                Map.of("minutes", String.valueOf(threshold - minutes)));
+                timeLine = i18n.msg(
+                        i18n.langFor(),
+                        MessageKeys.RANK_TIMELINE_WITH_PROGRESS,
+                        Map.of(
+                                "minutes", String.valueOf(minutes),
+                                "threshold", String.valueOf(threshold),
+                                "progress", progress));
+                nextLine = i18n.msg(i18n.langFor(), MessageKeys.RANK_NEXT_AUTO);
             }
             case "member" -> {
                 long threshold = service.memberThresholdMinutes();
-                timeLine = "已在线时长：" + minutes + " 分钟 / 晋升成员阈值 " + threshold + " 分钟（✅ 已达标）";
-                nextLine = "下一步可申请：" + nextApplications(playerId);
+                timeLine = i18n.msg(
+                        i18n.langFor(),
+                        MessageKeys.RANK_TIMELINE_DONE,
+                        Map.of(
+                                "minutes", String.valueOf(minutes),
+                                "threshold", String.valueOf(threshold)));
+                nextLine = i18n.msg(
+                        i18n.langFor(), MessageKeys.RANK_NEXT_APPLY, Map.of("types", nextApplications(playerId)));
             }
             case "builder" -> {
-                timeLine = "已在线时长：" + minutes + " 分钟";
-                nextLine = "下一步可申请：" + nextApplications(playerId);
+                timeLine = i18n.msg(
+                        i18n.langFor(), MessageKeys.RANK_TIMELINE_PLAIN, Map.of("minutes", String.valueOf(minutes)));
+                nextLine = i18n.msg(
+                        i18n.langFor(), MessageKeys.RANK_NEXT_APPLY, Map.of("types", nextApplications(playerId)));
             }
             case "admin" -> {
-                timeLine = "已在线时长：" + minutes + " 分钟";
-                nextLine = "已达最高等级（管理员）";
+                timeLine = i18n.msg(
+                        i18n.langFor(), MessageKeys.RANK_TIMELINE_PLAIN, Map.of("minutes", String.valueOf(minutes)));
+                nextLine = i18n.msg(
+                        i18n.langFor(),
+                        MessageKeys.RANK_TOP_LEVEL,
+                        Map.of("admin", i18n.msg(i18n.langFor(), MessageKeys.RANK_GROUP_ADMIN)));
             }
             default -> {
-                timeLine = "已在线时长：" + minutes + " 分钟";
-                nextLine = "当前权限组未知，请联系管理员";
+                timeLine = i18n.msg(
+                        i18n.langFor(), MessageKeys.RANK_TIMELINE_PLAIN, Map.of("minutes", String.valueOf(minutes)));
+                nextLine = i18n.msg(i18n.langFor(), MessageKeys.RANK_UNKNOWN_GROUP);
             }
         }
 
-        Component message = styles.info("你的当前权限组：" + displayName + "（" + group + "）\n" + timeLine + "\n" + nextLine);
+        String header =
+                i18n.msg(i18n.langFor(), MessageKeys.RANK_HEADER_CURRENT, Map.of("name", displayName, "code", group));
+        Component message = styles.info(header + "\n" + timeLine + "\n" + nextLine);
         return new Result.Success(message);
     }
 
@@ -84,10 +117,16 @@ public final class RankCommandService {
                 .filter(t -> t.isEligible(playerId))
                 .map(this::formatAvailableType)
                 .collect(Collectors.toList());
-        return available.isEmpty() ? "无（当前无可申请项）" : String.join("；", available);
+        if (available.isEmpty()) {
+            return i18n.msg(i18n.langFor(), MessageKeys.RANK_NO_APPLICABLE);
+        }
+        return String.join(i18n.msg(i18n.langFor(), MessageKeys.RANK_LIST_SEP), available);
     }
 
     private String formatAvailableType(ReviewType type) {
-        return type.displayName() + "（/apply " + type.commandKey() + "）";
+        return i18n.msg(
+                i18n.langFor(),
+                MessageKeys.RANK_TYPE_ENTRY,
+                Map.of("name", type.displayName(), "key", type.commandKey()));
     }
 }

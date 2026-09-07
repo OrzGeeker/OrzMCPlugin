@@ -130,14 +130,14 @@ public final class PrisonService {
                             "player",
                             playerName(playerId),
                             "group",
-                            RankService.groupDisplayName(outcome.originalGroup())));
+                            RankService.groupDisplayName(outcome.originalGroup(), i18n)));
             return new Result.Success(styles.success(text(
                     MessageKeys.PRISON_RELEASE_OK,
                     Map.of(
                             "player",
                             playerName(playerId),
                             "group",
-                            RankService.groupDisplayName(outcome.originalGroup())))));
+                            RankService.groupDisplayName(outcome.originalGroup(), i18n)))));
         });
     }
 
@@ -173,14 +173,18 @@ public final class PrisonService {
         notifier.gameMessage(playerId, playerText(playerId, MessageKeys.PRISON_IMPRISON_PLAYER_MSG));
         notifier.groupEvent(
                 TemplateKeys.PRISON_IMPRISONED,
-                Map.of("player", playerName(playerId), "group", RankService.groupDisplayName(outcome.originalGroup())));
+                Map.of(
+                        "player",
+                        playerName(playerId),
+                        "group",
+                        RankService.groupDisplayName(outcome.originalGroup(), i18n)));
         return new Result.Success(styles.success(text(
                 MessageKeys.PRISON_IMPRISON_OK,
                 Map.of(
                         "player",
                         playerName(playerId),
                         "group",
-                        RankService.groupDisplayName(outcome.originalGroup())))));
+                        RankService.groupDisplayName(outcome.originalGroup(), i18n)))));
     }
 
     /** 传送回原位置（元数据里记录的位置）；原位置缺失/无效回出生点。 */

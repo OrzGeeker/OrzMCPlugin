@@ -190,3 +190,27 @@ review:
   approved_ok: "Approved {player}\"s \"{name}\" application."
   rejected_ok: "Rejected {player}\"s \"{name}\" application."
   reason_arg: "[reason]"
+
+# --- rank.* (/rank status and promote/demote notices; P2f3. Unified default language R1;
+#     rank group names rank.group.*) ---
+rank:
+  header_current: "Your current permission group: {name} ({code})"
+  timeline_with_progress: "Online time: {minutes} min / Member promotion threshold {threshold} min ({progress})"
+  timeline_done: "Online time: {minutes} min / Member promotion threshold {threshold} min (✅ met)"
+  timeline_plain: "Online time: {minutes} min"
+  progress_met: "✅ Met (will auto-promote to member on next login)"
+  progress_left: "{minutes} min remaining"
+  next_auto: "Next: auto-promote to member once the online-time goal is met"
+  next_apply: "Next, you can apply for: {types}"
+  top_level: "You are at the highest rank ({admin})"
+  unknown_group: "Current permission group is unknown. Please contact an admin."
+  no_applicable: "None (nothing to apply for right now)"
+  type_entry: "{name} (/apply {key})"
+  list_sep: "; "
+  promote_notify: "Your rank has been promoted: {group}."
+  demote_notify: "Your rank has been demoted: {group}."
+  group:
+    admin: "Admin"
+    builder: "Builder"
+    member: "Member"
+    default: "Guest"
