@@ -50,6 +50,34 @@ public final class MessageKeys {
     public static final String REVIEW_STATUS_CANCELLED = "review.status_cancelled";
     public static final String REVIEW_REVIEWER_SUFFIX = "review.reviewer_suffix";
 
+    // ---- review.* 业务流（P2f2b；审核业务结果统一默认语言 R1，保框架纯无 Bukkit 依赖） ----
+    public static final String REVIEW_NOT_ELIGIBLE = "review.not_eligible";
+    public static final String REVIEW_ALREADY_PENDING = "review.already_pending";
+    public static final String REVIEW_SUBMITTED_NOTIFY = "review.submitted_notify";
+    public static final String REVIEW_SUBMITTED_OK = "review.submitted_ok";
+    public static final String REVIEW_PROCESSING_CANCEL = "review.processing_cancel";
+    public static final String REVIEW_NOT_FOUND = "review.not_found";
+    public static final String REVIEW_OWN_CANCEL_ONLY = "review.own_cancel_only";
+    public static final String REVIEW_ALREADY_PROCESSED_CANCEL = "review.already_processed_cancel";
+    public static final String REVIEW_CANCELLED_NOTIFY = "review.cancelled_notify";
+    public static final String REVIEW_CANCELLED_OK = "review.cancelled_ok";
+    public static final String REVIEW_PROCESSING_REVIEW = "review.processing_review";
+    public static final String REVIEW_ALREADY_PROCESSED_REVIEW = "review.already_processed_review";
+    public static final String REVIEW_UNKNOWN_TYPE_REVIEW = "review.unknown_type_review";
+    public static final String REVIEW_AUTH_FAILED = "review.auth_failed";
+    public static final String REVIEW_AUTH_FAILED_TOP = "review.auth_failed_top";
+    public static final String REVIEW_STATE_CHANGED = "review.state_changed";
+    public static final String REVIEW_STATE_SAVE_FAILED = "review.state_save_failed";
+    public static final String REVIEW_PENDING_NONE_SELF = "review.pending_none_self";
+    public static final String REVIEW_PLAYER_NOT_FOUND = "review.player_not_found";
+    public static final String REVIEW_NO_PENDING_APPLICANT = "review.no_pending_applicant";
+    public static final String REVIEW_MULTIPLE_PENDING = "review.multiple_pending";
+    public static final String REVIEW_APPROVED_NOTIFY = "review.approved_notify";
+    public static final String REVIEW_REJECTED_NOTIFY = "review.rejected_notify";
+    public static final String REVIEW_APPROVED_OK = "review.approved_ok";
+    public static final String REVIEW_REJECTED_OK = "review.rejected_ok";
+    public static final String REVIEW_REASON_ARG = "review.reason_arg";
+
     // ---- teleport.bow.*：传送弓（P2a） ----
     public static final String TELEPORT_BOW_NAME = "teleport.bow.name";
     public static final String TELEPORT_BOW_TAG = "teleport.bow.tag";

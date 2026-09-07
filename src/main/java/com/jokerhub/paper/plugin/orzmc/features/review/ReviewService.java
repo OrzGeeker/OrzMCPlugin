@@ -1,6 +1,8 @@
 package com.jokerhub.paper.plugin.orzmc.features.review;
 
 import com.jokerhub.paper.plugin.orzmc.features.rank.GamemodeCorrectionService;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nService;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.MessageKeys;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -59,6 +61,8 @@ public final class ReviewService {
      * 晋升（授予权限），但未来降级型审核可能回收权限，此处兜底对齐游戏模式与当前权限。
      */
     private final GamemodeCorrectionService gamemodeCorrection;
+
+    private final I18nService i18n;
     // LinkedHashMap 保持注册顺序（/apply 帮助列表稳定），synchronizedMap 保证并发安全
     private final Map<String, ReviewType> registry =
             java.util.Collections.synchronizedMap(new java.util.LinkedHashMap<>());
@@ -72,34 +76,47 @@ public final class ReviewService {
      */
     private final Set<String> inflightReviews = ConcurrentHashMap.newKeySet();
 
-    public ReviewService(ReviewStore store, ReviewNotifier notifier, PlayerLookup lookup) {
-        this(store, notifier, lookup, Runnable::run, null);
+    public ReviewService(ReviewStore store, ReviewNotifier notifier, PlayerLookup lookup, I18nService i18n) {
+        this(store, notifier, lookup, Runnable::run, null, i18n);
     }
 
     /**
      * @param syncExecutor 回同步调度线程执行状态落盘 + 通知（审核通过后的最终化）。
      *     生产传入 {@code serverFacade::runSync}；框架单测可用 {@code Runnable::run} 内联。
      */
-    public ReviewService(ReviewStore store, ReviewNotifier notifier, PlayerLookup lookup, Executor syncExecutor) {
-        this(store, notifier, lookup, syncExecutor, null);
+    public ReviewService(
+            ReviewStore store, ReviewNotifier notifier, PlayerLookup lookup, Executor syncExecutor, I18nService i18n) {
+        this(store, notifier, lookup, syncExecutor, null, i18n);
     }
 
     /**
      * @param syncExecutor     回同步调度线程执行状态落盘 + 通知（审核通过后的最终化）。
      *     生产传入 {@code serverFacade::runSync}；框架单测可用 {@code Runnable::run} 内联。
      * @param gamemodeCorrection 审核通过后的游戏模式矫正（可空；不注入则跳过）。
+     * @param i18n            文案服务（审核业务结果统一默认语言 R1，保框架无 Bukkit 依赖）。
      */
     public ReviewService(
             ReviewStore store,
             ReviewNotifier notifier,
             PlayerLookup lookup,
             Executor syncExecutor,
-            GamemodeCorrectionService gamemodeCorrection) {
+            GamemodeCorrectionService gamemodeCorrection,
+            I18nService i18n) {
         this.store = store;
         this.notifier = notifier;
         this.lookup = lookup;
         this.syncExecutor = syncExecutor != null ? syncExecutor : Runnable::run;
         this.gamemodeCorrection = gamemodeCorrection;
+        this.i18n = i18n;
+    }
+
+    /** 审核业务结果文案（默认语言 R1）。 */
+    private String t(String key, Map<String, String> vars) {
+        return i18n == null ? key : i18n.msg(i18n.langFor(), key, vars);
+    }
+
+    private String t(String key) {
+        return i18n == null ? key : i18n.msg(i18n.langFor(), key);
     }
 
     /** 玩家在线则发游戏内消息；通知端口未注入或玩家离线时静默。 */
@@ -145,10 +162,10 @@ public final class ReviewService {
      */
     public Result submit(ReviewType type, UUID applicantId, Map<String, String> data) {
         if (!type.isEligible(applicantId)) {
-            return Result.fail("你不满足「" + type.displayName() + "」的申请条件。");
+            return Result.fail(t(MessageKeys.REVIEW_NOT_ELIGIBLE, Map.of("name", type.displayName())));
         }
         if (store.hasPending(type.id(), applicantId)) {
-            return Result.fail("你已提交过「" + type.displayName() + "」申请，请等待管理员审核。");
+            return Result.fail(t(MessageKeys.REVIEW_ALREADY_PENDING, Map.of("name", type.displayName())));
         }
         String id = newRequestId();
         ReviewRequest request = new ReviewRequest(
@@ -162,14 +179,14 @@ public final class ReviewService {
                 null);
         store.save(request);
 
-        gameMessage(applicantId, "申请已提交，管理员审核通过后将自动生效。");
+        gameMessage(applicantId, t(MessageKeys.REVIEW_SUBMITTED_NOTIFY));
         groupEvent(
                 "review_submitted",
                 Map.of(
                         "player", lookup.name(applicantId).orElse("?"),
                         "type", type.displayName(),
                         "summary", type.summarize(request.data())));
-        return Result.ok("申请已提交，等待管理员审核。", id);
+        return Result.ok(t(MessageKeys.REVIEW_SUBMITTED_OK), id);
     }
 
     /**
@@ -185,19 +202,19 @@ public final class ReviewService {
     public Result cancel(String requestId, UUID applicantId) {
         // 先占位（与 review 互斥）：授权在途或并发审核时拒绝，防止撤回与授权结果冲突
         if (!inflightReviews.add(requestId)) {
-            return Result.fail("该申请正在处理中（管理员审核中），请稍后再试。");
+            return Result.fail(t(MessageKeys.REVIEW_PROCESSING_CANCEL));
         }
         try {
             Optional<ReviewRequest> found = store.findById(requestId);
             if (found.isEmpty()) {
-                return Result.fail("找不到该申请。");
+                return Result.fail(t(MessageKeys.REVIEW_NOT_FOUND));
             }
             ReviewRequest request = found.get();
             if (!request.applicantId().equals(applicantId)) {
-                return Result.fail("只能撤回自己的申请。");
+                return Result.fail(t(MessageKeys.REVIEW_OWN_CANCEL_ONLY));
             }
             if (request.status() != ReviewRequest.Status.PENDING) {
-                return Result.fail("该申请已处理，无法撤回。");
+                return Result.fail(t(MessageKeys.REVIEW_ALREADY_PROCESSED_CANCEL));
             }
             // CANCELLED 无审核人，reviewer 置 null（撤回由申请人本人发起，非审核行为）
             ReviewRequest cancelled = request.reviewed(ReviewRequest.Status.CANCELLED, null);
@@ -205,7 +222,7 @@ public final class ReviewService {
 
             String typeName =
                     typeById(request.typeId()).map(ReviewType::displayName).orElse(request.typeId());
-            gameMessage(applicantId, "已撤回「" + typeName + "」申请。");
+            gameMessage(applicantId, t(MessageKeys.REVIEW_CANCELLED_NOTIFY, Map.of("name", typeName)));
             groupEvent(
                     "review_cancelled",
                     Map.of(
@@ -215,7 +232,7 @@ public final class ReviewService {
                                     typeById(request.typeId())
                                             .map(t -> t.summarize(request.data()))
                                             .orElse("")));
-            return Result.ok("已撤回申请。", requestId);
+            return Result.ok(t(MessageKeys.REVIEW_CANCELLED_OK), requestId);
         } finally {
             inflightReviews.remove(requestId);
         }
@@ -241,7 +258,7 @@ public final class ReviewService {
     public CompletableFuture<Result> review(String requestId, boolean approved, String reviewerName) {
         // 原子占位：失败说明已有并发 review/cancel 在处理，直接拒绝（去重 + 挡住授权期间撤回）
         if (!inflightReviews.add(requestId)) {
-            return completedFail("该申请正在处理中，请勿重复操作。");
+            return completedFail(t(MessageKeys.REVIEW_PROCESSING_REVIEW));
         }
         CompletableFuture<Result> result;
         try {
@@ -258,15 +275,17 @@ public final class ReviewService {
     private CompletableFuture<Result> doReview(String requestId, boolean approved, String reviewerName) {
         Optional<ReviewRequest> found = store.findById(requestId);
         if (found.isEmpty()) {
-            return completedFail("找不到该申请。");
+            return completedFail(t(MessageKeys.REVIEW_NOT_FOUND));
         }
         ReviewRequest request = found.get();
         if (request.status() != ReviewRequest.Status.PENDING) {
-            return completedFail("该申请已处理（" + request.status() + "）。");
+            return completedFail(t(
+                    MessageKeys.REVIEW_ALREADY_PROCESSED_REVIEW,
+                    Map.of("status", request.status().toString())));
         }
         ReviewType type = typeById(request.typeId()).orElse(null);
         if (type == null) {
-            return completedFail("未知审核类型: " + request.typeId());
+            return completedFail(t(MessageKeys.REVIEW_UNKNOWN_TYPE_REVIEW, Map.of("type", request.typeId())));
         }
 
         if (!approved || type.handler() == null) {
@@ -281,21 +300,21 @@ public final class ReviewService {
             auth = type.handler().onApproved(request.applicantId());
         } catch (Exception e) {
             LOGGER.warning("审核通过但授权处理异常，申请保持待审: " + request.id() + " - " + e.getMessage());
-            return completedFail("授权处理失败（" + e.getMessage() + "），请重试或联系管理员。");
+            return completedFail(t(MessageKeys.REVIEW_AUTH_FAILED, Map.of("detail", e.getMessage())));
         }
         if (auth == null) {
             LOGGER.warning("审核通过但授权处理返回 null future，申请保持待审: " + request.id());
-            return completedFail("授权处理失败（目标可能已在最高等级或 LuckPerms 异常），请重试或联系管理员。");
+            return completedFail(t(MessageKeys.REVIEW_AUTH_FAILED_TOP));
         }
 
         return auth.handle((ok, err) -> {
                     if (err != null) {
                         LOGGER.warning("审核通过但授权处理异常，申请保持待审: " + request.id() + " - " + err.getMessage());
-                        return Result.fail("授权处理失败（" + err.getMessage() + "），请重试或联系管理员。");
+                        return Result.fail(t(MessageKeys.REVIEW_AUTH_FAILED, Map.of("detail", err.getMessage())));
                     }
                     if (!Boolean.TRUE.equals(ok)) {
                         LOGGER.warning("审核通过但授权处理返回失败（如链顶/LP 异常），申请保持待审: " + request.id());
-                        return Result.fail("授权处理失败（目标可能已在最高等级或 LuckPerms 异常），请重试或联系管理员。");
+                        return Result.fail(t(MessageKeys.REVIEW_AUTH_FAILED_TOP));
                     }
                     return null; // 授权成功：走最终化
                 })
@@ -313,7 +332,7 @@ public final class ReviewService {
     public Result cancelForApplicant(ReviewType type, UUID applicantId) {
         Optional<ReviewRequest> pending = store.pendingFor(type.id(), applicantId);
         if (pending.isEmpty()) {
-            return Result.fail("你当前没有「" + type.displayName() + "」的待审申请。");
+            return Result.fail(t(MessageKeys.REVIEW_PENDING_NONE_SELF, Map.of("name", type.displayName())));
         }
         return cancel(pending.get().id(), applicantId);
     }
@@ -327,20 +346,20 @@ public final class ReviewService {
     public CompletableFuture<Result> reviewByApplicantName(String playerName, boolean approved, String reviewerName) {
         Optional<UUID> applicantId = lookup.resolve(playerName);
         if (applicantId.isEmpty()) {
-            return completedFail("找不到玩家: " + playerName);
+            return completedFail(t(MessageKeys.REVIEW_PLAYER_NOT_FOUND, Map.of("player", playerName)));
         }
         List<ReviewRequest> pending = store.listPending().stream()
                 .filter(r -> r.applicantId().equals(applicantId.get()))
                 .toList();
         if (pending.isEmpty()) {
-            return completedFail(playerName + " 没有待审核的申请。");
+            return completedFail(t(MessageKeys.REVIEW_NO_PENDING_APPLICANT, Map.of("player", playerName)));
         }
         if (pending.size() > 1) {
             String types = pending.stream()
                     .map(r -> typeById(r.typeId()).map(ReviewType::displayName).orElse(r.typeId()))
                     .distinct()
                     .collect(Collectors.joining("、"));
-            return completedFail(playerName + " 有多条待审申请（" + types + "），请用群指令 $v 按类型处理。");
+            return completedFail(t(MessageKeys.REVIEW_MULTIPLE_PENDING, Map.of("player", playerName, "types", types)));
         }
         return review(pending.get(0).id(), approved, reviewerName);
     }
@@ -358,7 +377,7 @@ public final class ReviewService {
                             + (current.isEmpty() ? "已删除" : current.get().status())
                             + "），保持原状: " + request.id()
                             + "——本次晋升可能已生效，不会被自动回收，请人工核对 LP 权限。");
-                    deferred.complete(Result.fail("该申请在处理期间状态已变化（可能被并发撤回/处理），" + "本次晋升可能已生效但不会被自动回收，请人工核对。"));
+                    deferred.complete(Result.fail(t(MessageKeys.REVIEW_STATE_CHANGED)));
                     return;
                 }
                 deferred.complete(finalizeStatus(request, ReviewRequest.Status.APPROVED, reviewerName, type));
@@ -369,7 +388,7 @@ public final class ReviewService {
                 }
             } catch (Throwable t) {
                 LOGGER.warning("审核通过后落状态失败，申请保持待审: " + request.id() + " - " + t.getMessage());
-                deferred.complete(Result.fail("授权成功但状态保存失败，请刷新确认后重试。"));
+                deferred.complete(Result.fail(t(MessageKeys.REVIEW_STATE_SAVE_FAILED)));
             }
         });
         return deferred;
@@ -395,11 +414,13 @@ public final class ReviewService {
         groupEvent(templateKey, vars);
         gameMessage(
                 request.applicantId(),
-                approved ? "你的「" + type.displayName() + "」申请已通过！" : "你的「" + type.displayName() + "」申请被拒绝。");
+                approved
+                        ? t(MessageKeys.REVIEW_APPROVED_NOTIFY, Map.of("name", type.displayName()))
+                        : t(MessageKeys.REVIEW_REJECTED_NOTIFY, Map.of("name", type.displayName())));
         return Result.ok(
                 approved
-                        ? "已通过 " + playerName + " 的「" + type.displayName() + "」申请。"
-                        : "已拒绝 " + playerName + " 的「" + type.displayName() + "」申请。",
+                        ? t(MessageKeys.REVIEW_APPROVED_OK, Map.of("player", playerName, "name", type.displayName()))
+                        : t(MessageKeys.REVIEW_REJECTED_OK, Map.of("player", playerName, "name", type.displayName())),
                 request.id());
     }
 
