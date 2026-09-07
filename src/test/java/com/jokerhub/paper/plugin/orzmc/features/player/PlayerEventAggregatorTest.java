@@ -14,7 +14,6 @@ import com.jokerhub.paper.plugin.orzmc.features.rank.RankService;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.PlayerNotifyConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.notify.Notifier;
 import com.jokerhub.paper.plugin.orzmc.infra.player.OnlineListFormatter;
-import com.jokerhub.paper.plugin.orzmc.testutil.TestI18n;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import com.jokerhub.paper.plugin.orzmc.testutil.ServiceTestBase;
 import com.jokerhub.paper.plugin.orzmc.testutil.TestI18n;
