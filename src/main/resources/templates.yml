@@ -59,10 +59,12 @@ templates:
     command_review_error: PLAIN
   command_output: "{message}"
   command_help: "{help}"
-  command_players: "------当前在线({online_count}/{max_count})------\n{online_list}"
-  command_whitelist_header: "------当前白名单玩家({count})------"
-  command_whitelist_page: "{header}\n第{page}/{total}页\n{body}"
-  command_whitelist_cleanup: "------白名单清理------\n{removed_list}"
+  # 列表类回复正文走语言包（bot.list.*，双语按平台语言渲染）；模板仅作 {message} 直通 + 格式载体。
+  # 服主仍可覆盖正文：将 {message} 替换为自定义文本（占位符支持见 TemplatePlaceholderValidator）。
+  command_players: "{message}"
+  command_whitelist_header: "{message}"
+  command_whitelist_page: "{message}"
+  command_whitelist_cleanup: "{message}"
   command_whitelist_add_result: "{message}"
   command_whitelist_remove_result: "{message}"
   command_blacklist_list: "{patterns}"

@@ -110,10 +110,10 @@ public final class TemplatePlaceholderValidator {
         m.put("whitelist_toggle_alert", Set.of("message"));
         m.put("command_output", Set.of("message"));
         m.put("command_help", Set.of("help"));
-        m.put("command_players", Set.of("header", "online_count", "max_count", "online_list"));
-        m.put("command_whitelist_header", Set.of("count"));
-        m.put("command_whitelist_page", Set.of("header", "page", "total", "body"));
-        m.put("command_whitelist_cleanup", Set.of("removed_list"));
+        m.put("command_players", Set.of("message", "header", "online_count", "max_count", "online_list"));
+        m.put("command_whitelist_header", Set.of("message", "count"));
+        m.put("command_whitelist_page", Set.of("message", "header", "page", "total", "body"));
+        m.put("command_whitelist_cleanup", Set.of("message", "removed_list"));
         m.put("command_whitelist_add_result", Set.of("message"));
         m.put("command_whitelist_remove_result", Set.of("message"));
         m.put("command_blacklist_list", Set.of("patterns"));

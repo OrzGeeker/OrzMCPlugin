@@ -9,6 +9,17 @@ import java.util.ArrayList;
 import java.util.Map;
 import org.bukkit.entity.Player;
 
+/**
+ * $l/$w 列表类回复组装（i18n P4a 收口）。
+ *
+ * <p>四个命令回复模板（command_players/command_whitelist_header/command_whitelist_page/
+ * command_whitelist_cleanup）正文已改为 {@code {message}} 直通壳：此处把语言包 bot.list.* 各段
+ * （online_header/whitelist_header/cleanup_title/page_meta）按默认语言 R1 组装为完整文案并作为
+ * {@code message} 变量传入，模板仅承担格式（templates.format）与服主自定义正文覆盖。
+ *
+ * <p>占位符变量均为「新 message + 旧分段变量」并集：全新安装（模板为 {@code {message}}）渲染
+ * 组装文案；历史磁盘模板（仍是旧字面正文）与服主自定义正文照常渲染旧变量，无回归。</p>
+ */
 public final class BotCommandListFeedbackService {
     private final ServerFacade server;
     private final TypedConfigProvider configs;
@@ -34,62 +45,63 @@ public final class BotCommandListFeedbackService {
     public record WhitelistPage(String fallback, Map<String, String> vars) {}
 
     public OnlineList buildOnlineList(ArrayList<Player> onlinePlayers, int maxPlayers) {
-        String header = I18nServiceHolder.msg(
-                "bot.list.online_header",
-                Map.of("count", String.valueOf(onlinePlayers.size()), "max", String.valueOf(maxPlayers)));
+        int count = onlinePlayers.size();
+        String countText = String.valueOf(count);
+        String maxText = String.valueOf(maxPlayers);
+        String header = I18nServiceHolder.msg("bot.list.online_header", Map.of("count", countText, "max", maxText));
         String list = listFormatter.list(onlinePlayers);
-        String fallbackDefault = header + (list.isEmpty() ? "" : "\n" + list);
-        OnlineList online = new OnlineList(
-                list, fallbackDefault, header, String.valueOf(onlinePlayers.size()), String.valueOf(maxPlayers));
-        String template = configs.resolveTemplate("command_players", fallbackDefault);
-        String fallback = TemplateRenderer.render(template, onlineVars(online));
-        return new OnlineList(list, fallback, header, online.onlineCount(), online.maxCount());
+        // 完整文案（语言包）作为 {message}；模板正文直通时即最终输出
+        String composed = header + (list.isEmpty() ? "" : "\n" + list);
+        return new OnlineList(list, composed, header, countText, maxText);
     }
 
     public Map<String, String> onlineVars(OnlineList online) {
         return Map.of(
+                "message", online.fallback(),
                 "online_count", online.onlineCount(),
                 "max_count", online.maxCount(),
                 "online_list", online.list());
     }
 
     public WhitelistHeader buildWhitelistHeader(int total) {
-        String headerFallback =
-                I18nServiceHolder.msg("bot.list.whitelist_header", Map.of("count", String.valueOf(total)));
+        Map<String, String> vars = whitelistHeaderVars(total);
+        String headerFallback = vars.get("message");
         String headerTemplate = configs.resolveTemplate("command_whitelist_header", headerFallback);
-        String header = TemplateRenderer.render(headerTemplate, whitelistHeaderVars(total));
+        String header = TemplateRenderer.render(headerTemplate, vars);
         return new WhitelistHeader(header, header);
     }
 
     public Map<String, String> whitelistHeaderVars(int total) {
-        return Map.of("count", String.valueOf(total));
+        String count = String.valueOf(total);
+        return Map.of(
+                "message", I18nServiceHolder.msg("bot.list.whitelist_header", Map.of("count", count)), "count", count);
     }
 
     public CleanupNotice buildCleanupNotice(java.util.Set<String> removed) {
         String removedList = String.join(
                 "\n", removed.stream().map(name -> "✔︎ " + name).collect(java.util.stream.Collectors.toSet()));
-        String removedFallbackDefault = I18nServiceHolder.msg("bot.list.cleanup_title") + "\n" + removedList;
-        CleanupNotice notice = new CleanupNotice(removedList, removedFallbackDefault);
-        String template = configs.resolveTemplate("command_whitelist_cleanup", removedFallbackDefault);
-        String fallback = TemplateRenderer.render(template, cleanupVars(notice));
-        return new CleanupNotice(removedList, fallback);
+        String composed = I18nServiceHolder.msg("bot.list.cleanup_title") + "\n" + removedList;
+        return new CleanupNotice(removedList, composed);
     }
 
     public Map<String, String> cleanupVars(CleanupNotice notice) {
-        return Map.of("removed_list", notice.removedList());
+        return Map.of("message", notice.fallback(), "removed_list", notice.removedList());
     }
 
     public WhitelistPage buildWhitelistPage(String headerText, int pageIndex, int total, String body) {
-        Map<String, String> vars = Map.of(
-                "header", headerText, "page", String.valueOf(pageIndex), "total", String.valueOf(total), "body", body);
-        String fallbackDefault = headerText + "\n"
-                + I18nServiceHolder.msg(
-                        "bot.list.page_meta", Map.of("page", String.valueOf(pageIndex), "total", String.valueOf(total)))
+        String page = String.valueOf(pageIndex);
+        String totalText = String.valueOf(total);
+        String composed = headerText + "\n"
+                + I18nServiceHolder.msg("bot.list.page_meta", Map.of("page", page, "total", totalText))
                 + "\n"
                 + body;
-        String template = configs.resolveTemplate("command_whitelist_page", fallbackDefault);
-        String fallback = TemplateRenderer.render(template, vars);
-        return new WhitelistPage(fallback, vars);
+        Map<String, String> vars = Map.of(
+                "message", composed,
+                "header", headerText,
+                "page", page,
+                "total", totalText,
+                "body", body);
+        return new WhitelistPage(composed, vars);
     }
 
     public ArrayList<Player> currentOnlinePlayers() {
