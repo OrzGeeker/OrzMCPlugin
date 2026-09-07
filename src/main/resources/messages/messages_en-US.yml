@@ -52,6 +52,9 @@ whitelist:
   notify:
     blocked: "{player} attempted to join but was blocked by the whitelist."
     toggle_off: "Whitelist disabled."
+  bot:
+    add_title: "------ Whitelist additions ------" 
+    remove_title: "------ Whitelist removals ------"
 
 # --- portal.* (/portal command player feedback; P2c) ---
 portal:
@@ -291,3 +294,9 @@ bot:
     v: "{name} l\n{name} l 2\n{name} y Steve\n{name} y builder-promotion Steve"
     p: "{name} u Steve\n{name} d Steve"
     d: "{name}\n{name} 1.2.3.4\n{name} -1.2.3.4\n{name} player exact Steve\n{name} player prefix bot_\n{name} player suffix _test\n{name} player contains admin\n{name} player glob bot_*\n{name} player regex ^bot\n{name} -player prefix bot_"
+  list:
+    online_header: "------ Online ({count}/{max}) ------" 
+    whitelist_header: "------ Whitelisted players ({count}) ------" 
+    cleanup_title: "------ Whitelist cleanup ------" 
+    page_meta: "Page {page}/{total}"
+

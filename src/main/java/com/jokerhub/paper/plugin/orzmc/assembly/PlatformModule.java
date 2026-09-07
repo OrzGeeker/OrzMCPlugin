@@ -77,6 +77,7 @@ public final class PlatformModule implements ServiceModule {
     @Override
     public void setup() {
         configService.setup();
+        com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nServiceHolder.init(i18nService);
         reportI18nHealth();
         attachLogCaptureAppender();
     }
