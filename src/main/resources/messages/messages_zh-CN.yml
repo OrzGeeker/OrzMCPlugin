@@ -51,6 +51,9 @@ whitelist:
   notify:
     blocked: "{player} 尝试加入服务器，被白名单拦截"
     toggle_off: "白名单关闭"
+  bot:
+    add_title: "------白名单添加------"
+    remove_title: "------白名单移除------"
 
 # --- portal.*（/portal 命令玩家反馈；P2c） ---
 portal:
@@ -284,3 +287,9 @@ bot:
     v: "{name} l\n{name} l 2\n{name} y Steve\n{name} y builder-promotion Steve"
     p: "{name} u Steve\n{name} d Steve"
     d: "{name}\n{name} 1.2.3.4\n{name} -1.2.3.4\n{name} player exact 服主\n{name} player prefix bot_\n{name} player suffix _test\n{name} player contains admin\n{name} player glob bot_*\n{name} player regex ^bot\n{name} -player prefix bot_"
+  list:
+    online_header: "------当前在线({count}/{max})------"
+    whitelist_header: "------当前白名单玩家({count})------"
+    cleanup_title: "------白名单清理------"
+    page_meta: "第{page}/{total}页"
+

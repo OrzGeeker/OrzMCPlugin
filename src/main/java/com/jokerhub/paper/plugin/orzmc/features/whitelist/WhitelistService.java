@@ -1,5 +1,6 @@
 package com.jokerhub.paper.plugin.orzmc.features.whitelist;
 
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nServiceHolder;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -91,7 +92,7 @@ public interface WhitelistService {
             added.retainAll(allWhiteListName);
             Set<String> failed = new HashSet<>(userNames);
             failed.removeAll(allWhiteListName);
-            StringBuilder message = new StringBuilder("------白名单添加------\n");
+            StringBuilder message = new StringBuilder(I18nServiceHolder.msg("whitelist.bot.add_title") + "\n");
             if (!added.isEmpty()) {
                 message.append(added.stream().sorted().map(name -> "✔︎ " + name).collect(Collectors.joining("\n")));
             }
@@ -122,7 +123,7 @@ public interface WhitelistService {
             removed.removeAll(allWhiteListName);
             Set<String> notRemoved = new HashSet<>(userNames);
             notRemoved.retainAll(allWhiteListName);
-            StringBuilder message = new StringBuilder("------白名单移除------\n");
+            StringBuilder message = new StringBuilder(I18nServiceHolder.msg("whitelist.bot.remove_title") + "\n");
             if (!removed.isEmpty()) {
                 message.append(
                         removed.stream().sorted().map(name -> "✔︎ " + name).collect(Collectors.joining("\n")));
