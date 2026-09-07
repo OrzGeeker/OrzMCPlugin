@@ -100,6 +100,16 @@ public final class MessageKeys {
     public static final String RANK_GROUP_MEMBER = "rank.group.member";
     public static final String RANK_GROUP_DEFAULT = "rank.group.default";
 
+    // ---- maintenance.cmd.*：/maintenance 状态（P2g1） ----
+    public static final String MAINTENANCE_CMD_BUSY_MANUAL_ENTER = "maintenance.cmd.busy_manual_enter";
+    public static final String MAINTENANCE_CMD_ALREADY_MANUAL = "maintenance.cmd.already_manual";
+    public static final String MAINTENANCE_CMD_NOT_ACTIVE = "maintenance.cmd.not_active";
+    public static final String MAINTENANCE_CMD_BUSY_EXIT = "maintenance.cmd.busy_exit";
+    public static final String MAINTENANCE_CMD_OFF = "maintenance.cmd.off";
+    public static final String MAINTENANCE_CMD_REASON_BACKUP = "maintenance.cmd.reason_backup";
+    public static final String MAINTENANCE_CMD_REASON_OPTIMIZE = "maintenance.cmd.reason_optimize";
+    public static final String MAINTENANCE_CMD_REASON_MANUAL = "maintenance.cmd.reason_manual";
+
     // ---- teleport.bow.*：传送弓（P2a） ----
     public static final String TELEPORT_BOW_NAME = "teleport.bow.name";
     public static final String TELEPORT_BOW_TAG = "teleport.bow.tag";

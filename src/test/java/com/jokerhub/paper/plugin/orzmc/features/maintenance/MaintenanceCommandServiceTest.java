@@ -18,6 +18,7 @@ import com.jokerhub.paper.plugin.orzmc.features.maintenance.MaintenanceModeServi
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.Templates;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
+import com.jokerhub.paper.plugin.orzmc.testutil.TestI18n;
 import io.papermc.paper.threadedregions.scheduler.EntityScheduler;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import java.util.List;
@@ -49,7 +50,7 @@ class MaintenanceCommandServiceTest {
         when(configs.templates()).thenReturn(Templates.from(new YamlConfiguration()));
         // warn 回显入参：不桩死成固定值，踢人断言需要真实渲染文本
         when(styles.warn(anyString())).thenAnswer(i -> Component.text((String) i.getArgument(0)));
-        service = new MaintenanceCommandService(server, configs, styles, mode, worldMaintenance);
+        service = new MaintenanceCommandService(server, configs, styles, mode, worldMaintenance, TestI18n.newService());
     }
 
     @Test
