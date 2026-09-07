@@ -14,6 +14,7 @@ import com.jokerhub.paper.plugin.orzmc.features.rank.RankService;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.PlayerNotifyConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.notify.Notifier;
 import com.jokerhub.paper.plugin.orzmc.infra.player.OnlineListFormatter;
+import com.jokerhub.paper.plugin.orzmc.testutil.TestI18n;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import com.jokerhub.paper.plugin.orzmc.testutil.ServiceTestBase;
 import com.jokerhub.paper.plugin.orzmc.testutil.TestI18n;
@@ -167,6 +168,7 @@ class PlayerEventAggregatorTest extends ServiceTestBase {
         RankService rankService = mock(RankService.class);
         OnlineListFormatter formatterWithRank = new OnlineListFormatter();
         formatterWithRank.setRankService(rankService);
+        formatterWithRank.setI18nService(TestI18n.newService());
         aggregator = new PlayerEventAggregator(server, configs, notifier, formatterWithRank, TestI18n.newService());
 
         Player p1 = mockPlayer("Alice");
