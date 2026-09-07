@@ -1,9 +1,13 @@
 package com.jokerhub.paper.plugin.orzmc.features.teleport;
 
 import com.jokerhub.paper.plugin.orzmc.infra.core.OrzConstants;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nService;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.Lang;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.MessageKeys;
 import com.jokerhub.paper.plugin.orzmc.infra.server.BukkitRegionSchedulerProvider;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
+import java.util.Map;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import org.bukkit.Material;
@@ -15,34 +19,38 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 
 public final class TeleportBowService {
-    public static final String name = "传送弓";
     private final ServerFacade server;
     private final OrzTextStyles styles;
+    private final I18nService i18n;
     private final TeleportBowTexts texts;
     private final NamespacedKey keyTpBow;
     private final ForceLoadedChunkLease chunkLease;
 
-    public TeleportBowService(ServerFacade server, OrzTextStyles styles) {
+    public TeleportBowService(ServerFacade server, OrzTextStyles styles, I18nService i18n) {
         this.server = server;
         this.styles = styles;
-        this.texts = new TeleportBowTexts(styles);
+        this.i18n = i18n;
+        this.texts = new TeleportBowTexts(i18n, styles);
         this.keyTpBow = server.key(OrzConstants.TPBOW_KEY);
         // Folia：force-load 状态读写是全局状态（global region 线程），unloadChunk 走 region 调度
         this.chunkLease =
                 new ForceLoadedChunkLease(new BukkitRegionSchedulerProvider(server.plugin()), server::runSync);
     }
 
-    public TextComponent prefix() {
-        return Component.text("传送弓");
+    /** 日志前缀行（语言包 tag + 正文）；调用方按语义上色。 */
+    private TextComponent log(Player player, String key) {
+        return texts.logText(i18n.langFor(player), key);
     }
 
     public void giveAndEquip(Player player) {
+        Lang lang = i18n.langFor(player);
+        String bowName = i18n.msg(lang, MessageKeys.TELEPORT_BOW_NAME);
         ItemStack teleport_bow = new ItemStack(Material.BOW);
         ItemMeta meta = teleport_bow.getItemMeta();
         meta.addEnchant(Enchantment.INFINITY, 1, true);
-        meta.displayName(Component.text(name));
+        meta.displayName(Component.text(bowName));
         java.util.ArrayList<Component> loreList = new java.util.ArrayList<>();
-        loreList.add(Component.text("可以把你传送到箭落地的位置"));
+        loreList.add(Component.text(i18n.msg(lang, MessageKeys.TELEPORT_BOW_LORE)));
         meta.lore(loreList);
         meta.getPersistentDataContainer().set(keyTpBow, PersistentDataType.BYTE, (byte) 1);
         teleport_bow.setItemMeta(meta);
@@ -53,11 +61,11 @@ public final class TeleportBowService {
         player.getInventory().setItemInMainHand(teleport_bow);
         ItemStack arrow = new ItemStack(Material.ARROW);
         player.getInventory().addItem(arrow);
-        player.sendMessage(styles.success("你获得了" + name));
+        player.sendMessage(styles.success(i18n.msg(lang, MessageKeys.TELEPORT_BOW_GIVEN, Map.of("name", bowName))));
     }
 
     public void sendDisabledMessage(Player player) {
-        player.sendMessage(texts.logText("传送弓已被禁用，请与管理员联系").color(styles.colorError()));
+        player.sendMessage(log(player, MessageKeys.TELEPORT_BOW_DISABLED).color(styles.colorError()));
     }
 
     public boolean isTPBowArrow(org.bukkit.entity.Projectile proj) {
@@ -199,29 +207,29 @@ public final class TeleportBowService {
 
     public void handleArrowHit(org.bukkit.entity.Arrow arrow, org.bukkit.entity.Player player) {
         if (arrow.isInWater()) {
-            player.sendMessage(texts.logText("箭射进了水里!").color(styles.colorError()));
+            player.sendMessage(log(player, MessageKeys.TELEPORT_BOW_HIT_WATER).color(styles.colorError()));
             return;
         }
         if (arrow.isInLava()) {
-            player.sendMessage(texts.logText("箭射进了岩浆里!").color(styles.colorError()));
+            player.sendMessage(log(player, MessageKeys.TELEPORT_BOW_HIT_LAVA).color(styles.colorError()));
             return;
         }
         org.bukkit.Location base = arrow.getLocation();
         org.bukkit.World pw = player.getWorld();
         org.bukkit.World tw = base.getWorld();
         if (!pw.equals(tw)) {
-            player.sendMessage(texts.logText("无法跨世界传送!").color(styles.colorError()));
+            player.sendMessage(log(player, MessageKeys.TELEPORT_BOW_CROSS_WORLD).color(styles.colorError()));
             return;
         }
         org.bukkit.util.Vector dir = arrow.getVelocity();
         org.bukkit.Location center = toBlockCenter(base, dir);
         if (!withinWorldBounds(center)) {
-            player.sendMessage(texts.logText("目标高度不合法!").color(styles.colorError()));
+            player.sendMessage(log(player, MessageKeys.TELEPORT_BOW_BAD_HEIGHT).color(styles.colorError()));
             return;
         }
         org.bukkit.Location safe = findNearestSafe(center, dir);
         if (safe == null) {
-            player.sendMessage(texts.logText("目标位置不可站立!").color(styles.colorError()));
+            player.sendMessage(log(player, MessageKeys.TELEPORT_BOW_NO_LANDING).color(styles.colorError()));
             return;
         }
         teleportAndFeedback(player, safe);
@@ -240,7 +248,8 @@ public final class TeleportBowService {
                                 t -> {
                                     player.playSound(
                                             player.getLocation(), org.bukkit.Sound.ENTITY_CAT_PURR, 1.0F, 1.0F);
-                                    player.sendMessage(texts.logText("传送完成!").color(styles.colorSuccess()));
+                                    player.sendMessage(log(player, MessageKeys.TELEPORT_BOW_DONE)
+                                            .color(styles.colorSuccess()));
                                 },
                                 () -> {}));
     }

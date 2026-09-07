@@ -25,3 +25,18 @@ common:
   player_required: "需要玩家执行"
   prison_denied: "你正在坐牢，无法使用该命令"
 
+# --- teleport.*（传送弓；P2a 随 teleport 域迁入） ---
+teleport:
+  bow:
+    name: "传送弓"
+    tag: "[传送弓]"
+    lore: "可以把你传送到箭落地的位置"
+    given: "你获得了 {name}"
+    disabled: "传送弓已被禁用，请与管理员联系"
+    hit_water: "箭射进了水里!"
+    hit_lava: "箭射进了岩浆里!"
+    cross_world: "无法跨世界传送!"
+    bad_height: "目标高度不合法!"
+    no_landing: "目标位置不可站立!"
+    done: "传送完成!"
+

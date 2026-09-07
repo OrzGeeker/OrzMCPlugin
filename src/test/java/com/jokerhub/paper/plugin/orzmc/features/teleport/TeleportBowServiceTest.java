@@ -8,6 +8,7 @@ import com.jokerhub.paper.plugin.orzmc.infra.core.OrzConstants;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
 import com.jokerhub.paper.plugin.orzmc.testutil.ServiceTestBase;
+import com.jokerhub.paper.plugin.orzmc.testutil.TestI18n;
 import io.papermc.paper.threadedregions.scheduler.EntityScheduler;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import java.util.concurrent.CompletableFuture;
@@ -70,22 +71,15 @@ class TeleportBowServiceTest extends ServiceTestBase {
 
         when(serverFacade.key(OrzConstants.TPBOW_KEY)).thenReturn(tpBowKey);
         when(styles.success(anyString())).thenReturn(Component.text("成功"));
-        when(styles.tpbowPrefix()).thenReturn(Component.text("[传送弓]"));
         when(styles.colorError()).thenReturn(NamedTextColor.RED);
         when(styles.colorSuccess()).thenReturn(NamedTextColor.GREEN);
 
-        service = new TeleportBowService(serverFacade, styles);
+        service = new TeleportBowService(serverFacade, styles, TestI18n.newService());
     }
 
     @AfterEach
     void tearDown() {
         bukkitMock.close();
-    }
-
-    @Test
-    void prefix_returnsTpBowName() {
-        Component result = service.prefix();
-        assertEquals(Component.text("传送弓"), result);
     }
 
     @Test
