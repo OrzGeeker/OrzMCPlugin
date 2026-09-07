@@ -78,3 +78,23 @@ tnt:
   at: "at "
   placed: "placed TNT"
 
+# --- player.notify.* (player join/quit digest section labels; P2d. Group messages use R1 default lang) ---
+player:
+  notify:
+    join_label: "Joined"
+    quit_label: "Left"
+    kick_label: "Kicked"
+    hidden_more: "and {count} more"
+
+# --- geoip.* (region whitelist player hints / admin alerts; P2d. Pre-login has no client
+#     locale, so text follows the server default language) ---
+geoip:
+  kick_region: "{name} ({ip})\nCountry: {country}\nIP location is not in the supported region{allow}"
+  kick_unverifiable: "{name} ({ip})\nRegion lookup is temporarily unavailable, so your region cannot be verified. Please try logging in again later."
+  outcome_allowed_failopen: "allowed (fail-open)"
+  outcome_denied_failclose: "denied (fail-close)"
+  outcome_allowed: "allowed"
+  outcome_denied: "denied"
+  alert_exception: "Region lookup service error: {detail}"
+  alert_lookup_failed: "Region lookup failed ({outcome}): {player} ({ip})"
+  alert_timeout: "Region lookup timed out ({timeout} ms), {outcome}: {player} ({ip})"

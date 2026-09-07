@@ -15,6 +15,7 @@ import com.jokerhub.paper.plugin.orzmc.infra.notify.ThrottledNotifier;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
 import com.jokerhub.paper.plugin.orzmc.testutil.ServiceTestBase;
+import com.jokerhub.paper.plugin.orzmc.testutil.TestI18n;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.Logger;
@@ -57,7 +58,8 @@ class PlayerEventServiceTest extends ServiceTestBase {
     void setUp() {
         // 告警限频默认放行，聚焦验证告警本身；限频行为由 ThrottledNotifier 单测覆盖
         when(throttledNotifier.shouldRun(anyString(), anyLong())).thenReturn(true);
-        service = new PlayerEventService(server, configs, styles, notifier, throttledNotifier, aggregator);
+        service = new PlayerEventService(
+                server, configs, styles, notifier, throttledNotifier, aggregator, TestI18n.newService());
     }
 
     @Test

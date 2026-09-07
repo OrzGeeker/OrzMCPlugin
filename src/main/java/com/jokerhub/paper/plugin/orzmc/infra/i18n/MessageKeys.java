@@ -58,4 +58,21 @@ public final class MessageKeys {
     public static final String TNT_PLACEMENT_MSG = "tnt.placement_msg";
     public static final String TNT_AT = "tnt.at";
     public static final String TNT_PLACED = "tnt.placed";
+
+    // ---- player.notify.*：上下线聚合摘要版块标签（P2d） ----
+    public static final String PLAYER_NOTIFY_JOIN_LABEL = "player.notify.join_label";
+    public static final String PLAYER_NOTIFY_QUIT_LABEL = "player.notify.quit_label";
+    public static final String PLAYER_NOTIFY_KICK_LABEL = "player.notify.kick_label";
+    public static final String PLAYER_NOTIFY_HIDDEN_MORE = "player.notify.hidden_more";
+
+    // ---- geoip.*：地区白名单提示/告警（P2d） ----
+    public static final String GEOIP_KICK_REGION = "geoip.kick_region";
+    public static final String GEOIP_KICK_UNVERIFIABLE = "geoip.kick_unverifiable";
+    public static final String GEOIP_OUTCOME_ALLOWED_FAILOPEN = "geoip.outcome_allowed_failopen";
+    public static final String GEOIP_OUTCOME_DENIED_FAILCLOSE = "geoip.outcome_denied_failclose";
+    public static final String GEOIP_OUTCOME_ALLOWED = "geoip.outcome_allowed";
+    public static final String GEOIP_OUTCOME_DENIED = "geoip.outcome_denied";
+    public static final String GEOIP_ALERT_EXCEPTION = "geoip.alert_exception";
+    public static final String GEOIP_ALERT_LOOKUP_FAILED = "geoip.alert_lookup_failed";
+    public static final String GEOIP_ALERT_TIMEOUT = "geoip.alert_timeout";
 }
