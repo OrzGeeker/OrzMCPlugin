@@ -149,3 +149,18 @@ prison:
 # --- gamemode.* (auto survival-mode switch notice; P2f1) ---
 gamemode:
   fix_message: "Your permission group changed; game mode switched to survival."
+
+# --- review.* (/apply command copy; P2f2, follows the executing player's language.
+#     Type displayName is config data and is not migrated) ---
+review:
+  list_header: "Available applications:"
+  no_types: "There are no review types you can apply for right now."
+  type_unknown: "Unknown application type: {type} (run /apply to see available types)"
+  type_unknown_bare: "Unknown application type: {type}"
+  my_applications: "Your applications:"
+  no_applications: "You have not submitted any applications yet."
+  status_pending: "⏳ Pending"
+  status_approved: "✅ Approved"
+  status_rejected: "❌ Rejected"
+  status_cancelled: "↩️ Cancelled"
+  reviewer_suffix: "({reviewer})"

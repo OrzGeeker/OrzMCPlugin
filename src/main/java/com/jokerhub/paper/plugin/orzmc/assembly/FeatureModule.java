@@ -285,7 +285,7 @@ public final class FeatureModule implements ServiceModule {
         this.prisonCommandService = new com.jokerhub.paper.plugin.orzmc.features.prison.PrisonCommandService(
                 prisonService, platform.textStyles(), rankService::resolvePlayerId, platform.i18nService());
         this.reviewCommandService = new com.jokerhub.paper.plugin.orzmc.features.review.ReviewCommandService(
-                reviewService, platform.textStyles());
+                reviewService, platform.textStyles(), platform.i18nService());
         // 玩家名颜色（按权限等级）：rankService 创建后装配；LP 启用时桥接等级变更实时刷新。
         // 三元短路：仅 LP 启用时才求值 LuckPermsProvider.get()，LP 缺失时 rankDisplayLpBridge 为 null
         this.rankDisplayService = new com.jokerhub.paper.plugin.orzmc.features.rank.PlayerRankDisplayService(
