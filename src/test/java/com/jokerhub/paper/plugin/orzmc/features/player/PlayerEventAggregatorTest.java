@@ -16,6 +16,7 @@ import com.jokerhub.paper.plugin.orzmc.infra.notify.Notifier;
 import com.jokerhub.paper.plugin.orzmc.infra.player.OnlineListFormatter;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import com.jokerhub.paper.plugin.orzmc.testutil.ServiceTestBase;
+import com.jokerhub.paper.plugin.orzmc.testutil.TestI18n;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -71,7 +72,7 @@ class PlayerEventAggregatorTest extends ServiceTestBase {
                 })
                 .when(server)
                 .runLater(any(Runnable.class), anyLong());
-        aggregator = new PlayerEventAggregator(server, configs, notifier, formatter);
+        aggregator = new PlayerEventAggregator(server, configs, notifier, formatter, TestI18n.newService());
     }
 
     private Player mockPlayer(String name) {
@@ -166,7 +167,7 @@ class PlayerEventAggregatorTest extends ServiceTestBase {
         RankService rankService = mock(RankService.class);
         OnlineListFormatter formatterWithRank = new OnlineListFormatter();
         formatterWithRank.setRankService(rankService);
-        aggregator = new PlayerEventAggregator(server, configs, notifier, formatterWithRank);
+        aggregator = new PlayerEventAggregator(server, configs, notifier, formatterWithRank, TestI18n.newService());
 
         Player p1 = mockPlayer("Alice");
         Player p2 = mockPlayer("Bob");

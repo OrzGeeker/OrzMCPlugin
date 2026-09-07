@@ -1,0 +1,97 @@
+# ==================================================
+#          OrzMC 多语言包：简体中文（主目录）
+# ==================================================
+#
+# 【本文件是 key 完整性基线】所有用户可见文案以此文件为准：代码迁移时把原文抄入
+# messages_zh-CN.yml（中文输出零回归），en-US 及其他语言包只做翻译、不允许自造结构。
+#
+# 【结构】顶层按功能域分组（common.* / teleport.* / whitelist.* / event.* ...），
+# 代码按完整 dot key 读取（如 teleport.bow.name）。
+#
+# 【占位符】动态部分一律 {var}（与 templates.yml 同语法，支持 \n 转义）；
+# 同 key 跨语言占位符集合必须一致（启动健康检查 + I18nCatalogConsistencyTest 强制）。
+#
+# 【屏蔽/覆盖】本内置文件不允许空值；服主如需屏蔽某条消息，请在数据目录
+# messages_custom_zh-CN.yml 中把该 key 覆盖为空串 ""。
+#
+# 【新增语言】在 resources/messages/ 添加 messages_<code>.yml + I18nLoader.CODES 追加一行。
+#
+# 各域 key 随迁移 PR 分批补入（见 docs/dev/i18n-plan.md §5），当前为空骨架。
+#
+# --- common.*（跨渠道通用反馈；P1 随命令拦截器迁入） ---
+common:
+  cooldown: "命令冷却中，请稍后再试"
+  admin_required: "需要管理员权限"
+  player_required: "需要玩家执行"
+  prison_denied: "你正在坐牢，无法使用该命令"
+
+# --- teleport.*（传送弓；P2a 随 teleport 域迁入） ---
+teleport:
+  bow:
+    name: "传送弓"
+    tag: "[传送弓]"
+    lore: "可以把你传送到箭落地的位置"
+    given: "你获得了 {name}"
+    disabled: "传送弓已被禁用，请与管理员联系"
+    hit_water: "箭射进了水里!"
+    hit_lava: "箭射进了岩浆里!"
+    cross_world: "无法跨世界传送!"
+    bad_height: "目标高度不合法!"
+    no_landing: "目标位置不可站立!"
+    done: "传送完成!"
+
+# --- whitelist.*（登录踢出提示/群通知；P2b。kick 为登录前无客户端 locale，随默认语言） ---
+whitelist:
+  kick:
+    join_hint_prefix: "不在服务器白名单中，请先加入QQ群:"
+    join_hint_suffix: "，联系管理员添加白名单"
+    discord_join: "you can also join the discord server: "
+  notify:
+    blocked: "{player} 尝试加入服务器，被白名单拦截"
+    toggle_off: "白名单关闭"
+
+# --- portal.*（/portal 命令玩家反馈；P2c） ---
+portal:
+  usage: "用法: /portal <host> [port] 或 /portal remove <host> [port]"
+  usage_remove: "用法: /portal remove <host> [port]"
+  port_required: "端口需为数字"
+  not_found: "没有匹配的传送门: {target}"
+  removed: "已移除 {count} 个传送门 -> {target}"
+  created: "已创建传送门 -> {host}:{port} @ [{world}] {x} {y} {z} 轴向:{axis} 框架:4x5"
+
+  command_desc: "创建或移除传送门"
+
+# --- tnt.*（TNT 防护玩家提示/告警标签；P2c。爆炸/放置告警为服务端广播与群通知，随默认语言） ---
+tnt:
+  anchor_disabled: "重生锚放置已被管理员禁用"
+  place_cooldown: "放置TNT冷却中，请等待 "
+  cooldown_seconds: "{secs}秒"
+  place_disabled: "TNT放置已被管理员禁用"
+  prime_denied: "TNT被点燃（已禁止）"
+  prime: "TNT被点燃"
+  dispense_forbidden: "发射{item}被禁止"
+  explode: "{type}爆炸"
+  block_explode: "方块爆炸"
+  placement_msg: "放置TNT"
+  at: "在"
+  placed: "放置了 TNT"
+
+# --- player.notify.*（上下线聚合摘要版块标签；P2d。群消息随默认语言 R1） ---
+player:
+  notify:
+    join_label: "上线"
+    quit_label: "下线"
+    kick_label: "被踢"
+    hidden_more: "等{count}人"
+
+# --- geoip.*（地区白名单玩家提示/管理员告警；P2d。登录前无客户端 locale → 默认语言） ---
+geoip:
+  kick_region: "{name}({ip})\n{country}\nIP位置不在服务支持区域{allow}"
+  kick_unverifiable: "{name}({ip})\n地区解析服务暂时不可用，无法验证你的地区，请稍后重新尝试登录"
+  outcome_allowed_failopen: "已放行（fail-open）"
+  outcome_denied_failclose: "已拒绝（fail-close）"
+  outcome_allowed: "已放行"
+  outcome_denied: "已拒绝"
+  alert_exception: "IP地址解析服务异常: {detail}"
+  alert_lookup_failed: "IP地址解析服务异常，{outcome}: {player}({ip})"
+  alert_timeout: "IP地址解析超时({timeout}ms)，{outcome}: {player}({ip})"

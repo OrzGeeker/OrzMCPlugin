@@ -10,6 +10,7 @@ import com.jokerhub.paper.plugin.orzmc.commands.OrzConfigCommand;
 import com.jokerhub.paper.plugin.orzmc.features.bot.ImAdminService;
 import com.jokerhub.paper.plugin.orzmc.features.command.binding.CommandInterceptor;
 import com.jokerhub.paper.plugin.orzmc.infra.config.ConfigPath;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nService;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
@@ -26,17 +27,19 @@ final class ConfigCommandRegistrar implements CommandGroup {
     private final OrzConfigCommand cfgCmd;
     private final OrzTextStyles styles;
     private final ImAdminService imAdmin;
+    private final I18nService i18n;
 
-    ConfigCommandRegistrar(OrzConfigCommand cfgCmd, OrzTextStyles styles, ImAdminService imAdmin) {
+    ConfigCommandRegistrar(OrzConfigCommand cfgCmd, OrzTextStyles styles, ImAdminService imAdmin, I18nService i18n) {
         this.cfgCmd = cfgCmd;
         this.styles = styles;
         this.imAdmin = imAdmin;
+        this.i18n = i18n;
     }
 
     /** Config: /config list|get|set|reset|dump|reload */
     @Override
     public void register(Commands commands) {
-        List<CommandInterceptor> interceptors = adminInterceptors("config");
+        List<CommandInterceptor> interceptors = adminInterceptors("config", i18n);
         Predicate<CommandSourceStack> req = requirement(interceptors);
         List<String> configPaths = new ArrayList<>(ConfigPath.all().keySet());
 

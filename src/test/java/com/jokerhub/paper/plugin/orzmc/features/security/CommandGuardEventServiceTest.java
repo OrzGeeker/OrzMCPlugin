@@ -11,6 +11,7 @@ import com.jokerhub.paper.plugin.orzmc.infra.config.TemplateKeys;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.SecurityGuardConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.notify.Notifier;
 import com.jokerhub.paper.plugin.orzmc.infra.notify.ThrottledNotifier;
+import com.jokerhub.paper.plugin.orzmc.testutil.TestI18n;
 import java.util.logging.Logger;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
@@ -46,7 +47,7 @@ class CommandGuardEventServiceTest {
                 new CommandGuardService(() -> configs.securityGuard()),
                 configs,
                 notifier,
-                new CommandFeedbackService(),
+                new CommandFeedbackService(TestI18n.newService()),
                 audit,
                 logger);
     }
@@ -242,7 +243,7 @@ class CommandGuardEventServiceTest {
                 new CommandGuardService(() -> configs.securityGuard()),
                 configs,
                 notifier,
-                new CommandFeedbackService(),
+                new CommandFeedbackService(TestI18n.newService()),
                 audit,
                 logger,
                 logThrottle,
@@ -270,7 +271,7 @@ class CommandGuardEventServiceTest {
                 new CommandGuardService(() -> configs.securityGuard()),
                 configs,
                 notifier,
-                new CommandFeedbackService(),
+                new CommandFeedbackService(TestI18n.newService()),
                 audit,
                 logger,
                 mock(ThrottledNotifier.class),
@@ -295,7 +296,7 @@ class CommandGuardEventServiceTest {
                 new CommandGuardService(() -> configs.securityGuard()),
                 configs,
                 notifier,
-                new CommandFeedbackService(),
+                new CommandFeedbackService(TestI18n.newService()),
                 audit,
                 logger,
                 mock(ThrottledNotifier.class),

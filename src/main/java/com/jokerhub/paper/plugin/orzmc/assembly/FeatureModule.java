@@ -140,7 +140,7 @@ public final class FeatureModule implements ServiceModule {
                 platform.commandGuardService(),
                 platform.configs(),
                 botModule.notifier(),
-                new CommandFeedbackService(),
+                new CommandFeedbackService(platform.i18nService()),
                 commandAuditService,
                 org.bukkit.Bukkit.getLogger());
         this.guideService = new GuideService(platform.serverFacade(), platform.configService(), platform.textStyles());
@@ -152,7 +152,12 @@ public final class FeatureModule implements ServiceModule {
                 botModule.notifier(),
                 platform.throttledNotifier(),
                 new PlayerEventAggregator(
-                        platform.serverFacade(), platform.configs(), botModule.notifier(), this.listFormatter));
+                        platform.serverFacade(),
+                        platform.configs(),
+                        botModule.notifier(),
+                        this.listFormatter,
+                        platform.i18nService()),
+                platform.i18nService());
         this.loginAccessControlService = new LoginAccessControlService(
                 maintenanceModule.maintenanceModeService(),
                 accessRuleService,
@@ -164,14 +169,20 @@ public final class FeatureModule implements ServiceModule {
                 platform.serverFacade(),
                 platform.throttledNotifier()); // IP 黑名单/玩家名规则拦截私信限频（防重连刷屏打爆 QQ 频控）
         this.tntEventService = new TntEventService(
-                platform.configs(), platform.textStyles(), botModule.notifier(), platform.serverScheduler());
+                platform.configs(),
+                platform.textStyles(),
+                botModule.notifier(),
+                platform.serverScheduler(),
+                platform.i18nService());
         this.whitelistEventService = new WhitelistEventService(
                 platform.configs(),
                 platform.textStyles(),
                 botModule.notifier(),
-                platform.throttledNotifier()); // whitelist_block 群通知限频（防刷屏打爆 QQ 频控）
+                platform.throttledNotifier(), // whitelist_block 群通知限频（防刷屏打爆 QQ 频控）
+                platform.i18nService());
         this.menuEventService = new MenuEventService(platform.textStyles());
-        this.teleportBowService = new TeleportBowService(platform.serverFacade(), platform.textStyles());
+        this.teleportBowService =
+                new TeleportBowService(platform.serverFacade(), platform.textStyles(), platform.i18nService());
         this.teleportBowEventService = new TeleportBowEventService(teleportBowService);
         this.portalEventService = new PortalEventService(platform.serverFacade(), portalModule.portalService());
         this.serverFeedbackService = new ServerFeedbackService(
@@ -204,7 +215,8 @@ public final class FeatureModule implements ServiceModule {
                 botModule.notifier(),
                 platform.textStyles());
         this.menuCommandService = new MenuCommandService(platform.textStyles());
-        this.portalCommandService = new PortalCommandService(portalModule.portalService(), platform.textStyles());
+        this.portalCommandService =
+                new PortalCommandService(portalModule.portalService(), platform.textStyles(), platform.i18nService());
         this.maintenanceCommandService =
                 new com.jokerhub.paper.plugin.orzmc.features.maintenance.MaintenanceCommandService(
                         platform.serverFacade(),
@@ -389,6 +401,9 @@ public final class FeatureModule implements ServiceModule {
         // command_policies.* 运行时改动（/orzmc config set/reset/reload）→ 刷新命令拦截器策略快照，
         // 即改即生效且热路径不再全量重解析
         orzConfigCommand.setCommandPoliciesReload(commandRegistrar::refreshCommandPolicies);
+        // i18n 覆盖层运行时改动（/orzmc config reload）→ 重读数据目录 messages_custom_<lang>.yml，
+        // 手动编辑即改即生效（无需重启）
+        orzConfigCommand.setI18nCustomReload(platform.i18nService()::reloadCustom);
     }
 
     // --- Command Registration ---

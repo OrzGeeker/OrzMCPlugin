@@ -5,6 +5,7 @@ import static org.mockito.Mockito.*;
 
 import com.jokerhub.paper.plugin.orzmc.features.command.binding.CommandInterceptor;
 import com.jokerhub.paper.plugin.orzmc.features.command.binding.PrisonDenyInterceptor;
+import com.jokerhub.paper.plugin.orzmc.testutil.TestI18n;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.context.CommandContext;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
@@ -31,7 +32,7 @@ class BrigadierSupportTest {
     void withPrisonDeny_nullCheck_returnsSameList() {
         List<CommandInterceptor> base = new ArrayList<>(List.of());
 
-        List<CommandInterceptor> res = BrigadierSupport.withPrisonDeny(base, null);
+        List<CommandInterceptor> res = BrigadierSupport.withPrisonDeny(base, null, TestI18n.newService());
 
         assertSame(base, res, "prisonCheck 为 null（LP 缺失恒 false）时应原样返回，避免无谓拷贝");
     }
@@ -40,7 +41,7 @@ class BrigadierSupportTest {
     void withPrisonDeny_present_appendsDenyInterceptor() {
         List<CommandInterceptor> base = new ArrayList<>();
 
-        List<CommandInterceptor> res = BrigadierSupport.withPrisonDeny(base, p -> true);
+        List<CommandInterceptor> res = BrigadierSupport.withPrisonDeny(base, p -> true, TestI18n.newService());
 
         assertEquals(1, res.size());
         assertInstanceOf(PrisonDenyInterceptor.class, res.get(0), "追加的应是坐牢拒绝拦截器");
@@ -55,7 +56,8 @@ class BrigadierSupportTest {
                 return null;
             }
         };
-        List<CommandInterceptor> res = BrigadierSupport.withPrisonDeny(List.of(first), p -> true);
+        List<CommandInterceptor> res =
+                BrigadierSupport.withPrisonDeny(List.of(first), p -> true, TestI18n.newService());
 
         assertEquals(2, res.size());
         assertSame(first, res.get(0), "原有拦截器顺序保持在先，坐牢拒绝追加在链尾");
@@ -66,7 +68,7 @@ class BrigadierSupportTest {
 
     @Test
     void guardedExec_prisonDenied_blocksDelegateAndSendsTip() throws Exception {
-        CommandInterceptor deny = new PrisonDenyInterceptor(p -> true);
+        CommandInterceptor deny = new PrisonDenyInterceptor(p -> true, TestI18n.newService());
         AtomicBoolean delegateRan = new AtomicBoolean(false);
         Command<CommandSourceStack> delegate = ctx -> {
             delegateRan.set(true);
@@ -85,7 +87,7 @@ class BrigadierSupportTest {
 
     @Test
     void guardedExec_prisonAllowed_runsDelegate() throws Exception {
-        CommandInterceptor allow = new PrisonDenyInterceptor(p -> false);
+        CommandInterceptor allow = new PrisonDenyInterceptor(p -> false, TestI18n.newService());
         AtomicBoolean delegateRan = new AtomicBoolean(false);
         Command<CommandSourceStack> delegate = ctx -> {
             delegateRan.set(true);

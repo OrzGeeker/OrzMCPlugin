@@ -3,12 +3,15 @@ package com.jokerhub.paper.plugin.orzmc.features.player;
 import com.jokerhub.paper.plugin.orzmc.core.bot.MessageEnvelope;
 import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
 import com.jokerhub.paper.plugin.orzmc.features.security.GeoIpAccessService;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nService;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.MessageKeys;
 import com.jokerhub.paper.plugin.orzmc.infra.notify.Notifier;
 import com.jokerhub.paper.plugin.orzmc.infra.notify.ThrottledNotifier;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
 import com.jokerhub.paper.plugin.orzmc.infra.templates.ExceptionFormatter;
 import java.time.Duration;
+import java.util.Map;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.AsyncPlayerPreLoginEvent;
 
@@ -28,6 +31,7 @@ public final class PlayerEventService {
     private final ServerFacade server;
     private final TypedConfigProvider configs;
     private final OrzTextStyles styles;
+    private final I18nService i18n;
     private final Notifier notifier;
     private final ThrottledNotifier throttledNotifier;
     private final PlayerEventAggregator aggregator;
@@ -38,13 +42,15 @@ public final class PlayerEventService {
             OrzTextStyles styles,
             Notifier notifier,
             ThrottledNotifier throttledNotifier,
-            PlayerEventAggregator aggregator) {
+            PlayerEventAggregator aggregator,
+            I18nService i18n) {
         this.server = server;
         this.configs = configs;
         this.styles = styles;
         this.notifier = notifier;
         this.throttledNotifier = throttledNotifier;
         this.aggregator = aggregator;
+        this.i18n = i18n;
     }
 
     public enum PlayerState {
@@ -57,7 +63,13 @@ public final class PlayerEventService {
             AsyncPlayerPreLoginEvent event, String playerName, String ipAddress, GeoIpAccessService.Decision decision) {
         // 上游查询失败/无法定位国家码 → 无论放行还是拒绝都告警管理员（区分放行/拒绝措辞）
         if (decision.lookupFailed()) {
-            handleGeoIpLookupFailure(playerName, ipAddress, decision.allowed() ? "已放行（fail-open）" : "已拒绝（fail-close）");
+            handleGeoIpLookupFailure(
+                    playerName,
+                    ipAddress,
+                    outcomeText(
+                            decision.allowed()
+                                    ? MessageKeys.GEOIP_OUTCOME_ALLOWED_FAILOPEN
+                                    : MessageKeys.GEOIP_OUTCOME_DENIED_FAILCLOSE));
         }
         if (decision.allowed()) {
             return;
@@ -75,10 +87,21 @@ public final class PlayerEventService {
         vars.put("address_info", formatAddressInfo(decision.rawJson()));
         MessageEnvelope envelope = configs.renderEvent("geoip_block", vars);
         notifyGeoIpBlock("geoip_block", envelope);
+        String country = decision.countryCode() == null ? "" : decision.countryCode();
         event.disallow(
                 AsyncPlayerPreLoginEvent.Result.KICK_OTHER,
-                styles.error(playerName + "(" + ipAddress + ")" + "\n" + decision.countryCode() + "\n" + "IP位置不在服务支持区域"
-                        + String.join(",", decision.allowList())));
+                styles.error(i18n.msg(
+                        i18n.langFor(),
+                        MessageKeys.GEOIP_KICK_REGION,
+                        Map.of(
+                                "name", playerName,
+                                "ip", ipAddress,
+                                "country", country,
+                                "allow", String.join(",", decision.allowList())))));
+    }
+
+    private String outcomeText(String key) {
+        return i18n.msg(i18n.langFor(), key);
     }
 
     /** 将 GeoIP 返回的原始 JSON 格式化为可读的多行形式；空或非法内容原样返回。 */
@@ -97,7 +120,9 @@ public final class PlayerEventService {
     }
 
     public void handleGeoIpException(Throwable e) {
-        sendGeoIpAlert("IP地址解析服务异常: " + e.toString(), ExceptionFormatter.summarize(e));
+        sendGeoIpAlert(
+                i18n.msg(i18n.langFor(), MessageKeys.GEOIP_ALERT_EXCEPTION, Map.of("detail", e.toString())),
+                ExceptionFormatter.summarize(e));
     }
 
     /**
@@ -144,8 +169,21 @@ public final class PlayerEventService {
 
     public void handleGeoIpTimeout(String playerName, String ipAddress, long timeoutMs) {
         sendGeoIpAlert(
-                "IP地址解析超时(" + timeoutMs + "ms)，" + (failOpen() ? "已放行" : "已拒绝") + ": " + playerName + "(" + ipAddress
-                        + ")",
+                i18n.msg(
+                        i18n.langFor(),
+                        MessageKeys.GEOIP_ALERT_TIMEOUT,
+                        Map.of(
+                                "timeout",
+                                String.valueOf(timeoutMs),
+                                "outcome",
+                                outcomeText(
+                                        failOpen()
+                                                ? MessageKeys.GEOIP_OUTCOME_ALLOWED
+                                                : MessageKeys.GEOIP_OUTCOME_DENIED),
+                                "player",
+                                playerName,
+                                "ip",
+                                ipAddress)),
                 "geoip lookup timeout");
     }
 
@@ -157,7 +195,12 @@ public final class PlayerEventService {
      * {@code exception_alert}（PRIVATE → 各平台 admin_dm），不会发到玩家群。</p>
      */
     public void handleGeoIpLookupFailure(String playerName, String ipAddress, String outcome) {
-        sendGeoIpAlert("IP地址解析服务异常，" + outcome + ": " + playerName + "(" + ipAddress + ")", "geoip lookup failed");
+        sendGeoIpAlert(
+                i18n.msg(
+                        i18n.langFor(),
+                        MessageKeys.GEOIP_ALERT_LOOKUP_FAILED,
+                        Map.of("outcome", outcome, "player", playerName, "ip", ipAddress)),
+                "geoip lookup failed");
     }
 
     /** fail-close 拦截：GeoIP 无法验证地区（超时/中断/查询失败）时拒绝进入并渲染 geoip_unverifiable，提示玩家重试。 */
@@ -167,7 +210,10 @@ public final class PlayerEventService {
         notifyGeoIpBlock("geoip_unverifiable", envelope);
         event.disallow(
                 AsyncPlayerPreLoginEvent.Result.KICK_OTHER,
-                styles.error(playerName + "(" + ipAddress + ")\n地区解析服务暂时不可用，无法验证你的地区，请稍后重新尝试登录"));
+                styles.error(i18n.msg(
+                        i18n.langFor(),
+                        MessageKeys.GEOIP_KICK_UNVERIFIABLE,
+                        Map.of("name", playerName, "ip", ipAddress))));
     }
 
     /** geoip_block/geoip_unverifiable 群消息限频发送（含玩家 IP 与白名单，不适合高频刷群）。 */

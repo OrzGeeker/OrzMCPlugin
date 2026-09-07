@@ -7,6 +7,7 @@ import com.jokerhub.paper.plugin.orzmc.core.ports.portal.PortalInfo;
 import com.jokerhub.paper.plugin.orzmc.core.ports.portal.PortalPort;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
 import com.jokerhub.paper.plugin.orzmc.testutil.ServiceTestBase;
+import com.jokerhub.paper.plugin.orzmc.testutil.TestI18n;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -30,7 +31,7 @@ class PortalCommandServiceTest extends ServiceTestBase {
 
     @BeforeEach
     void setUp() {
-        service = new PortalCommandService(portalService, styles);
+        service = new PortalCommandService(portalService, styles, TestI18n.newService());
     }
 
     @Test
