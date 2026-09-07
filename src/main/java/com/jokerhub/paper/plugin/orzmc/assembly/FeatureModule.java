@@ -169,7 +169,8 @@ public final class FeatureModule implements ServiceModule {
                 platform.configs(),
                 platform.textStyles(),
                 botModule.notifier(),
-                platform.throttledNotifier()); // whitelist_block 群通知限频（防刷屏打爆 QQ 频控）
+                platform.throttledNotifier(), // whitelist_block 群通知限频（防刷屏打爆 QQ 频控）
+                platform.i18nService());
         this.menuEventService = new MenuEventService(platform.textStyles());
         this.teleportBowService =
                 new TeleportBowService(platform.serverFacade(), platform.textStyles(), platform.i18nService());
