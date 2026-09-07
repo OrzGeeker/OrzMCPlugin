@@ -8,6 +8,7 @@ import com.jokerhub.paper.plugin.orzmc.infra.config.ConfigService;
 import com.jokerhub.paper.plugin.orzmc.infra.server.OrzUtil;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
+import com.jokerhub.paper.plugin.orzmc.testutil.TestI18n;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -65,7 +66,7 @@ class GuideServiceTest {
 
         orzUtilMock = mockStatic(OrzUtil.class);
 
-        guideService = new GuideService(serverFacade, configService, styles);
+        guideService = new GuideService(serverFacade, configService, styles, TestI18n.newService());
     }
 
     @AfterEach

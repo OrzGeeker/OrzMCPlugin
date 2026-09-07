@@ -226,3 +226,10 @@ maintenance:
     reason_backup: "Map backup in progress"
     reason_optimize: "Map optimization in progress"
     reason_manual: "Manual maintenance in progress"
+
+# --- guide/menu.* (starter guide / menu hints; P2h1, follows the player's language) ---
+guide:
+  not_configured: "The server owner has not configured a starter guide."
+  got: "You received the starter guide."
+menu:
+  wip: "This feature is still under development."
