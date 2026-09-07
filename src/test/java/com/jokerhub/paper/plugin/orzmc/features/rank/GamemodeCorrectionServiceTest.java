@@ -7,6 +7,7 @@ import static org.mockito.Mockito.*;
 
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.GamemodeCorrectionConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
+import com.jokerhub.paper.plugin.orzmc.testutil.TestI18n;
 import java.util.UUID;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
@@ -39,7 +40,7 @@ class GamemodeCorrectionServiceTest {
     @BeforeEach
     void setUp() {
         styles = mock(OrzTextStyles.class);
-        when(styles.info(anyString())).thenReturn(Component.text(GamemodeCorrectionService.FIX_MESSAGE));
+        when(styles.info(anyString())).thenReturn(Component.text("修正提示"));
         mockPlugin = mock(org.bukkit.plugin.java.JavaPlugin.class);
         config = new GamemodeCorrectionConfig(true, 2000L, true);
         player = mock(Player.class);
@@ -48,7 +49,7 @@ class GamemodeCorrectionServiceTest {
     }
 
     private GamemodeCorrectionService service() {
-        return new GamemodeCorrectionService(mockPlugin, () -> config, styles);
+        return new GamemodeCorrectionService(mockPlugin, () -> config, styles, TestI18n.newService());
     }
 
     // ---- CREATIVE ----
@@ -267,7 +268,8 @@ class GamemodeCorrectionServiceTest {
         when(player.getGameMode()).thenReturn(GameMode.CREATIVE);
         when(player.hasPermission(PERM_CREATIVE)).thenReturn(false);
 
-        GamemodeCorrectionService svc = new GamemodeCorrectionService(mockPlugin, () -> null, styles);
+        GamemodeCorrectionService svc =
+                new GamemodeCorrectionService(mockPlugin, () -> null, styles, TestI18n.newService());
         boolean corrected = svc.correctIfNeeded(player);
 
         assertFalse(corrected);

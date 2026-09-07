@@ -264,11 +264,17 @@ public final class TntEventService {
         vars.put("block_type", blockType);
         MessageEnvelope envelope = configs.renderEvent("tnt_alert", vars);
         TextComponent msg = Component.text()
-                .append(explosionPrefix ? styles.explosionPrefix() : styles.tntPrefix())
+                .append(broadcastPrefix(explosionPrefix))
                 .append(Component.text(envelope.message()))
                 .build();
         notifier.server(msg);
         notifier.event("tnt_alert", envelope);
+    }
+
+    /** 广播前缀（默认语言 R1）：普通 TNT / 方块·实体爆炸两种标签色。 */
+    private TextComponent broadcastPrefix(boolean explosion) {
+        String label = botText(explosion ? MessageKeys.TNT_PREFIX_EXPLOSION : MessageKeys.TNT_PREFIX_TNT);
+        return Component.text(label).color(explosion ? styles.colorAlertExplosion() : styles.colorAlertTnt());
     }
 
     private void sendPlacementNotification(Player player, Block block) {
@@ -294,7 +300,7 @@ public final class TntEventService {
         if (player != null) {
             return styles.playerName(player.getName());
         }
-        return styles.unknownLabel();
+        return Component.text(botText(MessageKeys.COMMON_UNKNOWN_PLAYER)).color(styles.colorUnknown());
     }
 
     private @NotNull TextComponent locationComponent(@NotNull Block block) {
@@ -303,7 +309,7 @@ public final class TntEventService {
 
     private @NotNull TextComponent locationComponent(Location location) {
         String locString = locationString(location);
-        return styles.coordComponent(locString);
+        return styles.coordComponent(locString, botText(MessageKeys.COMMON_COPY_COORDS));
     }
 
     private @NotNull String locationString(@NotNull Location location) {

@@ -5,6 +5,9 @@ import com.jokerhub.paper.plugin.orzmc.features.rank.RankService;
 import com.jokerhub.paper.plugin.orzmc.features.review.ReviewNotifier;
 import com.jokerhub.paper.plugin.orzmc.infra.config.TemplateKeys;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.PrisonConfig;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nService;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.Lang;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.MessageKeys;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
 import java.util.Map;
 import java.util.UUID;
@@ -36,6 +39,7 @@ public final class PrisonService {
     private final OrzTextStyles styles;
     private final ReviewNotifier notifier;
     private final PlayerNameResolver nameResolver;
+    private final I18nService i18n;
 
     public PrisonService(
             PrisonLpGateway gateway,
@@ -43,13 +47,37 @@ public final class PrisonService {
             Supplier<PrisonConfig> config,
             OrzTextStyles styles,
             ReviewNotifier notifier,
-            PlayerNameResolver nameResolver) {
+            PlayerNameResolver nameResolver,
+            I18nService i18n) {
         this.gateway = gateway;
         this.plugin = plugin;
         this.config = config;
         this.styles = styles;
         this.notifier = notifier;
         this.nameResolver = nameResolver;
+        this.i18n = i18n;
+    }
+
+    /** 管理员结果文案（默认语言 R1）。 */
+    private String text(String key, Map<String, String> vars) {
+        return i18n.msg(i18n.langFor(), key, vars);
+    }
+
+    private String text(String key) {
+        return i18n.msg(i18n.langFor(), key);
+    }
+
+    /** 当事人私聊文案（当事人在线按玩家语言，否则默认语言）。 */
+    private String playerText(UUID playerId, String key, Map<String, String> vars) {
+        Player p = Bukkit.getPlayer(playerId);
+        Lang lang = p != null ? i18n.langFor(p) : i18n.langFor();
+        return i18n.msg(lang, key, vars);
+    }
+
+    private String playerText(UUID playerId, String key) {
+        Player p = Bukkit.getPlayer(playerId);
+        Lang lang = p != null ? i18n.langFor(p) : i18n.langFor();
+        return i18n.msg(lang, key);
     }
 
     /** 玩家当前是否坐牢（LP 可用且 gateway 判定为 prison 组）。 */
@@ -64,7 +92,8 @@ public final class PrisonService {
      */
     public CompletableFuture<Result> imprison(UUID playerId) {
         if (!gateway.isAvailable()) {
-            return CompletableFuture.completedFuture(new Result.Failure(styles.error("LuckPerms 不可用，无法执行坐牢操作")));
+            return CompletableFuture.completedFuture(
+                    new Result.Failure(styles.error(text(MessageKeys.PRISON_LP_UNAVAILABLE))));
         }
         Player player = Bukkit.getPlayer(playerId);
         if (player == null || !player.isOnline()) {
@@ -83,17 +112,18 @@ public final class PrisonService {
      */
     public CompletableFuture<Result> release(UUID playerId) {
         if (!gateway.isAvailable()) {
-            return CompletableFuture.completedFuture(new Result.Failure(styles.error("LuckPerms 不可用，无法执行解除坐牢操作")));
+            return CompletableFuture.completedFuture(
+                    new Result.Failure(styles.error(text(MessageKeys.PRISON_LP_UNAVAILABLE_RELEASE))));
         }
         return gateway.release(playerId).thenApply(outcome -> {
             if (!outcome.success()) {
-                return new Result.Failure(styles.error("解除坐牢失败（数据写入失败，请重试或联系管理员）"));
+                return new Result.Failure(styles.error(text(MessageKeys.PRISON_RELEASE_FAILED)));
             }
             if (!outcome.wasPrisoner()) {
-                return new Result.Success(styles.info("该玩家不在牢房中"));
+                return new Result.Success(styles.info(text(MessageKeys.PRISON_NOT_PRISONER)));
             }
             teleportToSavedLocation(playerId, outcome.originalLocation());
-            notifier.gameMessage(playerId, "你已解除坐牢。");
+            notifier.gameMessage(playerId, playerText(playerId, MessageKeys.PRISON_RELEASE_PLAYER_MSG));
             notifier.groupEvent(
                     TemplateKeys.PRISON_RELEASED,
                     Map.of(
@@ -101,8 +131,13 @@ public final class PrisonService {
                             playerName(playerId),
                             "group",
                             RankService.groupDisplayName(outcome.originalGroup())));
-            return new Result.Success(styles.success("已解除 " + playerName(playerId) + " 的坐牢（恢复组 "
-                    + RankService.groupDisplayName(outcome.originalGroup()) + "）"));
+            return new Result.Success(styles.success(text(
+                    MessageKeys.PRISON_RELEASE_OK,
+                    Map.of(
+                            "player",
+                            playerName(playerId),
+                            "group",
+                            RankService.groupDisplayName(outcome.originalGroup())))));
         });
     }
 
@@ -130,17 +165,22 @@ public final class PrisonService {
 
     private Result finalizeImprison(UUID playerId, Player player, PrisonLpGateway.ImprisonOutcome outcome) {
         if (!outcome.success()) {
-            return new Result.Failure(styles.error("坐牢失败（数据写入失败，请重试或联系管理员）"));
+            return new Result.Failure(styles.error(text(MessageKeys.PRISON_IMPRISON_FAILED)));
         }
         if (player != null && player.isOnline()) {
             teleportToCell(playerId);
         }
-        notifier.gameMessage(playerId, "你已被关入牢房。");
+        notifier.gameMessage(playerId, playerText(playerId, MessageKeys.PRISON_IMPRISON_PLAYER_MSG));
         notifier.groupEvent(
                 TemplateKeys.PRISON_IMPRISONED,
                 Map.of("player", playerName(playerId), "group", RankService.groupDisplayName(outcome.originalGroup())));
-        return new Result.Success(styles.success("已将 " + playerName(playerId) + " 关入牢房（原组 "
-                + RankService.groupDisplayName(outcome.originalGroup()) + "）"));
+        return new Result.Success(styles.success(text(
+                MessageKeys.PRISON_IMPRISON_OK,
+                Map.of(
+                        "player",
+                        playerName(playerId),
+                        "group",
+                        RankService.groupDisplayName(outcome.originalGroup())))));
     }
 
     /** 传送回原位置（元数据里记录的位置）；原位置缺失/无效回出生点。 */

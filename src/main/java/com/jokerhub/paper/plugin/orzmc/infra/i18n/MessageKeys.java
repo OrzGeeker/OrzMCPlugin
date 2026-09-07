@@ -15,6 +15,27 @@ public final class MessageKeys {
     public static final String COMMON_ADMIN_REQUIRED = "common.admin_required";
     public static final String COMMON_PLAYER_REQUIRED = "common.player_required";
     public static final String COMMON_PRISON_DENIED = "common.prison_denied";
+    public static final String COMMON_UNKNOWN_PLAYER = "common.unknown_player";
+    public static final String COMMON_COPY_COORDS = "common.copy_coords";
+
+    // ---- prison.*：坐牢（P2f1） ----
+    public static final String PRISON_LP_UNAVAILABLE = "prison.lp_unavailable";
+    public static final String PRISON_LP_UNAVAILABLE_RELEASE = "prison.lp_unavailable_release";
+    public static final String PRISON_IMPRISON_FAILED = "prison.imprison_failed";
+    public static final String PRISON_RELEASE_FAILED = "prison.release_failed";
+    public static final String PRISON_NOT_PRISONER = "prison.not_prisoner";
+    public static final String PRISON_IMPRISON_PLAYER_MSG = "prison.imprison_player_msg";
+    public static final String PRISON_RELEASE_PLAYER_MSG = "prison.release_player_msg";
+    public static final String PRISON_IMPRISON_OK = "prison.imprison_ok";
+    public static final String PRISON_RELEASE_OK = "prison.release_ok";
+    public static final String PRISON_PLAYER_NOT_FOUND = "prison.player_not_found";
+
+    // ---- gamemode.*：自动切生存提示（P2f1） ----
+    public static final String GAMEMODE_FIX_MESSAGE = "gamemode.fix_message";
+
+    // ---- tnt 广播前缀（P2f1 样式收口） ----
+    public static final String TNT_PREFIX_TNT = "tnt.prefix_tnt";
+    public static final String TNT_PREFIX_EXPLOSION = "tnt.prefix_explosion";
 
     // ---- teleport.bow.*：传送弓（P2a） ----
     public static final String TELEPORT_BOW_NAME = "teleport.bow.name";

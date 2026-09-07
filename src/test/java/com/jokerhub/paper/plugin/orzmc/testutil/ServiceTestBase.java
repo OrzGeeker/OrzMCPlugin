@@ -82,10 +82,8 @@ public abstract class ServiceTestBase {
      */
     protected OrzTextStyles mockTextStyles() {
         OrzTextStyles mock = mock(OrzTextStyles.class);
-        when(mock.tntPrefix()).thenReturn(Component.empty());
-        when(mock.explosionPrefix()).thenReturn(Component.empty());
         when(mock.playerName(anyString())).thenReturn(Component.empty());
-        when(mock.coordComponent(anyString())).thenReturn(Component.empty());
+        when(mock.coordComponent(anyString(), anyString())).thenReturn(Component.empty());
         when(mock.error(anyString())).thenReturn(Component.empty());
         when(mock.info(anyString())).thenReturn(Component.empty());
         when(mock.success(anyString())).thenReturn(Component.empty());
