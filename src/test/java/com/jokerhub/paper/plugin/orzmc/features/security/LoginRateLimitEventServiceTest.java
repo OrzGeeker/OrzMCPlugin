@@ -8,6 +8,7 @@ import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.LoginRateLimitConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.notify.Notifier;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
+import com.jokerhub.paper.plugin.orzmc.testutil.TestI18n;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import net.kyori.adventure.text.Component;
@@ -37,7 +38,7 @@ class LoginRateLimitEventServiceTest {
         notifier = mock(Notifier.class);
         styles = mock(OrzTextStyles.class);
         when(styles.warn(anyString())).thenReturn(Component.text("登录过于频繁，请稍后再试"));
-        service = new LoginRateLimitEventService(limiter, configs, notifier, styles);
+        service = new LoginRateLimitEventService(limiter, configs, notifier, styles, TestI18n.newService());
     }
 
     // ---- 频率超限 ----

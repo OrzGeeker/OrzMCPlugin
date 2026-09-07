@@ -18,6 +18,7 @@ import com.jokerhub.paper.plugin.orzmc.infra.config.configs.SecurityGuardConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.WhitelistConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.logging.LogCaptureService;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
+import com.jokerhub.paper.plugin.orzmc.testutil.TestI18n;
 import java.util.function.Consumer;
 import java.util.logging.Logger;
 import org.junit.jupiter.api.BeforeEach;
@@ -269,7 +270,8 @@ class BotCommandServiceTest {
 
     private static CommandGuardService defaultGuard() {
         return new CommandGuardService(
-                () -> new SecurityGuardConfig(true, SecurityGuardConfig.DEFAULT_BLOCKED_COMMANDS, true, true));
+                () -> new SecurityGuardConfig(true, SecurityGuardConfig.DEFAULT_BLOCKED_COMMANDS, true, true),
+                TestI18n.newService());
     }
 
     @Test
@@ -335,7 +337,8 @@ class BotCommandServiceTest {
         CommandAuditService audit = mock(CommandAuditService.class);
         service.injectDependencies(new BotCommandDependencies()
                 .commandGuardService(new CommandGuardService(
-                        () -> new SecurityGuardConfig(false, SecurityGuardConfig.DEFAULT_BLOCKED_COMMANDS, true, true)))
+                        () -> new SecurityGuardConfig(false, SecurityGuardConfig.DEFAULT_BLOCKED_COMMANDS, true, true),
+                        TestI18n.newService()))
                 .commandAuditService(audit));
         when(serverFacade.executeConsoleCommand("stop"))
                 .thenReturn(new ServerFacade.ConsoleCommandResult("stop", true, java.util.List.of("执行成功")));

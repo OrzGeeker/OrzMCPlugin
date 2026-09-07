@@ -4,6 +4,8 @@ import com.jokerhub.paper.plugin.orzmc.core.bot.MessageEnvelope;
 import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
 import com.jokerhub.paper.plugin.orzmc.features.command.CommandFeedbackService;
 import com.jokerhub.paper.plugin.orzmc.infra.config.TemplateKeys;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nService;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.MessageKeys;
 import com.jokerhub.paper.plugin.orzmc.infra.notify.Notifier;
 import com.jokerhub.paper.plugin.orzmc.infra.notify.ThrottledNotifier;
 import java.util.Map;
@@ -39,6 +41,7 @@ public final class CommandGuardEventService {
     private final Logger logger;
     private final ThrottledNotifier logThrottle;
     private final ThrottledNotifier notifyThrottle;
+    private final I18nService i18n;
 
     public CommandGuardEventService(
             CommandGuardService guard,
@@ -46,8 +49,9 @@ public final class CommandGuardEventService {
             Notifier notifier,
             CommandFeedbackService feedback,
             CommandAuditService audit,
-            Logger logger) {
-        this(guard, configs, notifier, feedback, audit, logger, new ThrottledNotifier(), new ThrottledNotifier());
+            Logger logger,
+            I18nService i18n) {
+        this(guard, configs, notifier, feedback, audit, logger, new ThrottledNotifier(), new ThrottledNotifier(), i18n);
     }
 
     /** 测试/装配用：显式注入限频器。 */
@@ -59,7 +63,8 @@ public final class CommandGuardEventService {
             CommandAuditService audit,
             Logger logger,
             ThrottledNotifier logThrottle,
-            ThrottledNotifier notifyThrottle) {
+            ThrottledNotifier notifyThrottle,
+            I18nService i18n) {
         this.guard = guard;
         this.configs = configs;
         this.notifier = notifier;
@@ -68,6 +73,7 @@ public final class CommandGuardEventService {
         this.logger = logger;
         this.logThrottle = logThrottle;
         this.notifyThrottle = notifyThrottle;
+        this.i18n = i18n;
     }
 
     /** 玩家聊天栏命令（含前导 /）。 */
@@ -124,10 +130,14 @@ public final class CommandGuardEventService {
             return;
         }
         String source = sourceLabel(sender);
-        String fallback = "⚠ 高危命令已被拦截\n命令: " + commandLine
-                + "\n来源: " + source
-                + " | 发送者: " + sender.getName()
-                + "\n原因: " + reason;
+        String fallback = i18n.msg(
+                i18n.langFor(),
+                MessageKeys.GUARD_ALERT_BLOCKED,
+                Map.of(
+                        "command", commandLine,
+                        "source", source,
+                        "sender", sender.getName(),
+                        "reason", reason));
         MessageEnvelope env = configs.renderTemplate(
                 TemplateKeys.COMMAND_GUARD_BLOCKED,
                 Map.of(
@@ -139,8 +149,10 @@ public final class CommandGuardEventService {
         notifier.event(TemplateKeys.COMMAND_GUARD_BLOCKED, env);
     }
 
-    private static String sourceLabel(CommandSender sender) {
-        return sender instanceof Player ? "玩家" : "控制台/RCON";
+    private String sourceLabel(CommandSender sender) {
+        return sender instanceof Player
+                ? i18n.msg(i18n.langFor(), MessageKeys.GUARD_SOURCE_PLAYER)
+                : i18n.msg(i18n.langFor(), MessageKeys.GUARD_SOURCE_CONSOLE);
     }
 
     /** 审计来源分类（audit 记录用英文 token：game / console）。 */

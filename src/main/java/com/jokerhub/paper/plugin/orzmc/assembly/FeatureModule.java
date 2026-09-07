@@ -142,7 +142,8 @@ public final class FeatureModule implements ServiceModule {
                 botModule.notifier(),
                 new CommandFeedbackService(platform.i18nService()),
                 commandAuditService,
-                org.bukkit.Bukkit.getLogger());
+                org.bukkit.Bukkit.getLogger(),
+                platform.i18nService());
         this.guideService = new GuideService(platform.serverFacade(), platform.configService(), platform.textStyles());
         // 上下线通知：窗口聚合限流（不丢消息），单发走原模板、多发走 player_digest 摘要
         this.playerEventService = new PlayerEventService(
@@ -208,13 +209,15 @@ public final class FeatureModule implements ServiceModule {
                 new LoginRateLimitService(platform.configs()::loginRateLimit),
                 platform.configs(),
                 botModule.notifier(),
-                platform.textStyles());
+                platform.textStyles(),
+                platform.i18nService());
         // 漏洞加固：纯判定核心 + 事件编排；exploit_hardening 每次读取最新配置（Supplier），/config reload 生效
         this.exploitHardeningEventService = new ExploitHardeningEventService(
                 new ExploitHardeningService(platform.configs()::exploitHardening),
                 platform.configs(),
                 botModule.notifier(),
-                platform.textStyles());
+                platform.textStyles(),
+                platform.i18nService());
         this.menuCommandService = new MenuCommandService(platform.textStyles());
         this.portalCommandService =
                 new PortalCommandService(portalModule.portalService(), platform.textStyles(), platform.i18nService());

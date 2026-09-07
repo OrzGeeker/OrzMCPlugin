@@ -107,3 +107,23 @@ login:
   name_rule_denied: "Your player name does not match the server access rules."
   alert_ip_block: "⚠ IP blacklist blocked\nPlayer: {player}\nIP: {ip}\nMatched rule: {pattern}"
   alert_name_block: "⚠ Player-name rule blocked\nPlayer: {player}\nMatched rule: {rule}"
+
+# --- guard.* (dangerous command guard; P2e. Security notices use the default language R1) ---
+guard:
+  deny_reason: "Command \"{cmd}\" was blocked by the security guard (deny-list)."
+  selector_warn: "The command contains an unqualified selector {selector} which may affect all entities/players. Use type=.. or distance=.. to limit it."
+  source_player: "player"
+  source_console: "console/RCON"
+  alert_blocked: "⚠ Dangerous command blocked\nCommand: {command}\nSource: {source} | Sender: {sender}\nReason: {reason}"
+
+# --- exploit.* (exploit hardening; P2e) ---
+exploit:
+  notify_pages: "Book pages over the limit ({count} pages)"
+  notify_attributes: "Abnormal item attribute modifiers (cleaned {count})"
+  alert_blocked: "⚠ Exploit blocked\nPlayer: {player}\nReason: {reason}"
+
+# --- ratelimit.* (login rate limiting; P2e) ---
+ratelimit:
+  reason_frequency: "Rate exceeded ({limit} attempts/min)"
+  reason_concurrent: "Concurrent connections per IP exceeded ({limit})"
+  alert_blocked: "⚠ Login rate limited\nIP: {ip}\nPlayer: {player}\nReason: {reason}"

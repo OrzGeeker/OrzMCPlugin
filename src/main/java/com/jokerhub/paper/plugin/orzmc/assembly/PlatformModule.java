@@ -63,7 +63,7 @@ public final class PlatformModule implements ServiceModule {
         this.healthRegistry = new HealthRegistry();
         this.logCaptureService = new LogCaptureService(LOG_CAPTURE_CAPACITY);
         // 危险命令 guard + 审计：零 Bukkit 依赖的纯服务，由平台模块统一持有（配置热重载经 Supplier 生效）
-        this.commandGuardService = new CommandGuardService(() -> configs.securityGuard());
+        this.commandGuardService = new CommandGuardService(() -> configs.securityGuard(), i18nService);
         this.commandAuditService = new CommandAuditService(
                 () -> configs.securityGuard().auditEnabled(),
                 configService.dataFolder().toPath().resolve("audit"),
