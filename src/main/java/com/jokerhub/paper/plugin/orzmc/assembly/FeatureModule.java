@@ -227,7 +227,8 @@ public final class FeatureModule implements ServiceModule {
                         platform.configs(),
                         platform.textStyles(),
                         maintenanceModule.maintenanceModeService(),
-                        maintenanceModule.worldMaintenanceService());
+                        maintenanceModule.worldMaintenanceService(),
+                        platform.i18nService());
         this.orzConfigCommand = new OrzConfigCommand(
                 platform.configService(), platform.textStyles(), botModule.botMessageService()::reloadConfig);
         // 权限晋升（Rank）模块：时长（读服务器原生 stats 文件）+ 自动晋升 + 通用审核框架

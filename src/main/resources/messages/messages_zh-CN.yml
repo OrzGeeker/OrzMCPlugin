@@ -207,3 +207,15 @@ rank:
     builder: "建造者"
     member: "成员"
     default: "访客"
+
+# --- maintenance.cmd.*（/maintenance 状态；P2g1。运维文案默认语言 R1） ---
+maintenance:
+  cmd:
+    busy_manual_enter: "当前正在执行地图备份/优化，无法手动进入维护模式"
+    already_manual: "服务器已处于手动维护模式"
+    not_active: "服务器当前未处于维护模式"
+    busy_exit: "当前正在执行地图备份/优化，无法退出维护模式"
+    "off": "服务器未处于维护模式"
+    reason_backup: "地图备份中"
+    reason_optimize: "地图优化中"
+    reason_manual: "手动维护中"

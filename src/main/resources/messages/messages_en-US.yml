@@ -214,3 +214,15 @@ rank:
     builder: "Builder"
     member: "Member"
     default: "Guest"
+
+# --- maintenance.cmd.* (/maintenance status; P2g1. Ops copy uses default language R1) ---
+maintenance:
+  cmd:
+    busy_manual_enter: "A map backup/optimization is running; manual maintenance cannot start right now."
+    already_manual: "The server is already in manual maintenance mode."
+    not_active: "The server is not in maintenance mode right now."
+    busy_exit: "A map backup/optimization is running; maintenance cannot be exited right now."
+    "off": "The server is not in maintenance mode."
+    reason_backup: "Map backup in progress"
+    reason_optimize: "Map optimization in progress"
+    reason_manual: "Manual maintenance in progress"
