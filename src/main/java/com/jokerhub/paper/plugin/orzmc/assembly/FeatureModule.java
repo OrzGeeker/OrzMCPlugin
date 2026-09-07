@@ -152,7 +152,12 @@ public final class FeatureModule implements ServiceModule {
                 botModule.notifier(),
                 platform.throttledNotifier(),
                 new PlayerEventAggregator(
-                        platform.serverFacade(), platform.configs(), botModule.notifier(), this.listFormatter));
+                        platform.serverFacade(),
+                        platform.configs(),
+                        botModule.notifier(),
+                        this.listFormatter,
+                        platform.i18nService()),
+                platform.i18nService());
         this.loginAccessControlService = new LoginAccessControlService(
                 maintenanceModule.maintenanceModeService(),
                 accessRuleService,

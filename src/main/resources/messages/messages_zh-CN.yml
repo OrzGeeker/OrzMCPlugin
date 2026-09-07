@@ -76,3 +76,22 @@ tnt:
   at: "在"
   placed: "放置了 TNT"
 
+# --- player.notify.*（上下线聚合摘要版块标签；P2d。群消息随默认语言 R1） ---
+player:
+  notify:
+    join_label: "上线"
+    quit_label: "下线"
+    kick_label: "被踢"
+    hidden_more: "等{count}人"
+
+# --- geoip.*（地区白名单玩家提示/管理员告警；P2d。登录前无客户端 locale → 默认语言） ---
+geoip:
+  kick_region: "{name}({ip})\n{country}\nIP位置不在服务支持区域{allow}"
+  kick_unverifiable: "{name}({ip})\n地区解析服务暂时不可用，无法验证你的地区，请稍后重新尝试登录"
+  outcome_allowed_failopen: "已放行（fail-open）"
+  outcome_denied_failclose: "已拒绝（fail-close）"
+  outcome_allowed: "已放行"
+  outcome_denied: "已拒绝"
+  alert_exception: "IP地址解析服务异常: {detail}"
+  alert_lookup_failed: "IP地址解析服务异常，{outcome}: {player}({ip})"
+  alert_timeout: "IP地址解析超时({timeout}ms)，{outcome}: {player}({ip})"

@@ -5,6 +5,8 @@ import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
 import com.jokerhub.paper.plugin.orzmc.infra.config.TemplateKeys;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.PlayerNotifyConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.TemplateOptions;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nService;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.MessageKeys;
 import com.jokerhub.paper.plugin.orzmc.infra.notify.Notifier;
 import com.jokerhub.paper.plugin.orzmc.infra.player.OnlineListFormatter;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
@@ -72,6 +74,7 @@ public final class PlayerEventAggregator {
     private final TypedConfigProvider configs;
     private final Notifier notifier;
     private final OnlineListFormatter listFormatter;
+    private final I18nService i18n;
 
     /**
      * 当前聚合窗口批次；null 表示无待冲刷批次。
@@ -81,11 +84,16 @@ public final class PlayerEventAggregator {
     private PendingBatch batch;
 
     public PlayerEventAggregator(
-            ServerFacade server, TypedConfigProvider configs, Notifier notifier, OnlineListFormatter listFormatter) {
+            ServerFacade server,
+            TypedConfigProvider configs,
+            Notifier notifier,
+            OnlineListFormatter listFormatter,
+            I18nService i18n) {
         this.server = server;
         this.configs = configs;
         this.notifier = notifier;
         this.listFormatter = listFormatter;
+        this.i18n = i18n;
     }
 
     /**
@@ -220,12 +228,16 @@ public final class PlayerEventAggregator {
         notifier.event(eventKey, envelope);
     }
 
-    /** 多发渲染：按状态精确计数，玩家名显示截断（计数不受影响）。 */
+    /** 多发渲染：按状态精确计数，玩家名显示截断（计数不受影响）。
+     *  摘要版块标签按默认语言（群消息 R1）。 */
     private void renderDigest(PendingBatch current) {
         PlayerNotifyConfig cfg = configs.playerNotify();
-        String joinSummary = buildSection(current.joins, "🥰", "上线", cfg.maxListItems());
-        String quitSummary = buildSection(current.quits, "😋", "下线", cfg.maxListItems());
-        String kickSummary = buildSection(current.kicks, "😂", "被踢", cfg.maxListItems());
+        String joinSummary =
+                buildSection(current.joins, "🥰", MessageKeys.PLAYER_NOTIFY_JOIN_LABEL, cfg.maxListItems());
+        String quitSummary =
+                buildSection(current.quits, "😋", MessageKeys.PLAYER_NOTIFY_QUIT_LABEL, cfg.maxListItems());
+        String kickSummary =
+                buildSection(current.kicks, "😂", MessageKeys.PLAYER_NOTIFY_KICK_LABEL, cfg.maxListItems());
         ArrayList<Player> onlinePlayers = onlinePlayers();
         Map<String, String> vars = new HashMap<>();
         vars.put("join_summary", joinSummary);
@@ -243,10 +255,11 @@ public final class PlayerEventAggregator {
      * 例（单人）："---------------------------------\n🥰 上线：\nA 生存模式 建造者\n"
      * 超 maxListItems 时行数截断并追加 "等N人" 行（计数不受影响）。
      */
-    private static String buildSection(List<PendingEvent> events, String marker, String action, int maxListItems) {
+    private String buildSection(List<PendingEvent> events, String marker, String actionKey, int maxListItems) {
         if (events.isEmpty()) {
             return "";
         }
+        String action = i18n.msg(i18n.langFor(), actionKey);
         StringBuilder sb = new StringBuilder();
         sb.append(SECTION_DIVIDER).append('\n');
         sb.append(marker).append(' ').append(action);
@@ -260,7 +273,9 @@ public final class PlayerEventAggregator {
         }
         int hidden = events.size() - shown;
         if (hidden > 0) {
-            sb.append("等").append(hidden).append("人\n");
+            sb.append(i18n.msg(
+                    i18n.langFor(), MessageKeys.PLAYER_NOTIFY_HIDDEN_MORE, Map.of("count", String.valueOf(hidden))));
+            sb.append('\n');
         }
         return sb.toString();
     }
