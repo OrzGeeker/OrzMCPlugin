@@ -1,10 +1,17 @@
 # i18n 多语言迁移 交接
-> 状态：现行 ｜ 最后更新：2026-09-08（P4a 完成，P4b 开卡）
+> 状态：现行 ｜ 最后更新：2026-09-08（P4b 完成，P4c 开卡）
 
 ## 任务与目标
 仓库级 i18n 一期（中英双语 + 可扩展语言包）：游戏内 + Bot 交互 + 事件通知全部用户可见文案迁入语言包（zh 原文零回归基线）。方案：docs/dev/i18n-plan.md（§4 决策全拍板）。验收：见方案 §7。
 
-## 已完成（倒序，develop @ 97ad99b）
+## 已完成（倒序，develop @ 1026472）
+- PR #389 P4b-2：安全/审核/权限/坐牢事件正文迁入语言包 event.*（command_guard_blocked/security_audit/
+  login_rate_limit_alert/exploit_blocked/ip_blacklist_block/player_name_block/review_*/rank_*/prison_* 14 键；
+  ReviewNotifierAdapter.groupEvent 与安全域 5 服务改走 configs.renderEvent，删内联 zh fallback；
+  guard/exploit/ratelimit/login.alert_* 域键成孤儿留 P5）✓
+- PR #388 P4b-1：renderEvent 域事件正文迁语言包 event.*（player_join/quit/kick/digest、whitelist_block/toggle、
+  geoip_block/unverifiable、tnt_alert、exception_alert 10 键；TemplateService.renderEvent 磁盘正文优先→
+  语言包回落；EVENT_LANG_BACKED/ConfigHealthCheck 豁免；config-version 不 bump）✓ —— **P4b 全部完成**
 - PR #386 P4a：$l/$w 命令回复模板正文直通（command_players/command_whitelist_header/command_whitelist_page/
   command_whitelist_cleanup 四键正文改 {message}，BotCommandListFeedbackService 按 bot.list.* 组装完整文案；
   占位符并集保历史磁盘/服主自定义零回归；config-version 不 bump，存量服正文留 P4d）✓
@@ -23,49 +30,58 @@
 - PR #370 P2e security 域 ✓ ｜ PR #368 P2d2 login 登录拦截 ✓（features/player 域全部完成）｜ PR #366 P2d1 player/geoip ✓
 - PR #364 P2c portal/tnt ✓ ｜ PR #363 P2b whitelist ✓ ｜ PR #362 P2a teleport ✓ ｜ PR #361 P1 common ✓ ｜ PR #358 P0 基础设施 ✓ ｜ PR #357 方案定稿 ✓
 
-## P4a 收尾快照（命令回复模板直通完成态）
-- 11 个 $cmd 处理器用户可见文案全部 i18n（残留仅日志/注释）；组名走 rank.group.*；review 决策结果走 review.*
-- $l/$w 命令回复模板正文已全量直通 {message}（bot.list.* 语言包组装）——全新安装双语即时生效
-- **遗留（P4/P5 分界）**：
-  a) 存量服磁盘 templates.yml 四键仍是旧 zh 字面正文（config-version 升级「补缺不改值」不动现有值）→
-     需 P4d 升级链识别「磁盘正文 == 旧内置默认」并翻转为 {message} 后存量服才双语生效（P4a 只改资源正文+代码）
-  b) 游戏内 /blacklist 命令（BlacklistCommandRegistrar）为 P2 遗漏域，大量硬编码 zh；
-     PlayerNameRuleFeedback 已走 access_rule.*（R1 holder），该命令其余文案留 P5 审计统一迁移（建议按 sender locale）
-  c) Paginator 空列表 body 内联 zh「(暂无白名单玩家)」（$w 空白名单边缘展示，非模板正文）→ 留 P5 审计
+## P4b 收尾快照（事件通知正文平移完成态）
+- templates.yml 事件正文清零：P4b-1 10 键 + P4b-2 14 键 = 24 键全迁语言包 event.*（zh 逐字、en 初译占位符一致）
+- renderEvent（磁盘正文优先→语言包回落）覆盖全部事件；TemplateKeys.EVENT_LANG_BACKED = 24 键；
+  Templates 记录 player/geoip/whitelist/tnt/exception 字段成 vestige（无引用，待 P4c 后整体裁剪）
+- **遗留（P4c/P5 分界）**：
+  a) 存量服磁盘 templates.yml 事件正文仍 zh（config-version 升级「补缺不改值」不动现值）→ P4d 升级链
+     识别「磁盘正文 == 旧内置默认」翻转为空（走语言包）或迁 custom 层，之后存量服才双语
+  b) 孤儿语言包/MessageKeys：guard.alert_blocked / exploit.alert_blocked / ratelimit.alert_blocked /
+     login.alert_ip_block / login.alert_name_block（P4b-2 改 renderEvent 后无引用）→ P5 收口清理
+  c) 事件 var 值内联 zh：security_audit 的 online_mode/command_block/rcon/whitelist/ops/plugins 值、
+     prison/guard reason 等部分 var 值仍 Java 内联 zh（正文已双语，数据值 zh 残留）→ P5 逐域评估按 var 迁移
+  d) 游戏内 /blacklist 命令（BlacklistCommandRegistrar）P2 遗漏域，大量硬编码 zh → P5 审计统一迁移
 
 ## 进行中卡
 - P4 事件/模板管线（拆四子卡，串行）：
   - P4a 命令回复模板正文直通 ✓（PR #386）
-  - P4b 事件通知模板正文 → event.* key（**下一卡**，最大子卡，按事件域可再拆 1–2 PR）：
-    player_join/quit/kick/digest、tnt_alert、exception_alert、security_audit、
-    whitelist_block/whitelist_toggle_alert、geoip_block/unverifiable、review_submitted/approved/…、rank_promoted/demoted、
-    command_guard_blocked 等（TemplateKeys 常量改 event.*、renderEvent/renderTemplate 路径梳理）
-  - P4c maintenance 进度/MOTD：maintenance_motd_* → key、stage_cn → maintenance.stage.*、progress_units/world_alias/coord
-    数据键评估、WorldMaintenance/ScheduledBackup 进度文案与 Region/Chunk/File/Done 阶段语义化、MaintenanceModeService.progressMessage
+  - P4b 事件通知正文 → event.* ✓（PR #388 + #389，24 键）
+  - P4c maintenance 进度/MOTD（**下一卡**）：maintenance_backup/optimize_* 六键事件正文 → event.*（沿用
+    EVENT_LANG_BACKED + 磁盘正文优先机制，stage 进度渲染路径梳理）；maintenance_motd_* → key、
+    stage_cn → maintenance.stage.*、progress_units/world_alias/coord 数据键评估、
+    WorldMaintenance/ScheduledBackup 进度文案与 Region/Chunk/File/Done 阶段语义化、MaintenanceModeService.progressMessage
+  - P4d legacy 服主定制正文自动迁 custom i18n 层（config-version 升级链）+ templates.yml 瘦身
+    （含 Templates 记录 vestige 字段整体裁剪评估）
   - P4d legacy 服主定制正文自动迁 custom i18n 层（config-version 升级链）+ templates.yml 瘦身为格式/配色/数据
     （schema 升级只补缺不改值——改默认正文需走升级链，勿直接依赖磁盘覆盖）
 
 ## 未完成清单（顺序）
-1. P4b 事件通知模板正文 → event.* key（最大子卡，按事件域可再拆 1–2 PR）
-3. P4c maintenance 进度/MOTD 文案
-4. P4d legacy 定制迁移升级链 + templates.yml 瘦身
-5. P5 收尾：全量 rg 中文残留审计（白名单：日志/异常/注释/config 描述/guide_book 等内容数据；
-   已知残留：BlacklistCommandRegistrar 游戏命令域、templates.yml 待瘦身键）、YAML 布尔键排查（off/on 引号）、
-   孤儿 MessageKeys/语言包 key、docs/features.md + README + CHANGELOG 同步、集成回归（含维护/审核/bot 双语实机冒烟）
+1. P4c maintenance 进度/MOTD 文案
+2. P4d legacy 定制迁移升级链 + templates.yml 瘦身（Templates 记录 vestige 裁剪）
+3. P5 收尾：全量 rg 中文残留审计（已知残留：BlacklistCommandRegistrar 域、事件 var 值内联 zh、
+   Paginator 空列表 body、孤儿 alert_* 域键清理）、YAML 布尔键排查、docs/features/README/CHANGELOG 同步、
+   集成回归（维护/审核/bot 双语实机冒烟）
 
 ## 风险/注意
-- 语言包与 MessageKeys 为「文件尾追加」型文件 → P3d/P4 各 PR 触碰语言包须串行链式合入（基于最新 develop）
+- 语言包与 MessageKeys 为「文件尾追加」型文件 → P4 各 PR 触碰语言包须串行链式合入（基于最新 develop）
+- P4b 后 templates.yml 事件正文清零（仅 maintenance/server 直通壳/命令回复壳）；ConfigHealthCheck/
+  TemplateKeysTest 已豁免 EVENT_LANG_BACKED 键缺失 body
 - templates.yml 是**运行时磁盘文件**（ConfigManager 首启复制资源后以磁盘为准）；schema 升级只「补缺不改值」，
-  改默认正文只对全新安装生效，存量服需靠 P4d 升级链迁移——P4a/P4b 改资源正文 + 升级链一并评估
+  改默认正文只对全新安装生效，存量服需靠 P4d 升级链迁移——P4a/P4b/P4c 改资源正文 + 升级链一并评估
+  （P4b 各 PR 均 config-version 不 bump：不触发无意义升级）
+- zh 主目录正文必须与迁移前逐字一致（测试断言按原文）；登录前踢出无 locale → 默认语言；物品/即时消息按玩家 locale
+- 事件 var 值内联 zh 不属正文平移范畴（P4b 只迁正文壳），勿在 P4c 顺手扩大范围，统一 P5 审计
 - zh 主目录正文必须与迁移前逐字一致（测试断言按原文）；登录前踢出无 locale → 默认语言；物品/即时消息按玩家 locale
 - P4a 后各 bot 命令输出已全量 {message} 直通（全新安装双语生效）；**存量服磁盘旧字面正文仍 zh**，
   冒烟验收区分：新装/重拷 templates.yml 才见双语，升级存量盘待 P4d
 - 每域 PR：`spotlessApply && :test --tests <域>` → 全量 test + integration 编译绿 → PR；CI 绿即 squash 合入
 
 ## 下一棒开场指令
-读 docs/dev/i18n-migration-handoff.md，从卡 P4b 开始：checkout 分支 feature/i18n-p4b-event-templates（基 origin/develop），
-事件通知模板正文 zh 字面量 → 语言包 event.* key + templates.yml 对应正文改直通（renderEvent 路径：TemplateService
-模板解析 + TemplateKeys 常量、templates.format 表键评估同批处理）；
-先读 docs/dev/i18n-plan.md §3.7/§5 P4 行/附录 B 对齐终态，评估存量服升级链（P4d 统一，勿在本卡重复造）；
+读 docs/dev/i18n-migration-handoff.md，从卡 P4c 开始：checkout 分支 feature/i18n-p4c-maintenance-templates（基 origin/develop），
+先读 docs/dev/i18n-plan.md §3.7 与 docs/dev/folia-luckperms-gotchas.md §6 维护域相关；
+事件正文部分：maintenance_backup_stage/done/error + maintenance_optimize_stage/done/error 六键 → 语言包
+ event.*（zh 抄原文 + en），templates.yml 移除正文（沿用 EVENT_LANG_BACKED + renderEvent 磁盘正文优先机制），
+ maintenance_motd_* 四键与 stage_cn/progress_units/world_alias/coord 数据键评估（勿删数据键）；
 验收：affected :test 绿 + `spotlessApply && ./gradlew test` + `./gradlew :compileIntegrationTestJava`；
-开 PR（base develop）后 CI 绿即 squash 合入，合入后更新本文件继续 P4c。
+开 PR（base develop）后 CI 绿即 squash 合入，合入后更新本文件继续 P4d。
