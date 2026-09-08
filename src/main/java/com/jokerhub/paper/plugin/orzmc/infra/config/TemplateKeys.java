@@ -90,6 +90,36 @@ public final class TemplateKeys {
     public static final String MOTD = "motd";
 
     /**
+     * 事件正文已迁入语言包 {@code event.<name>} 的模板键（P4b+，i18n R1 默认语言渲染）。
+     *
+     * <p>此类键的正文不再要求存在于 templates.yml body 段（磁盘上仍存在 = 存量服/服主定制，
+     * 优先渲染保 zh 基线不丢定制；全新安装回落语言包）；格式仍由 templates.format 表承担。
+     * ConfigHealthCheck 对缺失 body 不再告警，TemplateKeysTest 校验语言包 event.* 已备。</p>
+     */
+    public static final String[] EVENT_LANG_BACKED = {
+        PLAYER_JOIN,
+        PLAYER_KICK,
+        PLAYER_QUIT,
+        PLAYER_DIGEST,
+        EXCEPTION_ALERT,
+        GEOIP_BLOCK,
+        GEOIP_UNVERIFIABLE,
+        TNT_ALERT,
+        WHITELIST_BLOCK,
+        WHITELIST_TOGGLE_ALERT,
+    };
+
+    /** 事件键是否为语言包承载正文（event.*）。 */
+    public static boolean isLangBacked(String key) {
+        for (String k : EVENT_LANG_BACKED) {
+            if (k.equals(key)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * 所有已知的模板事件 key。用于 {@link ConfigHealthCheck} 校验。
      *
      * <p>历史版本因「升级安装（templates.yml 已存在故未复制新默认值）不携带该键」而把

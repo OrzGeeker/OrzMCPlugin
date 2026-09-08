@@ -167,7 +167,7 @@ class ConfigServiceTest {
 
         FileConfiguration diskTemplates = YamlConfiguration.loadConfiguration(new File(tempDir, "templates.yml"));
         assertEquals(ConfigSchema.LATEST_VERSION, diskTemplates.getInt(ConfigSchema.VERSION_KEY));
-        assertTrue(diskTemplates.contains("templates.player_join"), "缺失模板键应补齐落盘");
+        assertTrue(diskTemplates.contains("templates.server_stop"), "缺失模板键应补齐落盘");
         assertEquals(2.0, diskTemplates.getDouble("templates.coord.scale"), "自定义值不得被覆盖");
 
         FileConfiguration diskEasybot = YamlConfiguration.loadConfiguration(new File(tempDir, "easybot.yml"));

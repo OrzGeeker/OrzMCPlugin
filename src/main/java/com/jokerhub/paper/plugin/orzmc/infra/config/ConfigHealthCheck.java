@@ -443,7 +443,6 @@ public final class ConfigHealthCheck {
 
         // Validate templates section
         String base = "templates";
-        if (!cfg.contains(base + ".player_join")) issues.add("缺失: templates.player_join");
         double scale = cfg.getDouble(base + ".coord.scale", 1.0);
         if (scale <= 0) issues.add("非法: templates.coord.scale 必须为正数");
         int precision = cfg.getInt(base + ".coord.precision", 2);
@@ -467,6 +466,10 @@ public final class ConfigHealthCheck {
         // 模板系统的 role_alias/role_groups 配置已删除，不再校验
         String[] requiredTemplates = TemplateKeys.ALL;
         for (String key : requiredTemplates) {
+            // 事件正文已迁语言包 event.*（P4b）：磁盘 body 可缺（存量/定制存在时仍被优先渲染）
+            if (TemplateKeys.isLangBacked(key)) {
+                continue;
+            }
             if (!cfg.contains("templates." + key)) {
                 issues.add("缺失: templates." + key);
             }
@@ -483,7 +486,7 @@ public final class ConfigHealthCheck {
                 if (!("DEFAULT".equals(v) || "PLAIN".equals(v) || "CODE_BLOCK".equals(v))) {
                     issues.add("非法: templates.format." + key + " 值无效: " + raw);
                 }
-                if (!cfg.contains("templates." + key)) {
+                if (!cfg.contains("templates." + key) && !TemplateKeys.isLangBacked(key)) {
                     issues.add("建议: templates.format." + key + " 未找到对应模板");
                 }
             }

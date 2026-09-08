@@ -56,6 +56,20 @@ whitelist:
     add_title: "------ Whitelist additions ------" 
     remove_title: "------ Whitelist removals ------"
 
+# --- event.* (group event notification bodies, migrated in P4b; templates.yml no longer carries
+#     bodies, only format. Rendered once with the default language R1) ---
+event:
+  player_join: "🎮 Players online ({online_count}/{max_count})\n---------------------------------\n🥰 Joined:\n{name}"
+  player_quit: "🎮 Players online ({online_count}/{max_count})\n---------------------------------\n😋 Left:\n{name}"
+  player_kick: "🎮 Players online ({online_count}/{max_count})\n---------------------------------\n😂 Kicked:\n{name}"
+  player_digest: "🎮 Players online ({online_count}/{max_count})\n{join_summary}{quit_summary}{kick_summary}"
+  exception_alert: "⚠️ Server abnormal\n---------------------------------\n{message}"
+  whitelist_block: "🙅🏻‍♂️ {message}"
+  whitelist_toggle_alert: "⚠️ Server abnormal\n---------------------------------\n{message}"
+  geoip_block: "{name}({ip}) region {country_code} not in allow list ({allow_list})\n{address_info}\nYour region ({country_code}) is not allowed. Please contact an admin if you have questions"
+  geoip_unverifiable: "{name}: region resolution is temporarily unavailable, cannot verify your region (IP: {ip}). Please try logging in again later. Contact an admin if this keeps happening"
+  tnt_alert: "{msg}\nWorld: {world_alias} Coords: {x_unit},{y_unit},{z_unit} ({coord_unit})\nTriggered by: {actor} Block: {block_type}"
+
 # --- portal.* (/portal command player feedback; P2c) ---
 portal:
   usage: "Usage: /portal <host> [port] or /portal remove <host> [port]"
