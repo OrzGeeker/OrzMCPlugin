@@ -94,12 +94,9 @@ public final class LoginRateLimitEventService {
     }
 
     private void notifyAdmin(String ip, String player, String reason) {
-        String fallback = i18n.msg(
-                i18n.langFor(),
-                MessageKeys.RATELIMIT_ALERT_BLOCKED,
-                Map.of("ip", ip, "player", player, "reason", reason));
-        MessageEnvelope env = configs.renderTemplate(
-                TemplateKeys.LOGIN_RATE_LIMIT_ALERT, Map.of("ip", ip, "player", player, "reason", reason), fallback);
+        // P4b-2：正文迁语言包 event.login_rate_limit_alert（默认语言 R1）
+        MessageEnvelope env = configs.renderEvent(
+                TemplateKeys.LOGIN_RATE_LIMIT_ALERT, Map.of("ip", ip, "player", player, "reason", reason));
         notifier.event(TemplateKeys.LOGIN_RATE_LIMIT_ALERT, env);
     }
 

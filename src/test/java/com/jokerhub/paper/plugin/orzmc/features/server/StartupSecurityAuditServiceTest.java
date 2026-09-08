@@ -49,7 +49,7 @@ class StartupSecurityAuditServiceTest {
         when(server.logger()).thenReturn(mock(java.util.logging.Logger.class));
         when(bukkit.getPluginManager()).thenReturn(pluginManager);
         rendered = MessageEnvelope.publicMessage("");
-        when(configs.renderTemplate(anyString(), anyMap(), anyString())).thenReturn(rendered);
+        when(configs.renderEvent(anyString(), anyMap())).thenReturn(rendered);
         service = new StartupSecurityAuditService(
                 server, configs, notifier, tmpDir.resolve("server.properties").toFile());
     }
@@ -58,7 +58,7 @@ class StartupSecurityAuditServiceTest {
     private Map<String, String> runAndCaptureVars() {
         service.run(mock(ServerLoadEvent.class));
         ArgumentCaptor<Map<String, String>> varsCaptor = ArgumentCaptor.forClass(Map.class);
-        verify(configs).renderTemplate(eq(TemplateKeys.SECURITY_AUDIT), varsCaptor.capture(), anyString());
+        verify(configs).renderEvent(eq(TemplateKeys.SECURITY_AUDIT), varsCaptor.capture());
         verify(notifier).event(eq(TemplateKeys.SECURITY_AUDIT), eq(rendered));
         return varsCaptor.getValue();
     }

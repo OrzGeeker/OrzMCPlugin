@@ -130,22 +130,14 @@ public final class CommandGuardEventService {
             return;
         }
         String source = sourceLabel(sender);
-        String fallback = i18n.msg(
-                i18n.langFor(),
-                MessageKeys.GUARD_ALERT_BLOCKED,
-                Map.of(
-                        "command", commandLine,
-                        "source", source,
-                        "sender", sender.getName(),
-                        "reason", reason));
-        MessageEnvelope env = configs.renderTemplate(
+        // P4b-2：正文迁语言包 event.command_guard_blocked（默认语言 R1）
+        MessageEnvelope env = configs.renderEvent(
                 TemplateKeys.COMMAND_GUARD_BLOCKED,
                 Map.of(
                         "command", commandLine,
                         "source", source,
                         "sender", sender.getName(),
-                        "reason", reason),
-                fallback);
+                        "reason", reason));
         notifier.event(TemplateKeys.COMMAND_GUARD_BLOCKED, env);
     }
 

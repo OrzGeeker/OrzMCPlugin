@@ -1,6 +1,6 @@
 package com.jokerhub.paper.plugin.orzmc.infra.notify;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import com.jokerhub.paper.plugin.orzmc.core.bot.MessageEnvelope;
@@ -10,11 +10,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * ReviewNotifierAdapter 群广播 fallback 渲染测试。
+ * ReviewNotifierAdapter 群广播渲染测试（i18n P4b-2）。
  *
- * <p>防回归：templates.yml 缺失 rank_promoted/rank_demoted 键时（默认配置/旧配置），
- * fallback switch 必须给出真实文案，不得落 default 的 "{message}" 占位符
- * （2026-08-07 实测线上群消息原样输出 {message} 的根因）。</p>
+ * <p>正文迁语言包 event.* 后 groupEvent 统一走 {@code configs.renderEvent(key, vars)}（renderEvent
+ * 内部磁盘正文优先→语言包回落），适配器不再持有内联 fallback——zh 原文与「非字面 {message}」护栏
+ * 由 TemplateKeysTest（语言包 event.* 已备）与 TemplateResourceSmokeTest（event.* zh 真实文案）承接。</p>
  */
 class ReviewNotifierAdapterTest {
 
@@ -27,70 +27,100 @@ class ReviewNotifierAdapterTest {
         configs = mock(TypedConfigProvider.class);
         notifier = mock(Notifier.class);
         adapter = new ReviewNotifierAdapter(configs, notifier);
-        // 配置缺失 → renderTemplate 直接用 fallback
-        when(configs.renderTemplate(anyString(), anyMap(), anyString()))
-                .thenAnswer(inv -> new MessageEnvelope(
-                        MessageEnvelope.TargetType.PUBLIC,
-                        (String) inv.getArgument(2),
-                        MessageEnvelope.Format.DEFAULT));
+        when(configs.renderEvent(anyString(), anyMap())).thenReturn(MessageEnvelope.publicMessage("rendered"));
     }
 
     @Test
-    void groupEvent_rankPromoted_rendersRealCopyNotPlaceholder() {
+    void groupEvent_rankPromoted_forwardsKeyAndVars() {
         adapter.groupEvent("rank_promoted", Map.of("player", "Alice", "group", "管理员"));
 
-        verify(configs).renderTemplate(eq("rank_promoted"), anyMap(), contains("🎉"));
+        verify(configs)
+                .renderEvent(
+                        eq("rank_promoted"),
+                        argThat(vars -> "Alice".equals(vars.get("player")) && "管理员".equals(vars.get("group"))));
+        verify(notifier).event(eq("rank_promoted"), any(MessageEnvelope.class));
     }
 
     @Test
-    void groupEvent_rankDemoted_rendersRealCopyNotPlaceholder() {
+    void groupEvent_rankDemoted_forwardsKeyAndVars() {
         adapter.groupEvent("rank_demoted", Map.of("player", "Alice", "group", "成员"));
 
-        verify(configs).renderTemplate(eq("rank_demoted"), anyMap(), contains("⬇️"));
+        verify(configs).renderEvent(eq("rank_demoted"), anyMap());
+        verify(notifier).event(eq("rank_demoted"), any(MessageEnvelope.class));
     }
 
     @Test
-    void groupEvent_reviewSubmitted_rendersNewBlockStyle() {
+    void groupEvent_reviewSubmitted_forwardsVars() {
         adapter.groupEvent(
-                "review_submitted", Map.of("player", "StyleApp", "type", "晋升建造者", "summary", "申请晋升建造者：想用WorldEdit"));
+                "review_submitted",
+                Map.of(
+                        "player", "StyleApp",
+                        "type", "晋升建造者",
+                        "summary", "申请晋升建造者：想用WorldEdit"));
 
-        // fallback 是模板字面（{player} 占位符），断言新样式外壳而非已替换的玩家名
-        verify(configs).renderTemplate(eq("review_submitted"), anyMap(), contains("🙋🏻‍♂️ [申请发起] {player}"));
+        verify(configs)
+                .renderEvent(
+                        eq("review_submitted"),
+                        argThat(vars -> "StyleApp".equals(vars.get("player"))
+                                && vars.get("summary").contains("WorldEdit")));
+        verify(notifier).event(eq("review_submitted"), any(MessageEnvelope.class));
     }
 
     @Test
-    void groupEvent_reviewCancelled_rendersNewBlockStyle() {
+    void groupEvent_reviewCancelled_forwardsKeyAndVars() {
         adapter.groupEvent(
                 "review_cancelled", Map.of("player", "StyleApp", "type", "晋升建造者", "summary", "申请晋升 builder：样式测试申请-撤回"));
 
-        verify(configs).renderTemplate(eq("review_cancelled"), anyMap(), contains("↩️ [申请撤回] {player}"));
+        verify(configs).renderEvent(eq("review_cancelled"), anyMap());
+        verify(notifier).event(eq("review_cancelled"), any(MessageEnvelope.class));
     }
 
     @Test
-    void groupEvent_reviewApproved_rendersNewBlockStyleWithReviewer() {
+    void groupEvent_reviewApproved_includesReviewerVar() {
         adapter.groupEvent(
                 "review_approved",
-                Map.of("player", "StyleApp", "type", "晋升建造者", "summary", "申请晋升建造者：异步修复验证", "reviewer", "StyleAdm"));
+                Map.of(
+                        "player", "StyleApp",
+                        "type", "晋升建造者",
+                        "summary", "申请晋升建造者：异步修复验证",
+                        "reviewer", "StyleAdm"));
 
-        verify(configs).renderTemplate(eq("review_approved"), anyMap(), contains("✅ [申请通过] {player}"));
-        verify(configs).renderTemplate(eq("review_approved"), anyMap(), contains("审核人：{reviewer}"));
+        verify(configs)
+                .renderEvent(
+                        eq("review_approved"),
+                        argThat(vars ->
+                                "StyleAdm".equals(vars.get("reviewer")) && "StyleApp".equals(vars.get("player"))));
+        verify(notifier).event(eq("review_approved"), any(MessageEnvelope.class));
     }
 
     @Test
-    void groupEvent_reviewRejected_rendersNewBlockStyleWithReviewer() {
+    void groupEvent_reviewRejected_forwardsKeyAndVars() {
         adapter.groupEvent(
                 "review_rejected",
-                Map.of("player", "StyleApp", "type", "晋升建造者", "summary", "申请晋升建造者：样式测试申请-通过", "reviewer", "StyleAdm"));
+                Map.of(
+                        "player", "StyleApp",
+                        "type", "晋升建造者",
+                        "summary", "申请晋升 builder：样式测试申请-拒绝",
+                        "reviewer", "StyleAdm"));
 
-        verify(configs).renderTemplate(eq("review_rejected"), anyMap(), contains("❌ [申请拒绝] {player}"));
-        verify(configs).renderTemplate(eq("review_rejected"), anyMap(), contains("审核人：{reviewer}"));
+        verify(configs).renderEvent(eq("review_rejected"), anyMap());
+        verify(notifier).event(eq("review_rejected"), any(MessageEnvelope.class));
     }
 
     @Test
-    void groupEvent_unknownKey_fallsBackToPlaceholder() {
-        // 未登记的键仍走 default "{message}"（既有行为，不回归）
+    void groupEvent_prisonReleased_forwardsKeyAndVars() {
+        adapter.groupEvent("prison_released", Map.of("player", "Steve", "group", "成员"));
+
+        verify(configs).renderEvent(eq("prison_released"), anyMap());
+        verify(notifier).event(eq("prison_released"), any(MessageEnvelope.class));
+    }
+
+    @Test
+    void groupEvent_unknownKey_stillForwardsToRenderEvent() {
+        // 未登记键直接透传 renderEvent（其内部对非语言包键走模板记录/空），不抛错不落字面 {message}
         adapter.groupEvent("unknown_event", Map.of());
 
-        verify(configs).renderTemplate(eq("unknown_event"), anyMap(), eq("{message}"));
+        verify(configs).renderEvent(eq("unknown_event"), anyMap());
+        verify(notifier).event(eq("unknown_event"), any(MessageEnvelope.class));
     }
 }

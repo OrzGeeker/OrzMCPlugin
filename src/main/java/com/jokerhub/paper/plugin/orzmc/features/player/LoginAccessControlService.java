@@ -138,10 +138,9 @@ public final class LoginAccessControlService {
 
     /** 封禁命中（安全加固 P2-4）：PRIVATE 私信管理员 + 服务端日志。私信限频防重连刷屏，日志每次保留。 */
     private void notifyBanHit(String player, String ip, String pattern) {
-        String fallback =
-                text(MessageKeys.LOGIN_ALERT_IP_BLOCK, Map.of("player", player, "ip", ip, "pattern", pattern));
-        MessageEnvelope env = configs.renderTemplate(
-                TemplateKeys.IP_BLACKLIST_BLOCK, Map.of("player", player, "ip", ip, "pattern", pattern), fallback);
+        // P4b-2：正文迁语言包 event.ip_blacklist_block（默认语言 R1）
+        MessageEnvelope env = configs.renderEvent(
+                TemplateKeys.IP_BLACKLIST_BLOCK, Map.of("player", player, "ip", ip, "pattern", pattern));
         if (blockNotifier.shouldRun("ip_blacklist_block", ACCESS_RULE_BLOCK_THROTTLE_MS)) {
             notifier.event(TemplateKeys.IP_BLACKLIST_BLOCK, env);
         }
@@ -149,9 +148,9 @@ public final class LoginAccessControlService {
     }
 
     private void notifyPlayerNameBlocked(String player, PlayerNameRule rule) {
-        String fallback = text(MessageKeys.LOGIN_ALERT_NAME_BLOCK, Map.of("player", player, "rule", rule.display()));
-        MessageEnvelope env = configs.renderTemplate(
-                TemplateKeys.PLAYER_NAME_BLOCK, Map.of("player", player, "rule", rule.display()), fallback);
+        // P4b-2：正文迁语言包 event.player_name_block（默认语言 R1）
+        MessageEnvelope env =
+                configs.renderEvent(TemplateKeys.PLAYER_NAME_BLOCK, Map.of("player", player, "rule", rule.display()));
         if (blockNotifier.shouldRun("player_name_block", ACCESS_RULE_BLOCK_THROTTLE_MS)) {
             notifier.event(TemplateKeys.PLAYER_NAME_BLOCK, env);
         }

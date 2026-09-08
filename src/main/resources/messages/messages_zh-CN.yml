@@ -67,6 +67,20 @@ event:
   geoip_block: "{name}({ip}) 地区:{country_code} 不在允许列表({allow_list})\n{address_info}\n你的地区({country_code})不在允许列表，如有疑问请联系管理员"
   geoip_unverifiable: "{name} 地区解析服务暂时不可用，无法验证你的地区（IP:{ip}）。请稍后重新尝试登录，若持续出现请联系管理员"
   tnt_alert: "{msg}\n世界:{world_alias} 坐标:{x_unit},{y_unit},{z_unit}({coord_unit})\n触发:{actor} 方块:{block_type}"
+  command_guard_blocked: "⚠ 高危命令已被拦截\n命令: {command}\n来源: {source} | 发送者: {sender}\n原因: {reason}"
+  security_audit: "🛡 安全自检报告\n在线模式: {online_mode}\n命令方块: {command_block}\nRCON: {rcon}\n白名单: {whitelist}\nOP: {ops}\n关键插件: {plugins}"
+  login_rate_limit_alert: "⚠ 登录限流\nIP: {ip}\n玩家: {player}\n原因: {reason}"
+  exploit_blocked: "⚠ 漏洞利用拦截\n玩家: {player}\n原因: {reason}"
+  ip_blacklist_block: "⚠ IP 黑名单拦截\n玩家: {player}\nIP: {ip}\n命中规则: {pattern}"
+  player_name_block: "⚠ 玩家名规则拦截\n玩家: {player}\n命中规则: {rule}"
+  review_submitted: "🙋🏻‍♂️ [申请发起] {player}\n---------------------------------\n{summary}"
+  review_cancelled: "↩️ [申请撤回] {player}\n---------------------------------\n{summary}"
+  review_approved: "✅ [申请通过] {player}\n---------------------------------\n{summary}\n---------------------------------\n审核人：{reviewer}"
+  review_rejected: "❌ [申请拒绝] {player}\n---------------------------------\n{summary}\n---------------------------------\n审核人：{reviewer}"
+  rank_promoted: "🎉 {player} 权限已升级为「{group}」"
+  rank_demoted: "⬇️ {player} 权限已被降级为「{group}」"
+  prison_imprisoned: "🔒 {player} 已被关入牢房（原组 {group}）"
+  prison_released: "🔓 {player} 已解除坐牢（恢复组 {group}）"
 
 # --- portal.*（/portal 命令玩家反馈；P2c） ---
 portal:
