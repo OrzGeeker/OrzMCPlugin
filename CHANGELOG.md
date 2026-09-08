@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+### ✨ 新功能 / 🛠 改进（多语言 i18n 一期，P0–P5 完成）
+- **多语言基础设施** — `infra/i18n/`：内置 `messages/messages_zh-CN.yml` + `messages_en-US.yml`（zh 为主目录逐字基线），`config.yml i18n:` 段（default_lang/platform_langs），数据目录 `messages_custom_<lang>.yml` 覆盖层（即时 reload、空串屏蔽）；Lang 决议：游戏内跟随客户端 locale（`langFor(Player)`）、Bot 交互按平台、群事件通知默认语言 R1；`I18nCatalogConsistencyTest` + I18nHealth 一致性护栏
+- **游戏内/Bot 全量文案迁语言包（P1–P3）** — common/teleport/whitelist/portal/tnt/player/geoip/login/guard/exploit/ratelimit/review/rank/prison/maintenance/guide/menu/bot/access_rule 等域分域迁移（中文零回归、英文随包交付；botcommands 11 命令与 `$cmd ?` 帮助双语）
+- **事件通知正文迁语言包（P4a–P4d）** — 命令回复转 `{message}` 直通壳；事件正文（event.* 30+ 键，含维护事件/安全审计/审核/权限/坐牢）与维护场景/MOTD/阶段名（maintenance.motd.*/maintenance.stage.*）迁包；`templates.yml` 仅剩直通壳/格式表/配色/数据键；Templates 记录与 TemplatesBodyMigration 升级链（config-version 13→14）：存量盘「正文==旧默认」自动删键/翻壳回落语言包（备份 .bak，服主定制保留零回归）
+- **P5 收尾** — 孤儿告警域键清理（login/guard/exploit/ratelimit alert_*）；server_load/server_stop 与 var 值词汇语言化（serverlife/audit/playermode）；Paginator 空列表正文参数化；/blacklist 游戏命令域去内联 zh（access_rule.* 18 键）；docs/features/README/CHANGELOG/交接同步
+
+### 附注（owner 后续动作）
+- 真机双语冒烟（新装 zh/en 对照 + 存量盘 13→14 升级对照）与 en 校对（D7）见 `docs/dev/i18n-migration-handoff.md` 未完成清单
+
 ## [1.0.24] - 2026-09-06
 
 ### ✨ 新功能 / 🛠 改进（配置体系）
