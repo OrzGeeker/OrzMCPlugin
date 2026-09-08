@@ -7,6 +7,7 @@ import com.jokerhub.paper.plugin.orzmc.features.command.binding.PlayerOnlyInterc
 import com.jokerhub.paper.plugin.orzmc.features.command.binding.PrisonDenyInterceptor;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.CommandPolicies;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.CommandPolicy;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nService;
 import com.mojang.brigadier.Command;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import java.util.ArrayList;
@@ -75,30 +76,30 @@ final class BrigadierSupport {
      * {@code command_policies}，{@code /orzmc config set} 改动即时生效（无需重启或 reload）。</p>
      */
     static List<CommandInterceptor> commandInterceptors(
-            String name, Supplier<CommandPolicies> cpSupplier, boolean skipPlayerOnly) {
+            String name, Supplier<CommandPolicies> cpSupplier, boolean skipPlayerOnly, I18nService i18n) {
         Supplier<CommandPolicy> policy = policyFor(name, cpSupplier);
         List<CommandInterceptor> list = new ArrayList<>();
         if (!skipPlayerOnly) {
-            list.add(new PlayerOnlyInterceptor());
+            list.add(new PlayerOnlyInterceptor(i18n));
         }
-        list.add(new AdminOnlyInterceptor(policy));
-        list.add(new CooldownInterceptor(name, policy));
+        list.add(new AdminOnlyInterceptor(policy, i18n));
+        list.add(new CooldownInterceptor(name, policy, i18n));
         return list;
     }
 
     /** Build interceptors for hardcoded admin-only commands (blacklist, config). */
-    static List<CommandInterceptor> adminInterceptors(String name) {
-        return List.of(new AdminOnlyInterceptor(true), new CooldownInterceptor(name, 0));
+    static List<CommandInterceptor> adminInterceptors(String name, I18nService i18n) {
+        return List.of(new AdminOnlyInterceptor(true, i18n), new CooldownInterceptor(name, 0, i18n));
     }
 
     /** 给开放命令拦截器链追加坐牢拒绝（prisonCheck 为 null 时原样返回）。 */
     static List<CommandInterceptor> withPrisonDeny(
-            List<CommandInterceptor> interceptors, Predicate<Player> prisonCheck) {
+            List<CommandInterceptor> interceptors, Predicate<Player> prisonCheck, I18nService i18n) {
         if (prisonCheck == null) {
             return interceptors;
         }
         List<CommandInterceptor> extended = new ArrayList<>(interceptors);
-        extended.add(new PrisonDenyInterceptor(prisonCheck));
+        extended.add(new PrisonDenyInterceptor(prisonCheck, i18n));
         return extended;
     }
 }

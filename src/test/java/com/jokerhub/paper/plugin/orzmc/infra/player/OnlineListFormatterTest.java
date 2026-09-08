@@ -5,6 +5,7 @@ import static org.mockito.Mockito.*;
 
 import com.destroystokyo.paper.profile.PlayerProfile;
 import com.jokerhub.paper.plugin.orzmc.features.rank.RankService;
+import com.jokerhub.paper.plugin.orzmc.testutil.TestI18n;
 import java.util.List;
 import java.util.UUID;
 import org.bukkit.GameMode;
@@ -35,6 +36,7 @@ class OnlineListFormatterTest {
         RankService rankService = mock(RankService.class);
         OnlineListFormatter f = new OnlineListFormatter();
         f.setRankService(rankService);
+        f.setI18nService(TestI18n.newService());
         Player p = player("Alice");
         when(rankService.currentGroup(p.getUniqueId())).thenReturn("admin");
 

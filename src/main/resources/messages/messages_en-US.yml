@@ -1,0 +1,447 @@
+# ==================================================
+#          OrzMC Language Pack: English (US)
+# ==================================================
+#
+# 【This file is a TRANSLATION of messages_zh-CN.yml — do not invent keys】
+# Key set and {var} placeholders per key MUST match the zh-CN master exactly;
+# enforced at startup health check and by I18nCatalogConsistencyTest.
+#
+# 【Placeholders】Use {var} tokens (same syntax as templates.yml, \n escapes work).
+# Missing keys fall back to zh-CN at runtime, so keep this file complete per release.
+#
+# 【Editing】Server owners may override any message via data-folder
+# messages_custom_en-US.yml (empty value "" = suppress the message).
+#
+# 【Adding a language】Add messages/messages_<code>.yml resource + one line in
+# I18nLoader.CODES — no business code changes needed.
+#
+# Keys were populated per migration PRs P1-P5 (docs/dev/i18n-plan.md §5, ledger §8);
+# the file is kept structurally identical to the zh-CN master.
+#
+# --- common.* (cross-channel generic feedback; migrated with command interceptors, P1) ---
+common:
+  cooldown: "Command is on cooldown, please try again later."
+  admin_required: "Administrator permission required."
+  player_required: "This command can only be used by a player."
+  prison_denied: "You are imprisoned and cannot use this command."
+  unknown_player: "Unknown player"
+  copy_coords: "Click to copy coordinates"
+
+# --- teleport.* (teleport bow; migrated with the teleport domain, P2a) ---
+teleport:
+  bow:
+    name: "Teleport Bow"
+    tag: "[Teleport Bow]"
+    lore: "Teleports you to where the arrow lands."
+    given: "You received {name}."
+    disabled: "Teleport bow is disabled. Please contact an administrator."
+    hit_water: "The arrow landed in water!"
+    hit_lava: "The arrow landed in lava!"
+    cross_world: "Cannot teleport across worlds!"
+    bad_height: "Target height is out of bounds!"
+    no_landing: "No safe landing spot at the target location!"
+    done: "Teleport complete!"
+
+# --- whitelist.* (login kick hints / group notifications; P2b. Kick is pre-login with no
+#     client locale, so it follows the server default language) ---
+whitelist:
+  kick:
+    join_hint_prefix: "You are not on the whitelist. Please join the QQ group "
+    join_hint_suffix: " and ask an admin to add you."
+    discord_join: "You can also join the Discord server: "
+  notify:
+    blocked: "{player} attempted to join but was blocked by the whitelist."
+    toggle_off: "Whitelist disabled."
+  bot:
+    add_title: "------ Whitelist additions ------"
+    remove_title: "------ Whitelist removals ------"
+
+# --- event.* (group event notification bodies, migrated in P4b; templates.yml no longer carries
+#     bodies, only format. Rendered once with the default language R1) ---
+event:
+  player_join: "🎮 Players online ({online_count}/{max_count})\n---------------------------------\n🥰 Joined:\n{name}"
+  player_quit: "🎮 Players online ({online_count}/{max_count})\n---------------------------------\n😋 Left:\n{name}"
+  player_kick: "🎮 Players online ({online_count}/{max_count})\n---------------------------------\n😂 Kicked:\n{name}"
+  player_digest: "🎮 Players online ({online_count}/{max_count})\n{join_summary}{quit_summary}{kick_summary}"
+  exception_alert: "⚠️ Server abnormal\n---------------------------------\n{message}"
+  whitelist_block: "🙅🏻‍♂️ {message}"
+  whitelist_toggle_alert: "⚠️ Server abnormal\n---------------------------------\n{message}"
+  geoip_block: "{name}({ip}) region {country_code} not in allow list ({allow_list})\n{address_info}\nYour region ({country_code}) is not allowed. Please contact an admin if you have questions"
+  geoip_unverifiable: "{name}: region resolution is temporarily unavailable, cannot verify your region (IP: {ip}). Please try logging in again later. Contact an admin if this keeps happening"
+  tnt_alert: "{msg}\nWorld: {world_alias} Coords: {x_unit},{y_unit},{z_unit} ({coord_unit})\nTriggered by: {actor} Block: {block_type}"
+  command_guard_blocked: "⚠ Dangerous command blocked\nCommand: {command}\nSource: {source} | Sender: {sender}\nReason: {reason}"
+  security_audit: "🛡 Security self-check report\nOnline mode: {online_mode}\nCommand blocks: {command_block}\nRCON: {rcon}\nWhitelist: {whitelist}\nOPs: {ops}\nKey plugins: {plugins}"
+  login_rate_limit_alert: "⚠ Login rate limited\nIP: {ip}\nPlayer: {player}\nReason: {reason}"
+  exploit_blocked: "⚠ Exploit blocked\nPlayer: {player}\nReason: {reason}"
+  ip_blacklist_block: "⚠ IP blacklist blocked\nPlayer: {player}\nIP: {ip}\nMatched rule: {pattern}"
+  player_name_block: "⚠ Player-name rule blocked\nPlayer: {player}\nMatched rule: {rule}"
+  review_submitted: "🙋🏻‍♂️ [Application submitted] {player}\n---------------------------------\n{summary}"
+  review_cancelled: "↩️ [Application withdrawn] {player}\n---------------------------------\n{summary}"
+  review_approved: "✅ [Application approved] {player}\n---------------------------------\n{summary}\n---------------------------------\nReviewer: {reviewer}"
+  review_rejected: "❌ [Application rejected] {player}\n---------------------------------\n{summary}\n---------------------------------\nReviewer: {reviewer}"
+  rank_promoted: "🎉 {player} has been promoted to {group}"
+  rank_demoted: "⬇️ {player} has been demoted to {group}"
+  prison_imprisoned: "🔒 {player} has been imprisoned (original group: {group})"
+  prison_released: "🔓 {player} has been released from prison (restored group: {group})"
+  maintenance_backup_stage: "Map {label} Stage: {stage} ({stage_name}/{stage_i18n}) Progress: {percent}% {current}/{total} Rate: {rate_per}{rate_unit} ETA: {eta_value}{eta_unit}"
+  maintenance_backup_done: "Map {label} finished in {duration_human}"
+  maintenance_backup_error: "Map {label} failed after {duration_human}"
+  maintenance_optimize_stage: "Map {label} Stage: {stage} ({stage_name}/{stage_i18n}) Progress: {percent}% {current}/{total} Rate: {rate_per}{rate_unit} ETA: {eta_value}{eta_unit}"
+  maintenance_optimize_done: "Map {label} finished in {duration_human}"
+  maintenance_optimize_error: "Map {label} failed after {duration_human}"
+  server_load: "Minecraft {version} ({mode})\n---------------------------------\n{status}\n\nSend \"{prompt_help}\" for a list of supported commands"
+  server_stop: "Minecraft {version}\n---------------------------------\nServer stopped\n\nCannot respond to commands while stopping"
+
+# --- portal.* (/portal command player feedback; P2c) ---
+portal:
+  usage: "Usage: /portal <host> [port] or /portal remove <host> [port]"
+  usage_remove: "Usage: /portal remove <host> [port]"
+  port_required: "Port must be a number."
+  not_found: "No matching portal for {target}."
+  removed: "Removed {count} portal(s) -> {target}"
+  created: "Created portal -> {host}:{port} @ [{world}] {x} {y} {z} axis: {axis} frame:4x5"
+
+  command_desc: "Create or remove portals"
+
+# --- tnt.* (TNT protection player hints / alert labels; P2c. Explosion/placement alerts are
+#     server broadcasts and group notifications, so they follow the default language) ---
+tnt:
+  anchor_disabled: "Respawn Anchor placement has been disabled by an admin."
+  place_cooldown: "TNT placing is on cooldown. Please wait "
+  cooldown_seconds: "{secs} s"
+  place_disabled: "TNT placing has been disabled by an admin."
+  prime_denied: "TNT ignited (forbidden)"
+  prime: "TNT ignited"
+  dispense_forbidden: "Dispensing {item} is forbidden"
+  explode: "{type} explosion"
+  block_explode: "Block explosion"
+  placement_msg: "Placed TNT"
+  at: "at "
+  placed: "placed TNT"
+  prefix_tnt: "[TNT Alert] "
+  prefix_explosion: "[Explosion Alert] "
+
+# --- player.notify.* (player join/quit digest section labels; P2d. Group messages use R1 default lang) ---
+player:
+  notify:
+    join_label: "Joined"
+    quit_label: "Left"
+    kick_label: "Kicked"
+    hidden_more: "and {count} more"
+
+# --- geoip.* (region whitelist player hints / admin alerts; P2d. Pre-login has no client
+#     locale, so text follows the server default language) ---
+geoip:
+  kick_region: "{name} ({ip})\nCountry: {country}\nIP location is not in the supported region{allow}"
+  kick_unverifiable: "{name} ({ip})\nRegion lookup is temporarily unavailable, so your region cannot be verified. Please try logging in again later."
+  outcome_allowed_failopen: "allowed (fail-open)"
+  outcome_denied_failclose: "denied (fail-close)"
+  outcome_allowed: "allowed"
+  outcome_denied: "denied"
+  alert_exception: "Region lookup service error: {detail}"
+  alert_lookup_failed: "Region lookup failed ({outcome}): {player} ({ip})"
+  alert_timeout: "Region lookup timed out ({timeout} ms), {outcome}: {player} ({ip})"
+
+# --- login.* (IP blacklist / player-name rule login blocks and notifications; P2d2.
+#     Pre-login has no client locale, so text follows the server default language) ---
+login:
+  unknown_player: "Unknown player"
+  ip_banned: "Your IP address is banned."
+  name_rule_denied: "Your player name does not match the server access rules."
+
+# --- guard.* (dangerous command guard; P2e. Security notices use the default language R1) ---
+guard:
+  deny_reason: "Command \"{cmd}\" was blocked by the security guard (deny-list)."
+  selector_warn: "The command contains an unqualified selector {selector} which may affect all entities/players. Use type=.. or distance=.. to limit it."
+  source_player: "player"
+  source_console: "console/RCON"
+
+# --- exploit.* (exploit hardening; P2e) ---
+exploit:
+  notify_pages: "Book pages over the limit ({count} pages)"
+  notify_attributes: "Abnormal item attribute modifiers (cleaned {count})"
+
+# --- ratelimit.* (login rate limiting; P2e) ---
+ratelimit:
+  reason_frequency: "Rate exceeded ({limit} attempts/min)"
+  reason_concurrent: "Concurrent connections per IP exceeded ({limit})"
+
+# --- prison.* (prison; P2f1. Admin results follow the default language R1; the prisoner's
+#     direct message follows that player's language) ---
+prison:
+  lp_unavailable: "LuckPerms is unavailable; cannot run the prison command."
+  lp_unavailable_release: "LuckPerms is unavailable; cannot run the release command."
+  imprison_failed: "Failed to imprison (data write failed; retry or contact an admin)."
+  release_failed: "Failed to release from prison (data write failed; retry or contact an admin)."
+  not_prisoner: "That player is not in prison."
+  imprison_player_msg: "You have been imprisoned."
+  release_player_msg: "You have been released from prison."
+  imprison_ok: "Imprisoned {player} (original group {group})."
+  release_ok: "Released {player} from prison (restored group {group})."
+  player_not_found: "Player not found: {player}"
+
+# --- gamemode.* (auto survival-mode switch notice; P2f1) ---
+gamemode:
+  fix_message: "Your permission group changed; game mode switched to survival."
+
+# --- review.* (/apply command copy; P2f2, follows the executing player's language.
+#     Type displayName is config data and is not migrated) ---
+review:
+  list_header: "Available applications:"
+  no_types: "There are no review types you can apply for right now."
+  type_unknown: "Unknown application type: {type} (run /apply to see available types)"
+  type_unknown_bare: "Unknown application type: {type}"
+  my_applications: "Your applications:"
+  no_applications: "You have not submitted any applications yet."
+  status_pending: "⏳ Pending"
+  status_approved: "✅ Approved"
+  status_rejected: "❌ Rejected"
+  status_cancelled: "↩️ Withdrawn"
+  reviewer_suffix: "({reviewer})"
+  not_eligible: "You do not meet the requirements for \"{name}\"."
+  already_pending: "You already have a pending \"{name}\" application. Please wait for an admin review."
+  submitted_notify: "Application submitted. It will take effect automatically once approved by an admin."
+  submitted_ok: "Application submitted; awaiting admin review."
+  processing_cancel: "That application is being processed (under admin review). Please try again later."
+  not_found: "Application not found."
+  own_cancel_only: "You can only withdraw your own applications."
+  already_processed_cancel: "That application has already been processed and cannot be withdrawn."
+  cancelled_notify: "Withdrawn your \"{name}\" application."
+  cancelled_ok: "Application withdrawn."
+  processing_review: "That application is being processed. Please do not repeat the operation."
+  already_processed_review: "That application has already been processed ({status})."
+  unknown_type_review: "Unknown review type: {type}"
+  auth_failed: "Authorization failed ({detail}). Please retry or contact an admin."
+  auth_failed_top: "Authorization failed (the target may already be at the highest rank, or LuckPerms has an issue). Please retry or contact an admin."
+  state_changed: "The application changed state while being processed (possibly withdrawn/processed concurrently). This promotion may already have taken effect and will not be auto-reverted; please verify manually."
+  state_save_failed: "Authorization succeeded but saving the state failed. Please refresh to confirm and retry."
+  pending_none_self: "You have no pending \"{name}\" applications."
+  player_not_found: "Player not found: {player}"
+  no_pending_applicant: "{player} has no pending applications."
+  multiple_pending: "{player} has multiple pending applications ({types}). Use the group command $v to handle them by type."
+  approved_notify: "Your \"{name}\" application was approved!"
+  rejected_notify: "Your \"{name}\" application was rejected."
+  approved_ok: "Approved {player}'s \"{name}\" application."
+  rejected_ok: "Rejected {player}'s \"{name}\" application."
+  reason_arg: "[reason]"
+
+# --- rank.* (/rank status and promote/demote notices; P2f3. Unified default language R1;
+#     rank group names rank.group.*) ---
+rank:
+  header_current: "Your current permission group: {name} ({code})"
+  timeline_with_progress: "Online time: {minutes} min / Member promotion threshold {threshold} min ({progress})"
+  timeline_done: "Online time: {minutes} min / Member promotion threshold {threshold} min (✅ met)"
+  timeline_plain: "Online time: {minutes} min"
+  progress_met: "✅ Met (will auto-promote to member on next login)"
+  progress_left: "{minutes} min remaining"
+  next_auto: "Next: auto-promote to member once the online-time goal is met"
+  next_apply: "Next, you can apply for: {types}"
+  top_level: "You are at the highest rank ({admin})"
+  unknown_group: "Current permission group is unknown. Please contact an admin."
+  no_applicable: "None (nothing to apply for right now)"
+  type_entry: "{name} (/apply {key})"
+  list_sep: "; "
+  promote_notify: "Your rank has been promoted: {group}."
+  demote_notify: "Your rank has been demoted: {group}."
+  group:
+    admin: "Admin"
+    builder: "Builder"
+    member: "Member"
+    default: "Guest"
+
+# --- maintenance.cmd.* (/maintenance status; P2g1. Ops copy uses default language R1) ---
+maintenance:
+  cmd:
+    busy_manual_enter: "A map backup/optimization is running; manual maintenance cannot start right now."
+    already_manual: "The server is already in manual maintenance mode."
+    not_active: "The server is not in maintenance mode right now."
+    busy_exit: "A map backup/optimization is running; maintenance cannot be exited right now."
+    "off": "The server is not in maintenance mode."
+    reason_backup: "Map backup in progress"
+    reason_optimize: "Map optimization in progress"
+    reason_manual: "Manual maintenance in progress"
+  motd:
+    backup: "Server map backup in progress; please try again later."
+    optimize: "Server map optimization in progress; please try again later."
+    manual: "Server maintenance in progress; please try again later."
+    progress_line: "Progress: {stage} {percent}% ETA {eta}s"
+  stage:
+    Region: "Region"
+    Chunk: "Chunk"
+    File: "File"
+    Done: "Done"
+    Running: "In progress"
+
+# --- guide/menu.* (starter guide / menu hints; P2h1, follows the player's language) ---
+guide:
+  not_configured: "The server owner has not configured a starter guide."
+  got: "You received the starter guide."
+menu:
+  wip: "This feature is still under development."
+
+# --- bot.* (group command help/usage/examples; P3a default language R1. {name}/{prompt} injected) ---
+bot:
+  help_title: "🤖 OrzMC Group Commands Help"
+  help_intro: "Send \"{prompt}x ?\" to view the usage of a single command"
+  help_admin_section: "👨‍💼 Admin Commands"
+  help_general_section: "👨‍💻 General Commands"
+  admin_required: "{cmd} requires administrator permissions"
+  lbl_usage: "📚 Usage:"
+  lbl_example: "🚀 Examples:"
+  desc:
+    l: "List online players"
+    w: "List whitelisted players"
+    h: "Show help"
+    a: "Add players to the whitelist"
+    r: "Remove players from the whitelist"
+    b: "Backup the world"
+    o: "Optimize world size"
+    e: "Run a console command"
+    d: "Add/remove/list IP blacklist and player-name rules"
+    v: "View/handle review applications"
+    p: "Permission management (promote/demote)"
+  usage:
+    a: "🎯 {name} Add players to the whitelist"
+    r: "🎯 {name} Remove players from the whitelist"
+    e: "🎯 {name} Run a console command"
+    d: "🎯 {name} IP / player-name rule management"
+    v: "🎯 {name} Review applications"
+    p: "🎯 {name} Permission management"
+    l: "🎯 {name} List online players"
+    w: "🎯 {name} List whitelisted players"
+    h: "🎯 {name} Show help"
+    b: "🎯 {name} Back up the world"
+    o: "🎯 {name} Optimize world size"
+  params:
+    a: "{name} <players> <players2> ... (space or comma separated, batch supported)"
+    r: "{name} <players> <players2> ... (space or comma separated, batch supported)"
+    e: "{name} <console command>"
+    l: "{name} (no arguments, run directly)"
+    w: "{name} [page] (optional, e.g. {name} 2)"
+    h: "{name} (no arguments; shows this help)"
+    b: "{name} (no arguments; runs a backup)"
+    o: "{name} (no arguments; runs an optimization)"
+    v: "{name} l [page]       View pending list\n{name} y <player>       Approve\n{name} n <player>       Reject\n(accepts yes/no; use {name} y <typeId> <player> for multiple pending types)"
+    p: "{name} u|up <player>     Promote (default→member→builder→admin)\n{name} d|down <player>   Demote (admin→builder→member→default)"
+    d: "{name}                 View blacklist\n{name} [IP]            Add blacklist entry\n{name} -[IP]           Remove blacklist entry\n{name} player <type> <value>    Add player-name rule\n{name} -player <type> <value>   Remove player-name rule\n{name} player list              List player-name rules\nMatch types <type>: exact / prefix / suffix / contains / glob (*?) / regex"
+  examples:
+    a: "{name} Steve\n{name} Steve Alex Bob\n{name} Steve,Alex,Bob"
+    r: "{name} Steve\n{name} Steve Alex Bob\n{name} Steve,Alex,Bob"
+    e: "{name} plugins\n{name} say Hello everyone"
+    l: "{name}"
+    w: "{name}\n{name} 2"
+    h: "{name}"
+    b: "{name}"
+    o: "{name}"
+    v: "{name} l\n{name} l 2\n{name} y Steve\n{name} y builder-promotion Steve"
+    p: "{name} u Steve\n{name} d Steve"
+    d: "{name}\n{name} 1.2.3.4\n{name} -1.2.3.4\n{name} player exact Steve\n{name} player prefix bot_\n{name} player suffix _test\n{name} player contains admin\n{name} player glob bot_*\n{name} player regex ^bot\n{name} -player prefix bot_"
+  list:
+    online_header: "------ Online ({count}/{max}) ------"
+    whitelist_header: "------ Whitelisted players ({count}) ------"
+    cleanup_title: "------ Whitelist cleanup ------"
+    page_meta: "Page {page}/{total}"
+    empty_whitelist: "(no whitelisted players)"
+  e:
+    overflow: "⚠️ Log buffer overflow; output may be incomplete."
+  p:
+    svc_unavailable: "Permission service is unavailable."
+    no_lp: "LuckPerms was not detected; permission management is unavailable."
+    player_not_found: "Player not found: {player}"
+    op_error: "Permission operation failed for {player} (see server logs)."
+    up_fail: "{player} could not be promoted: already at the highest rank or permission data is invalid (see server logs)."
+    down_fail: "{player} could not be demoted: already at the lowest rank or permission data is invalid (see server logs)."
+    up_ok: "Promoted {player} to {group}."
+    down_ok: "Demoted {player} to {group}."
+  v:
+    svc_unavailable: "Review service is unavailable."
+    list_empty: "There are no pending applications."
+    list_header: "------ Pending applications ------"
+    current_group: " (current group: {group})"
+    list_item: "[{type}] {player}{group}: {summary} (submitted {time})"
+    reviewer_fallback: "group admin"
+    not_found: "No pending application found: {criteria}"
+    error: "Review processing error: {detail}"
+    unknown_error: "unknown error"
+    just_now: "just now"
+    minutes_ago: "{count} minutes ago"
+    hours_ago: "{count} hours ago"
+    days_ago: "{count} days ago"
+  d:
+    svc_unavailable: "Blacklist service is unavailable."
+    exec_error: "Execution error: {detail}"
+    usage_minus_player: "Usage: {name} -player <type> <value>"
+    usage_player: "Usage: {name} player <type> <value>"
+    usage_remove_all: "Usage: {name} -<IP> (remove IP) / {name} -player <type> <value> (remove player-name rules)"
+    hint_minus_player: "Player-name rules require: {name} -player <type> <value>"
+    hint_player: "Player-name rules require: {name} player <type> <value>"
+    removed: "Removed: {pattern}"
+    not_found: "Not found in the blacklist: {pattern}"
+    added: "Added: {pattern}"
+    exists: "Already in the blacklist: {pattern}"
+    empty_all: "No access rules."
+    empty_player_rules: "No player-name rules."
+    list_section_ip: "IP blacklist:"
+    list_section_rules: "Player-name rules:"
+
+# --- access_rule.* (rule-management feedback shared by /blacklist and bot $d; P3d3) ---
+access_rule:
+  value_empty: "Rule value must not be empty."
+  invalid_type: "Invalid match type: {type} (supported: exact/prefix/suffix/contains/glob/regex)"
+  invalid_regex: "Invalid regular expression: {value}"
+  removed: "Removed player-name rule: {rule}"
+  not_found: "Player-name rule not found: {rule}"
+  added: "Added player-name rule: {rule}"
+  exists: "Player-name rule already exists; not added again: {rule}"
+  # P5-4: in-game /blacklist ops feedback (security ops commands use default-lang R1, consistent with guard/bot)
+  usage_ip_add: "Usage: /blacklist add <IP>"
+  usage_ip_remove: "Usage: /blacklist remove <IP>"
+  usage_player_add: "Player-name rules: use /blacklist add player <type> <value>"
+  usage_player_remove: "Player-name rules: use /blacklist remove player <type> <value>"
+  usage_player_any: "Player-name rules: use /blacklist add|remove player <type> <value>"
+  usage_player_value_empty: "Player-name rule value cannot be empty: /blacklist {verb} player <type> <value>"
+  usage_player_shorthand: "Usage: /blacklist {sign}player <type> <value>"
+  added_ip: "Added to IP blacklist: {pattern}"
+  exists_ip: "Already in IP blacklist: {pattern}"
+  removed_ip: "Removed from IP blacklist: {pattern}"
+  not_found_ip: "Not found in IP blacklist: {pattern}"
+  list_empty_all: "No access rules configured"
+  list_title: "Current access rules:"
+  ip_section: "  IP blacklist:"
+  rules_section: "  Player-name rules:"
+  player_rules_empty: "No player-name rules configured"
+  player_rules_title: "Current player-name rules:"
+
+# --- serverlife.* (server lifecycle / maintenance MOTD shell; P5-2. default-lang R1; dynamic values stay code-injected) ---
+serverlife:
+  mode_online: "Online-mode server"
+  mode_offline: "Offline-mode server"
+  status_startup: "Startup complete"
+  status_reload: "Reload complete"
+  motd_title: "⚠ Maintenance"
+  qq_label: "QQ group: "
+  discord_label: "Discord: "
+  discord_hover: "Click to join Discord"
+
+# --- audit.* (startup security self-check var-value vocabulary; P5-2. default-lang R1) ---
+audit:
+  online_on: "Online-mode verified"
+  online_off: "Offline (HIGH RISK)"
+  command_block_on: "Enabled (HIGH RISK)"
+  command_block_off: "Disabled"
+  rcon_off: "Not enabled"
+  rcon_on: "Enabled (port: {port})"
+  whitelist_off: "Off"
+  whitelist_enforced: "On (enforced)"
+  whitelist_not_enforced: "On (not enforced)"
+  ops_zero: "0"
+  ops_count: "{count}"
+  ops_list: "{count}: {names}"
+  plugins_none: "None installed (HIGH RISK)"
+
+# --- playermode.* (player-row game-mode vocabulary; P5-5. bot/group event var values, R1) ---
+playermode:
+  creative: "Creative"
+  survival: "Survival"
+  adventure: "Adventure"
+  spectator: "Spectator"

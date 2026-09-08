@@ -18,6 +18,7 @@ import com.jokerhub.paper.plugin.orzmc.infra.player.PlayerDisplayNames;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
 import com.jokerhub.paper.plugin.orzmc.infra.templates.TemplateResolvers;
 import com.jokerhub.paper.plugin.orzmc.testutil.ServiceTestBase;
+import com.jokerhub.paper.plugin.orzmc.testutil.TestI18n;
 import io.papermc.paper.event.block.BlockPreDispenseEvent;
 import java.util.List;
 import java.util.concurrent.CyclicBarrier;
@@ -69,11 +70,8 @@ class TntEventServiceTest extends ServiceTestBase {
                 List.of()); // exemptEntities
 
         when(configs.tnt()).thenReturn(tntConfig);
-        when(styles.tntPrefix()).thenReturn(Component.text("[TNT]"));
-        when(styles.explosionPrefix()).thenReturn(Component.text("[爆炸]"));
         when(styles.playerName(any())).thenReturn(Component.text("player"));
-        when(styles.unknownLabel()).thenReturn(Component.text("unknown"));
-        when(styles.coordComponent(anyString())).thenReturn(Component.text("(0,0,0)"));
+        when(styles.coordComponent(anyString(), anyString())).thenReturn(Component.text("(0,0,0)"));
         when(styles.coordString(any())).thenReturn("(0,0,0)");
 
         TemplateOptions templateOpts = mock(TemplateOptions.class);
@@ -91,7 +89,7 @@ class TntEventServiceTest extends ServiceTestBase {
 
         displayNamesMock = mockStatic(PlayerDisplayNames.class);
 
-        service = new TntEventService(configs, styles, notifier, scheduler);
+        service = new TntEventService(configs, styles, notifier, scheduler, TestI18n.newService());
     }
 
     @AfterEach
@@ -143,7 +141,7 @@ class TntEventServiceTest extends ServiceTestBase {
         when(configs.tnt()).thenReturn(tntConfig);
         when(configs.renderEvent(anyString(), anyMap()))
                 .thenReturn(new MessageEnvelope(TargetType.PUBLIC, "msg", Format.DEFAULT));
-        service = new TntEventService(configs, styles, notifier, scheduler);
+        service = new TntEventService(configs, styles, notifier, scheduler, TestI18n.newService());
 
         Location loc = mock(Location.class);
         World world = mockWorld();
@@ -166,7 +164,7 @@ class TntEventServiceTest extends ServiceTestBase {
         when(configs.tnt()).thenReturn(tntConfig);
         when(configs.renderEvent(anyString(), anyMap()))
                 .thenReturn(new MessageEnvelope(TargetType.PUBLIC, "msg", Format.DEFAULT));
-        service = new TntEventService(configs, styles, notifier, scheduler);
+        service = new TntEventService(configs, styles, notifier, scheduler, TestI18n.newService());
 
         Location loc = mock(Location.class);
         World world = mockWorld();
@@ -190,7 +188,7 @@ class TntEventServiceTest extends ServiceTestBase {
         when(configs.tnt()).thenReturn(tntConfig);
         when(configs.renderEvent(anyString(), anyMap()))
                 .thenReturn(new MessageEnvelope(TargetType.PUBLIC, "msg", Format.DEFAULT));
-        service = new TntEventService(configs, styles, notifier, scheduler);
+        service = new TntEventService(configs, styles, notifier, scheduler, TestI18n.newService());
 
         Location loc = mock(Location.class);
         World world = mockWorld();
@@ -210,7 +208,7 @@ class TntEventServiceTest extends ServiceTestBase {
     void onPlaceBlock_placingRespawnAnchor_disabled_cancels() {
         TntConfig tntConfig = new TntConfig(false, false, 0, 3000L, List.of(), List.of());
         when(configs.tnt()).thenReturn(tntConfig);
-        service = new TntEventService(configs, styles, notifier, scheduler);
+        service = new TntEventService(configs, styles, notifier, scheduler, TestI18n.newService());
 
         Player player = mock(Player.class);
         Block block = mock(Block.class);
@@ -290,7 +288,7 @@ class TntEventServiceTest extends ServiceTestBase {
         // Creeper is in the default exempt list
         TntConfig tntConfig = new TntConfig(false, true, 0, 3000L, List.of(), List.of("CREEPER"));
         when(configs.tnt()).thenReturn(tntConfig);
-        service = new TntEventService(configs, styles, notifier, scheduler);
+        service = new TntEventService(configs, styles, notifier, scheduler, TestI18n.newService());
 
         EntityExplodeEvent event = mock(EntityExplodeEvent.class);
         when(event.getEntityType()).thenReturn(EntityType.CREEPER);

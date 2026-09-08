@@ -51,6 +51,16 @@ abstract class BotCommandContext {
         callback.accept(env);
     }
 
+    /** 发送单条默认语言消息（message 为已按默认语言 R1 渲染的完整文案），reply 模板键取 result 语义。 */
+    protected void emitMsg(Consumer<MessageEnvelope> callback, String message) {
+        emitMsg(callback, "command_review_result", message);
+    }
+
+    /** 发送单条默认语言消息；templateKey 指定 reply 模板键（error/result/list_empty 等）。 */
+    protected void emitMsg(Consumer<MessageEnvelope> callback, String templateKey, String message) {
+        emit(callback, templateKey, Map.of("message", message), message);
+    }
+
     protected boolean guardAdminCommand(OrzUserCmd cmd, boolean isAdmin, Consumer<MessageEnvelope> callback) {
         if (isAdmin) return true;
         emitAdminRequired(

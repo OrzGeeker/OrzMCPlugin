@@ -7,6 +7,8 @@ import com.jokerhub.paper.plugin.orzmc.infra.guidebook.models.GuideBookConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.guidebook.models.LinkContent;
 import com.jokerhub.paper.plugin.orzmc.infra.guidebook.models.TextContent;
 import com.jokerhub.paper.plugin.orzmc.infra.guidebook.models.TextStyle;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nService;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.MessageKeys;
 import com.jokerhub.paper.plugin.orzmc.infra.server.OrzUtil;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
@@ -30,11 +32,13 @@ public final class GuideService {
     private final ServerFacade server;
     private final ConfigService configService;
     private final OrzTextStyles styles;
+    private final I18nService i18n;
 
-    public GuideService(ServerFacade server, ConfigService configService, OrzTextStyles styles) {
+    public GuideService(ServerFacade server, ConfigService configService, OrzTextStyles styles, I18nService i18n) {
         this.server = server;
         this.configService = configService;
         this.styles = styles;
+        this.i18n = i18n;
     }
 
     public ItemStack buildGuideBook() {
@@ -104,7 +108,8 @@ public final class GuideService {
     public void openGuide(Player player) {
         ItemStack guideBook = buildGuideBook();
         if (guideBook == null) {
-            player.sendMessage(OrzUtil.failureText(styles, "服主未配置新手指南"));
+            player.sendMessage(
+                    OrzUtil.failureText(styles, i18n.msg(i18n.langFor(player), MessageKeys.GUIDE_NOT_CONFIGURED)));
             return;
         }
         player.openBook(guideBook);
@@ -118,7 +123,7 @@ public final class GuideService {
             ItemStack guideBook = buildGuideBook();
             if (guideBook != null) {
                 player.getInventory().addItem(guideBook);
-                player.sendMessage(OrzUtil.successText(styles, "获得新手指南"));
+                player.sendMessage(OrzUtil.successText(styles, i18n.msg(i18n.langFor(player), MessageKeys.GUIDE_GOT)));
             }
         }
     }

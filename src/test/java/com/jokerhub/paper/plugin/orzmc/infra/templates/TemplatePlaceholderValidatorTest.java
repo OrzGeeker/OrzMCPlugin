@@ -10,6 +10,15 @@ import org.junit.jupiter.api.Test;
 
 class TemplatePlaceholderValidatorTest {
 
+    private FileConfiguration mockTemplates(String key, String body) {
+        FileConfiguration cfg = mock(FileConfiguration.class);
+        when(cfg.getString(anyString(), anyString())).thenReturn("");
+        when(cfg.getString(eq("templates." + key), anyString())).thenReturn(body);
+        when(cfg.get(anyString())).thenReturn(null);
+        when(cfg.contains(anyString())).thenReturn(false);
+        return cfg;
+    }
+
     @Test
     void nullConfig_returnsError() {
         List<String> issues = TemplatePlaceholderValidator.validate(null);
@@ -29,64 +38,25 @@ class TemplatePlaceholderValidatorTest {
     }
 
     @Test
-    void invalidPlaceholder_returnsError() {
-        FileConfiguration cfg = mock(FileConfiguration.class);
-        when(cfg.getString(anyString(), anyString())).thenReturn("");
-        when(cfg.getString(eq("templates.player_join"), anyString())).thenReturn("{invalid_var}");
-        when(cfg.get(anyString())).thenReturn(null);
-        when(cfg.contains(anyString())).thenReturn(false);
-
-        List<String> issues = TemplatePlaceholderValidator.validate(cfg);
-        assertFalse(issues.isEmpty());
-        assertTrue(issues.stream().anyMatch(i -> i.contains("模板变量未知")));
+    void unknownPlaceholderOnShellTemplate_reportsError() {
+        // command_*（{message} 直通壳等）仍校验磁盘 body 变量集
+        List<String> issues =
+                TemplatePlaceholderValidator.validate(mockTemplates("command_output", "{message} {bogus_var}"));
+        assertTrue(issues.stream().anyMatch(i -> i.contains("模板变量未知") && i.contains("command_output")));
     }
 
     @Test
-    void playerDigest_knownPlaceholders_pass() {
-        FileConfiguration cfg = mock(FileConfiguration.class);
-        when(cfg.getString(anyString(), anyString())).thenReturn("");
-        when(cfg.getString(eq("templates.player_digest"), anyString()))
-                .thenReturn("{join_summary}{quit_summary}{kick_summary}{online_count}{max_count}");
-        when(cfg.get(anyString())).thenReturn(null);
-        when(cfg.contains(anyString())).thenReturn(false);
-
-        List<String> issues = TemplatePlaceholderValidator.validate(cfg);
+    void knownPlaceholdersOnShellTemplate_pass() {
+        List<String> issues = TemplatePlaceholderValidator.validate(
+                mockTemplates("command_whitelist_page", "{header}\n{page}/{total}\n{body}"));
         assertTrue(issues.isEmpty());
     }
 
     @Test
-    void playerDigest_unknownPlaceholder_reportsError() {
-        FileConfiguration cfg = mock(FileConfiguration.class);
-        when(cfg.getString(anyString(), anyString())).thenReturn("");
-        when(cfg.getString(eq("templates.player_digest"), anyString())).thenReturn("{bogus_var}");
-        when(cfg.get(anyString())).thenReturn(null);
-        when(cfg.contains(anyString())).thenReturn(false);
-
-        List<String> issues = TemplatePlaceholderValidator.validate(cfg);
-        assertTrue(issues.stream().anyMatch(i -> i.contains("模板变量未知")));
-    }
-
-    @Test
-    void geoipUnverifiable_knownPlaceholders_pass() {
-        FileConfiguration cfg = mock(FileConfiguration.class);
-        when(cfg.getString(anyString(), anyString())).thenReturn("");
-        when(cfg.getString(eq("templates.geoip_unverifiable"), anyString())).thenReturn("地区解析服务暂时不可用（IP:{ip}）{name}");
-        when(cfg.get(anyString())).thenReturn(null);
-        when(cfg.contains(anyString())).thenReturn(false);
-
-        List<String> issues = TemplatePlaceholderValidator.validate(cfg);
-        assertTrue(issues.isEmpty());
-    }
-
-    @Test
-    void geoipUnverifiable_unknownPlaceholder_reportsError() {
-        FileConfiguration cfg = mock(FileConfiguration.class);
-        when(cfg.getString(anyString(), anyString())).thenReturn("");
-        when(cfg.getString(eq("templates.geoip_unverifiable"), anyString())).thenReturn("{bogus_var}");
-        when(cfg.get(anyString())).thenReturn(null);
-        when(cfg.contains(anyString())).thenReturn(false);
-
-        List<String> issues = TemplatePlaceholderValidator.validate(cfg);
-        assertTrue(issues.stream().anyMatch(i -> i.contains("模板变量未知")));
+    void langBackedDiskBody_isNotValidated() {
+        // P5-2：语言包承载正文（event.*）的键跳过磁盘 body 变量校验——磁盘残留 {message} 直通壳/旧正文/
+        // 服主定制均回落或原样渲染，不经过该白名单（防存量升级后的误告警，如 server_load/server_stop 壳）
+        List<String> issues = TemplatePlaceholderValidator.validate(mockTemplates("player_join", "{bogus_var}"));
+        assertTrue(issues.isEmpty(), "lang-backed 键不应校验磁盘 body: " + issues);
     }
 }

@@ -10,7 +10,6 @@ import com.jokerhub.paper.plugin.orzmc.infra.notify.Notifier;
 import com.jokerhub.paper.plugin.orzmc.infra.server.OrzUtil;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
-import com.jokerhub.paper.plugin.orzmc.infra.templates.TemplateResolvers;
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -98,16 +97,6 @@ public class WorldMaintenanceService {
         return sb.toString();
     }
 
-    private static String stageDisplayCN(ProgressStage s) {
-        if (s == null) return "进行中";
-        String n = s.name();
-        if ("Region".equalsIgnoreCase(n)) return "区域";
-        if ("Chunk".equalsIgnoreCase(n)) return "区块";
-        if ("File".equalsIgnoreCase(n)) return "文件";
-        if ("Done".equalsIgnoreCase(n)) return "完成";
-        return "进行中";
-    }
-
     private Function1<ProgressEvent, Unit> progressHandler(String label, Consumer<String> callback) {
         return progressEvent -> {
             Long current = progressEvent.getCurrent();
@@ -122,7 +111,6 @@ public class WorldMaintenanceService {
             vars.put("stage", stage.name());
             vars.put("percent", String.valueOf(percent));
             vars.put("stage_name", progressEvent.getStage().name());
-            vars.put("stage_cn", stageDisplayCN(progressEvent.getStage()));
             long elapsedMs = Math.max(1, System.currentTimeMillis() - startMs);
             double ratePerSec = (current * 1000.0) / elapsedMs;
             long etaMs = (long) Math.max(0, (total - current) / Math.max(1e-6, ratePerSec) * 1000.0);
@@ -143,7 +131,8 @@ public class WorldMaintenanceService {
                 etaUnit = "min";
             }
             String stageName = progressEvent.getStage().name();
-            String stageI18n = TemplateResolvers.stageAlias(stageName, opt);
+            // 阶段显示名单源：MaintenanceTexts.stage（磁盘 stage_cn 自定义优先 → 语言包 maintenance.stage.*，默认语言）
+            String stageI18n = configs.maintenanceTexts().stage(stageName);
             vars.put("stage_cn", stageI18n);
             vars.put("stage_i18n", stageI18n);
             vars.put("rate_per", String.format("%.2f", ratePer));
@@ -270,8 +259,8 @@ public class WorldMaintenanceService {
             wasManual = maintenanceModeService.isActive()
                     && maintenanceModeService.reason() == MaintenanceModeService.MaintenanceReason.MANUAL;
             maintenanceModeService.enter(reason);
-            // 踢人无进度：统一场景文案（templates.yml maintenance_motd_*，PR4 迁移）
-            kickText = MaintenanceModeService.renderMotdText(reason, configs.templates(), null);
+            // 踢人无进度：统一场景文案（maintenance.motd.* 磁盘正文优先→语言包，P4c-2）
+            kickText = MaintenanceModeService.renderMotdText(reason, configs.maintenanceTexts(), null);
         }
         try {
             server.runSync(() -> {

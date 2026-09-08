@@ -6,12 +6,10 @@ import static org.mockito.Mockito.*;
 
 import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.MaintenanceConfig;
-import com.jokerhub.paper.plugin.orzmc.infra.config.configs.Templates;
 import com.jokerhub.paper.plugin.orzmc.infra.notify.Notifier;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
-import org.bukkit.configuration.file.YamlConfiguration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -129,7 +127,6 @@ class ScheduledBackupServiceTest {
         // 真实 WorldMaintenanceService：runExclusive 的 AtomicBoolean 互斥，
         // 前一次备份进行中时再次触发直接跳过（不叠加第二次踢人/save-off）。
         when(configs.maintenance()).thenReturn(config(1L));
-        when(configs.templates()).thenReturn(Templates.from(new YamlConfiguration()));
         OrzTextStyles styles = mock(OrzTextStyles.class);
         WorldMaintenanceService maintenance = new WorldMaintenanceService(
                 server, configs, styles, mock(Notifier.class), new MaintenanceModeService());

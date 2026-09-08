@@ -18,6 +18,7 @@ import com.jokerhub.paper.plugin.orzmc.infra.notify.ThrottledNotifier;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
 import com.jokerhub.paper.plugin.orzmc.testutil.ServiceTestBase;
+import com.jokerhub.paper.plugin.orzmc.testutil.TestI18n;
 import java.net.InetAddress;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -79,7 +80,7 @@ class LoginAccessControlServiceTest extends ServiceTestBase {
         when(maintenanceModeService.isActive()).thenReturn(false);
         when(accessRuleService.matchedIpPattern(anyString())).thenReturn(null);
         when(accessRuleService.matchedPlayerNameRule(anyString())).thenReturn(null);
-        when(configs.renderTemplate(anyString(), anyMap(), anyString()))
+        when(configs.renderEvent(anyString(), anyMap()))
                 .thenReturn(MessageEnvelope.publicMessage("ip_blacklist_block"));
         when(server.logger()).thenReturn(logger);
         when(styles.warn(anyString())).thenAnswer(i -> Component.text((String) i.getArgument(0)));
@@ -95,7 +96,8 @@ class LoginAccessControlServiceTest extends ServiceTestBase {
                 configs,
                 styles,
                 server,
-                blockNotifier);
+                blockNotifier,
+                TestI18n.newService());
     }
 
     @Test
@@ -118,7 +120,7 @@ class LoginAccessControlServiceTest extends ServiceTestBase {
     void handlePreLogin_maintenance_backup_usesBackupMotdAndSkipsChecks() {
         when(maintenanceModeService.isActive()).thenReturn(true);
         when(maintenanceModeService.reason()).thenReturn(MaintenanceReason.BACKUP);
-        when(configs.templates()).thenReturn(maintenanceTemplates("服务器地图备份中，请稍后再试", null, null, null));
+        when(configs.maintenanceTexts()).thenReturn(maintenanceTexts("服务器地图备份中，请稍后再试", null, null, null));
 
         service.handlePreLogin(event);
 
@@ -130,7 +132,7 @@ class LoginAccessControlServiceTest extends ServiceTestBase {
     void handlePreLogin_maintenance_optimize_usesOptimizeMotd() {
         when(maintenanceModeService.isActive()).thenReturn(true);
         when(maintenanceModeService.reason()).thenReturn(MaintenanceReason.OPTIMIZE);
-        when(configs.templates()).thenReturn(maintenanceTemplates(null, "服务器地图优化中，请稍后再试", null, null));
+        when(configs.maintenanceTexts()).thenReturn(maintenanceTexts(null, "服务器地图优化中，请稍后再试", null, null));
 
         service.handlePreLogin(event);
 
@@ -141,7 +143,7 @@ class LoginAccessControlServiceTest extends ServiceTestBase {
     void handlePreLogin_maintenance_manual_usesManualMotd() {
         when(maintenanceModeService.isActive()).thenReturn(true);
         when(maintenanceModeService.reason()).thenReturn(MaintenanceReason.MANUAL);
-        when(configs.templates()).thenReturn(maintenanceTemplates(null, null, "服务器维护中，请稍后再试", null));
+        when(configs.maintenanceTexts()).thenReturn(maintenanceTexts(null, null, "服务器维护中，请稍后再试", null));
 
         service.handlePreLogin(event);
 
@@ -153,8 +155,8 @@ class LoginAccessControlServiceTest extends ServiceTestBase {
         // 场景模板未用进度占位符 + 有进度 → progress_line 模板（默认含 {eta}）渲染为第二行
         when(maintenanceModeService.isActive()).thenReturn(true);
         when(maintenanceModeService.reason()).thenReturn(MaintenanceReason.BACKUP);
-        when(configs.templates()).thenReturn(maintenanceTemplates("服务器地图备份中，请稍后再试", null, null, null));
-        when(maintenanceModeService.progress()).thenReturn(new MaintenanceProgress("区块", 35, 30, "进度：区块 35% 预计剩余 30秒"));
+        when(configs.maintenanceTexts()).thenReturn(maintenanceTexts("服务器地图备份中，请稍后再试", null, null, null));
+        when(maintenanceModeService.progress()).thenReturn(new MaintenanceProgress("区块", 35, 30));
 
         service.handlePreLogin(event);
 
@@ -167,8 +169,8 @@ class LoginAccessControlServiceTest extends ServiceTestBase {
     void handlePreLogin_maintenance_withEtaPlaceholder_replacesPlaceholders() {
         when(maintenanceModeService.isActive()).thenReturn(true);
         when(maintenanceModeService.reason()).thenReturn(MaintenanceReason.BACKUP);
-        when(configs.templates()).thenReturn(maintenanceTemplates("备份 {stage} {percent}% {eta}秒", null, null, null));
-        when(maintenanceModeService.progress()).thenReturn(new MaintenanceProgress("区块", 35, 30, "进度：区块 35% 预计剩余 30秒"));
+        when(configs.maintenanceTexts()).thenReturn(maintenanceTexts("备份 {stage} {percent}% {eta}秒", null, null, null));
+        when(maintenanceModeService.progress()).thenReturn(new MaintenanceProgress("区块", 35, 30));
 
         service.handlePreLogin(event);
 
@@ -194,7 +196,7 @@ class LoginAccessControlServiceTest extends ServiceTestBase {
 
         verify(event).disallow(eq(AsyncPlayerPreLoginEvent.Result.KICK_OTHER), any(Component.class));
         verify(notifier).event(eq("ip_blacklist_block"), any(MessageEnvelope.class));
-        verify(configs).renderTemplate(eq("ip_blacklist_block"), anyMap(), anyString());
+        verify(configs).renderEvent(eq("ip_blacklist_block"), anyMap());
         verify(logger).warning(anyString());
         verifyNoInteractions(geoIpAccessService, playerEventService);
     }
@@ -209,7 +211,7 @@ class LoginAccessControlServiceTest extends ServiceTestBase {
 
         verify(event).disallow(eq(AsyncPlayerPreLoginEvent.Result.KICK_OTHER), any(Component.class));
         verify(notifier).event(eq("ip_blacklist_block"), any(MessageEnvelope.class));
-        verify(configs).renderTemplate(eq("ip_blacklist_block"), anyMap(), anyString());
+        verify(configs).renderEvent(eq("ip_blacklist_block"), anyMap());
     }
 
     @Test
@@ -221,7 +223,7 @@ class LoginAccessControlServiceTest extends ServiceTestBase {
 
         verify(event).disallow(eq(AsyncPlayerPreLoginEvent.Result.KICK_OTHER), any(Component.class));
         verify(notifier).event(eq("player_name_block"), any(MessageEnvelope.class));
-        verify(configs).renderTemplate(eq("player_name_block"), anyMap(), anyString());
+        verify(configs).renderEvent(eq("player_name_block"), anyMap());
         verify(logger).warning(anyString());
         verifyNoInteractions(geoIpAccessService, playerEventService);
     }
@@ -262,7 +264,7 @@ class LoginAccessControlServiceTest extends ServiceTestBase {
         @SuppressWarnings("unchecked")
         org.mockito.ArgumentCaptor<java.util.Map<String, String>> captor =
                 org.mockito.ArgumentCaptor.forClass(java.util.Map.class);
-        verify(configs).renderTemplate(eq("ip_blacklist_block"), captor.capture(), anyString());
+        verify(configs).renderEvent(eq("ip_blacklist_block"), captor.capture());
         org.junit.jupiter.api.Assertions.assertEquals("未知玩家", captor.getValue().get("player"));
     }
 

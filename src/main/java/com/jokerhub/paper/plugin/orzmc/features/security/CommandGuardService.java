@@ -1,8 +1,11 @@
 package com.jokerhub.paper.plugin.orzmc.features.security;
 
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.SecurityGuardConfig;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nService;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.MessageKeys;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.function.Supplier;
 
 /**
@@ -27,9 +30,11 @@ public final class CommandGuardService {
             List.of("kill", "clear", "give", "execute", "effect");
 
     private final Supplier<SecurityGuardConfig> configSupplier;
+    private final I18nService i18n;
 
-    public CommandGuardService(Supplier<SecurityGuardConfig> configSupplier) {
+    public CommandGuardService(Supplier<SecurityGuardConfig> configSupplier, I18nService i18n) {
         this.configSupplier = configSupplier;
+        this.i18n = i18n;
     }
 
     /** 判定一条命令是否允许执行。 */
@@ -45,14 +50,16 @@ public final class CommandGuardService {
 
         for (String rule : configSupplier.get().blockedCommands()) {
             if (matchesRule(parsed, rule)) {
-                return GuardDecision.block("命令「" + parsed.primary() + "」已被安全拦截（危险命令 deny-list）");
+                return GuardDecision.block(
+                        i18n.msg(i18n.langFor(), MessageKeys.GUARD_DENY_REASON, Map.of("cmd", parsed.primary())));
             }
         }
 
         if (SELECTOR_SENSITIVE_COMMANDS.contains(parsed.primary())) {
             String unqualified = findUnqualifiedSelector(parsed.arguments());
             if (unqualified != null) {
-                return GuardDecision.warn("命令含未限定范围的 " + unqualified + "，可能影响全体实体/玩家，请确认已用 type=.. 或 distance=.. 限定");
+                return GuardDecision.warn(
+                        i18n.msg(i18n.langFor(), MessageKeys.GUARD_SELECTOR_WARN, Map.of("selector", unqualified)));
             }
         }
 

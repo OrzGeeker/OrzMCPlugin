@@ -3,7 +3,6 @@ package com.jokerhub.paper.plugin.orzmc.infra.notify;
 import com.jokerhub.paper.plugin.orzmc.core.bot.MessageEnvelope;
 import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
 import com.jokerhub.paper.plugin.orzmc.features.review.ReviewNotifier;
-import com.jokerhub.paper.plugin.orzmc.infra.config.TemplateKeys;
 import java.util.Map;
 import java.util.UUID;
 import net.kyori.adventure.text.Component;
@@ -38,24 +37,9 @@ public final class ReviewNotifierAdapter implements ReviewNotifier {
 
     @Override
     public void groupEvent(String templateKey, Map<String, String> vars) {
-        // 用 renderTemplate（按配置键直接读取），不走 renderEvent 白名单事件路由
-        String fallback =
-                switch (templateKey) {
-                    case TemplateKeys.REVIEW_SUBMITTED ->
-                        "🙋🏻‍♂️ [申请发起] {player}\n---------------------------------\n{summary}";
-                    case TemplateKeys.REVIEW_CANCELLED ->
-                        "↩️ [申请撤回] {player}\n---------------------------------\n{summary}";
-                    case TemplateKeys.REVIEW_APPROVED ->
-                        "✅ [申请通过] {player}\n---------------------------------\n{summary}\n---------------------------------\n审核人：{reviewer}";
-                    case TemplateKeys.REVIEW_REJECTED ->
-                        "❌ [申请拒绝] {player}\n---------------------------------\n{summary}\n---------------------------------\n审核人：{reviewer}";
-                    case TemplateKeys.RANK_PROMOTED -> "🎉 {player} 权限已升级为「{group}」";
-                    case TemplateKeys.RANK_DEMOTED -> "⬇️ {player} 权限已被降级为「{group}」";
-                    case TemplateKeys.PRISON_IMPRISONED -> "🔒 {player} 已被关入牢房（原组 {group}）";
-                    case TemplateKeys.PRISON_RELEASED -> "🔓 {player} 已解除坐牢（恢复组 {group}）";
-                    default -> "{message}";
-                };
-        MessageEnvelope env = configs.renderTemplate(templateKey, vars, fallback);
+        // i18n P4b-2：事件正文迁语言包 event.*（默认语言 R1）——renderEvent 按磁盘正文优先
+        // （存量/服主定制）→ 缺失回落语言包；原内联 zh fallback switch 已删除。
+        MessageEnvelope env = configs.renderEvent(templateKey, vars);
         notifier.event(templateKey, env);
     }
 }

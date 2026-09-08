@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.CommandPolicy;
+import com.jokerhub.paper.plugin.orzmc.testutil.TestI18n;
 import java.util.concurrent.atomic.AtomicReference;
 import org.bukkit.entity.Player;
 import org.junit.jupiter.api.MethodOrderer;
@@ -20,7 +21,7 @@ class CooldownInterceptorTest {
     @ValueSource(ints = {0, -1, 5})
     @Order(1)
     void preHandle_noCooldown_cooldownDisabled_returnsNull(int cooldownSecs) {
-        CooldownInterceptor interceptor = new CooldownInterceptor("nocd_cmd", cooldownSecs);
+        CooldownInterceptor interceptor = new CooldownInterceptor("nocd_cmd", cooldownSecs, TestI18n.newService());
         Player player = mock(Player.class);
         when(player.getName()).thenReturn("Alice");
         assertNull(interceptor.preHandle(player, "nocd"));
@@ -29,7 +30,7 @@ class CooldownInterceptorTest {
     @Test
     @Order(2)
     void preHandle_firstCall_returnsNull() {
-        CooldownInterceptor interceptor = new CooldownInterceptor("fresh_cmd", 5);
+        CooldownInterceptor interceptor = new CooldownInterceptor("fresh_cmd", 5, TestI18n.newService());
         Player player = mock(Player.class);
         when(player.getName()).thenReturn("Alice");
 
@@ -39,7 +40,7 @@ class CooldownInterceptorTest {
     @Test
     @Order(3)
     void preHandle_secondCallWithinCooldown_returnsTip() {
-        CooldownInterceptor interceptor = new CooldownInterceptor("quick_cmd", 10);
+        CooldownInterceptor interceptor = new CooldownInterceptor("quick_cmd", 10, TestI18n.newService());
         Player player = mock(Player.class);
         when(player.getName()).thenReturn("Bob");
 
@@ -54,7 +55,7 @@ class CooldownInterceptorTest {
     void supplierPolicy_hotFlipCooldown_reEvaluatedPerCall() {
         // P3：command_policies 热生效——cooldown_secs 经 supplier 变更后即时生效（无需重建拦截器）
         AtomicReference<CommandPolicy> ref = new AtomicReference<>(new CommandPolicy(0, false));
-        CooldownInterceptor interceptor = new CooldownInterceptor("hot_cmd", ref::get);
+        CooldownInterceptor interceptor = new CooldownInterceptor("hot_cmd", ref::get, TestI18n.newService());
         Player player = mock(Player.class);
         when(player.getName()).thenReturn("Carol");
 

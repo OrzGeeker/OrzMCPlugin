@@ -19,19 +19,6 @@ class OrzUserCmdTest {
     }
 
     @Test
-    void display_includesPromptAndDescription() {
-        String disp = OrzUserCmd.SHOW_PLAYERS.display("$");
-        assertTrue(disp.startsWith("$l"));
-        assertTrue(disp.contains("查看在线玩家"));
-    }
-
-    @Test
-    void display_customPromptChar() {
-        String disp = OrzUserCmd.SHOW_PLAYERS.display("!");
-        assertTrue(disp.startsWith("!l"));
-    }
-
-    @Test
     void needAdminPermission_adminCommands() {
         assertTrue(OrzUserCmd.ADD_PLAYER_TO_WHITELIST.needAdminPermission());
         assertTrue(OrzUserCmd.REMOVE_PLAYER_FROM_WHITELIST.needAdminPermission());

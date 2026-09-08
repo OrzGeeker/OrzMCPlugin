@@ -97,24 +97,6 @@ class OrzTextStylesTest {
     }
 
     @Test
-    void tntPrefix_returnsNonNull() {
-        Component component = styles.tntPrefix();
-        assertNotNull(component);
-    }
-
-    @Test
-    void explosionPrefix_returnsNonNull() {
-        Component component = styles.explosionPrefix();
-        assertNotNull(component);
-    }
-
-    @Test
-    void tpbowPrefix_returnsNonNull() {
-        Component component = styles.tpbowPrefix();
-        assertNotNull(component);
-    }
-
-    @Test
     void success_returnsComponent() {
         Component component = styles.success("done");
         assertNotNull(component);
@@ -145,8 +127,7 @@ class OrzTextStylesTest {
     }
 
     @Test
-    void unknownLabel_returnsNonNull() {
-        Component component = styles.unknownLabel();
-        assertNotNull(component);
+    void coordComponent_requiresHoverText_returnsComponent() {
+        assertNotNull(styles.coordComponent("[w] 1 2 3", "点击复制坐标"));
     }
 }

@@ -5,6 +5,8 @@ import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
 import com.jokerhub.paper.plugin.orzmc.core.ports.server.ServerScheduler;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.TemplateOptions;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.TntConfig;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nService;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.MessageKeys;
 import com.jokerhub.paper.plugin.orzmc.infra.notify.Notifier;
 import com.jokerhub.paper.plugin.orzmc.infra.player.PlayerDisplayNames;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
@@ -32,8 +34,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public final class TntEventService {
-    /** 方块爆炸统一归并到该标签，避免一次大爆炸按方块材质（STONE/DIRT/...）拆分刷屏。 */
-    private static final String BLOCK_EXPLODE_LABEL = "方块爆炸";
+    /** 方块爆炸统一归并到该标签（语言包 key），避免一次大爆炸按方块材质（STONE/DIRT/...）拆分刷屏。 */
+    private static final String BLOCK_EXPLODE_LABEL = MessageKeys.TNT_BLOCK_EXPLODE;
 
     /** 聚合区域水平边长（方块数）：128 = 8×8 区块，覆盖一次大型爆炸的横向跨度。 */
     private static final int REGION_SIZE_BLOCKS = 128;
@@ -57,6 +59,7 @@ public final class TntEventService {
     private final TypedConfigProvider configs;
     private final Map<UUID, Long> playerCooldowns = new ConcurrentHashMap<>();
     private final OrzTextStyles styles;
+    private final I18nService i18n;
     private final Notifier notifier;
     private final ServerScheduler scheduler;
     /**
@@ -70,16 +73,30 @@ public final class TntEventService {
     private final Map<String, PendingAlert> pendingAlerts = new ConcurrentHashMap<>();
 
     public TntEventService(
-            TypedConfigProvider configs, OrzTextStyles styles, Notifier notifier, ServerScheduler scheduler) {
+            TypedConfigProvider configs,
+            OrzTextStyles styles,
+            Notifier notifier,
+            ServerScheduler scheduler,
+            I18nService i18n) {
         this.configs = configs;
         this.styles = styles;
         this.notifier = notifier;
         this.scheduler = scheduler;
+        this.i18n = i18n;
     }
 
     /** 读时解析当前 TNT 策略；配置 reload 后自动取新值，无需重建服务。 */
     private TntPolicy currentPolicy() {
         return new TntPolicy(configs.tnt());
+    }
+
+    /** 群通知/服务端广播文案（默认语言 R1，i18n P2c）。 */
+    private String botText(String key, java.util.Map<String, String> vars) {
+        return i18n.msg(i18n.langFor(), key, vars);
+    }
+
+    private String botText(String key) {
+        return i18n.msg(i18n.langFor(), key);
     }
 
     public void onTNTPrime(@NotNull TNTPrimeEvent event) {
@@ -89,13 +106,16 @@ public final class TntEventService {
             event.setCancelled(true);
             aggregateNotify(
                     placedBlock.getLocation(),
-                    "TNT被点燃（已禁止）",
+                    botText(MessageKeys.TNT_PRIME_DENIED),
                     placedBlock.getType().name(),
                     false);
             return;
         }
         aggregateNotify(
-                placedBlock.getLocation(), "TNT被点燃", placedBlock.getType().name(), false);
+                placedBlock.getLocation(),
+                botText(MessageKeys.TNT_PRIME),
+                placedBlock.getType().name(),
+                false);
     }
 
     public void onPlaceBlock(@NotNull BlockPlaceEvent event) {
@@ -108,7 +128,8 @@ public final class TntEventService {
         }
         if (placedBlockType == Material.RESPAWN_ANCHOR && !currentPolicy().isEnableRespawnAnchor()) {
             event.setCancelled(true);
-            player.sendMessage(Component.text("重生锚放置已被管理员禁用").color(TextColor.color(0xFF5555)));
+            player.sendMessage(Component.text(i18n.msg(i18n.langFor(player), MessageKeys.TNT_ANCHOR_DISABLED))
+                    .color(TextColor.color(0xFF5555)));
         }
     }
 
@@ -124,7 +145,7 @@ public final class TntEventService {
             event.setCancelled(true);
             aggregateNotify(
                     dispenser.getLocation(),
-                    "发射" + itemType.name() + "被禁止",
+                    botText(MessageKeys.TNT_DISPENSE_FORBIDDEN, java.util.Map.of("item", itemType.name())),
                     dispenser.getType().name(),
                     false);
         }
@@ -135,7 +156,7 @@ public final class TntEventService {
         if (block.getType().isAir()) {
             return;
         }
-        aggregateNotify(block.getLocation(), BLOCK_EXPLODE_LABEL, "EXPLOSION", true);
+        aggregateNotify(block.getLocation(), botText(BLOCK_EXPLODE_LABEL), "EXPLOSION", true);
     }
 
     public void onEntityExplode(@NotNull EntityExplodeEvent event) {
@@ -143,7 +164,11 @@ public final class TntEventService {
         if (isExemptEntity(entityType)) {
             return;
         }
-        aggregateNotify(event.getLocation(), entityType.name() + "爆炸", "EXPLOSION", true);
+        aggregateNotify(
+                event.getLocation(),
+                botText(MessageKeys.TNT_EXPLODE, java.util.Map.of("type", entityType.name())),
+                "EXPLOSION",
+                true);
     }
 
     private void handleTNTPlace(BlockPlaceEvent event, Player player, Block placedBlock) {
@@ -155,14 +180,19 @@ public final class TntEventService {
                     (playerCooldowns.get(player.getUniqueId()) + tntPlaceCooldown * 1000L - System.currentTimeMillis())
                             / 1000;
             player.sendMessage(Component.text()
-                    .append(Component.text("放置TNT冷却中，请等待 "))
-                    .append(Component.text(remaining + "秒").color(TextColor.color(0xFFAA00)))
+                    .append(Component.text(i18n.msg(i18n.langFor(player), MessageKeys.TNT_PLACE_COOLDOWN)))
+                    .append(Component.text(i18n.msg(
+                                    i18n.langFor(player),
+                                    MessageKeys.TNT_COOLDOWN_SECONDS,
+                                    java.util.Map.of("secs", Long.toString(remaining))))
+                            .color(TextColor.color(0xFFAA00)))
                     .build());
             return;
         }
         if (!policy.isEnableTnt() && policy.isNotInWhiteList(placedBlock.getLocation())) {
             event.setCancelled(true);
-            player.sendMessage(Component.text("TNT放置已被管理员禁用").color(TextColor.color(0xFF5555)));
+            player.sendMessage(Component.text(i18n.msg(i18n.langFor(player), MessageKeys.TNT_PLACE_DISABLED))
+                    .color(TextColor.color(0xFF5555)));
             return;
         }
         if (tntPlaceCooldown > 0) {
@@ -234,26 +264,32 @@ public final class TntEventService {
         vars.put("block_type", blockType);
         MessageEnvelope envelope = configs.renderEvent("tnt_alert", vars);
         TextComponent msg = Component.text()
-                .append(explosionPrefix ? styles.explosionPrefix() : styles.tntPrefix())
+                .append(broadcastPrefix(explosionPrefix))
                 .append(Component.text(envelope.message()))
                 .build();
         notifier.server(msg);
         notifier.event("tnt_alert", envelope);
     }
 
+    /** 广播前缀（默认语言 R1）：普通 TNT / 方块·实体爆炸两种标签色。 */
+    private TextComponent broadcastPrefix(boolean explosion) {
+        String label = botText(explosion ? MessageKeys.TNT_PREFIX_EXPLOSION : MessageKeys.TNT_PREFIX_TNT);
+        return Component.text(label).color(explosion ? styles.colorAlertExplosion() : styles.colorAlertTnt());
+    }
+
     private void sendPlacementNotification(Player player, Block block) {
         TextComponent msg = Component.text()
                 .append(playerInfo(player))
                 .append(Component.space())
-                .append(Component.text("在"))
+                .append(Component.text(botText(MessageKeys.TNT_AT)))
                 .append(locationComponent(block))
                 .append(Component.space())
-                .append(Component.text("放置了 " + "TNT"))
+                .append(Component.text(botText(MessageKeys.TNT_PLACED)))
                 .build();
         notifier.server(msg);
         TemplateOptions opt = configs.templateOptions();
         java.util.Map<String, String> vars = CoordFormatter.format(block.getLocation(), opt);
-        vars.put("msg", "放置TNT");
+        vars.put("msg", botText(MessageKeys.TNT_PLACEMENT_MSG));
         vars.put("actor", PlayerDisplayNames.format(player));
         vars.put("block_type", "TNT");
         MessageEnvelope envelope = configs.renderEvent("tnt_alert", vars);
@@ -264,7 +300,7 @@ public final class TntEventService {
         if (player != null) {
             return styles.playerName(player.getName());
         }
-        return styles.unknownLabel();
+        return Component.text(botText(MessageKeys.COMMON_UNKNOWN_PLAYER)).color(styles.colorUnknown());
     }
 
     private @NotNull TextComponent locationComponent(@NotNull Block block) {
@@ -273,7 +309,7 @@ public final class TntEventService {
 
     private @NotNull TextComponent locationComponent(Location location) {
         String locString = locationString(location);
-        return styles.coordComponent(locString);
+        return styles.coordComponent(locString, botText(MessageKeys.COMMON_COPY_COORDS));
     }
 
     private @NotNull String locationString(@NotNull Location location) {

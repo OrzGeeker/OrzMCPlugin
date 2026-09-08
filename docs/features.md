@@ -479,11 +479,20 @@
 - **easybot.yml** — Bot 通用设置与 EasyBot IM Gateway 连接配置（多平台消息路由、WebSocket + HTTP）
 - **guide_book.yml** — 新手指南书内容配置（链接/悬停/样式/分页）
 - **permission.yml** — 权限系统配置（`config` 阈值节 + `reviews` 申请记录节，运行时修改）
-- **templates.yml** — 通知模板、样式配色、坐标格式、世界别名、权限组显示名、i18n 覆盖
+- **templates.yml** — 模板直通壳/样式配色/坐标格式/世界别名等数据键（通知正文已迁语言包，见 §14 语言本地化）
 - **portals.yml** — 传送门数据（运行时修改）
 - **access_rules.yml** — IP 黑名单与玩家名规则数据（运行时修改；取代旧 ip_blacklist.yml）
 
 > 大部分配置可通过 `/config` 命令在运行时修改并立即生效，无需重启服务器。
+
+### 语言本地化（i18n，一期完成）
+
+插件内置中英双语语言包（`messages/messages_zh-CN.yml` / `messages_en-US.yml`），覆盖游戏内反馈、Bot 交互回复与群事件通知：
+
+- **默认语言**：`config.yml` 的 `i18n.default_lang`（默认 `zh-CN`；`en-US` 即整体英文）；游戏内命令反馈优先跟随玩家客户端 locale（未装码回落默认语言）。
+- **Bot 平台**：可按平台配置 `i18n.platform_langs[平台]` 指定交互回复语言；群事件通知按默认语言渲染一次。
+- **服主覆盖**：数据目录 `messages_custom_<lang>.yml` 覆盖同 key（即时 reload 生效；空串 = 屏蔽该条消息），升级不覆盖存量正文定制（升级链自动迁移）。
+- 迁移方案与决策见 `docs/dev/i18n-plan.md`；实施交接见 `docs/dev/i18n-migration-handoff.md`。
 
 ---
 

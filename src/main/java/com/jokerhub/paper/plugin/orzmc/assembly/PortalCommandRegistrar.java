@@ -10,6 +10,8 @@ import static io.papermc.paper.command.brigadier.Commands.literal;
 import com.jokerhub.paper.plugin.orzmc.features.command.binding.CommandInterceptor;
 import com.jokerhub.paper.plugin.orzmc.features.portal.PortalCommandService;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.CommandPolicies;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nService;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.MessageKeys;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -28,23 +30,26 @@ final class PortalCommandRegistrar implements CommandGroup {
     private final OrzTextStyles styles;
     private final Supplier<CommandPolicies> cpSupplier;
     private final Predicate<Player> prisonCheck;
+    private final I18nService i18n;
 
     PortalCommandRegistrar(
             PortalCommandService svc,
             OrzTextStyles styles,
             Supplier<CommandPolicies> cpSupplier,
-            Predicate<Player> prisonCheck) {
+            Predicate<Player> prisonCheck,
+            I18nService i18n) {
         this.svc = svc;
         this.styles = styles;
         this.cpSupplier = cpSupplier;
         this.prisonCheck = prisonCheck;
+        this.i18n = i18n;
     }
 
     /** Portal: /portal [remove] <host> [port] */
     @Override
     public void register(Commands commands) {
         List<CommandInterceptor> interceptors =
-                withPrisonDeny(commandInterceptors("portal", cpSupplier, false), prisonCheck);
+                withPrisonDeny(commandInterceptors("portal", cpSupplier, false, i18n), prisonCheck, i18n);
         Predicate<CommandSourceStack> req = requirement(interceptors);
 
         // /portal remove <host> [port]
@@ -61,9 +66,9 @@ final class PortalCommandRegistrar implements CommandGroup {
 
         // /portal (no args → show usage)
         Command<CommandSourceStack> usageExec = guardedExec("portal", interceptors, ctx -> {
-            ctx.getSource()
-                    .getSender()
-                    .sendMessage(styles.info("用法: /portal <host> [port] 或 /portal remove <host> [port]"));
+            CommandSender sender = ctx.getSource().getSender();
+            sender.sendMessage(styles.info(
+                    i18n.msg(sender instanceof Player p ? i18n.langFor(p) : i18n.langFor(), MessageKeys.PORTAL_USAGE)));
             return 1;
         });
 
@@ -77,7 +82,7 @@ final class PortalCommandRegistrar implements CommandGroup {
                                 .executes(createExec))
                         .executes(usageExec)
                         .build(),
-                "创建或移除传送门",
+                i18n.msg(i18n.langFor(), MessageKeys.PORTAL_COMMAND_DESC),
                 List.of());
     }
 

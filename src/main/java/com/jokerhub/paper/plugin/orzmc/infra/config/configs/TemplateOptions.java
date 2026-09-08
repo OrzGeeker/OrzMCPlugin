@@ -4,8 +4,12 @@ import java.util.HashMap;
 import java.util.Map;
 import org.bukkit.configuration.ConfigurationSection;
 
+/**
+ * 模板数据选项（非 UI 文案，i18n P4c-2 后仅剩服务器数据/单位 token，留在 templates.yml）：
+ * rate/eta 单位、世界别名 {@code world_alias}、坐标格式化 {@code coord}。
+ * 阶段显示名映射已迁 {@link MaintenanceTexts}（maintenance.stage.* 语言包承载）。
+ */
 public record TemplateOptions(
-        Map<String, String> stageCnMap,
         String rateUnit,
         String etaUnit,
         Map<String, String> worldAlias,
@@ -13,25 +17,7 @@ public record TemplateOptions(
         int coordPrecision,
         String coordUnitLabel) {
 
-    public TemplateOptions(
-            Map<String, String> stageCnMap,
-            String rateUnit,
-            String etaUnit,
-            Map<String, String> worldAlias,
-            double coordScale,
-            String coordUnitLabel) {
-        this(stageCnMap, rateUnit, etaUnit, worldAlias, coordScale, 2, coordUnitLabel);
-    }
-
     public static TemplateOptions from(ConfigurationSection cfg) {
-        Map<String, String> m = new HashMap<>();
-        Object raw = cfg.get("templates.stage_cn");
-        if (raw instanceof ConfigurationSection sec) {
-            for (String k : sec.getKeys(false)) {
-                String v = sec.getString(k);
-                if (v != null) m.put(k, v);
-            }
-        }
         String rate = cfg.getString("templates.progress_units.rate", "per_sec");
         String eta = cfg.getString("templates.progress_units.eta", "ms");
         Map<String, String> worldAlias = new HashMap<>();
@@ -48,6 +34,6 @@ public record TemplateOptions(
         double coordScale = cfg.getDouble("templates.coord.scale", 1.0);
         int coordPrecision = cfg.getInt("templates.coord.precision", 2);
         String coordUnitLabel = cfg.getString("templates.coord.unit_label", "block");
-        return new TemplateOptions(m, rate, eta, worldAlias, coordScale, coordPrecision, coordUnitLabel);
+        return new TemplateOptions(rate, eta, worldAlias, coordScale, coordPrecision, coordUnitLabel);
     }
 }

@@ -8,7 +8,6 @@ import com.jokerhub.paper.plugin.orzmc.infra.config.configs.MaintenanceConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.Portals;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.Styles;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.TemplateOptions;
-import com.jokerhub.paper.plugin.orzmc.infra.config.configs.Templates;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.TntConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.WhitelistConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.WhitelistKickMessage;
@@ -51,7 +50,6 @@ public class ConfigResourceSmokeTest {
     public void testTemplatesResource() throws Exception {
         YamlConfiguration cfg = load("templates.yml");
         Assertions.assertNotNull(TemplateOptions.from(cfg));
-        Assertions.assertNotNull(Templates.from(cfg));
         Assertions.assertNotNull(Styles.from(cfg.getConfigurationSection("styles")));
     }
 

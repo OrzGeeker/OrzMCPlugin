@@ -1,5 +1,6 @@
 package com.jokerhub.paper.plugin.orzmc.infra.templates;
 
+import com.jokerhub.paper.plugin.orzmc.infra.config.TemplateKeys;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -25,6 +26,11 @@ public final class TemplatePlaceholderValidator {
         Map<String, Set<String>> allowedByKey = allowedVarsByTemplateKey();
 
         for (String key : allowedByKey.keySet()) {
+            if (TemplateKeys.isLangBacked(key)) {
+                // P5-2：语言包承载正文的键不再校验磁盘 body 变量集——磁盘残留 {message} 直通壳/
+                // 旧正文/服主定制均不经过该渲染路径的变量白名单（回落或原样磁盘渲染）
+                continue;
+            }
             String tpl = templatesCfg.getString("templates." + key, "");
             if (tpl.isEmpty()) {
                 continue;
@@ -104,16 +110,16 @@ public final class TemplatePlaceholderValidator {
         m.put("maintenance_backup_error", Set.of("label", "duration_ms", "duration_human"));
         m.put("maintenance_optimize_done", Set.of("label", "duration_ms", "duration_human"));
         m.put("maintenance_optimize_error", Set.of("label", "duration_ms", "duration_human"));
-        m.put("server_load", Set.of("message"));
-        m.put("server_stop", Set.of("message"));
+        m.put("server_load", Set.of("version", "mode", "status", "prompt_help"));
+        m.put("server_stop", Set.of("version"));
         m.put("whitelist_block", Set.of("message"));
         m.put("whitelist_toggle_alert", Set.of("message"));
         m.put("command_output", Set.of("message"));
         m.put("command_help", Set.of("help"));
-        m.put("command_players", Set.of("header", "online_count", "max_count", "online_list"));
-        m.put("command_whitelist_header", Set.of("count"));
-        m.put("command_whitelist_page", Set.of("header", "page", "total", "body"));
-        m.put("command_whitelist_cleanup", Set.of("removed_list"));
+        m.put("command_players", Set.of("message", "header", "online_count", "max_count", "online_list"));
+        m.put("command_whitelist_header", Set.of("message", "count"));
+        m.put("command_whitelist_page", Set.of("message", "header", "page", "total", "body"));
+        m.put("command_whitelist_cleanup", Set.of("message", "removed_list"));
         m.put("command_whitelist_add_result", Set.of("message"));
         m.put("command_whitelist_remove_result", Set.of("message"));
         m.put("command_blacklist_list", Set.of("patterns"));

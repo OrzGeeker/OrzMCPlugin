@@ -3,6 +3,7 @@ package com.jokerhub.paper.plugin.orzmc.features.review;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import com.jokerhub.paper.plugin.orzmc.testutil.TestI18n;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -40,7 +41,7 @@ class ReviewServiceTest {
         store = mock(ReviewStore.class);
         notifier = mock(ReviewNotifier.class);
         lookup = mock(PlayerLookup.class);
-        service = new ReviewService(store, notifier, lookup);
+        service = new ReviewService(store, notifier, lookup, TestI18n.newService());
         builderType = new ReviewType(
                 "builder-promotion",
                 "晋升建造者",

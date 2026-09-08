@@ -19,6 +19,7 @@ import com.jokerhub.paper.plugin.orzmc.infra.notify.Notifier;
 import com.jokerhub.paper.plugin.orzmc.infra.notify.ThrottledNotifier;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
 import com.jokerhub.paper.plugin.orzmc.testutil.ServiceTestBase;
+import com.jokerhub.paper.plugin.orzmc.testutil.TestI18n;
 import java.util.List;
 import java.util.Map;
 import net.kyori.adventure.text.Component;
@@ -63,7 +64,7 @@ class WhitelistEventServiceTest extends ServiceTestBase {
         when(configs.renderEvent(anyString(), anyMap()))
                 .thenReturn(new MessageEnvelope(TargetType.PUBLIC, "msg", Format.DEFAULT));
 
-        service = new WhitelistEventService(configs, styles, notifier, throttledNotifier);
+        service = new WhitelistEventService(configs, styles, notifier, throttledNotifier, TestI18n.newService());
     }
 
     @Test

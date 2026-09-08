@@ -1,6 +1,6 @@
 package com.jokerhub.paper.plugin.orzmc.infra.player;
 
-import org.bukkit.GameMode;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nServiceHolder;
 import org.bukkit.entity.Player;
 
 public final class PlayerDisplayNames {
@@ -16,13 +16,15 @@ public final class PlayerDisplayNames {
         if (player.isOp()) {
             ret += "(op)";
         }
-        String gameMode = "";
-        GameMode gm = player.getGameMode();
-        if (gm == GameMode.CREATIVE) gameMode = "创造";
-        else if (gm == GameMode.SURVIVAL) gameMode = "生存";
-        else if (gm == GameMode.ADVENTURE) gameMode = "冒险";
-        else if (gm == GameMode.SPECTATOR) gameMode = "观察";
-        ret += " " + gameMode + "模式";
+        // P5-5：游戏模式词汇走语言包 playermode.*（默认语言 R1，bot/群事件 var 值）
+        String gameMode =
+                switch (player.getGameMode()) {
+                    case CREATIVE -> I18nServiceHolder.msg("playermode.creative");
+                    case SURVIVAL -> I18nServiceHolder.msg("playermode.survival");
+                    case ADVENTURE -> I18nServiceHolder.msg("playermode.adventure");
+                    case SPECTATOR -> I18nServiceHolder.msg("playermode.spectator");
+                };
+        ret += " " + gameMode;
         if (groupName != null && !groupName.isBlank()) {
             ret += " " + groupName;
         }

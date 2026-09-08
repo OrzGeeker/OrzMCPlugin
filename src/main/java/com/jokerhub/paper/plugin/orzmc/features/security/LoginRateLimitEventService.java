@@ -4,6 +4,8 @@ import com.jokerhub.paper.plugin.orzmc.core.bot.MessageEnvelope;
 import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
 import com.jokerhub.paper.plugin.orzmc.infra.config.TemplateKeys;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.LoginRateLimitConfig;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nService;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.MessageKeys;
 import com.jokerhub.paper.plugin.orzmc.infra.notify.Notifier;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
 import java.net.InetAddress;
@@ -32,13 +34,19 @@ public final class LoginRateLimitEventService {
     private final TypedConfigProvider configs;
     private final Notifier notifier;
     private final OrzTextStyles styles;
+    private final I18nService i18n;
 
     public LoginRateLimitEventService(
-            LoginRateLimitService limiter, TypedConfigProvider configs, Notifier notifier, OrzTextStyles styles) {
+            LoginRateLimitService limiter,
+            TypedConfigProvider configs,
+            Notifier notifier,
+            OrzTextStyles styles,
+            I18nService i18n) {
         this.limiter = limiter;
         this.configs = configs;
         this.notifier = notifier;
         this.styles = styles;
+        this.i18n = i18n;
     }
 
     public void onPlayerPreLogin(AsyncPlayerPreLoginEvent event) {
@@ -53,9 +61,15 @@ public final class LoginRateLimitEventService {
         String ip = address.getHostAddress();
         String reason = null;
         if (limiter.isRateLimited(ip)) {
-            reason = "频率超限（" + cfg.maxLoginAttemptsPerMinute() + " 次/分钟）";
+            reason = i18n.msg(
+                    i18n.langFor(),
+                    MessageKeys.RATELIMIT_REASON_FREQUENCY,
+                    Map.of("limit", String.valueOf(cfg.maxLoginAttemptsPerMinute())));
         } else if (limiter.isConcurrencyReached(ip)) {
-            reason = "同 IP 并发超限（" + cfg.maxConcurrentPerIp() + " 人）";
+            reason = i18n.msg(
+                    i18n.langFor(),
+                    MessageKeys.RATELIMIT_REASON_CONCURRENT,
+                    Map.of("limit", String.valueOf(cfg.maxConcurrentPerIp())));
         }
         if (reason == null) {
             return;
@@ -80,9 +94,9 @@ public final class LoginRateLimitEventService {
     }
 
     private void notifyAdmin(String ip, String player, String reason) {
-        String fallback = "⚠ 登录限流\nIP: " + ip + "\n玩家: " + player + "\n原因: " + reason;
-        MessageEnvelope env = configs.renderTemplate(
-                TemplateKeys.LOGIN_RATE_LIMIT_ALERT, Map.of("ip", ip, "player", player, "reason", reason), fallback);
+        // P4b-2：正文迁语言包 event.login_rate_limit_alert（默认语言 R1）
+        MessageEnvelope env = configs.renderEvent(
+                TemplateKeys.LOGIN_RATE_LIMIT_ALERT, Map.of("ip", ip, "player", player, "reason", reason));
         notifier.event(TemplateKeys.LOGIN_RATE_LIMIT_ALERT, env);
     }
 
@@ -93,8 +107,10 @@ public final class LoginRateLimitEventService {
         return socket.getAddress().getHostAddress();
     }
 
-    private static String playerName(AsyncPlayerPreLoginEvent event) {
+    private String playerName(AsyncPlayerPreLoginEvent event) {
         PlayerProfile profile = event.getPlayerProfile();
-        return profile != null && profile.getName() != null ? profile.getName() : "未知玩家";
+        return profile != null && profile.getName() != null
+                ? profile.getName()
+                : i18n.msg(i18n.langFor(), MessageKeys.LOGIN_UNKNOWN_PLAYER);
     }
 }

@@ -1,0 +1,439 @@
+# ==================================================
+#          OrzMC 多语言包：简体中文（主目录）
+# ==================================================
+#
+# 【本文件是 key 完整性基线】所有用户可见文案以此文件为准：代码迁移时把原文抄入
+# messages_zh-CN.yml（中文输出零回归），en-US 及其他语言包只做翻译、不允许自造结构。
+#
+# 【结构】顶层按功能域分组（common.* / teleport.* / whitelist.* / event.* ...），
+# 代码按完整 dot key 读取（如 teleport.bow.name）。
+#
+# 【占位符】动态部分一律 {var}（与 templates.yml 同语法，支持 \n 转义）；
+# 同 key 跨语言占位符集合必须一致（启动健康检查 + I18nCatalogConsistencyTest 强制）。
+#
+# 【屏蔽/覆盖】本内置文件不允许空值；服主如需屏蔽某条消息，请在数据目录
+# messages_custom_zh-CN.yml 中把该 key 覆盖为空串 ""。
+#
+# 【新增语言】在 resources/messages/ 添加 messages_<code>.yml + I18nLoader.CODES 追加一行。
+#
+# 各域 key 随迁移 PR 分批补入（见 docs/dev/i18n-plan.md §5），当前为空骨架。
+#
+# --- common.*（跨渠道通用反馈；P1 随命令拦截器迁入） ---
+common:
+  cooldown: "命令冷却中，请稍后再试"
+  admin_required: "需要管理员权限"
+  player_required: "需要玩家执行"
+  prison_denied: "你正在坐牢，无法使用该命令"
+  unknown_player: "未知玩家"
+  copy_coords: "点击复制坐标"
+
+# --- teleport.*（传送弓；P2a 随 teleport 域迁入） ---
+teleport:
+  bow:
+    name: "传送弓"
+    tag: "[传送弓]"
+    lore: "可以把你传送到箭落地的位置"
+    given: "你获得了 {name}"
+    disabled: "传送弓已被禁用，请与管理员联系"
+    hit_water: "箭射进了水里!"
+    hit_lava: "箭射进了岩浆里!"
+    cross_world: "无法跨世界传送!"
+    bad_height: "目标高度不合法!"
+    no_landing: "目标位置不可站立!"
+    done: "传送完成!"
+
+# --- whitelist.*（登录踢出提示/群通知；P2b。kick 为登录前无客户端 locale，随默认语言） ---
+whitelist:
+  kick:
+    join_hint_prefix: "不在服务器白名单中，请先加入QQ群:"
+    join_hint_suffix: "，联系管理员添加白名单"
+    discord_join: "You can also join the Discord server: "
+  notify:
+    blocked: "{player} 尝试加入服务器，被白名单拦截"
+    toggle_off: "白名单关闭"
+  bot:
+    add_title: "------白名单添加------"
+    remove_title: "------白名单移除------"
+
+# --- event.*（群事件通知正文，P4b 迁入；templates.yml 不再持正文，仅 format。默认语言 R1 渲染） ---
+event:
+  player_join: "🎮 当前玩家({online_count}/{max_count})\n---------------------------------\n🥰 上线：\n{name}"
+  player_quit: "🎮 当前玩家({online_count}/{max_count})\n---------------------------------\n😋 下线：\n{name}"
+  player_kick: "🎮 当前玩家({online_count}/{max_count})\n---------------------------------\n😂 被踢：\n{name}"
+  player_digest: "🎮 当前玩家({online_count}/{max_count})\n{join_summary}{quit_summary}{kick_summary}"
+  exception_alert: "⚠️ 服务器异常\n---------------------------------\n{message}"
+  whitelist_block: "🙅🏻‍♂️ {message}"
+  whitelist_toggle_alert: "⚠️ 服务器异常\n---------------------------------\n{message}"
+  geoip_block: "{name}({ip}) 地区:{country_code} 不在允许列表({allow_list})\n{address_info}\n你的地区({country_code})不在允许列表，如有疑问请联系管理员"
+  geoip_unverifiable: "{name} 地区解析服务暂时不可用，无法验证你的地区（IP:{ip}）。请稍后重新尝试登录，若持续出现请联系管理员"
+  tnt_alert: "{msg}\n世界:{world_alias} 坐标:{x_unit},{y_unit},{z_unit}({coord_unit})\n触发:{actor} 方块:{block_type}"
+  command_guard_blocked: "⚠ 高危命令已被拦截\n命令: {command}\n来源: {source} | 发送者: {sender}\n原因: {reason}"
+  security_audit: "🛡 安全自检报告\n在线模式: {online_mode}\n命令方块: {command_block}\nRCON: {rcon}\n白名单: {whitelist}\nOP: {ops}\n关键插件: {plugins}"
+  login_rate_limit_alert: "⚠ 登录限流\nIP: {ip}\n玩家: {player}\n原因: {reason}"
+  exploit_blocked: "⚠ 漏洞利用拦截\n玩家: {player}\n原因: {reason}"
+  ip_blacklist_block: "⚠ IP 黑名单拦截\n玩家: {player}\nIP: {ip}\n命中规则: {pattern}"
+  player_name_block: "⚠ 玩家名规则拦截\n玩家: {player}\n命中规则: {rule}"
+  review_submitted: "🙋🏻‍♂️ [申请发起] {player}\n---------------------------------\n{summary}"
+  review_cancelled: "↩️ [申请撤回] {player}\n---------------------------------\n{summary}"
+  review_approved: "✅ [申请通过] {player}\n---------------------------------\n{summary}\n---------------------------------\n审核人：{reviewer}"
+  review_rejected: "❌ [申请拒绝] {player}\n---------------------------------\n{summary}\n---------------------------------\n审核人：{reviewer}"
+  rank_promoted: "🎉 {player} 权限已升级为「{group}」"
+  rank_demoted: "⬇️ {player} 权限已被降级为「{group}」"
+  prison_imprisoned: "🔒 {player} 已被关入牢房（原组 {group}）"
+  prison_released: "🔓 {player} 已解除坐牢（恢复组 {group}）"
+  maintenance_backup_stage: "地图{label} 阶段:{stage}({stage_name}/{stage_i18n}) 进度:{percent}% {current}/{total} 速率:{rate_per}{rate_unit} 预计剩余:{eta_value}{eta_unit}"
+  maintenance_backup_done: "地图{label} 完成 用时:{duration_human}"
+  maintenance_backup_error: "地图{label} 失败 用时:{duration_human}"
+  maintenance_optimize_stage: "地图{label} 阶段:{stage}({stage_name}/{stage_i18n}) 进度:{percent}% {current}/{total} 速率:{rate_per}{rate_unit} 预计剩余:{eta_value}{eta_unit}"
+  maintenance_optimize_done: "地图{label} 完成 用时:{duration_human}"
+  maintenance_optimize_error: "地图{label} 失败 用时:{duration_human}"
+  server_load: "Minecraft {version} {mode}\n---------------------------------\n{status}\n\n发送 \"{prompt_help}\" 查看支持的命令消息"
+  server_stop: "Minecraft {version}\n---------------------------------\n服务停止\n\n停止状态无法响应命令消息"
+
+# --- portal.*（/portal 命令玩家反馈；P2c） ---
+portal:
+  usage: "用法: /portal <host> [port] 或 /portal remove <host> [port]"
+  usage_remove: "用法: /portal remove <host> [port]"
+  port_required: "端口需为数字"
+  not_found: "没有匹配的传送门: {target}"
+  removed: "已移除 {count} 个传送门 -> {target}"
+  created: "已创建传送门 -> {host}:{port} @ [{world}] {x} {y} {z} 轴向:{axis} 框架:4x5"
+
+  command_desc: "创建或移除传送门"
+
+# --- tnt.*（TNT 防护玩家提示/告警标签；P2c。爆炸/放置告警为服务端广播与群通知，随默认语言） ---
+tnt:
+  anchor_disabled: "重生锚放置已被管理员禁用"
+  place_cooldown: "放置TNT冷却中，请等待 "
+  cooldown_seconds: "{secs}秒"
+  place_disabled: "TNT放置已被管理员禁用"
+  prime_denied: "TNT被点燃（已禁止）"
+  prime: "TNT被点燃"
+  dispense_forbidden: "发射{item}被禁止"
+  explode: "{type}爆炸"
+  block_explode: "方块爆炸"
+  placement_msg: "已放置 TNT"
+  at: "在"
+  placed: "放置了 TNT"
+  prefix_tnt: "[TNT警报] "
+  prefix_explosion: "[爆炸警报] "
+
+# --- player.notify.*（上下线聚合摘要版块标签；P2d。群消息随默认语言 R1） ---
+player:
+  notify:
+    join_label: "上线"
+    quit_label: "下线"
+    kick_label: "被踢"
+    hidden_more: "等{count}人"
+
+# --- geoip.*（地区白名单玩家提示/管理员告警；P2d。登录前无客户端 locale → 默认语言） ---
+geoip:
+  kick_region: "{name}({ip})\n{country}\nIP位置不在服务支持区域{allow}"
+  kick_unverifiable: "{name}({ip})\n地区解析服务暂时不可用，无法验证你的地区，请稍后重新尝试登录"
+  outcome_allowed_failopen: "已放行（fail-open）"
+  outcome_denied_failclose: "已拒绝（fail-close）"
+  outcome_allowed: "已放行"
+  outcome_denied: "已拒绝"
+  alert_exception: "IP地址解析服务异常: {detail}"
+  alert_lookup_failed: "IP地址解析查询失败，{outcome}: {player}({ip})"
+  alert_timeout: "IP地址解析查询超时({timeout}ms)，{outcome}: {player}({ip})"
+
+# --- login.*（IP 黑名单/玩家名规则登录拦截与通知；P2d2。登录前无客户端 locale → 默认语言） ---
+login:
+  unknown_player: "未知玩家"
+  ip_banned: "你的IP已被禁止访问"
+  name_rule_denied: "你的玩家名不符合服务器访问规则"
+
+# --- guard.*（危险命令拦截；P2e。安全提示统一默认语言 R1） ---
+guard:
+  deny_reason: "命令「{cmd}」已被安全拦截（危险命令 deny-list）"
+  selector_warn: "命令含未限定范围的 {selector}，可能影响全体实体/玩家，请确认已用 type=.. 或 distance=.. 限定"
+  source_player: "玩家"
+  source_console: "控制台/RCON"
+
+# --- exploit.*（漏洞利用加固；P2e） ---
+exploit:
+  notify_pages: "书页超限（{count} 页）"
+  notify_attributes: "物品属性修饰符异常（清理 {count} 件）"
+
+# --- ratelimit.*（登录限流；P2e） ---
+ratelimit:
+  reason_frequency: "频率超限（{limit} 次/分钟）"
+  reason_concurrent: "同 IP 并发超限（{limit} 人）"
+
+# --- prison.*（坐牢；P2f1。管理员结果文案随默认语言 R1，当事人私聊随当事人语言） ---
+prison:
+  lp_unavailable: "LuckPerms 不可用，无法执行坐牢操作"
+  lp_unavailable_release: "LuckPerms 不可用，无法执行解除坐牢操作"
+  imprison_failed: "坐牢失败（数据写入失败，请重试或联系管理员）"
+  release_failed: "解除坐牢失败（数据写入失败，请重试或联系管理员）"
+  not_prisoner: "该玩家不在牢房中"
+  imprison_player_msg: "你已被关入牢房。"
+  release_player_msg: "你已解除坐牢。"
+  imprison_ok: "已将 {player} 关入牢房（原组 {group}）"
+  release_ok: "已解除 {player} 的坐牢（恢复组 {group}）"
+  player_not_found: "找不到玩家: {player}"
+
+# --- gamemode.*（权限组变化自动切生存提示；P2f1） ---
+gamemode:
+  fix_message: "你的权限组已变化，游戏模式已切换为生存模式。"
+
+# --- review.*（/apply 命令文案；P2f2 按执行玩家语言。类型名 displayName 为配置数据不迁） ---
+review:
+  list_header: "可申请："
+  no_types: "当前没有可申请的审核类型。"
+  type_unknown: "未知申请类型: {type}（/apply 查看可申请项）"
+  type_unknown_bare: "未知申请类型: {type}"
+  my_applications: "你的申请："
+  no_applications: "你还没有提交过申请。"
+  status_pending: "⏳ 待审核"
+  status_approved: "✅ 已通过"
+  status_rejected: "❌ 已拒绝"
+  status_cancelled: "↩️ 已撤回"
+  reviewer_suffix: "（{reviewer}）"
+  not_eligible: "你不满足「{name}」的申请条件。"
+  already_pending: "你已提交过「{name}」申请，请等待管理员审核。"
+  submitted_notify: "申请已提交，管理员审核通过后将自动生效。"
+  submitted_ok: "申请已提交，等待管理员审核。"
+  processing_cancel: "该申请正在处理中（管理员审核中），请稍后再试。"
+  not_found: "找不到该申请。"
+  own_cancel_only: "只能撤回自己的申请。"
+  already_processed_cancel: "该申请已处理，无法撤回。"
+  cancelled_notify: "已撤回「{name}」申请。"
+  cancelled_ok: "已撤回申请。"
+  processing_review: "该申请正在处理中，请勿重复操作。"
+  already_processed_review: "该申请已处理（{status}）。"
+  unknown_type_review: "未知审核类型: {type}"
+  auth_failed: "授权处理失败（{detail}），请重试或联系管理员。"
+  auth_failed_top: "授权处理失败（目标可能已在最高等级或 LuckPerms 异常），请重试或联系管理员。"
+  state_changed: "该申请在处理期间状态已变化（可能被并发撤回/处理），本次晋升可能已生效但不会被自动回收，请人工核对。"
+  state_save_failed: "授权成功但状态保存失败，请刷新确认后重试。"
+  pending_none_self: "你当前没有「{name}」的待审申请。"
+  player_not_found: "找不到玩家: {player}"
+  no_pending_applicant: "{player} 没有待审核的申请。"
+  multiple_pending: "{player} 有多条待审申请（{types}），请用群指令 $v 按类型处理。"
+  approved_notify: "你的「{name}」申请已通过！"
+  rejected_notify: "你的「{name}」申请被拒绝。"
+  approved_ok: "已通过 {player} 的「{name}」申请。"
+  rejected_ok: "已拒绝 {player} 的「{name}」申请。"
+  reason_arg: "[理由]"
+
+# --- rank.*（/rank 状态与升降级提示；P2f3。统一默认语言 R1；权限组名 rank.group.*） ---
+rank:
+  header_current: "你的当前权限组：{name}（{code}）"
+  timeline_with_progress: "已在线时长：{minutes} 分钟 / 晋升成员阈值 {threshold} 分钟（{progress}）"
+  timeline_done: "已在线时长：{minutes} 分钟 / 晋升成员阈值 {threshold} 分钟（✅ 已达标）"
+  timeline_plain: "已在线时长：{minutes} 分钟"
+  progress_met: "✅ 已达标（下次上线将自动晋升为成员）"
+  progress_left: "还需 {minutes} 分钟"
+  next_auto: "下一步：在线时长达标后自动晋升为成员"
+  next_apply: "下一步可申请：{types}"
+  top_level: "已达最高等级（{admin}）"
+  unknown_group: "当前权限组未知，请联系管理员"
+  no_applicable: "无（当前无可申请项）"
+  type_entry: "{name}（/apply {key}）"
+  list_sep: "；"
+  promote_notify: "你的权限已升级：{group}。"
+  demote_notify: "你的权限已被降级：{group}。"
+  group:
+    admin: "管理员"
+    builder: "建造者"
+    member: "成员"
+    default: "访客"
+
+# --- maintenance.cmd.*（/maintenance 状态；P2g1。运维文案默认语言 R1） ---
+maintenance:
+  cmd:
+    busy_manual_enter: "当前正在执行地图备份/优化，无法手动进入维护模式"
+    already_manual: "服务器已处于手动维护模式"
+    not_active: "服务器当前未处于维护模式"
+    busy_exit: "当前正在执行地图备份/优化，无法退出维护模式"
+    "off": "服务器未处于维护模式"
+    reason_backup: "地图备份中"
+    reason_optimize: "地图优化中"
+    reason_manual: "手动维护中"
+  motd:
+    backup: "服务器地图备份中，请稍后再试"
+    optimize: "服务器地图优化中，请稍后再试"
+    manual: "服务器维护中，请稍后再试"
+    progress_line: "进度：{stage} {percent}% 预计剩余 {eta}秒"
+  stage:
+    Region: "区域"
+    Chunk: "区块"
+    File: "文件"
+    Done: "完成"
+    Running: "进行中"
+
+# --- guide/menu.*（新手指南/菜单提示；P2h1 按玩家语言） ---
+guide:
+  not_configured: "服主未配置新手指南"
+  got: "获得新手指南"
+menu:
+  wip: "功能开发中"
+
+# --- bot.*（群指令帮助/用法/示例；P3a 默认语言 R1。名称由 {name}/{prompt} 注入） ---
+bot:
+  help_title: "🤖 OrzMC 群指令帮助"
+  help_intro: "发送「{prompt}x ?」可查看单个指令的用法示例"
+  help_admin_section: "👨‍💼 管理员指令"
+  help_general_section: "👨🏻‍💻 通用指令"
+  admin_required: "{cmd} 需要管理员权限"
+  lbl_usage: "📚 用法："
+  lbl_example: "🚀 示例："
+  desc:
+    l: "查看在线玩家"
+    w: "查看白名单玩家"
+    h: "查看帮助信息"
+    a: "添加玩家到白名单"
+    r: "从白名单移除玩家"
+    b: "地图备份"
+    o: "优化地图大小"
+    e: "执行控制台命令"
+    d: "添加/移除/查看IP黑名单和玩家名规则"
+    v: "查看/处理审核申请"
+    p: "权限管理（升级/降级）"
+  usage:
+    a: "🎯 {name} 添加玩家到白名单"
+    r: "🎯 {name} 移除白名单玩家"
+    e: "🎯 {name} 执行控制台命令"
+    d: "🎯 {name} IP/玩家名规则管理"
+    v: "🎯 {name} 审核申请"
+    p: "🎯 {name} 权限管理"
+    l: "🎯 {name} 查看在线玩家"
+    w: "🎯 {name} 查看白名单玩家"
+    h: "🎯 {name} 查看帮助"
+    b: "🎯 {name} 地图备份"
+    o: "🎯 {name} 优化地图大小"
+  params:
+    a: "{name} <玩家> <玩家2> ...（空格或逗号分隔，可批量）"
+    r: "{name} <玩家> <玩家2> ...（空格或逗号分隔，可批量）"
+    e: "{name} <控制台命令>"
+    l: "{name}（无参数，直接执行）"
+    w: "{name} [页码]（可选，如 {name} 2）"
+    h: "{name}（无参数，直接显示本帮助）"
+    b: "{name}（无参数，直接执行备份）"
+    o: "{name}（无参数，直接执行优化）"
+    v: "{name} l [页码]       查看待审列表\n{name} y <玩家>       通过申请\n{name} n <玩家>       拒绝申请\n（y/n 可写 yes/no；同玩家多类型申请用 {name} y <typeId> <玩家>）"
+    p: "{name} u|up <玩家>    权限升级（default→member→builder→admin）\n{name} d|down <玩家>  权限降级（admin→builder→member→default）"
+    d: "{name}                查看黑名单\n{name} [IP]           添加黑名单\n{name} -[IP]          移除黑名单\n{name} player <type> <value>   添加玩家名规则\n{name} -player <type> <value>  移除玩家名规则\n{name} player list             查看玩家名规则\n匹配类型 <type>: exact精确 / prefix前缀 / suffix后缀 / contains包含 / glob通配(*?) / regex正则"
+  examples:
+    a: "{name} Steve\n{name} Steve Alex Bob\n{name} Steve,Alex,Bob"
+    r: "{name} Steve\n{name} Steve Alex Bob\n{name} Steve,Alex,Bob"
+    e: "{name} plugins\n{name} say 大家好"
+    l: "{name}"
+    w: "{name}\n{name} 2"
+    h: "{name}"
+    b: "{name}"
+    o: "{name}"
+    v: "{name} l\n{name} l 2\n{name} y Steve\n{name} y builder-promotion Steve"
+    p: "{name} u Steve\n{name} d Steve"
+    d: "{name}\n{name} 1.2.3.4\n{name} -1.2.3.4\n{name} player exact 服主\n{name} player prefix bot_\n{name} player suffix _test\n{name} player contains admin\n{name} player glob bot_*\n{name} player regex ^bot\n{name} -player prefix bot_"
+  list:
+    online_header: "------当前在线({count}/{max})------"
+    whitelist_header: "------当前白名单玩家({count})------"
+    cleanup_title: "------白名单清理------"
+    page_meta: "第{page}/{total}页"
+    empty_whitelist: "(暂无白名单玩家)"
+  e:
+    overflow: "⚠️ 日志缓冲溢出，输出可能不完整"
+  p:
+    svc_unavailable: "权限服务不可用"
+    no_lp: "未检测到 LuckPerms，权限管理功能不可用"
+    player_not_found: "找不到玩家: {player}"
+    op_error: "{player} 权限操作异常（详见服务器日志）。"
+    up_fail: "{player} 无法升级：已达最高等级或权限数据异常（详见服务器日志）。"
+    down_fail: "{player} 无法降级：已达最低等级或权限数据异常（详见服务器日志）。"
+    up_ok: "已将 {player} 升级为 {group}。"
+    down_ok: "已将 {player} 降级为 {group}。"
+  v:
+    svc_unavailable: "审核服务不可用"
+    list_empty: "当前没有待审核的申请。"
+    list_header: "------待审核申请------"
+    current_group: "（当前组：{group}）"
+    list_item: "[{type}] {player}{group}：{summary}（{time} 提交）"
+    reviewer_fallback: "群管理员"
+    not_found: "找不到待审申请: {criteria}"
+    error: "审核处理异常: {detail}"
+    unknown_error: "未知错误"
+    just_now: "刚刚"
+    minutes_ago: "{count}分钟前"
+    hours_ago: "{count}小时前"
+    days_ago: "{count}天前"
+  d:
+    svc_unavailable: "黑名单服务不可用"
+    exec_error: "执行出错: {detail}"
+    usage_minus_player: "用法: {name} -player <type> <value>"
+    usage_player: "用法: {name} player <type> <value>"
+    usage_remove_all: "用法: {name} -<IP>（移除 IP）/ {name} -player <type> <value>（移除玩家名规则）"
+    hint_minus_player: "玩家名规则请使用: {name} -player <type> <value>"
+    hint_player: "玩家名规则请使用: {name} player <type> <value>"
+    removed: "已移除: {pattern}"
+    not_found: "未在黑名单中找到: {pattern}"
+    added: "已添加: {pattern}"
+    exists: "黑名单已存在: {pattern}"
+    empty_all: "访问规则为空"
+    empty_player_rules: "玩家名规则为空"
+    list_section_ip: "IP黑名单:"
+    list_section_rules: "玩家名规则:"
+
+# --- access_rule.*（访问规则管理反馈；游戏 /blacklist 与 bot $d 共用，P3d3） ---
+access_rule:
+  value_empty: "规则值不能为空"
+  invalid_type: "无效匹配类型: {type}（支持 exact/prefix/suffix/contains/glob/regex）"
+  invalid_regex: "无效的正则表达式: {value}"
+  removed: "已移除玩家名规则: {rule}"
+  not_found: "未找到该玩家名规则: {rule}"
+  added: "已添加玩家名规则: {rule}"
+  exists: "玩家名规则已存在，未重复添加: {rule}"
+  # P5-4：游戏内 /blacklist 运维反馈（安全运维命令统一默认语言 R1，与 guard/bot 安全提示一致）
+  usage_ip_add: "用法: /blacklist add <IP>"
+  usage_ip_remove: "用法: /blacklist remove <IP>"
+  usage_player_add: "玩家名规则请使用: /blacklist add player <type> <value>"
+  usage_player_remove: "玩家名规则请使用: /blacklist remove player <type> <value>"
+  usage_player_any: "玩家名规则请使用: /blacklist add|remove player <type> <value>"
+  usage_player_value_empty: "玩家名规则值不能为空: /blacklist {verb} player <type> <value>"
+  usage_player_shorthand: "用法: /blacklist {sign}player <type> <value>"
+  added_ip: "已添加黑名单: {pattern}"
+  exists_ip: "黑名单已存在: {pattern}"
+  removed_ip: "已从黑名单移除: {pattern}"
+  not_found_ip: "未在黑名单中找到: {pattern}"
+  list_empty_all: "访问规则为空"
+  list_title: "当前访问规则:"
+  ip_section: "  IP黑名单:"
+  rules_section: "  玩家名规则:"
+  player_rules_empty: "玩家名规则为空"
+  player_rules_title: "当前玩家名规则:"
+
+# --- serverlife.*（服务端生命周期/维护 MOTD 外壳；P5-2。R1 默认语言；{prompt_help} 等 var 值保持代码注入） ---
+serverlife:
+  mode_online: "正版服"
+  mode_offline: "离线服"
+  status_startup: "启动完成"
+  status_reload: "重启完成"
+  motd_title: "⚠ 维护中"
+  qq_label: "QQ群: "
+  discord_label: "Discord: "
+  discord_hover: "点击加入 Discord"
+
+# --- audit.*（启动安全自检 var 值词汇；P5-2。R1 默认语言） ---
+audit:
+  online_on: "正版验证开启"
+  online_off: "离线（高危）"
+  command_block_on: "启用（高危）"
+  command_block_off: "禁用"
+  rcon_off: "未启用"
+  rcon_on: "启用（端口: {port}）"
+  whitelist_off: "关闭"
+  whitelist_enforced: "开启（强制）"
+  whitelist_not_enforced: "开启（非强制）"
+  ops_zero: "0 个"
+  ops_count: "{count} 个"
+  ops_list: "{count} 个: {names}"
+  plugins_none: "均未安装（高危）"
+
+# --- playermode.*（玩家行游戏模式词汇；P5-5。bot/群事件 var 值 R1） ---
+playermode:
+  creative: "创造模式"
+  survival: "生存模式"
+  adventure: "冒险模式"
+  spectator: "观察模式"

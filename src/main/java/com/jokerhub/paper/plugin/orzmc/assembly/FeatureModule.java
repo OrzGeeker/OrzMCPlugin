@@ -140,10 +140,12 @@ public final class FeatureModule implements ServiceModule {
                 platform.commandGuardService(),
                 platform.configs(),
                 botModule.notifier(),
-                new CommandFeedbackService(),
+                new CommandFeedbackService(platform.i18nService()),
                 commandAuditService,
-                org.bukkit.Bukkit.getLogger());
-        this.guideService = new GuideService(platform.serverFacade(), platform.configService(), platform.textStyles());
+                org.bukkit.Bukkit.getLogger(),
+                platform.i18nService());
+        this.guideService = new GuideService(
+                platform.serverFacade(), platform.configService(), platform.textStyles(), platform.i18nService());
         // 上下线通知：窗口聚合限流（不丢消息），单发走原模板、多发走 player_digest 摘要
         this.playerEventService = new PlayerEventService(
                 platform.serverFacade(),
@@ -152,7 +154,12 @@ public final class FeatureModule implements ServiceModule {
                 botModule.notifier(),
                 platform.throttledNotifier(),
                 new PlayerEventAggregator(
-                        platform.serverFacade(), platform.configs(), botModule.notifier(), this.listFormatter));
+                        platform.serverFacade(),
+                        platform.configs(),
+                        botModule.notifier(),
+                        this.listFormatter,
+                        platform.i18nService()),
+                platform.i18nService());
         this.loginAccessControlService = new LoginAccessControlService(
                 maintenanceModule.maintenanceModeService(),
                 accessRuleService,
@@ -162,16 +169,23 @@ public final class FeatureModule implements ServiceModule {
                 platform.configs(),
                 platform.textStyles(),
                 platform.serverFacade(),
-                platform.throttledNotifier()); // IP 黑名单/玩家名规则拦截私信限频（防重连刷屏打爆 QQ 频控）
+                platform.throttledNotifier(), // IP 黑名单/玩家名规则拦截私信限频（防重连刷屏打爆 QQ 频控）
+                platform.i18nService());
         this.tntEventService = new TntEventService(
-                platform.configs(), platform.textStyles(), botModule.notifier(), platform.serverScheduler());
+                platform.configs(),
+                platform.textStyles(),
+                botModule.notifier(),
+                platform.serverScheduler(),
+                platform.i18nService());
         this.whitelistEventService = new WhitelistEventService(
                 platform.configs(),
                 platform.textStyles(),
                 botModule.notifier(),
-                platform.throttledNotifier()); // whitelist_block 群通知限频（防刷屏打爆 QQ 频控）
-        this.menuEventService = new MenuEventService(platform.textStyles());
-        this.teleportBowService = new TeleportBowService(platform.serverFacade(), platform.textStyles());
+                platform.throttledNotifier(), // whitelist_block 群通知限频（防刷屏打爆 QQ 频控）
+                platform.i18nService());
+        this.menuEventService = new MenuEventService(platform.textStyles(), platform.i18nService());
+        this.teleportBowService =
+                new TeleportBowService(platform.serverFacade(), platform.textStyles(), platform.i18nService());
         this.teleportBowEventService = new TeleportBowEventService(teleportBowService);
         this.portalEventService = new PortalEventService(platform.serverFacade(), portalModule.portalService());
         this.serverFeedbackService = new ServerFeedbackService(
@@ -196,22 +210,26 @@ public final class FeatureModule implements ServiceModule {
                 new LoginRateLimitService(platform.configs()::loginRateLimit),
                 platform.configs(),
                 botModule.notifier(),
-                platform.textStyles());
+                platform.textStyles(),
+                platform.i18nService());
         // 漏洞加固：纯判定核心 + 事件编排；exploit_hardening 每次读取最新配置（Supplier），/config reload 生效
         this.exploitHardeningEventService = new ExploitHardeningEventService(
                 new ExploitHardeningService(platform.configs()::exploitHardening),
                 platform.configs(),
                 botModule.notifier(),
-                platform.textStyles());
-        this.menuCommandService = new MenuCommandService(platform.textStyles());
-        this.portalCommandService = new PortalCommandService(portalModule.portalService(), platform.textStyles());
+                platform.textStyles(),
+                platform.i18nService());
+        this.menuCommandService = new MenuCommandService(platform.textStyles(), platform.i18nService());
+        this.portalCommandService =
+                new PortalCommandService(portalModule.portalService(), platform.textStyles(), platform.i18nService());
         this.maintenanceCommandService =
                 new com.jokerhub.paper.plugin.orzmc.features.maintenance.MaintenanceCommandService(
                         platform.serverFacade(),
                         platform.configs(),
                         platform.textStyles(),
                         maintenanceModule.maintenanceModeService(),
-                        maintenanceModule.worldMaintenanceService());
+                        maintenanceModule.worldMaintenanceService(),
+                        platform.i18nService());
         this.orzConfigCommand = new OrzConfigCommand(
                 platform.configService(), platform.textStyles(), botModule.botMessageService()::reloadConfig);
         // 权限晋升（Rank）模块：时长（读服务器原生 stats 文件）+ 自动晋升 + 通用审核框架
@@ -228,7 +246,10 @@ public final class FeatureModule implements ServiceModule {
         var playerLookup = new com.jokerhub.paper.plugin.orzmc.infra.player.BukkitPlayerLookup();
         // 游戏模式矫正：权限组变化后把已无权限的模式切回生存（config 经 Supplier 热重载）
         this.gamemodeCorrectionService = new com.jokerhub.paper.plugin.orzmc.features.rank.GamemodeCorrectionService(
-                platform.serverFacade().plugin(), () -> platform.configs().gamemodeCorrection(), platform.textStyles());
+                platform.serverFacade().plugin(),
+                () -> platform.configs().gamemodeCorrection(),
+                platform.textStyles(),
+                platform.i18nService());
         // 坐牢（prison）：独立 prison 组（不继承、不在四级 track），作弊玩家关入后仅保留
         // essentials.msg 私聊；原组/原位置写入 LP 用户元数据，解除坐牢恢复。LP 操作用异步执行器
         // （非服务器线程），杜绝「调度线程同步等 LP future」自锁。
@@ -238,7 +259,8 @@ public final class FeatureModule implements ServiceModule {
                 () -> platform.configs().prison(),
                 platform.textStyles(),
                 reviewNotifier,
-                playerId -> org.bukkit.Bukkit.getOfflinePlayer(playerId).getName());
+                playerId -> org.bukkit.Bukkit.getOfflinePlayer(playerId).getName(),
+                platform.i18nService());
         this.rankService = new com.jokerhub.paper.plugin.orzmc.features.rank.RankService(
                 permissionStore,
                 rankPromoter,
@@ -246,26 +268,29 @@ public final class FeatureModule implements ServiceModule {
                 reviewNotifier,
                 platform.serverFacade()::runSync,
                 gamemodeCorrectionService,
-                prisonService);
+                prisonService,
+                platform.i18nService());
         // 在线列表格式化注入权限组解析（$l 命令与上下线广播共用，一次注入两处生效）
         this.listFormatter.setRankService(this.rankService);
+        this.listFormatter.setI18nService(platform.i18nService());
         this.reviewService = new com.jokerhub.paper.plugin.orzmc.features.review.ReviewService(
                 permissionStore,
                 reviewNotifier,
                 playerLookup,
                 platform.serverFacade()::runSync,
-                gamemodeCorrectionService);
+                gamemodeCorrectionService,
+                platform.i18nService());
         // 注册审核类型：handler 由 rank 模块注入（LP 授权），框架零 LP 依赖。
         // 审核通过 = track 升一级；异步授权（LP 操作在非服务器线程），结果 null/异常 视为
         // 授权失败 → 保持 PENDING 不落 APPROVED（避免「已通过但未生效」漂移）。
         this.reviewService.register(promotionType("builder-promotion", "晋升建造者", "builder", "member"));
         this.reviewService.register(promotionType("admin-promotion", "晋升管理员", "admin", "builder"));
         this.rankCommandService = new com.jokerhub.paper.plugin.orzmc.features.rank.RankCommandService(
-                rankService, reviewService, platform.textStyles());
+                rankService, reviewService, platform.textStyles(), platform.i18nService());
         this.prisonCommandService = new com.jokerhub.paper.plugin.orzmc.features.prison.PrisonCommandService(
-                prisonService, platform.textStyles(), rankService::resolvePlayerId);
+                prisonService, platform.textStyles(), rankService::resolvePlayerId, platform.i18nService());
         this.reviewCommandService = new com.jokerhub.paper.plugin.orzmc.features.review.ReviewCommandService(
-                reviewService, platform.textStyles());
+                reviewService, platform.textStyles(), platform.i18nService());
         // 玩家名颜色（按权限等级）：rankService 创建后装配；LP 启用时桥接等级变更实时刷新。
         // 三元短路：仅 LP 启用时才求值 LuckPermsProvider.get()，LP 缺失时 rankDisplayLpBridge 为 null
         this.rankDisplayService = new com.jokerhub.paper.plugin.orzmc.features.rank.PlayerRankDisplayService(
@@ -389,6 +414,9 @@ public final class FeatureModule implements ServiceModule {
         // command_policies.* 运行时改动（/orzmc config set/reset/reload）→ 刷新命令拦截器策略快照，
         // 即改即生效且热路径不再全量重解析
         orzConfigCommand.setCommandPoliciesReload(commandRegistrar::refreshCommandPolicies);
+        // i18n 覆盖层运行时改动（/orzmc config reload）→ 重读数据目录 messages_custom_<lang>.yml，
+        // 手动编辑即改即生效（无需重启）
+        orzConfigCommand.setI18nCustomReload(platform.i18nService()::reloadCustom);
     }
 
     // --- Command Registration ---

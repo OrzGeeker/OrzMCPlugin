@@ -6,7 +6,8 @@ import com.jokerhub.paper.plugin.orzmc.features.maintenance.MaintenanceModeServi
 import com.jokerhub.paper.plugin.orzmc.features.maintenance.MaintenanceModeService.MaintenanceProgress;
 import com.jokerhub.paper.plugin.orzmc.features.maintenance.MaintenanceModeService.MaintenanceReason;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.BotConfig;
-import com.jokerhub.paper.plugin.orzmc.infra.config.configs.Templates;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nServiceHolder;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.MessageKeys;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
 import net.kyori.adventure.text.Component;
@@ -33,24 +34,22 @@ public final class ServerFeedbackService {
         this.maintenanceModeService = maintenanceModeService;
     }
 
-    public String buildServerLoadMessage(ServerLoadEvent event) {
-        String onlineMode = server.server().getOnlineMode() ? "正版服" : "离线服";
-        String minecraftVersion = server.server().getMinecraftVersion();
-        String[] parts = {"Minecraft", minecraftVersion, onlineMode};
-        StringBuilder stringBuilder = new StringBuilder(String.join(" ", parts)).append("\n");
-        stringBuilder.append("---------------------------------").append("\n");
-        switch (event.getType()) {
-            case STARTUP -> stringBuilder.append("启动完成");
-            case RELOAD -> stringBuilder.append("重启完成");
-        }
-        stringBuilder.append("\n\n");
-        String prompt = configs.bot().cmdPromptChar();
-        stringBuilder
-                .append("发送 \"")
-                .append(prompt)
-                .append(OrzUserCmd.SHOW_HELP.cmdName())
-                .append("\" 查看支持的命令消息");
-        return stringBuilder.toString();
+    /** 组装 server_load 事件变量（P5-2：正文迁语言包 event.server_load，此处仅注入动态值）。 */
+    public java.util.Map<String, String> buildServerLoadVars(ServerLoadEvent event) {
+        String mode = server.server().getOnlineMode()
+                ? I18nServiceHolder.msg(MessageKeys.SERVERLIFE_MODE_ONLINE)
+                : I18nServiceHolder.msg(MessageKeys.SERVERLIFE_MODE_OFFLINE);
+        String status =
+                switch (event.getType()) {
+                    case STARTUP -> I18nServiceHolder.msg(MessageKeys.SERVERLIFE_STATUS_STARTUP);
+                    case RELOAD -> I18nServiceHolder.msg(MessageKeys.SERVERLIFE_STATUS_RELOAD);
+                };
+        String promptHelp = configs.bot().cmdPromptChar() + OrzUserCmd.SHOW_HELP.cmdName();
+        return java.util.Map.of(
+                "version", server.server().getMinecraftVersion(),
+                "mode", mode,
+                "status", status,
+                "prompt_help", promptHelp);
     }
 
     public Component buildMaintenanceMotd() {
@@ -58,26 +57,29 @@ public final class ServerFeedbackService {
         MaintenanceReason reason = maintenanceModeService.reason();
         // 进度快照取一次：场景文案渲染与进度行拼接用同一快照，避免两次读不同快照拼出不一致 MOTD
         MaintenanceProgress progress = maintenanceModeService.progress();
-        // 统一渲染入口：场景文案（templates.yml maintenance_motd_*）+ 进度行（maintenance_motd_progress_line）
-        Templates templates = configs.templates();
-        String msg = MaintenanceModeService.renderMotdText(reason, templates, progress);
+        // 统一渲染入口：场景文案（maintenance.motd.* 语言包/磁盘正文）+ 进度行（MaintenanceTexts）
+        String msg = MaintenanceModeService.renderMotdText(reason, configs.maintenanceTexts(), progress);
         String discordLink = botConfig.discordServerLink();
         String qqGroupId = botConfig.qqGroupId();
         TextComponent.Builder motdBuilder = Component.text();
-        motdBuilder.append(styles.warn("⚠ 维护中").decorate(TextDecoration.BOLD));
+        motdBuilder.append(styles.warn(I18nServiceHolder.msg(MessageKeys.SERVERLIFE_MOTD_TITLE))
+                .decorate(TextDecoration.BOLD));
         motdBuilder.append(Component.newline());
         motdBuilder.append(styles.info(msg));
         if (qqGroupId != null && !qqGroupId.isEmpty()) {
             motdBuilder.append(Component.newline());
-            motdBuilder.append(styles.info("QQ群: ")).append(styles.warn(qqGroupId));
+            motdBuilder
+                    .append(styles.info(I18nServiceHolder.msg(MessageKeys.SERVERLIFE_QQ_LABEL)))
+                    .append(styles.warn(qqGroupId));
         }
         if (discordLink != null && !discordLink.isEmpty()) {
             motdBuilder.append(Component.newline());
             motdBuilder
-                    .append(styles.info("Discord: "))
+                    .append(styles.info(I18nServiceHolder.msg(MessageKeys.SERVERLIFE_DISCORD_LABEL)))
                     .append(Component.text(discordLink)
                             .decorate(TextDecoration.UNDERLINED)
-                            .hoverEvent(HoverEvent.showText(Component.text("点击加入 Discord")))
+                            .hoverEvent(HoverEvent.showText(
+                                    Component.text(I18nServiceHolder.msg(MessageKeys.SERVERLIFE_DISCORD_HOVER))))
                             .clickEvent(ClickEvent.openUrl(discordLink)));
         }
         return motdBuilder.build();
