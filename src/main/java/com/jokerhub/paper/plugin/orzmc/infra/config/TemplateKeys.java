@@ -122,6 +122,13 @@ public final class TemplateKeys {
         RANK_DEMOTED,
         PRISON_IMPRISONED,
         PRISON_RELEASED,
+        // P4c：维护进度/完成/失败事件（stage_i18n 阶段名等 var 值语义化在 P4c-2 收口）
+        MAINTENANCE_BACKUP_STAGE,
+        MAINTENANCE_BACKUP_DONE,
+        MAINTENANCE_BACKUP_ERROR,
+        MAINTENANCE_OPTIMIZE_STAGE,
+        MAINTENANCE_OPTIMIZE_DONE,
+        MAINTENANCE_OPTIMIZE_ERROR,
     };
 
     /** 事件键是否为语言包承载正文（event.*）。 */

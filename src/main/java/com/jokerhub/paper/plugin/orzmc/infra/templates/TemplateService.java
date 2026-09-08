@@ -18,7 +18,7 @@ public final class TemplateService {
      *   <li>{@link TemplateKeys#isLangBacked(String)} 事件（player/geoip/whitelist/tnt/exception 等）：
      *       磁盘 templates.yml 正文若存在（存量服/服主定制）优先渲染——P4d 升级链统一迁移前保 zh 基线、
      *       不丢定制；磁盘缺失（全新安装）回落语言包 {@code event.<name>}（默认语言 R1，原文含占位符未渲染）。</li>
-     *   <li>其余（maintenance_* / server_load / server_stop）仍走 {@link Templates} 记录默认（数据/直通壳模板）。</li>
+     *   <li>其余（server_load / server_stop）仍走 {@link Templates} 记录默认（{message} 直通壳）。</li>
      * </ul>
      * 格式（CODE_BLOCK/PLAIN）一律由 templates.format 表承担。
      */
@@ -50,12 +50,6 @@ public final class TemplateService {
         if (eventKey == null || eventKey.isEmpty()) {
             return "";
         }
-        if ("maintenance_backup_stage".equals(eventKey)) return templates.maintenanceBackupStage();
-        if ("maintenance_backup_done".equals(eventKey)) return templates.maintenanceBackupDone();
-        if ("maintenance_backup_error".equals(eventKey)) return templates.maintenanceBackupError();
-        if ("maintenance_optimize_stage".equals(eventKey)) return templates.maintenanceOptimizeStage();
-        if ("maintenance_optimize_done".equals(eventKey)) return templates.maintenanceOptimizeDone();
-        if ("maintenance_optimize_error".equals(eventKey)) return templates.maintenanceOptimizeError();
         if ("server_load".equals(eventKey)) return templates.serverLoad();
         if ("server_stop".equals(eventKey)) return templates.serverStop();
         return "";
