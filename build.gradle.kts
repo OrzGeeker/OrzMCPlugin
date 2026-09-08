@@ -116,7 +116,9 @@ fun executeGitCommand(vararg command: String): String {
 }
 
 fun latestCommitMessage(): String {
-    return runCatching { executeGitCommand("log", "-1", "--pretty=%B") }
+    // 发布 changelog 取最近提交标题（%s）单行：%B 整段 PR 描述过长/含特殊字符曾在 Hangar 上传触发
+    // 400（2026-09-08 #411 里程碑）；单行标题简洁且对 Hangar 友好
+    return runCatching { executeGitCommand("log", "-1", "--pretty=%s") }
         .getOrElse { "OrzMC ${project.version} build" }
 }
 
