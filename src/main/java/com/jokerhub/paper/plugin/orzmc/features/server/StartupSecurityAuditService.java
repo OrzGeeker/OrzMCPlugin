@@ -3,6 +3,8 @@ package com.jokerhub.paper.plugin.orzmc.features.server;
 import com.jokerhub.paper.plugin.orzmc.core.bot.MessageEnvelope;
 import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
 import com.jokerhub.paper.plugin.orzmc.infra.config.TemplateKeys;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nServiceHolder;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.MessageKeys;
 import com.jokerhub.paper.plugin.orzmc.infra.notify.Notifier;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import java.io.File;
@@ -35,15 +37,6 @@ public final class StartupSecurityAuditService {
     /** 文章 26 §3 推荐安装的关键防护插件。 */
     private static final String[] SECURITY_PLUGINS = {"LuckPerms", "LoginSecurity", "Grim", "Vulcan"};
 
-    /** 模板缺失时的 Java 兜底正文（与 templates.yml 的 security_audit 一致）。 */
-    private static final String DEFAULT_BODY = "🛡 安全自检报告\n"
-            + "在线模式: {online_mode}\n"
-            + "命令方块: {command_block}\n"
-            + "RCON: {rcon}\n"
-            + "白名单: {whitelist}\n"
-            + "OP: {ops}\n"
-            + "关键插件: {plugins}";
-
     private final ServerFacade server;
     private final TypedConfigProvider configs;
     private final Notifier notifier;
@@ -67,13 +60,22 @@ public final class StartupSecurityAuditService {
         Server bukkit = server.server();
         Properties props = serverProperties();
         Map<String, String> vars = new LinkedHashMap<>();
-        vars.put("online_mode", bukkit.getOnlineMode() ? "正版验证开启" : "离线（高危）");
-        vars.put("command_block", isCommandBlockEnabled(props) ? "启用（高危）" : "禁用");
+        vars.put(
+                "online_mode",
+                bukkit.getOnlineMode()
+                        ? I18nServiceHolder.msg(MessageKeys.AUDIT_ONLINE_ON)
+                        : I18nServiceHolder.msg(MessageKeys.AUDIT_ONLINE_OFF));
+        vars.put(
+                "command_block",
+                isCommandBlockEnabled(props)
+                        ? I18nServiceHolder.msg(MessageKeys.AUDIT_COMMAND_BLOCK_ON)
+                        : I18nServiceHolder.msg(MessageKeys.AUDIT_COMMAND_BLOCK_OFF));
         vars.put("rcon", rconDescription(props));
         vars.put("whitelist", whitelistDescription(bukkit));
         vars.put("ops", opsDescription(bukkit));
         vars.put("plugins", pluginsDescription(bukkit));
-        MessageEnvelope env = configs.renderTemplate(TemplateKeys.SECURITY_AUDIT, vars, DEFAULT_BODY);
+        // P4b-2：自检报告正文迁语言包 event.security_audit（默认语言 R1）
+        MessageEnvelope env = configs.renderEvent(TemplateKeys.SECURITY_AUDIT, vars);
         notifier.event(TemplateKeys.SECURITY_AUDIT, env);
     }
 
@@ -83,22 +85,25 @@ public final class StartupSecurityAuditService {
 
     private static String rconDescription(Properties props) {
         if (!Boolean.parseBoolean(props.getProperty("enable-rcon", "false"))) {
-            return "未启用";
+            return I18nServiceHolder.msg(MessageKeys.AUDIT_RCON_OFF);
         }
-        return "启用（端口: " + props.getProperty("rcon.port", "25575") + "）";
+        return I18nServiceHolder.msg(
+                MessageKeys.AUDIT_RCON_ON, Map.of("port", props.getProperty("rcon.port", "25575")));
     }
 
     private static String whitelistDescription(Server bukkit) {
         if (!bukkit.hasWhitelist()) {
-            return "关闭";
+            return I18nServiceHolder.msg(MessageKeys.AUDIT_WHITELIST_OFF);
         }
-        return bukkit.isWhitelistEnforced() ? "开启（强制）" : "开启（非强制）";
+        return bukkit.isWhitelistEnforced()
+                ? I18nServiceHolder.msg(MessageKeys.AUDIT_WHITELIST_ENFORCED)
+                : I18nServiceHolder.msg(MessageKeys.AUDIT_WHITELIST_NOT_ENFORCED);
     }
 
     private static String opsDescription(Server bukkit) {
         Set<OfflinePlayer> ops = bukkit.getOperators();
         if (ops == null || ops.isEmpty()) {
-            return "0 个";
+            return I18nServiceHolder.msg(MessageKeys.AUDIT_OPS_ZERO);
         }
         List<String> names = ops.stream()
                 .map(OfflinePlayer::getName)
@@ -106,9 +111,11 @@ public final class StartupSecurityAuditService {
                 .sorted()
                 .toList();
         if (names.isEmpty()) {
-            return ops.size() + " 个";
+            return I18nServiceHolder.msg(MessageKeys.AUDIT_OPS_COUNT, Map.of("count", String.valueOf(ops.size())));
         }
-        return names.size() + " 个: " + String.join(", ", names);
+        return I18nServiceHolder.msg(
+                MessageKeys.AUDIT_OPS_LIST,
+                Map.of("count", String.valueOf(names.size()), "names", String.join(", ", names)));
     }
 
     private static String pluginsDescription(Server bukkit) {
@@ -120,7 +127,7 @@ public final class StartupSecurityAuditService {
             }
         }
         if (installed.isEmpty()) {
-            return "均未安装（高危）";
+            return I18nServiceHolder.msg(MessageKeys.AUDIT_PLUGINS_NONE);
         }
         return String.join("、", installed);
     }

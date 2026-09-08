@@ -5,6 +5,7 @@ import static org.mockito.Mockito.*;
 
 import com.jokerhub.paper.plugin.orzmc.infra.config.ConfigService;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
+import com.jokerhub.paper.plugin.orzmc.testutil.TestI18n;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -30,7 +31,7 @@ class ReviewCommandServiceTest {
         when(configService.getConfig("templates")).thenReturn(templatesConfig);
         when(templatesConfig.getConfigurationSection("styles")).thenReturn(null);
         styles = new OrzTextStyles(configService);
-        command = new ReviewCommandService(reviewService, styles);
+        command = new ReviewCommandService(reviewService, styles, TestI18n.newService());
     }
 
     private ReviewType builderType(UUID id, boolean eligible) {

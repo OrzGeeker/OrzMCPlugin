@@ -5,6 +5,7 @@ import static org.mockito.Mockito.*;
 
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
 import com.jokerhub.paper.plugin.orzmc.testutil.ServiceTestBase;
+import com.jokerhub.paper.plugin.orzmc.testutil.TestI18n;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -43,7 +44,7 @@ class MenuEventServiceTest extends ServiceTestBase {
         when(styles.info(anyString())).thenReturn(Component.text("OrzMC Menu"));
         when(Bukkit.createInventory(any(OrzMenuHolder.class), any(InventoryType.class), any(Component.class)))
                 .thenReturn(mock(Inventory.class));
-        service = new MenuEventService(styles);
+        service = new MenuEventService(styles, TestI18n.newService());
     }
 
     @AfterEach

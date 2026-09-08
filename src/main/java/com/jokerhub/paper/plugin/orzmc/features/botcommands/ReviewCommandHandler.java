@@ -5,6 +5,7 @@ import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
 import com.jokerhub.paper.plugin.orzmc.features.rank.RankService;
 import com.jokerhub.paper.plugin.orzmc.features.review.ReviewRequest;
 import com.jokerhub.paper.plugin.orzmc.features.review.ReviewService;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nServiceHolder;
 import com.jokerhub.paper.plugin.orzmc.infra.paging.Paginator;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import java.util.ArrayList;
@@ -38,7 +39,7 @@ final class ReviewCommandHandler extends BotCommandContext {
             OrzUserCmd cmd, boolean isAdmin, String senderName, Consumer<MessageEnvelope> callback, String rawArgs) {
         if (!guardAdminCommand(cmd, isAdmin, callback)) return;
         if (reviewService.get() == null) {
-            emit(callback, "command_review_error", Map.of("message", "审核服务不可用"), "审核服务不可用");
+            emitMsg(callback, "command_review_error", I18nServiceHolder.msg("bot.v.svc_unavailable"));
             return;
         }
         if (rawArgs.isBlank()) {
@@ -59,7 +60,7 @@ final class ReviewCommandHandler extends BotCommandContext {
     private void handleReviewList(Consumer<MessageEnvelope> callback, String pageArg) {
         var pending = reviewService.get().listPending();
         if (pending.isEmpty()) {
-            emit(callback, "command_review_list_empty", Map.of(), "当前没有待审核的申请。");
+            emitMsg(callback, "command_review_list_empty", I18nServiceHolder.msg("bot.v.list_empty"));
             return;
         }
         Integer page = parsePageArg(pageArg);
@@ -72,21 +73,39 @@ final class ReviewCommandHandler extends BotCommandContext {
                     .orElse(r.typeId());
             String playerName = playerNameOf(r);
             RankService rank = rankService.get();
-            String group = rank == null
+            String groupSuffix = rank == null
                     ? ""
-                    : "（当前组：" + RankService.groupDisplayName(rank.currentGroup(r.applicantId())) + "）";
+                    : I18nServiceHolder.msg(
+                            "bot.v.current_group",
+                            Map.of("group", I18nServiceHolder.msg("rank.group." + rank.currentGroup(r.applicantId()))));
             String summary = reviewService
                     .get()
                     .typeById(r.typeId())
                     .map(t -> t.summarize(r.data()))
                     .orElse("");
-            lines.add(
-                    "[%s] %s%s：%s（%s 提交）".formatted(typeName, playerName, group, summary, relativeTime(r.createdAt())));
+            lines.add(I18nServiceHolder.msg(
+                    "bot.v.list_item",
+                    Map.of(
+                            "type", typeName,
+                            "player", playerName,
+                            "group", groupSuffix,
+                            "summary", summary,
+                            "time", relativeTime(r.createdAt()))));
         }
-        Paginator.paginate(
+        Paginator.paginatePages(
                 server,
-                text -> emit(callback, "command_review_list", Map.of("message", text), text),
-                "------待审核申请------",
+                (pageIndex, total, headerText, body) -> {
+                    String text = headerText + "\n"
+                            + I18nServiceHolder.msg(
+                                    "bot.list.page_meta",
+                                    Map.of("page", String.valueOf(pageIndex), "total", String.valueOf(total)))
+                            + "\n"
+                            + body;
+                    emit(callback, "command_review_list", Map.of("message", text), text);
+                },
+                I18nServiceHolder.msg("bot.v.list_header"),
+                // 空列表在上方 guard 已提前短路；此处占位仅为签名完整（不会触发）
+                I18nServiceHolder.msg("bot.v.list_empty"),
                 lines,
                 5,
                 page);
@@ -99,7 +118,9 @@ final class ReviewCommandHandler extends BotCommandContext {
             return;
         }
         // 审核人：优先群发送者身份（网关透传昵称）；未透传时兜底「群管理员」
-        String reviewer = (senderName == null || senderName.isBlank()) ? "群管理员" : senderName;
+        String reviewer = (senderName == null || senderName.isBlank())
+                ? I18nServiceHolder.msg("bot.v.reviewer_fallback")
+                : senderName;
         // 支持：$v y <玩家>  或  $v y <typeId> <玩家>
         String[] parts = rest.split("\\s+", 2);
         String first = parts[0];
@@ -117,8 +138,8 @@ final class ReviewCommandHandler extends BotCommandContext {
                 if (byType) {
                     var request = reviewService.get().pendingFor(playerOrType, playerName);
                     if (request.isEmpty()) {
-                        future = java.util.concurrent.CompletableFuture.completedFuture(
-                                ReviewService.Result.fail("找不到待审申请: " + rest));
+                        future = java.util.concurrent.CompletableFuture.completedFuture(ReviewService.Result.fail(
+                                I18nServiceHolder.msg("bot.v.not_found", Map.of("criteria", rest))));
                     } else {
                         future = reviewService.get().review(request.get().id(), approved, reviewer);
                     }
@@ -127,8 +148,7 @@ final class ReviewCommandHandler extends BotCommandContext {
                 }
                 future.whenComplete((result, err) -> {
                     if (err != null) {
-                        result = ReviewService.Result.fail(
-                                "审核处理异常: " + (err.getMessage() == null ? "未知错误" : err.getMessage()));
+                        result = ReviewService.Result.fail(reviewError(err.getMessage()));
                     }
                     emit(
                             callback,
@@ -137,11 +157,7 @@ final class ReviewCommandHandler extends BotCommandContext {
                             result.message());
                 });
             } catch (Throwable t) {
-                emit(
-                        callback,
-                        "command_review_error",
-                        Map.of("message", "审核处理异常: " + (t.getMessage() == null ? "未知错误" : t.getMessage())),
-                        "审核处理异常: " + (t.getMessage() == null ? "未知错误" : t.getMessage()));
+                emitMsg(callback, "command_review_error", reviewError(t.getMessage()));
             }
         });
     }
@@ -156,13 +172,26 @@ final class ReviewCommandHandler extends BotCommandContext {
         }
     }
 
+    private static String reviewError(String detail) {
+        return I18nServiceHolder.msg(
+                "bot.v.error",
+                Map.of("detail", detail == null ? I18nServiceHolder.msg("bot.v.unknown_error") : detail));
+    }
+
     private static String relativeTime(long epochMillis) {
         long diff = System.currentTimeMillis() - epochMillis;
         long minutes = diff / 60000L;
-        if (minutes < 1) return "刚刚";
-        if (minutes < 60) return minutes + "分钟前";
+        if (minutes < 1) {
+            return I18nServiceHolder.msg("bot.v.just_now");
+        }
+        if (minutes < 60) {
+            return I18nServiceHolder.msg("bot.v.minutes_ago", Map.of("count", String.valueOf(minutes)));
+        }
         long hours = minutes / 60;
-        return hours < 24 ? hours + "小时前" : (hours / 24) + "天前";
+        if (hours < 24) {
+            return I18nServiceHolder.msg("bot.v.hours_ago", Map.of("count", String.valueOf(hours)));
+        }
+        return I18nServiceHolder.msg("bot.v.days_ago", Map.of("count", String.valueOf(hours / 24)));
     }
 
     private void emitReviewUsage(Consumer<MessageEnvelope> callback) {

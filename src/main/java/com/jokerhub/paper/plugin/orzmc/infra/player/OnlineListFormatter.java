@@ -1,6 +1,7 @@
 package com.jokerhub.paper.plugin.orzmc.infra.player;
 
 import com.jokerhub.paper.plugin.orzmc.features.rank.RankService;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nService;
 import java.util.Collection;
 import java.util.UUID;
 import org.bukkit.entity.Player;
@@ -17,15 +18,21 @@ import org.bukkit.entity.Player;
 public final class OnlineListFormatter {
 
     private RankService rankService;
+    private I18nService i18n;
 
     public void setRankService(RankService rankService) {
         this.rankService = rankService;
     }
 
+    public void setI18nService(I18nService i18n) {
+        this.i18n = i18n;
+    }
+
     /** 单行：玩家名(op) 游戏模式 权限组（rankService 未注入时省略权限组）。 */
     public String line(Player p) {
-        String group =
-                rankService == null ? null : RankService.groupDisplayName(rankService.currentGroup(p.getUniqueId()));
+        String group = rankService == null
+                ? null
+                : RankService.groupDisplayName(rankService.currentGroup(p.getUniqueId()), i18n);
         return PlayerDisplayNames.format(p, group);
     }
 

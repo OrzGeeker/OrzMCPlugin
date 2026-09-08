@@ -236,9 +236,82 @@ class ConfigUpgraderTest {
             assertEquals(ConfigUpgrader.Outcome.MIGRATED, upgrader.upgrade(cfg, file, in));
         }
 
-        assertTrue(cfg.contains("templates.player_join"), "缺失模板键应被补全");
+        assertTrue(
+                cfg.contains("templates.command_output"), "缺失模板键应被补全（事件正文已迁语言包 event.*，player_join/server_stop 不再回填）");
+        assertFalse(cfg.contains("templates.server_stop"), "P5-2 server_stop 正文迁语言包，不回填 templates.yml");
+        assertFalse(cfg.contains("templates.player_join"), "P4b 后事件正文不回填 templates.yml（走语言包 event.*）");
         assertTrue(cfg.contains("templates.coord.precision"), "缺失的子键应被补全");
         assertEquals(1.0, cfg.getDouble("templates.coord.scale"), "已有值不得被覆盖");
         assertEquals(ConfigSchema.LATEST_VERSION, cfg.getInt(ConfigSchema.VERSION_KEY));
+    }
+
+    @Test
+    void templates13_oldDefaultBodies_migratedToLanguagePack() throws Exception {
+        // P4d：磁盘 13 持有迁移前旧默认正文（= zh 语言包值）→ 升级删键/翻 {message}，定制保留
+        File file = writeConfig("templates.yml", "config-version: 13\n");
+        FileConfiguration cfg = YamlConfiguration.loadConfiguration(file);
+        java.util.Map<String, String> zh = TemplatesBodyMigration.loadZhDefaults();
+        cfg.set("templates.player_join", zh.get("event.player_join"));
+        cfg.set("templates.exception_alert", zh.get("event.exception_alert"));
+        cfg.set("templates.geoip_block", "定制地区拦截文案 {name}"); // 服主定制 → 保留
+        cfg.set("templates.maintenance_motd_backup", zh.get("maintenance.motd.backup"));
+        cfg.set("templates.command_players", "------当前在线({online_count}/{max_count})------\n{online_list}");
+        cfg.set("templates.stage_cn.Region", zh.get("maintenance.stage.Region")); // 默认 → 删
+        cfg.set("templates.stage_cn.Chunk", "区块扫描"); // 定制 → 保留
+        cfg.set("templates.server_stop", "{message}"); // 未迁键不受影响
+
+        try (InputStream in = bundledResource("templates.yml")) {
+            assertEquals(ConfigUpgrader.Outcome.MIGRATED, upgrader.upgrade(cfg, file, in));
+        }
+
+        assertEquals(ConfigSchema.LATEST_VERSION, cfg.getInt(ConfigSchema.VERSION_KEY));
+        assertFalse(cfg.contains("templates.player_join"), "等于旧默认的事件正文应删除走语言包");
+        assertFalse(cfg.contains("templates.exception_alert"), "等于旧默认的事件正文应删除走语言包");
+        assertEquals("定制地区拦截文案 {name}", cfg.getString("templates.geoip_block"), "定制正文必须保留");
+        assertFalse(cfg.contains("templates.maintenance_motd_backup"), "等于默认的 motd 应删除");
+        assertEquals("{message}", cfg.getString("templates.command_players"), "command 旧默认应翻 {message} 直通壳");
+        assertFalse(cfg.contains("templates.stage_cn.Region"), "默认阶段名应删除");
+        assertEquals("区块扫描", cfg.getString("templates.stage_cn.Chunk"), "定制阶段名必须保留");
+        assertEquals("{message}", cfg.getString("templates.server_stop"), "未迁键不受影响");
+
+        cfg.save(file);
+        assertTrue(new File(tempDir, "templates.yml.bak").exists(), "升级前应生成 .bak 备份");
+    }
+
+    @Test
+    void templates13_customBodies_keptUntouched() throws Exception {
+        File file = writeConfig("templates.yml", "config-version: 13\n");
+        FileConfiguration cfg = YamlConfiguration.loadConfiguration(file);
+        cfg.set("templates.player_join", "自定义上线消息 {name}");
+        cfg.set("templates.command_players", "自定义玩家列表");
+        cfg.set("templates.stage_cn.Done", "搞定了");
+        cfg.set("templates.maintenance_motd_manual", "服务器停机维护中");
+
+        try (InputStream in = bundledResource("templates.yml")) {
+            assertEquals(ConfigUpgrader.Outcome.MIGRATED, upgrader.upgrade(cfg, file, in));
+        }
+
+        assertEquals("自定义上线消息 {name}", cfg.getString("templates.player_join"));
+        assertEquals("自定义玩家列表", cfg.getString("templates.command_players"));
+        assertEquals("搞定了", cfg.getString("templates.stage_cn.Done"));
+        assertEquals("服务器停机维护中", cfg.getString("templates.maintenance_motd_manual"));
+        assertEquals(ConfigSchema.LATEST_VERSION, cfg.getInt(ConfigSchema.VERSION_KEY));
+    }
+
+    @Test
+    void templates14_upToDate_doesNotMigrateAgain() throws Exception {
+        // 二次启动（磁盘已 14，正文已删）→ UP_TO_DATE 早退，零触碰（迁移幂等由版本门控保证）
+        File file = writeConfig(
+                "templates.yml",
+                "config-version: " + ConfigSchema.LATEST_VERSION + "\ntemplates:\n  coord:\n    scale: 1.0\n");
+        String before = Files.readString(file.toPath());
+        FileConfiguration cfg = YamlConfiguration.loadConfiguration(file);
+
+        try (InputStream in = bundledResource("templates.yml")) {
+            assertEquals(ConfigUpgrader.Outcome.UP_TO_DATE, upgrader.upgrade(cfg, file, in));
+        }
+
+        assertFalse(new File(tempDir, "templates.yml.bak").exists());
+        assertEquals(before, Files.readString(file.toPath()));
     }
 }

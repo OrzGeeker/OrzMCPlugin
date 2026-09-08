@@ -90,6 +90,61 @@ public final class TemplateKeys {
     public static final String MOTD = "motd";
 
     /**
+     * 事件正文已迁入语言包 {@code event.<name>} 的模板键（P4b+，i18n R1 默认语言渲染）。
+     *
+     * <p>此类键的正文不再要求存在于 templates.yml body 段（磁盘上仍存在 = 存量服/服主定制，
+     * 优先渲染保 zh 基线不丢定制；全新安装回落语言包）；格式仍由 templates.format 表承担。
+     * ConfigHealthCheck 对缺失 body 不再告警，TemplateKeysTest 校验语言包 event.* 已备。</p>
+     */
+    public static final String[] EVENT_LANG_BACKED = {
+        PLAYER_JOIN,
+        PLAYER_KICK,
+        PLAYER_QUIT,
+        PLAYER_DIGEST,
+        EXCEPTION_ALERT,
+        GEOIP_BLOCK,
+        GEOIP_UNVERIFIABLE,
+        TNT_ALERT,
+        WHITELIST_BLOCK,
+        WHITELIST_TOGGLE_ALERT,
+        // P4b-2：安全/审核/权限/坐牢域事件（原先走 renderTemplate 直发 + 内联 fallback）
+        COMMAND_GUARD_BLOCKED,
+        SECURITY_AUDIT,
+        LOGIN_RATE_LIMIT_ALERT,
+        EXPLOIT_BLOCKED,
+        IP_BLACKLIST_BLOCK,
+        PLAYER_NAME_BLOCK,
+        REVIEW_SUBMITTED,
+        REVIEW_CANCELLED,
+        REVIEW_APPROVED,
+        REVIEW_REJECTED,
+        RANK_PROMOTED,
+        RANK_DEMOTED,
+        PRISON_IMPRISONED,
+        PRISON_RELEASED,
+        // P4c：维护进度/完成/失败事件（stage_i18n 阶段名等 var 值语义化在 P4c-2 收口）
+        MAINTENANCE_BACKUP_STAGE,
+        MAINTENANCE_BACKUP_DONE,
+        MAINTENANCE_BACKUP_ERROR,
+        MAINTENANCE_OPTIMIZE_STAGE,
+        MAINTENANCE_OPTIMIZE_DONE,
+        MAINTENANCE_OPTIMIZE_ERROR,
+        // P5-2：服务端生命周期事件（原 {message} 直通壳 + 代码组装 zh 正文）→ 语言包承载全文
+        SERVER_LOAD,
+        SERVER_STOP,
+    };
+
+    /** 事件键是否为语言包承载正文（event.*）。 */
+    public static boolean isLangBacked(String key) {
+        for (String k : EVENT_LANG_BACKED) {
+            if (k.equals(key)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * 所有已知的模板事件 key。用于 {@link ConfigHealthCheck} 校验。
      *
      * <p>历史版本因「升级安装（templates.yml 已存在故未复制新默认值）不携带该键」而把

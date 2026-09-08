@@ -15,9 +15,10 @@ import static org.mockito.Mockito.when;
 
 import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
 import com.jokerhub.paper.plugin.orzmc.features.maintenance.MaintenanceModeService.MaintenanceReason;
-import com.jokerhub.paper.plugin.orzmc.infra.config.configs.Templates;
+import com.jokerhub.paper.plugin.orzmc.infra.config.configs.MaintenanceTexts;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
+import com.jokerhub.paper.plugin.orzmc.testutil.TestI18n;
 import io.papermc.paper.threadedregions.scheduler.EntityScheduler;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import java.util.List;
@@ -45,11 +46,11 @@ class MaintenanceCommandServiceTest {
         styles = mock(OrzTextStyles.class);
         mode = new MaintenanceModeService();
         worldMaintenance = mock(WorldMaintenanceService.class);
-        // 手动维护踢人经 renderMotdText 读 templates.yml 场景模板（PR4 迁移），默认模板即可
-        when(configs.templates()).thenReturn(Templates.from(new YamlConfiguration()));
+        // 手动维护踢人/status 进度行经 renderMotdText 读 maintenance.motd.*（磁盘缺失回落语言包 zh 默认）
+        when(configs.maintenanceTexts()).thenReturn(MaintenanceTexts.from(new YamlConfiguration()));
         // warn 回显入参：不桩死成固定值，踢人断言需要真实渲染文本
         when(styles.warn(anyString())).thenAnswer(i -> Component.text((String) i.getArgument(0)));
-        service = new MaintenanceCommandService(server, configs, styles, mode, worldMaintenance);
+        service = new MaintenanceCommandService(server, configs, styles, mode, worldMaintenance, TestI18n.newService());
     }
 
     @Test
@@ -84,9 +85,9 @@ class MaintenanceCommandServiceTest {
         assertEquals(MaintenanceReason.MANUAL, mode.reason());
         // Folia：踢人必须投递到玩家所在 region 线程（EntityScheduler）
         verify(scheduler).run(any(), any(), any());
-        // 手动维护踢人文案 = templates.yml maintenance_motd_manual 场景模板（默认值，带场景词）
+        // 手动维护踢人文案 = maintenance.motd.manual 语言包默认（zh 主目录，带场景词）
         String expected = MaintenanceModeService.renderMotdText(
-                MaintenanceReason.MANUAL, Templates.from(new YamlConfiguration()), null);
+                MaintenanceReason.MANUAL, MaintenanceTexts.from(new YamlConfiguration()), null);
         assertEquals("服务器维护中，请稍后再试", expected, "手动维护场景默认文案");
         verify(p).kick(Component.text(expected));
     }

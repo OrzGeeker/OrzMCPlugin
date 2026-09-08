@@ -2,7 +2,6 @@ package com.jokerhub.paper.plugin.orzmc.infra.styles;
 
 import com.jokerhub.paper.plugin.orzmc.infra.config.ConfigService;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.Styles;
-import com.jokerhub.paper.plugin.orzmc.infra.core.OrzConstants;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.event.ClickEvent;
@@ -70,22 +69,10 @@ public final class OrzTextStyles {
         return Component.text(text).color(color);
     }
 
-    public TextComponent tntPrefix() {
-        return prefix(OrzConstants.PREFIX_TNT_ALERT, colorAlertTnt());
-    }
-
-    public TextComponent explosionPrefix() {
-        return prefix(OrzConstants.PREFIX_EXPLOSION_ALERT, colorAlertExplosion());
-    }
-
-    public TextComponent tpbowPrefix() {
-        return Component.text("[传送弓]").color(colorWarn());
-    }
-
-    public TextComponent coordComponent(String locString) {
+    public TextComponent coordComponent(String locString, String hoverText) {
         return Component.text(locString)
                 .color(colorCoord())
-                .hoverEvent(HoverEvent.showText(Component.text("点击复制坐标")))
+                .hoverEvent(HoverEvent.showText(Component.text(hoverText)))
                 .clickEvent(ClickEvent.copyToClipboard(locString.trim()));
     }
 
@@ -113,9 +100,5 @@ public final class OrzTextStyles {
 
     public TextComponent playerName(String name) {
         return Component.text(name).color(colorPlayer());
-    }
-
-    public TextComponent unknownLabel() {
-        return Component.text("未知玩家").color(colorUnknown());
     }
 }

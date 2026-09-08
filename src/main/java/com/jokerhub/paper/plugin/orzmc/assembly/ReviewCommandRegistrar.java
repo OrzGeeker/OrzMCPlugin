@@ -11,6 +11,7 @@ import static io.papermc.paper.command.brigadier.Commands.literal;
 import com.jokerhub.paper.plugin.orzmc.features.command.binding.CommandInterceptor;
 import com.jokerhub.paper.plugin.orzmc.features.review.ReviewCommandService;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.CommandPolicies;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nService;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import io.papermc.paper.command.brigadier.Commands;
@@ -28,16 +29,19 @@ final class ReviewCommandRegistrar implements CommandGroup {
     private final OrzTextStyles styles;
     private final Supplier<CommandPolicies> cpSupplier;
     private final Predicate<Player> prisonCheck;
+    private final I18nService i18n;
 
     ReviewCommandRegistrar(
             ReviewCommandService reviewCommandService,
             OrzTextStyles styles,
             Supplier<CommandPolicies> cpSupplier,
-            Predicate<Player> prisonCheck) {
+            Predicate<Player> prisonCheck,
+            I18nService i18n) {
         this.reviewCommandService = reviewCommandService;
         this.styles = styles;
         this.cpSupplier = cpSupplier;
         this.prisonCheck = prisonCheck;
+        this.i18n = i18n;
     }
 
     @Override
@@ -45,7 +49,7 @@ final class ReviewCommandRegistrar implements CommandGroup {
 
         // ---- /apply 通用申请命令 ----
         List<CommandInterceptor> applyInterceptors =
-                withPrisonDeny(commandInterceptors("apply", cpSupplier, false), prisonCheck);
+                withPrisonDeny(commandInterceptors("apply", cpSupplier, false, i18n), prisonCheck, i18n);
         commands.register(
                 literal("apply")
                         .requires(requirement(applyInterceptors))
@@ -112,7 +116,7 @@ final class ReviewCommandRegistrar implements CommandGroup {
                 List.of("apply"));
 
         // ---- /review approve|reject <name> — 管理员审核（替代 /rank approve|reject）----
-        List<CommandInterceptor> adminReviewInterceptors = adminInterceptors("review");
+        List<CommandInterceptor> adminReviewInterceptors = adminInterceptors("review", i18n);
         commands.register(
                 literal("review")
                         .requires(requirement(adminReviewInterceptors))

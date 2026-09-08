@@ -40,7 +40,7 @@ class ServerFeedbackServiceTest extends ServiceTestBase {
     }
 
     @Test
-    void buildServerLoadMessage_startup_containsStartup() {
+    void buildServerLoadVars_startup_containsStartupVocab() {
         Server bukkitServer = mock(Server.class);
         when(server.server()).thenReturn(bukkitServer);
         when(bukkitServer.getOnlineMode()).thenReturn(true);
@@ -48,17 +48,15 @@ class ServerFeedbackServiceTest extends ServiceTestBase {
         when(configs.bot()).thenReturn(new BotConfig("$", null, null));
         when(event.getType()).thenReturn(ServerLoadEvent.LoadType.STARTUP);
 
-        String msg = service.buildServerLoadMessage(event);
-        assertTrue(msg.contains("Minecraft 1.21.4"));
-        assertTrue(msg.contains("正版服"));
-        assertTrue(msg.contains("启动完成"));
-        assertTrue(msg.contains("$h"));
-        // 分割线统一 33 连字符（群消息统一样式防回归）
-        assertTrue(msg.contains("\n---------------------------------\n"), "启动消息分割线应为 33 连字符: " + msg);
+        java.util.Map<String, String> vars = service.buildServerLoadVars(event);
+        assertEquals("1.21.4", vars.get("version"));
+        assertEquals("正版服", vars.get("mode"));
+        assertEquals("启动完成", vars.get("status"));
+        assertEquals("$h", vars.get("prompt_help"));
     }
 
     @Test
-    void buildServerLoadMessage_reload_containsReload() {
+    void buildServerLoadVars_reload_containsReloadVocab() {
         Server bukkitServer = mock(Server.class);
         when(server.server()).thenReturn(bukkitServer);
         when(bukkitServer.getOnlineMode()).thenReturn(false);
@@ -66,17 +64,16 @@ class ServerFeedbackServiceTest extends ServiceTestBase {
         when(configs.bot()).thenReturn(new BotConfig("!", null, null));
         when(event.getType()).thenReturn(ServerLoadEvent.LoadType.RELOAD);
 
-        String msg = service.buildServerLoadMessage(event);
-        assertTrue(msg.contains("离线服"));
-        assertTrue(msg.contains("重启完成"));
-        assertTrue(msg.contains("!h"));
-        assertTrue(msg.contains("\n---------------------------------\n"), "重启消息分割线应为 33 连字符: " + msg);
+        java.util.Map<String, String> vars = service.buildServerLoadVars(event);
+        assertEquals("离线服", vars.get("mode"));
+        assertEquals("重启完成", vars.get("status"));
+        assertEquals("!h", vars.get("prompt_help"));
     }
 
     @Test
     void buildMaintenanceMotd_containsMaintenanceWarn() {
         BotConfig bot = new BotConfig("$", null, null);
-        when(configs.templates()).thenReturn(maintenanceTemplates("维护中请稍后", null, null, null));
+        when(configs.maintenanceTexts()).thenReturn(maintenanceTexts("维护中请稍后", null, null, null));
         when(configs.bot()).thenReturn(bot);
         when(styles.warn(anyString())).thenReturn(Component.text("⚠ 维护中"));
         when(styles.info(anyString())).then(i -> Component.text((String) i.getArgument(0)));
@@ -94,7 +91,7 @@ class ServerFeedbackServiceTest extends ServiceTestBase {
     @Test
     void buildMaintenanceMotd_withDiscord() {
         BotConfig bot = new BotConfig("$", "https://discord.gg/test", null);
-        when(configs.templates()).thenReturn(maintenanceTemplates("维护公告", null, null, null));
+        when(configs.maintenanceTexts()).thenReturn(maintenanceTexts("维护公告", null, null, null));
         when(configs.bot()).thenReturn(bot);
         when(styles.warn(anyString())).thenReturn(Component.text("⚠ 维护中"));
         when(styles.info(anyString())).then(i -> Component.text((String) i.getArgument(0)));
@@ -113,7 +110,7 @@ class ServerFeedbackServiceTest extends ServiceTestBase {
     void buildMaintenanceMotd_withoutPlaceholders_appendsProgressLine() {
         // 纯场景文案（不含 {stage}/{percent}/{eta}）+ 有进度 → 统一渲染入口追加进度行（progress_line 模板默认格式）
         BotConfig bot = new BotConfig("$", null, null);
-        when(configs.templates()).thenReturn(maintenanceTemplates("备份中", null, null, null));
+        when(configs.maintenanceTexts()).thenReturn(maintenanceTexts("备份中", null, null, null));
         when(configs.bot()).thenReturn(bot);
         when(styles.warn(anyString())).thenReturn(Component.text("⚠ 维护中"));
         when(styles.info(anyString())).then(i -> Component.text((String) i.getArgument(0)));
@@ -131,7 +128,7 @@ class ServerFeedbackServiceTest extends ServiceTestBase {
     @Test
     void buildMaintenanceMotd_manual_noProgress_omitsProgressLine() {
         BotConfig bot = new BotConfig("$", null, null);
-        when(configs.templates()).thenReturn(maintenanceTemplates(null, null, "手动维护中", null));
+        when(configs.maintenanceTexts()).thenReturn(maintenanceTexts(null, null, "手动维护中", null));
         when(configs.bot()).thenReturn(bot);
         when(styles.warn(anyString())).thenReturn(Component.text("⚠ 维护中"));
         when(styles.info(anyString())).then(i -> Component.text((String) i.getArgument(0)));
@@ -150,7 +147,7 @@ class ServerFeedbackServiceTest extends ServiceTestBase {
     void buildMaintenanceMotd_withPlaceholders_noSeparateProgressLine() {
         // 场景模板含 {stage}/{percent}/{eta} → 占位符替换进场景文案，不再追加独立进度行（防重复）
         BotConfig bot = new BotConfig("$", null, null);
-        when(configs.templates()).thenReturn(maintenanceTemplates("备份 {stage} {percent}% {eta}秒", null, null, null));
+        when(configs.maintenanceTexts()).thenReturn(maintenanceTexts("备份 {stage} {percent}% {eta}秒", null, null, null));
         when(configs.bot()).thenReturn(bot);
         when(styles.warn(anyString())).thenReturn(Component.text("⚠ 维护中"));
         when(styles.info(anyString())).then(i -> Component.text((String) i.getArgument(0)));

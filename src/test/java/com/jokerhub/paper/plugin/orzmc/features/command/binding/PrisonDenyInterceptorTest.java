@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.Mockito.*;
 
+import com.jokerhub.paper.plugin.orzmc.testutil.TestI18n;
 import java.util.function.Predicate;
 import net.kyori.adventure.text.Component;
 import org.bukkit.command.CommandSender;
@@ -21,7 +22,7 @@ class PrisonDenyInterceptorTest {
         Player player = mock(Player.class);
         when(prisonCheck.test(player)).thenReturn(true);
 
-        Component res = new PrisonDenyInterceptor(prisonCheck).preHandle(player, "guide");
+        Component res = new PrisonDenyInterceptor(prisonCheck, TestI18n.newService()).preHandle(player, "guide");
 
         assertNotNull(res, "坐牢玩家应收到拒绝提示（非 null 触发短路）");
         verify(prisonCheck).test(player);
@@ -32,7 +33,7 @@ class PrisonDenyInterceptorTest {
         Player player = mock(Player.class);
         when(prisonCheck.test(player)).thenReturn(false);
 
-        Component res = new PrisonDenyInterceptor(prisonCheck).preHandle(player, "guide");
+        Component res = new PrisonDenyInterceptor(prisonCheck, TestI18n.newService()).preHandle(player, "guide");
 
         assertNull(res, "非坐牢玩家放行（null = 不拦截）");
     }
@@ -41,7 +42,7 @@ class PrisonDenyInterceptorTest {
     void consoleSender_alwaysAllowed() {
         CommandSender console = mock(CommandSender.class);
 
-        Component res = new PrisonDenyInterceptor(p -> true).preHandle(console, "guide");
+        Component res = new PrisonDenyInterceptor(p -> true, TestI18n.newService()).preHandle(console, "guide");
 
         assertNull(res, "控制台不适用坐牢拦截");
         verifyNoInteractions(prisonCheck);

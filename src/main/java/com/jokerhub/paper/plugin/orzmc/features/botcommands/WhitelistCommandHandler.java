@@ -4,6 +4,7 @@ import com.jokerhub.paper.plugin.orzmc.core.bot.MessageEnvelope;
 import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
 import com.jokerhub.paper.plugin.orzmc.features.whitelist.WhitelistService;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.WhitelistConfig;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nServiceHolder;
 import com.jokerhub.paper.plugin.orzmc.infra.paging.Paginator;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import java.util.ArrayList;
@@ -121,6 +122,8 @@ final class WhitelistCommandHandler extends BotCommandContext {
                     emit(callback, "command_whitelist_page", pageInfo.vars(), pageInfo.fallback());
                 },
                 header,
+                // P5-3：空列表正文本地化（默认语言 R1），不再由 Paginator 硬编码 zh
+                I18nServiceHolder.msg("bot.list.empty_whitelist"),
                 lines,
                 delayTicks,
                 page);

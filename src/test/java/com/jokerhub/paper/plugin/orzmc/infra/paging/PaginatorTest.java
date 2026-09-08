@@ -50,6 +50,7 @@ public class PaginatorTest extends ServiceTestBase {
                     pageBodies.add(body);
                 },
                 "HEADER",
+                "EMPTY",
                 lines,
                 0,
                 null);
@@ -72,7 +73,7 @@ public class PaginatorTest extends ServiceTestBase {
         for (int i = 0; i < 25; i++) {
             lines.add("line-" + i);
         }
-        Paginator.paginatePages(sched, (p, t, h, b) -> {}, "H", lines, 5, null);
+        Paginator.paginatePages(sched, (p, t, h, b) -> {}, "H", "EMPTY", lines, 5, null);
         Assertions.assertEquals(2, sched.delays.size());
         // i=0 → delay ≥ 1；i=1 → delay = 1*5 = 5
         Assertions.assertTrue(sched.delays.get(0) >= 1, "首页 delay 必须 ≥ 1，实际 " + sched.delays.get(0));
@@ -87,7 +88,7 @@ public class PaginatorTest extends ServiceTestBase {
         for (int i = 0; i < 21; i++) {
             lines.add("l" + i);
         }
-        Paginator.paginate(sched, s -> {}, "H", lines, 0, null);
+        Paginator.paginate(sched, s -> {}, "H", "EMPTY", lines, 0, null);
         Assertions.assertEquals(2, sched.delays.size());
         Assertions.assertTrue(sched.delays.get(0) >= 1, "首页 delay 必须 ≥ 1，实际 " + sched.delays.get(0));
         // delayTicks=0 → 按 5 兜底
@@ -102,9 +103,10 @@ public class PaginatorTest extends ServiceTestBase {
                     Assertions.assertEquals(1, page);
                     Assertions.assertEquals(1, total);
                     Assertions.assertEquals("H", header);
-                    Assertions.assertEquals("(暂无白名单玩家)", body);
+                    Assertions.assertEquals("EMPTY", body);
                 },
                 "H",
+                "EMPTY",
                 List.of(),
                 5,
                 null);
@@ -114,7 +116,7 @@ public class PaginatorTest extends ServiceTestBase {
     public void testPaginatePages_singlePageOneDelayTask() {
         // 单页时仍调度 1 次 runLater（i=0，delay ≥ 1）——源码行为：统一走延迟回调
         RecordingScheduler sched = new RecordingScheduler();
-        Paginator.paginatePages(sched, (p, t, h, b) -> {}, "H", List.of("only"), 5, null);
+        Paginator.paginatePages(sched, (p, t, h, b) -> {}, "H", "EMPTY", List.of("only"), 5, null);
         Assertions.assertEquals(1, sched.delays.size(), "单页应恰好 1 次延迟任务");
         Assertions.assertTrue(sched.delays.get(0) >= 1, "单页延迟也必须 ≥ 1，实际 " + sched.delays.get(0));
     }
@@ -130,6 +132,7 @@ public class PaginatorTest extends ServiceTestBase {
                 new ImmediateScheduler(),
                 (page, total, header, body) -> Assertions.assertEquals(1, page),
                 "H",
+                "EMPTY",
                 lines,
                 5,
                 0);
@@ -138,6 +141,7 @@ public class PaginatorTest extends ServiceTestBase {
                 new ImmediateScheduler(),
                 (page, total, header, body) -> Assertions.assertEquals(3, page),
                 "H",
+                "EMPTY",
                 lines,
                 5,
                 999);
@@ -146,6 +150,7 @@ public class PaginatorTest extends ServiceTestBase {
                 new ImmediateScheduler(),
                 (page, total, header, body) -> Assertions.assertEquals(1, page),
                 "H",
+                "EMPTY",
                 lines,
                 5,
                 -5);
@@ -159,7 +164,7 @@ public class PaginatorTest extends ServiceTestBase {
         for (int i = 0; i < 41; i++) { // 3 页
             lines.add("l" + i);
         }
-        Paginator.paginatePages(sched, (p, t, h, b) -> {}, "H", lines, -3, null);
+        Paginator.paginatePages(sched, (p, t, h, b) -> {}, "H", "EMPTY", lines, -3, null);
         Assertions.assertEquals(3, sched.delays.size());
         Assertions.assertTrue(sched.delays.get(0) >= 1);
         Assertions.assertEquals(5L, sched.delays.get(1));

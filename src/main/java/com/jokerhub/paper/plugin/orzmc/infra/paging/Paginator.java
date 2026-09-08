@@ -15,13 +15,14 @@ public final class Paginator {
             ServerScheduler server,
             Consumer<String> callback,
             String header,
+            String emptyBody,
             List<String> lines,
             int delayTicks,
             Integer page) {
         ArrayList<String> chunks = buildChunks(lines);
         int total = chunks.size();
         if (total == 0) {
-            callback.accept(header + "\n" + "(暂无白名单玩家)");
+            callback.accept(header + "\n" + emptyBody);
             return;
         }
         if (page != null) {
@@ -52,13 +53,14 @@ public final class Paginator {
             ServerScheduler server,
             PageConsumer callback,
             String header,
+            String emptyBody,
             List<String> lines,
             int delayTicks,
             Integer page) {
         ArrayList<String> chunks = buildChunks(lines);
         int total = chunks.size();
         if (total == 0) {
-            callback.accept(1, 1, header, "(暂无白名单玩家)");
+            callback.accept(1, 1, header, emptyBody);
             return;
         }
         if (page != null) {

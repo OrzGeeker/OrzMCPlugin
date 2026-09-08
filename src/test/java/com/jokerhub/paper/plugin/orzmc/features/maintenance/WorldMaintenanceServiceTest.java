@@ -77,7 +77,7 @@ public class WorldMaintenanceServiceTest extends ServiceTestBase {
         when(envMock.message()).thenReturn("backup progress");
         when(configs.renderEvent(anyString(), anyMap())).thenReturn(envMock);
         // runExclusive 踢人文案经 renderMotdText 读 templates.yml 场景模板（PR4 迁移），默认模板即可
-        when(configs.templates()).thenReturn(defaultTemplates());
+        when(configs.maintenanceTexts()).thenReturn(defaultMaintenanceTexts());
 
         // 临时目录
         worldDir = new File(System.getProperty("java.io.tmpdir"), "wm-world-" + System.nanoTime());
@@ -503,7 +503,7 @@ public class WorldMaintenanceServiceTest extends ServiceTestBase {
         svc.runExclusive(MaintenanceModeService.MaintenanceReason.BACKUP, () -> {}, null);
 
         String expected = MaintenanceModeService.renderMotdText(
-                MaintenanceModeService.MaintenanceReason.BACKUP, defaultTemplates(), null);
+                MaintenanceModeService.MaintenanceReason.BACKUP, defaultMaintenanceTexts(), null);
         Assertions.assertEquals("服务器地图备份中，请稍后再试", expected, "备份场景默认文案应带场景词");
         verify(p).kick(Component.text(expected));
     }

@@ -13,15 +13,4 @@ public final class TemplateResolvers {
         if ("THE_END".equals(env)) return opt.worldAlias().getOrDefault("world_the_end", "末地");
         return opt.worldAlias().getOrDefault("world", "主世界");
     }
-
-    public static String stageAlias(String stageName, TemplateOptions opt) {
-        if (stageName == null) return opt.stageCnMap().getOrDefault("Running", "进行中");
-        String cn = opt.stageCnMap().getOrDefault(stageName, null);
-        if (cn != null) return cn;
-        if ("Region".equalsIgnoreCase(stageName)) return "区域";
-        if ("Chunk".equalsIgnoreCase(stageName)) return "区块";
-        if ("File".equalsIgnoreCase(stageName)) return "文件";
-        if ("Done".equalsIgnoreCase(stageName)) return "完成";
-        return "进行中";
-    }
 }

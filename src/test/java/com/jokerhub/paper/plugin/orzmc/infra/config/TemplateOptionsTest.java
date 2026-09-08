@@ -19,14 +19,10 @@ public class TemplateOptionsTest extends ServiceTestBase {
         Assertions.assertEquals("末地", opt.worldAlias().get("world_the_end"));
         Assertions.assertEquals(2.0, opt.coordScale());
         Assertions.assertEquals("meter", opt.coordUnitLabel());
-        Assertions.assertEquals("区域", opt.stageCnMap().get("Region"));
-        Assertions.assertTrue(opt.stageCnMap().containsKey("Chunk"));
     }
 
     private static @NotNull YamlConfiguration getYamlConfiguration() {
         YamlConfiguration cfg = new YamlConfiguration();
-        cfg.set("templates.stage_cn.Region", "区域");
-        cfg.set("templates.stage_cn.Chunk", "区块");
         cfg.set("templates.progress_units.rate", "per_min");
         cfg.set("templates.progress_units.eta", "sec");
         cfg.set("templates.world_alias.world", "主世界");

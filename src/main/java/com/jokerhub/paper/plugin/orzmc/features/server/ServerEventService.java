@@ -5,6 +5,7 @@ import com.jokerhub.paper.plugin.orzmc.core.bot.MessageEnvelope;
 import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
 import com.jokerhub.paper.plugin.orzmc.features.maintenance.MaintenanceModeService;
 import com.jokerhub.paper.plugin.orzmc.infra.notify.Notifier;
+import java.util.Map;
 import org.bukkit.event.server.ServerListPingEvent;
 import org.bukkit.event.server.ServerLoadEvent;
 
@@ -32,8 +33,8 @@ public final class ServerEventService {
     }
 
     public void handleServerLoad(ServerLoadEvent event) {
-        String message = feedbackService.buildServerLoadMessage(event);
-        MessageEnvelope env = configs.renderEvent("server_load", java.util.Map.of("message", message));
+        Map<String, String> vars = feedbackService.buildServerLoadVars(event);
+        MessageEnvelope env = configs.renderEvent("server_load", vars);
         notifier.event("server_load", env);
     }
 

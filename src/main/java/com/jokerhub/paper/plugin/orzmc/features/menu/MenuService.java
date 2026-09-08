@@ -1,5 +1,7 @@
 package com.jokerhub.paper.plugin.orzmc.features.menu;
 
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nService;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.MessageKeys;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
@@ -11,9 +13,11 @@ import org.bukkit.inventory.ItemStack;
 
 public final class MenuService {
     private final OrzTextStyles styles;
+    private final I18nService i18n;
 
-    public MenuService(OrzTextStyles styles) {
+    public MenuService(OrzTextStyles styles, I18nService i18n) {
         this.styles = styles;
+        this.i18n = i18n;
     }
 
     public Inventory buildMenu() {
@@ -33,7 +37,7 @@ public final class MenuService {
 
     public void onClick(Player p, ItemStack clicked) {
         if (clicked != null && clicked.getType() != Material.AIR) {
-            p.sendMessage(styles.info("功能开发中"));
+            p.sendMessage(styles.info(i18n.msg(i18n.langFor(p), MessageKeys.MENU_WIP)));
         }
     }
 }

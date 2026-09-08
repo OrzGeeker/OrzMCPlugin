@@ -12,6 +12,7 @@ import com.jokerhub.paper.plugin.orzmc.features.command.binding.CommandIntercept
 import com.jokerhub.paper.plugin.orzmc.features.rank.RankCommandService;
 import com.jokerhub.paper.plugin.orzmc.features.rank.RankService;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.CommandPolicies;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nService;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import io.papermc.paper.command.brigadier.Commands;
@@ -30,26 +31,29 @@ final class RankCommandRegistrar implements CommandGroup {
     private final OrzTextStyles styles;
     private final Supplier<CommandPolicies> cpSupplier;
     private final Predicate<Player> prisonCheck;
+    private final I18nService i18n;
 
     RankCommandRegistrar(
             RankCommandService rankCommandService,
             RankService rankService,
             OrzTextStyles styles,
             Supplier<CommandPolicies> cpSupplier,
-            Predicate<Player> prisonCheck) {
+            Predicate<Player> prisonCheck,
+            I18nService i18n) {
         this.rankCommandService = rankCommandService;
         this.rankService = rankService;
         this.styles = styles;
         this.cpSupplier = cpSupplier;
         this.prisonCheck = prisonCheck;
+        this.i18n = i18n;
     }
 
     @Override
     public void register(Commands commands) {
         // ---- /rank — 查询自己 / /rank <玩家> — admin 查指定玩家 ----
         List<CommandInterceptor> rankInterceptors =
-                withPrisonDeny(commandInterceptors("rank", cpSupplier, false), prisonCheck);
-        List<CommandInterceptor> adminRankInterceptors = adminInterceptors("rank");
+                withPrisonDeny(commandInterceptors("rank", cpSupplier, false, i18n), prisonCheck, i18n);
+        List<CommandInterceptor> adminRankInterceptors = adminInterceptors("rank", i18n);
         commands.register(
                 literal("rank")
                         .requires(requirement(rankInterceptors))

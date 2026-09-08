@@ -4,13 +4,14 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.jokerhub.paper.plugin.orzmc.features.security.CommandGuardService.GuardDecision;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.SecurityGuardConfig;
+import com.jokerhub.paper.plugin.orzmc.testutil.TestI18n;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class CommandGuardServiceTest {
 
     private static CommandGuardService service(SecurityGuardConfig config) {
-        return new CommandGuardService(() -> config);
+        return new CommandGuardService(() -> config, TestI18n.newService());
     }
 
     private static CommandGuardService defaultService() {

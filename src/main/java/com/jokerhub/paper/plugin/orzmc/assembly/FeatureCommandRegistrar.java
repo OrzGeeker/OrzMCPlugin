@@ -27,6 +27,7 @@ import com.jokerhub.paper.plugin.orzmc.features.update.UpdateCommandService;
 import com.jokerhub.paper.plugin.orzmc.infra.bot.BotMessageService;
 import com.jokerhub.paper.plugin.orzmc.infra.bot.builtin.BuiltinImDriver;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.CommandPolicies;
+import com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nService;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
@@ -59,6 +60,8 @@ final class FeatureCommandRegistrar {
     private final PrisonDenyInterceptor prisonDenyInterceptor;
     /** 原始坐牢判定（传给子注册器构建 prison 追加拦截）。 */
     private final Predicate<Player> prisonDenyCheck;
+    /** i18n 服务（拦截器提示按发送者语言渲染）。 */
+    private final I18nService i18n;
 
     /** 各特性命令组（一个文件一个特性）。 */
     private final List<CommandGroup> groups;
@@ -85,12 +88,13 @@ final class FeatureCommandRegistrar {
             Predicate<Player> prisonDenyCheck) {
         this.platform = platform;
         this.botModule = botModule;
+        this.i18n = platform.i18nService();
         this.guideService = guideService;
         this.menuCommandService = menuCommandService;
         this.teleportBowService = teleportBowService;
         this.maintenanceCommandService = maintenanceCommandService;
         this.prisonDenyCheck = prisonDenyCheck;
-        this.prisonDenyInterceptor = prisonDenyCheck == null ? null : new PrisonDenyInterceptor(prisonDenyCheck);
+        this.prisonDenyInterceptor = prisonDenyCheck == null ? null : new PrisonDenyInterceptor(prisonDenyCheck, i18n);
         Supplier<CommandPolicies> cpSupplier = () -> commandPolicies;
         OrzTextStyles styles = platform.textStyles();
         // IM 管理（/config im）：builtin 驱动存在才可投递测试；否则相关命令给引导
@@ -99,13 +103,13 @@ final class FeatureCommandRegistrar {
         ImAdminService imAdmin =
                 new ImAdminService(styles, platform.configService(), botModule.healthAccessor(), builtin);
         this.groups = List.of(
-                new PortalCommandRegistrar(portalCommandService, styles, cpSupplier, prisonDenyCheck),
-                new BlacklistCommandRegistrar(accessRuleService, styles),
-                new ReviewCommandRegistrar(reviewCommandService, styles, cpSupplier, prisonDenyCheck),
-                new RankCommandRegistrar(rankCommandService, rankService, styles, cpSupplier, prisonDenyCheck),
-                new PrisonCommandRegistrar(prisonCommandService, styles),
-                new ConfigCommandRegistrar(orzConfigCommand, styles, imAdmin),
-                new UpdateCommandRegistrar(updateCommandService, styles));
+                new PortalCommandRegistrar(portalCommandService, styles, cpSupplier, prisonDenyCheck, i18n),
+                new BlacklistCommandRegistrar(accessRuleService, styles, i18n),
+                new ReviewCommandRegistrar(reviewCommandService, styles, cpSupplier, prisonDenyCheck, i18n),
+                new RankCommandRegistrar(rankCommandService, rankService, styles, cpSupplier, prisonDenyCheck, i18n),
+                new PrisonCommandRegistrar(prisonCommandService, styles, i18n),
+                new ConfigCommandRegistrar(orzConfigCommand, styles, imAdmin, i18n),
+                new UpdateCommandRegistrar(updateCommandService, styles, i18n));
     }
 
     /** 给开放命令拦截器链追加坐牢拒绝（null 守卫：未注入 prison 判定时不追加）。 */
@@ -170,7 +174,7 @@ final class FeatureCommandRegistrar {
             // 监听器收不到事件，因此直接在此处调用 BotInboundHandler 完成模拟。
             // 安全：仅 OP/orzmc.admin 可用（AdminOnlyInterceptor），控制台始终放行。
             // 非管理员在 Tab 补全中不可见，直接输入会被 Brigadier 拒绝（requires 拦截）。
-            List<CommandInterceptor> debugInterceptors = adminInterceptors("orzdebug");
+            List<CommandInterceptor> debugInterceptors = adminInterceptors("orzdebug", i18n);
             Predicate<CommandSourceStack> debugRequires = requirement(debugInterceptors);
             commands.register(
                     literal("orzdebug")
@@ -204,7 +208,7 @@ final class FeatureCommandRegistrar {
 
             // ---- Maintenance: /maintenance on|off|status（手动维护模式）----
             // op/orzmc.admin 权限；与备份/优化互斥由 MaintenanceCommandService 内部保证
-            List<CommandInterceptor> maintenanceInterceptors = adminInterceptors("maintenance");
+            List<CommandInterceptor> maintenanceInterceptors = adminInterceptors("maintenance", i18n);
             MaintenanceCommandService maintSvc = maintenanceCommandService;
             OrzTextStyles styles = platform.textStyles();
             commands.register(
@@ -251,7 +255,8 @@ final class FeatureCommandRegistrar {
             Supplier<CommandPolicies> cpSupplier,
             boolean skipPlayerOnly,
             Consumer<Player> action) {
-        List<CommandInterceptor> interceptors = withPrisonDeny(commandInterceptors(name, cpSupplier, skipPlayerOnly));
+        List<CommandInterceptor> interceptors =
+                withPrisonDeny(commandInterceptors(name, cpSupplier, skipPlayerOnly, i18n));
         commands.register(
                 literal(name)
                         .requires(requirement(interceptors))
@@ -272,10 +277,10 @@ final class FeatureCommandRegistrar {
 
     /** Bot 健康状态：/bot 显示 enabled/http/websocket 三个彩色状态词，/bot http、/bot ws 查看对应详情。 */
     private void registerBotStatus(Commands commands, Supplier<CommandPolicies> cpSupplier) {
-        List<CommandInterceptor> rootInterceptors = commandInterceptors("bot", cpSupplier, true);
+        List<CommandInterceptor> rootInterceptors = commandInterceptors("bot", cpSupplier, true, i18n);
         // 详情子命令由点击触发，不套用冷却，避免紧跟 /bot 后点击被冷却拦截；adminOnly 惰性读取以热生效
         List<CommandInterceptor> detailInterceptors =
-                List.of(new AdminOnlyInterceptor(BrigadierSupport.policyFor("bot", cpSupplier)));
+                List.of(new AdminOnlyInterceptor(BrigadierSupport.policyFor("bot", cpSupplier), i18n));
         Predicate<CommandSourceStack> req = requirement(rootInterceptors);
         commands.register(
                 literal("bot")
