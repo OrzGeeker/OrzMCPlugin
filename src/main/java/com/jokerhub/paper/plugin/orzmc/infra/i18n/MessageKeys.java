@@ -193,4 +193,29 @@ public final class MessageKeys {
     // ---- ratelimit.*：登录限流（P2e） ----
     public static final String RATELIMIT_REASON_FREQUENCY = "ratelimit.reason_frequency";
     public static final String RATELIMIT_REASON_CONCURRENT = "ratelimit.reason_concurrent";
+
+    // ---- serverlife.*：服务端生命周期/维护 MOTD 外壳 var 值词汇（P5-2，R1） ----
+    public static final String SERVERLIFE_MODE_ONLINE = "serverlife.mode_online";
+    public static final String SERVERLIFE_MODE_OFFLINE = "serverlife.mode_offline";
+    public static final String SERVERLIFE_STATUS_STARTUP = "serverlife.status_startup";
+    public static final String SERVERLIFE_STATUS_RELOAD = "serverlife.status_reload";
+    public static final String SERVERLIFE_MOTD_TITLE = "serverlife.motd_title";
+    public static final String SERVERLIFE_QQ_LABEL = "serverlife.qq_label";
+    public static final String SERVERLIFE_DISCORD_LABEL = "serverlife.discord_label";
+    public static final String SERVERLIFE_DISCORD_HOVER = "serverlife.discord_hover";
+
+    // ---- audit.*：启动安全自检 var 值词汇（P5-2，R1） ----
+    public static final String AUDIT_ONLINE_ON = "audit.online_on";
+    public static final String AUDIT_ONLINE_OFF = "audit.online_off";
+    public static final String AUDIT_COMMAND_BLOCK_ON = "audit.command_block_on";
+    public static final String AUDIT_COMMAND_BLOCK_OFF = "audit.command_block_off";
+    public static final String AUDIT_RCON_OFF = "audit.rcon_off";
+    public static final String AUDIT_RCON_ON = "audit.rcon_on";
+    public static final String AUDIT_WHITELIST_OFF = "audit.whitelist_off";
+    public static final String AUDIT_WHITELIST_ENFORCED = "audit.whitelist_enforced";
+    public static final String AUDIT_WHITELIST_NOT_ENFORCED = "audit.whitelist_not_enforced";
+    public static final String AUDIT_OPS_ZERO = "audit.ops_zero";
+    public static final String AUDIT_OPS_COUNT = "audit.ops_count";
+    public static final String AUDIT_OPS_LIST = "audit.ops_list";
+    public static final String AUDIT_PLUGINS_NONE = "audit.plugins_none";
 }

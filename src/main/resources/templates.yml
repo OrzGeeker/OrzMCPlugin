@@ -81,10 +81,8 @@ templates:
   command_review_list_empty: "{message}"
   command_review_result: "{message}"
   command_review_error: "{message}"
-  server_load: "{message}"
   # ── 事件通知正文已迁入语言包 event.*（P4b，i18n R1 默认语言渲染）；模板仅保留格式（format）─
   # 存量盘正文/服主定制仍会被优先渲染（P4d 升级链统一迁移前保持 zh，不丢定制）。
-  server_stop: "{message}"
   # 维护场景文案/进度行（maintenance_motd_*）与阶段名（stage_cn）已迁入语言包
   # maintenance.motd.* / maintenance.stage.*（P4c-2，默认语言 R1 渲染）；磁盘存量正文/定制仍被优先渲染
   # （MaintenanceTexts 磁盘优先→语言包回落，P4d 升级链统一迁移前保持 zh/不丢定制）。

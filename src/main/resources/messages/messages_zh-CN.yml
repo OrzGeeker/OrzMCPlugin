@@ -87,6 +87,8 @@ event:
   maintenance_optimize_stage: "地图{label} 阶段:{stage}({stage_name}/{stage_i18n}) 进度:{percent}% {current}/{total} 速率:{rate_per}{rate_unit} 预计剩余:{eta_value}{eta_unit}"
   maintenance_optimize_done: "地图{label} 完成 用时:{duration_human}"
   maintenance_optimize_error: "地图{label} 失败 用时:{duration_human}"
+  server_load: "Minecraft {version} {mode}\n---------------------------------\n{status}\n\n发送 \"{prompt_help}\" 查看支持的命令消息"
+  server_stop: "Minecraft {version}\n---------------------------------\n服务停止\n\n停止状态无法响应命令消息"
 
 # --- portal.*（/portal 命令玩家反馈；P2c） ---
 portal:
@@ -383,3 +385,29 @@ access_rule:
   added: "已添加玩家名规则: {rule}"
   exists: "玩家名规则已存在，未重复添加: {rule}"
 
+# --- serverlife.*（服务端生命周期/维护 MOTD 外壳；P5-2。R1 默认语言；{prompt_help} 等 var 值保持代码注入） ---
+serverlife:
+  mode_online: "正版服"
+  mode_offline: "离线服"
+  status_startup: "启动完成"
+  status_reload: "重启完成"
+  motd_title: "⚠ 维护中"
+  qq_label: "QQ群: "
+  discord_label: "Discord: "
+  discord_hover: "点击加入 Discord"
+
+# --- audit.*（启动安全自检 var 值词汇；P5-2。R1 默认语言） ---
+audit:
+  online_on: "正版验证开启"
+  online_off: "离线（高危）"
+  command_block_on: "启用（高危）"
+  command_block_off: "禁用"
+  rcon_off: "未启用"
+  rcon_on: "启用（端口: {port}）"
+  whitelist_off: "关闭"
+  whitelist_enforced: "开启（强制）"
+  whitelist_not_enforced: "开启（非强制）"
+  ops_zero: "0 个"
+  ops_count: "{count} 个"
+  ops_list: "{count} 个: {names}"
+  plugins_none: "均未安装（高危）"

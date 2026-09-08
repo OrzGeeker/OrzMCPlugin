@@ -104,8 +104,8 @@ public final class TemplatePlaceholderValidator {
         m.put("maintenance_backup_error", Set.of("label", "duration_ms", "duration_human"));
         m.put("maintenance_optimize_done", Set.of("label", "duration_ms", "duration_human"));
         m.put("maintenance_optimize_error", Set.of("label", "duration_ms", "duration_human"));
-        m.put("server_load", Set.of("message"));
-        m.put("server_stop", Set.of("message"));
+        m.put("server_load", Set.of("version", "mode", "status", "prompt_help"));
+        m.put("server_stop", Set.of("version"));
         m.put("whitelist_block", Set.of("message"));
         m.put("whitelist_toggle_alert", Set.of("message"));
         m.put("command_output", Set.of("message"));

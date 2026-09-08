@@ -129,6 +129,9 @@ public final class TemplateKeys {
         MAINTENANCE_OPTIMIZE_STAGE,
         MAINTENANCE_OPTIMIZE_DONE,
         MAINTENANCE_OPTIMIZE_ERROR,
+        // P5-2：服务端生命周期事件（原 {message} 直通壳 + 代码组装 zh 正文）→ 语言包承载全文
+        SERVER_LOAD,
+        SERVER_STOP,
     };
 
     /** 事件键是否为语言包承载正文（event.*）。 */

@@ -110,6 +110,9 @@ public final class TemplatesBodyMigration {
             if (disk == null) {
                 continue; // 全新安装/已迁移：无正文，跳过
             }
+            if ("{message}".equals(disk)) {
+                continue; // P5-2：直通壳残留（server_load/server_stop 旧壳）等同无正文，跳过不迁
+            }
             String def = zh.get(ref.langKey());
             if (def != null && def.equals(disk)) {
                 cfg.set(path, null);

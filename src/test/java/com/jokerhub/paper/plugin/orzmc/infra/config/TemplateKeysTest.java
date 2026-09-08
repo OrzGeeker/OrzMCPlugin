@@ -66,7 +66,8 @@ class TemplateKeysTest {
         assertTrue(TemplateKeys.isLangBacked("exception_alert"));
         assertTrue(TemplateKeys.isLangBacked("security_audit"));
         assertTrue(TemplateKeys.isLangBacked("review_submitted"));
-        assertFalse(TemplateKeys.isLangBacked("server_stop"));
+        assertTrue(TemplateKeys.isLangBacked("server_stop"));
+        assertTrue(TemplateKeys.isLangBacked("server_load"));
         assertFalse(TemplateKeys.isLangBacked("command_usage"));
         assertTrue(TemplateKeys.isLangBacked("maintenance_backup_done"));
         assertTrue(TemplateKeys.isLangBacked("maintenance_optimize_stage"));
