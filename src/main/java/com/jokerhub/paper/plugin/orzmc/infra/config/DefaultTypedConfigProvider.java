@@ -16,7 +16,6 @@ import com.jokerhub.paper.plugin.orzmc.infra.config.configs.PrisonConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.RankColorsConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.SecurityGuardConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.TemplateOptions;
-import com.jokerhub.paper.plugin.orzmc.infra.config.configs.Templates;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.TntConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.UpdateConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.WhitelistConfig;
@@ -64,11 +63,6 @@ public final class DefaultTypedConfigProvider implements TypedConfigProvider {
     @Override
     public MaintenanceTexts maintenanceTexts() {
         return MaintenanceTexts.from(configService.getConfig("templates"));
-    }
-
-    @Override
-    public Templates templates() {
-        return Templates.from(configService.getConfig("templates"));
     }
 
     @Override
@@ -135,8 +129,7 @@ public final class DefaultTypedConfigProvider implements TypedConfigProvider {
     @Override
     public MessageEnvelope renderEvent(String eventKey, Map<String, String> vars) {
         FileConfiguration templatesCfg = configService.getConfig("templates");
-        Templates tpls = Templates.from(templatesCfg);
-        return TemplateService.renderEvent(eventKey, templatesCfg, tpls, vars);
+        return TemplateService.renderEvent(eventKey, templatesCfg, vars);
     }
 
     @Override

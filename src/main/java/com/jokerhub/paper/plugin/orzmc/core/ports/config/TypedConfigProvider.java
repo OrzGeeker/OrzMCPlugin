@@ -14,7 +14,6 @@ import com.jokerhub.paper.plugin.orzmc.infra.config.configs.PrisonConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.RankColorsConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.SecurityGuardConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.TemplateOptions;
-import com.jokerhub.paper.plugin.orzmc.infra.config.configs.Templates;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.TntConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.UpdateConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.WhitelistConfig;
@@ -34,8 +33,6 @@ public interface TypedConfigProvider {
     WhitelistKickMessage whitelistKickMessage();
 
     TemplateOptions templateOptions();
-
-    Templates templates();
 
     TntConfig tnt();
 
