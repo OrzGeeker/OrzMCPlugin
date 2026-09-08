@@ -385,8 +385,6 @@ access_rule:
   not_found: "未找到该玩家名规则: {rule}"
   added: "已添加玩家名规则: {rule}"
   exists: "玩家名规则已存在，未重复添加: {rule}"
-  added: "已添加玩家名规则: {rule}"
-  exists: "玩家名规则已存在，未重复添加: {rule}"
   # P5-4：游戏内 /blacklist 运维反馈（安全运维命令统一默认语言 R1，与 guard/bot 安全提示一致）
   usage_ip_add: "用法: /blacklist add <IP>"
   usage_ip_remove: "用法: /blacklist remove <IP>"

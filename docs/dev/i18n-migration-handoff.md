@@ -21,9 +21,11 @@
 - 无（代码侧 P0–P5 全完成并合入 develop）
 
 ## 未完成清单（按依赖排序；除 1 外均为 owner/测试服动作）
-1. **真机双语冒烟（owner，需 QQ/群环境）**：按 docs/dev/folia-luckperms-gotchas.md §6 在测试服验证——
-   新装 default_lang=zh 与 en 对照（进服踢出/MOTD/事件通知/bot 交互/审核链路）；存量盘 13→14 升级对照
-   （备份 .bak 存在、磁盘正文清空、定制保留、输出随 default_lang 双语）。CI folia-smoke 每 PR 已绿（升级链单测覆盖）。
+1. **真机冒烟（2026-09-08 已用本机 runServer/runFolia 无头执行）**：Paper 存量盘 11→14 升级对照——正文迁移 42 项
+   与预期一致（30 事件+4 motd+4 stage+4 command）、.bak 齐、config-version 14、二次启动幂等零动作；default_lang=zh/en
+   各启动零健康告警；Folia 全新安装 bundled v14 零升级/零告警/插件生效。冒烟暴露两缺陷（validator 误告警、语言包
+   duplicate keys）已随 fix PR 修复。残余：需 QQ/玩家环境的 bot 交互/进服踢出/MOTD 视觉对照（owner 测试服，方法见
+   folia-luckperms-gotchas.md §6）。
 2. **en 校对（owner，D7）**：en-US 为 AI 初译，逐域人工校对后可合后续 PR。
 3. 已知 out-of-scope 残留（文档已记，D1/数据内容白名单）：
    - 控制台/日志 zh（D1）
