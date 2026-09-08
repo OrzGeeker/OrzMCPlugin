@@ -263,6 +263,17 @@ maintenance:
     reason_backup: "Map backup in progress"
     reason_optimize: "Map optimization in progress"
     reason_manual: "Manual maintenance in progress"
+  motd:
+    backup: "Server map backup in progress; please try again later."
+    optimize: "Server map optimization in progress; please try again later."
+    manual: "Server maintenance in progress; please try again later."
+    progress_line: "Progress: {stage} {percent}% ETA {eta}s"
+  stage:
+    Region: "Region"
+    Chunk: "Chunk"
+    File: "File"
+    Done: "Done"
+    Running: "In progress"
 
 # --- guide/menu.* (starter guide / menu hints; P2h1, follows the player's language) ---
 guide:

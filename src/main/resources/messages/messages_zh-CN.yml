@@ -255,6 +255,17 @@ maintenance:
     reason_backup: "地图备份中"
     reason_optimize: "地图优化中"
     reason_manual: "手动维护中"
+  motd:
+    backup: "服务器地图备份中，请稍后再试"
+    optimize: "服务器地图优化中，请稍后再试"
+    manual: "服务器维护中，请稍后再试"
+    progress_line: "进度：{stage} {percent}% 预计剩余 {eta}秒"
+  stage:
+    Region: "区域"
+    Chunk: "区块"
+    File: "文件"
+    Done: "完成"
+    Running: "进行中"
 
 # --- guide/menu.*（新手指南/菜单提示；P2h1 按玩家语言） ---
 guide:

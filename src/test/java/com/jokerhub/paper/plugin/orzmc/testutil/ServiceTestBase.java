@@ -6,8 +6,8 @@ import static org.mockito.Mockito.when;
 
 import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
 import com.jokerhub.paper.plugin.orzmc.core.ports.server.ServerAccess;
+import com.jokerhub.paper.plugin.orzmc.infra.config.configs.MaintenanceTexts;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.TemplateOptions;
-import com.jokerhub.paper.plugin.orzmc.infra.config.configs.Templates;
 import com.jokerhub.paper.plugin.orzmc.infra.notify.Notifier;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
 import java.util.Map;
@@ -112,34 +112,30 @@ public abstract class ServiceTestBase {
      * 与 {@link #mockConfigProvider(TemplateOptions)} 配合使用。
      */
     protected TemplateOptions defaultTemplateOptions() {
-        return new TemplateOptions(Map.of(), "per_sec", "ms", Map.of(), 1.0, 2, "block");
+        return new TemplateOptions("per_sec", "ms", Map.of(), 1.0, 2, "block");
     }
 
     /**
-     * 返回全部默认值的 {@link Templates}（维护场景文案/进度行走 record 默认，
-     * 与 templates.yml 资源一致：backup='服务器地图备份中，请稍后再试'、optimize='服务器地图优化中，请稍后再试'、
-     * manual='服务器维护中，请稍后再试'，见 {@code Templates.DEFAULT_MAINTENANCE_MOTD_*}）。
-     */
-    protected Templates defaultTemplates() {
-        return Templates.from(new YamlConfiguration());
-    }
-
-    /**
-     * 构造自定义维护场景模板的 {@link Templates}：仅覆盖传入的 4 个 {@code maintenance_motd_*} 键，
-     * 其余模板保持 record 默认值（默认字面收敛在 {@code Templates.DEFAULT_MAINTENANCE_MOTD_*} 常量，
-     * 与 templates.yml 同步）。参数传 null 表示该键用默认值。
+     * 构造自定义维护场景文案的 {@link MaintenanceTexts}：仅覆盖传入的 4 个 {@code maintenance_motd_*}
+     * 磁盘键（模拟存量/服主定制），其余回落语言包 zh 默认（I18nServiceHolder 未注入时加载 bundled zh 包，
+     * 与 templates.yml 旧默认一致：backup='服务器地图备份中，请稍后再试' 等）。参数传 null 表示该键用默认。
      *
      * @param backup       {@code maintenance_motd_backup}（BACKUP 场景文案）
      * @param optimize     {@code maintenance_motd_optimize}（OPTIMIZE 场景文案）
      * @param manual       {@code maintenance_motd_manual}（MANUAL 场景文案）
      * @param progressLine {@code maintenance_motd_progress_line}（进度行模板）
      */
-    protected Templates maintenanceTemplates(String backup, String optimize, String manual, String progressLine) {
+    protected MaintenanceTexts maintenanceTexts(String backup, String optimize, String manual, String progressLine) {
         YamlConfiguration cfg = new YamlConfiguration();
         if (backup != null) cfg.set("templates.maintenance_motd_backup", backup);
         if (optimize != null) cfg.set("templates.maintenance_motd_optimize", optimize);
         if (manual != null) cfg.set("templates.maintenance_motd_manual", manual);
         if (progressLine != null) cfg.set("templates.maintenance_motd_progress_line", progressLine);
-        return Templates.from(cfg);
+        return MaintenanceTexts.from(cfg);
+    }
+
+    /** 全部默认值的 {@link MaintenanceTexts}（磁盘缺失 → 语言包 zh 默认）。 */
+    protected MaintenanceTexts defaultMaintenanceTexts() {
+        return MaintenanceTexts.from(new YamlConfiguration());
     }
 }

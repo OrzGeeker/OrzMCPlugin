@@ -133,7 +133,7 @@ public final class LoginAccessControlService {
     private String buildRejectText() {
         MaintenanceReason reason = maintenanceModeService.reason();
         MaintenanceProgress progress = maintenanceModeService.progress();
-        return MaintenanceModeService.renderMotdText(reason, configs.templates(), progress);
+        return MaintenanceModeService.renderMotdText(reason, configs.maintenanceTexts(), progress);
     }
 
     /** 封禁命中（安全加固 P2-4）：PRIVATE 私信管理员 + 服务端日志。私信限频防重连刷屏，日志每次保留。 */

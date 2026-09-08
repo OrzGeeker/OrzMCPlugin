@@ -1,6 +1,6 @@
 package com.jokerhub.paper.plugin.orzmc.features.maintenance;
 
-import com.jokerhub.paper.plugin.orzmc.infra.config.configs.Templates;
+import com.jokerhub.paper.plugin.orzmc.infra.config.configs.MaintenanceTexts;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -23,12 +23,11 @@ public final class MaintenanceModeService {
         MANUAL
     }
 
-    /** 进度快照（不可变 record）：阶段中文名 + 百分比 + 预计剩余秒数 + 完整进度行文案。 */
-    public record MaintenanceProgress(String stage, int percent, long etaSeconds, String progressMessage) {
+    /** 进度快照（不可变 record）：阶段显示名 + 百分比 + 预计剩余秒数。 */
+    public record MaintenanceProgress(String stage, int percent, long etaSeconds) {
         static MaintenanceProgress of(String stage, int percent, long etaSeconds) {
             long eta = Math.max(0, etaSeconds);
-            String message = "进度：" + stage + " " + percent + "% 预计剩余 " + eta + "秒";
-            return new MaintenanceProgress(stage, percent, eta, message);
+            return new MaintenanceProgress(stage, percent, eta);
         }
     }
 
@@ -45,7 +44,7 @@ public final class MaintenanceModeService {
         active.set(true);
     }
 
-    /** 更新进度快照（stage 为中文阶段名，percent 0-100，etaSeconds 预计剩余秒数）。 */
+    /** 更新进度快照（stage 为阶段显示名（默认语言），percent 0-100，etaSeconds 预计剩余秒数）。 */
     public void updateProgress(String stage, int percent, long etaSeconds) {
         progress = MaintenanceProgress.of(stage, percent, etaSeconds);
     }
@@ -103,30 +102,35 @@ public final class MaintenanceModeService {
     }
 
     /**
-     * 按维护场景渲染统一提示文案（MOTD / 登录拦截 / 踢人三处共用，2026-09-02 迁移）。
+     * 按维护场景渲染统一提示文案（MOTD / 登录拦截 / 踢人三处共用；i18n P4c-2 起）。
      *
-     * <p>场景模板由 {@code templates.yml} 的 {@code maintenance_motd_*} 键驱动，进度行由
-     * {@code maintenance_motd_progress_line} 模板驱动。场景模板默认纯文案（不含进度占位符）；
-     * 当场景非 MANUAL、有进度、且场景模板未声明任何进度占位符时，追加换行 + 渲染后的进度行。
-     * 若服主自定义场景模板自带 {@code {stage}/{percent}/{eta}}，则不追加（防两行进度重复）。</p>
+     * <p>场景文案与进度行来自 {@link MaintenanceTexts}（磁盘 {@code maintenance_motd_*} 正文优先 →
+     * 语言包 {@code maintenance.motd.*} 回落，默认语言 R1；服主自定义磁盘模板继续生效）。
+     * 场景模板默认纯文案（不含进度占位符）；当场景非 MANUAL、有进度、且场景模板未声明任何
+     * 进度占位符时，追加换行 + 渲染后的进度行。若服主自定义场景模板自带
+     * {@code {stage}/{percent}/{eta}}，则不追加（防两行进度重复）。</p>
      *
-     * @param reason    维护场景；null 视为未知（返回固定兜底文案，不渲染进度行）
-     * @param templates 模板配置（非 null；reason 非 null 时使用）
-     * @param progress  进度快照；可能为 null（manual/刚进入无进度）
+     * @param reason   维护场景；null 视为未知（返回手动场景文案，不渲染进度行）
+     * @param texts    维护运维文案（非 null）
+     * @param progress 进度快照；可能为 null（manual/刚进入无进度）
      */
-    public static String renderMotdText(MaintenanceReason reason, Templates templates, MaintenanceProgress progress) {
+    public static String renderMotdText(
+            MaintenanceReason reason, MaintenanceTexts texts, MaintenanceProgress progress) {
+        if (texts == null) {
+            return "";
+        }
         if (reason == null) {
-            return "服务器维护中，请稍后再尝试登录。";
+            return texts.motdManual();
         }
         String scene =
                 switch (reason) {
-                    case BACKUP -> templates.maintenanceMotdBackup();
-                    case OPTIMIZE -> templates.maintenanceMotdOptimize();
-                    case MANUAL -> templates.maintenanceMotdManual();
+                    case BACKUP -> texts.motdBackup();
+                    case OPTIMIZE -> texts.motdOptimize();
+                    case MANUAL -> texts.motdManual();
                 };
         String rendered = renderTemplate(scene, progress);
         if (progress != null && reason != MaintenanceReason.MANUAL && !hasProgressPlaceholders(scene)) {
-            rendered = rendered + "\n" + renderTemplate(templates.maintenanceMotdProgressLine(), progress);
+            rendered = rendered + "\n" + renderTemplate(texts.motdProgressLine(), progress);
         }
         return rendered;
     }

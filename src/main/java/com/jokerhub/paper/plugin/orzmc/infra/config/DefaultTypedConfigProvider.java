@@ -10,6 +10,7 @@ import com.jokerhub.paper.plugin.orzmc.infra.config.configs.GamemodeCorrectionCo
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.IpWhitelist;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.LoginRateLimitConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.MaintenanceConfig;
+import com.jokerhub.paper.plugin.orzmc.infra.config.configs.MaintenanceTexts;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.PlayerNotifyConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.PrisonConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.RankColorsConfig;
@@ -58,6 +59,11 @@ public final class DefaultTypedConfigProvider implements TypedConfigProvider {
     @Override
     public TemplateOptions templateOptions() {
         return TemplateOptions.from(configService.getConfig("templates"));
+    }
+
+    @Override
+    public MaintenanceTexts maintenanceTexts() {
+        return MaintenanceTexts.from(configService.getConfig("templates"));
     }
 
     @Override

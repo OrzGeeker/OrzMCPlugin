@@ -85,18 +85,9 @@ templates:
   # ── 事件通知正文已迁入语言包 event.*（P4b，i18n R1 默认语言渲染）；模板仅保留格式（format）─
   # 存量盘正文/服主定制仍会被优先渲染（P4d 升级链统一迁移前保持 zh，不丢定制）。
   server_stop: "{message}"
-  # 维护场景文案 + 进度行（MOTD / 登录拦截 / 踢人统一渲染；2026-09-02 迁移自 config.yml maintenance 段，
-  # 原 config maintenance.backup/optimize/manual_maintenance_motd 键废弃）。进度行支持
-  # {stage} {percent} {eta} 占位符；场景模板若自带进度占位符则不再追加独立进度行。
-  maintenance_motd_backup: "服务器地图备份中，请稍后再试"
-  maintenance_motd_optimize: "服务器地图优化中，请稍后再试"
-  maintenance_motd_manual: "服务器维护中，请稍后再试"
-  maintenance_motd_progress_line: "进度：{stage} {percent}% 预计剩余 {eta}秒"
-  stage_cn:
-    Region: 区域
-    Chunk: 区块
-    File: 文件
-    Done: 完成
+  # 维护场景文案/进度行（maintenance_motd_*）与阶段名（stage_cn）已迁入语言包
+  # maintenance.motd.* / maintenance.stage.*（P4c-2，默认语言 R1 渲染）；磁盘存量正文/定制仍被优先渲染
+  # （MaintenanceTexts 磁盘优先→语言包回落，P4d 升级链统一迁移前保持 zh/不丢定制）。
   progress_units:
     rate: per_min
     eta: sec

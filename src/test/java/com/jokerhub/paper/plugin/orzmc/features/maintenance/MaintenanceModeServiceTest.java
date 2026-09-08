@@ -35,7 +35,7 @@ class MaintenanceModeServiceTest extends ServiceTestBase {
     }
 
     @Test
-    void updateProgress_buildsImmutableSnapshotWithMessage() {
+    void updateProgress_buildsImmutableSnapshot() {
         MaintenanceModeService svc = new MaintenanceModeService();
         svc.enter(MaintenanceReason.OPTIMIZE);
         svc.updateProgress("区域", 45, 35);
@@ -45,7 +45,6 @@ class MaintenanceModeServiceTest extends ServiceTestBase {
         assertEquals("区域", p.stage());
         assertEquals(45, p.percent());
         assertEquals(35, p.etaSeconds());
-        assertEquals("进度：区域 45% 预计剩余 35秒", p.progressMessage());
     }
 
     @Test
@@ -56,7 +55,6 @@ class MaintenanceModeServiceTest extends ServiceTestBase {
 
         MaintenanceProgress p = svc.progress();
         assertEquals(0, p.etaSeconds());
-        assertTrue(p.progressMessage().contains("0秒"));
     }
 
     @Test
@@ -94,7 +92,7 @@ class MaintenanceModeServiceTest extends ServiceTestBase {
 
     @Test
     void renderTemplate_nullStageKeepsStagePlaceholder() {
-        MaintenanceProgress p = new MaintenanceProgress(null, 42, 7, "msg");
+        MaintenanceProgress p = new MaintenanceProgress(null, 42, 7);
         assertEquals("stage={stage} 42 7", MaintenanceModeService.renderTemplate("stage={stage} {percent} {eta}", p));
     }
 
@@ -102,7 +100,7 @@ class MaintenanceModeServiceTest extends ServiceTestBase {
 
     @Test
     void renderMotdText_nullReason_returnsGenericFallback() {
-        assertEquals("服务器维护中，请稍后再尝试登录。", MaintenanceModeService.renderMotdText(null, defaultTemplates(), null));
+        assertEquals("服务器维护中，请稍后再试", MaintenanceModeService.renderMotdText(null, defaultMaintenanceTexts(), null));
     }
 
     @Test
@@ -110,7 +108,7 @@ class MaintenanceModeServiceTest extends ServiceTestBase {
         assertEquals(
                 "服务器地图备份中，请稍后再试",
                 MaintenanceModeService.renderMotdText(
-                        MaintenanceReason.BACKUP, maintenanceTemplates("服务器地图备份中，请稍后再试", null, null, null), null));
+                        MaintenanceReason.BACKUP, maintenanceTexts("服务器地图备份中，请稍后再试", null, null, null), null));
     }
 
     @Test
@@ -118,7 +116,7 @@ class MaintenanceModeServiceTest extends ServiceTestBase {
         assertEquals(
                 "服务器地图优化中，请稍后再试",
                 MaintenanceModeService.renderMotdText(
-                        MaintenanceReason.OPTIMIZE, maintenanceTemplates(null, "服务器地图优化中，请稍后再试", null, null), null));
+                        MaintenanceReason.OPTIMIZE, maintenanceTexts(null, "服务器地图优化中，请稍后再试", null, null), null));
     }
 
     @Test
@@ -126,7 +124,7 @@ class MaintenanceModeServiceTest extends ServiceTestBase {
         assertEquals(
                 "服务器维护中，请稍后再试",
                 MaintenanceModeService.renderMotdText(
-                        MaintenanceReason.MANUAL, maintenanceTemplates(null, null, "服务器维护中，请稍后再试", null), null));
+                        MaintenanceReason.MANUAL, maintenanceTexts(null, null, "服务器维护中，请稍后再试", null), null));
     }
 
     @Test
@@ -136,7 +134,7 @@ class MaintenanceModeServiceTest extends ServiceTestBase {
         assertEquals(
                 "手动维护中",
                 MaintenanceModeService.renderMotdText(
-                        MaintenanceReason.MANUAL, maintenanceTemplates(null, null, "手动维护中", "进度 {percent}%"), p));
+                        MaintenanceReason.MANUAL, maintenanceTexts(null, null, "手动维护中", "进度 {percent}%"), p));
     }
 
     @Test
@@ -146,7 +144,7 @@ class MaintenanceModeServiceTest extends ServiceTestBase {
         assertEquals(
                 "备份维护中\n进度：区块 35% 预计剩余 30秒",
                 MaintenanceModeService.renderMotdText(
-                        MaintenanceReason.BACKUP, maintenanceTemplates("备份维护中", null, null, null), p));
+                        MaintenanceReason.BACKUP, maintenanceTexts("备份维护中", null, null, null), p));
     }
 
     @Test
@@ -156,7 +154,7 @@ class MaintenanceModeServiceTest extends ServiceTestBase {
                 "备份维护中\n剩余 30秒 (35%)",
                 MaintenanceModeService.renderMotdText(
                         MaintenanceReason.OPTIMIZE,
-                        maintenanceTemplates(null, "备份维护中", null, "剩余 {eta}秒 ({percent}%)"),
+                        maintenanceTexts(null, "备份维护中", null, "剩余 {eta}秒 ({percent}%)"),
                         p));
     }
 
@@ -165,7 +163,7 @@ class MaintenanceModeServiceTest extends ServiceTestBase {
         // 场景模板自带进度占位符 → 占位符渲染进场景文案，不再追加独立进度行（防两行重复）
         MaintenanceProgress p = MaintenanceProgress.of("区块", 35, 30);
         String text = MaintenanceModeService.renderMotdText(
-                MaintenanceReason.BACKUP, maintenanceTemplates("备份 {stage} {percent}% 预计 {eta}秒", null, null, null), p);
+                MaintenanceReason.BACKUP, maintenanceTexts("备份 {stage} {percent}% 预计 {eta}秒", null, null, null), p);
         assertEquals("备份 区块 35% 预计 30秒", text);
         assertFalse(text.contains("\n"), "场景模板含占位符时不应追加第二行进度: " + text);
     }
@@ -177,7 +175,7 @@ class MaintenanceModeServiceTest extends ServiceTestBase {
                 "备份  % 预计 秒",
                 MaintenanceModeService.renderMotdText(
                         MaintenanceReason.BACKUP,
-                        maintenanceTemplates("备份 {stage} {percent}% 预计 {eta}秒", null, null, null),
+                        maintenanceTexts("备份 {stage} {percent}% 预计 {eta}秒", null, null, null),
                         null));
     }
 
@@ -188,7 +186,7 @@ class MaintenanceModeServiceTest extends ServiceTestBase {
         assertEquals(
                 "备份维护中\n进度：区块 100% 预计剩余 0秒",
                 MaintenanceModeService.renderMotdText(
-                        MaintenanceReason.BACKUP, maintenanceTemplates("备份维护中", null, null, null), p));
+                        MaintenanceReason.BACKUP, maintenanceTexts("备份维护中", null, null, null), p));
     }
 
     @Test
@@ -199,7 +197,7 @@ class MaintenanceModeServiceTest extends ServiceTestBase {
         assertEquals(
                 "正在处理区块",
                 MaintenanceModeService.renderMotdText(
-                        MaintenanceReason.BACKUP, maintenanceTemplates("正在处理{stage}", null, null, null), p));
+                        MaintenanceReason.BACKUP, maintenanceTexts("正在处理{stage}", null, null, null), p));
     }
 
     @Test
@@ -209,6 +207,6 @@ class MaintenanceModeServiceTest extends ServiceTestBase {
         assertEquals(
                 "服务器地图优化中，请稍后再试\n进度：区块 50% 预计剩余 20秒",
                 MaintenanceModeService.renderMotdText(
-                        MaintenanceReason.OPTIMIZE, maintenanceTemplates(null, "服务器地图优化中，请稍后再试", null, null), p));
+                        MaintenanceReason.OPTIMIZE, maintenanceTexts(null, "服务器地图优化中，请稍后再试", null, null), p));
     }
 }

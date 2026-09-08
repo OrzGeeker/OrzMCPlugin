@@ -8,6 +8,7 @@ import com.jokerhub.paper.plugin.orzmc.infra.config.configs.ExploitHardeningConf
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.IpWhitelist;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.LoginRateLimitConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.MaintenanceConfig;
+import com.jokerhub.paper.plugin.orzmc.infra.config.configs.MaintenanceTexts;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.PlayerNotifyConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.PrisonConfig;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.RankColorsConfig;
@@ -24,6 +25,9 @@ public interface TypedConfigProvider {
     BotConfig bot();
 
     MaintenanceConfig maintenance();
+
+    /** 维护运维文案（MOTD/登录拦截/踢人/进度与阶段名；P4c-2）：磁盘模板正文（存量/服主定制）优先，缺失回落语言包 maintenance.*。 */
+    MaintenanceTexts maintenanceTexts();
 
     WhitelistConfig whitelist();
 
