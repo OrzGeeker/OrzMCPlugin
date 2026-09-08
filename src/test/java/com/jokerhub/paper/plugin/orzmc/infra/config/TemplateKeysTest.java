@@ -17,12 +17,23 @@ class TemplateKeysTest {
     void all_keysHaveDefaultsInBundledTemplates() {
         // ALL 由 ConfigHealthCheck 全量校验；内置 templates.yml 默认必须覆盖每个 key，
         // 否则全新安装会在启动健康检查处持续告警。
+        // P4b 起事件正文迁语言包 event.*（EVENT_LANG_BACKED）：templates.yml body 不再要求存在，
+        // 但 zh 主目录语言包必须携带 event.<key>（en 一致性由 I18nCatalogConsistencyTest 保证）。
         InputStream in = Thread.currentThread().getContextClassLoader().getResourceAsStream("templates.yml");
         assertNotNull(in, "classpath templates.yml missing");
         var bundled = YamlConfiguration.loadConfiguration(
                 new java.io.InputStreamReader(in, java.nio.charset.StandardCharsets.UTF_8));
+        InputStream langIn =
+                Thread.currentThread().getContextClassLoader().getResourceAsStream("messages/messages_zh-CN.yml");
+        assertNotNull(langIn, "classpath messages_zh-CN.yml missing");
+        var zh = YamlConfiguration.loadConfiguration(
+                new java.io.InputStreamReader(langIn, java.nio.charset.StandardCharsets.UTF_8));
         for (String key : TemplateKeys.ALL) {
-            assertTrue(bundled.contains("templates." + key), "内置 templates.yml 缺默认模板: templates." + key);
+            if (TemplateKeys.isLangBacked(key)) {
+                assertTrue(zh.contains("event." + key), "语言包缺事件正文: event." + key + "（EVENT_LANG_BACKED）");
+            } else {
+                assertTrue(bundled.contains("templates." + key), "内置 templates.yml 缺默认模板: templates." + key);
+            }
         }
     }
 
@@ -33,6 +44,28 @@ class TemplateKeysTest {
                 assertNotEquals(TemplateKeys.ALL[i], TemplateKeys.ALL[j], "Duplicate key: " + TemplateKeys.ALL[i]);
             }
         }
+    }
+
+    @Test
+    void langBackedKeys_haveNoBodiesInBundledTemplates() {
+        // 防回归：P4b 后事件正文只承载于语言包 event.*；templates.yml body 段不得复活字面正文
+        // （格式 templates.format.<key> 仍保留，此处只查 body 段）
+        InputStream in = Thread.currentThread().getContextClassLoader().getResourceAsStream("templates.yml");
+        assertNotNull(in);
+        var bundled = YamlConfiguration.loadConfiguration(
+                new java.io.InputStreamReader(in, java.nio.charset.StandardCharsets.UTF_8));
+        for (String key : TemplateKeys.EVENT_LANG_BACKED) {
+            assertFalse(bundled.contains("templates." + key), "事件正文应迁语言包，templates.yml 不应再含 body: templates." + key);
+        }
+    }
+
+    @Test
+    void langBacked_knownEventKeys() {
+        assertTrue(TemplateKeys.isLangBacked("player_join"));
+        assertTrue(TemplateKeys.isLangBacked("whitelist_block"));
+        assertTrue(TemplateKeys.isLangBacked("exception_alert"));
+        assertFalse(TemplateKeys.isLangBacked("security_audit"));
+        assertFalse(TemplateKeys.isLangBacked("command_usage"));
     }
 
     @Test

@@ -236,7 +236,8 @@ class ConfigUpgraderTest {
             assertEquals(ConfigUpgrader.Outcome.MIGRATED, upgrader.upgrade(cfg, file, in));
         }
 
-        assertTrue(cfg.contains("templates.player_join"), "缺失模板键应被补全");
+        assertTrue(cfg.contains("templates.server_stop"), "缺失模板键应被补全（事件正文已迁语言包 event.*，player_join 不再回填）");
+        assertFalse(cfg.contains("templates.player_join"), "P4b 后事件正文不回填 templates.yml（走语言包 event.*）");
         assertTrue(cfg.contains("templates.coord.precision"), "缺失的子键应被补全");
         assertEquals(1.0, cfg.getDouble("templates.coord.scale"), "已有值不得被覆盖");
         assertEquals(ConfigSchema.LATEST_VERSION, cfg.getInt(ConfigSchema.VERSION_KEY));

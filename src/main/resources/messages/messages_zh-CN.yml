@@ -55,6 +55,19 @@ whitelist:
     add_title: "------白名单添加------"
     remove_title: "------白名单移除------"
 
+# --- event.*（群事件通知正文，P4b 迁入；templates.yml 不再持正文，仅 format。默认语言 R1 渲染） ---
+event:
+  player_join: "🎮 当前玩家({online_count}/{max_count})\n---------------------------------\n🥰 上线：\n{name}"
+  player_quit: "🎮 当前玩家({online_count}/{max_count})\n---------------------------------\n😋 下线：\n{name}"
+  player_kick: "🎮 当前玩家({online_count}/{max_count})\n---------------------------------\n😂 被踢：\n{name}"
+  player_digest: "🎮 当前玩家({online_count}/{max_count})\n{join_summary}{quit_summary}{kick_summary}"
+  exception_alert: "⚠️ 服务器异常\n---------------------------------\n{message}"
+  whitelist_block: "🙅🏻‍♂️ {message}"
+  whitelist_toggle_alert: "⚠️ 服务器异常\n---------------------------------\n{message}"
+  geoip_block: "{name}({ip}) 地区:{country_code} 不在允许列表({allow_list})\n{address_info}\n你的地区({country_code})不在允许列表，如有疑问请联系管理员"
+  geoip_unverifiable: "{name} 地区解析服务暂时不可用，无法验证你的地区（IP:{ip}）。请稍后重新尝试登录，若持续出现请联系管理员"
+  tnt_alert: "{msg}\n世界:{world_alias} 坐标:{x_unit},{y_unit},{z_unit}({coord_unit})\n触发:{actor} 方块:{block_type}"
+
 # --- portal.*（/portal 命令玩家反馈；P2c） ---
 portal:
   usage: "用法: /portal <host> [port] 或 /portal remove <host> [port]"

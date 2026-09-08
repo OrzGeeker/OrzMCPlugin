@@ -1297,8 +1297,9 @@ class ConfigHealthCheckTest {
         addFullValidConfig_geoip();
         addFullValidConfig_commandPolicies();
         addFullValidConfig_bot();
-        // minimal templates without all required items
-        templates.set("templates.player_join", "x");
+        // minimal templates without all required items（P4b：player_* 事件正文已迁语言包 event.*，
+        // 缺失不再告警；改以仍要求存在 body 的键验证缺失检测）
+        templates.set("templates.server_load", "x");
         templates.set("templates.coord.scale", 1.0);
         templates.set("templates.coord.precision", 2);
         templates.set("templates.coord.unit_label", "block");
@@ -1311,8 +1312,8 @@ class ConfigHealthCheckTest {
                 .getConfigurationSection("colors")
                 .set("success", "#00FF00");
         List<String> issues = runValidate();
-        assertTrue(issues.contains("缺失: templates.player_quit"));
-        assertTrue(issues.contains("缺失: templates.player_kick"));
+        assertTrue(issues.contains("缺失: templates.server_stop"));
+        assertTrue(issues.contains("缺失: templates.player_name_block"));
     }
 
     // ================================================================
