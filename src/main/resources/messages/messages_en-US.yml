@@ -83,6 +83,12 @@ event:
   rank_demoted: "⬇️ {player} has been demoted to {group}"
   prison_imprisoned: "🔒 {player} has been imprisoned (original group: {group})"
   prison_released: "🔓 {player} has been released from prison (restored group: {group})"
+  maintenance_backup_stage: "Map {label} Stage: {stage} ({stage_name}/{stage_i18n}) Progress: {percent}% {current}/{total} Rate: {rate_per}{rate_unit} ETA: {eta_value}{eta_unit}"
+  maintenance_backup_done: "Map {label} finished in {duration_human}"
+  maintenance_backup_error: "Map {label} failed after {duration_human}"
+  maintenance_optimize_stage: "Map {label} Stage: {stage} ({stage_name}/{stage_i18n}) Progress: {percent}% {current}/{total} Rate: {rate_per}{rate_unit} ETA: {eta_value}{eta_unit}"
+  maintenance_optimize_done: "Map {label} finished in {duration_human}"
+  maintenance_optimize_error: "Map {label} failed after {duration_human}"
 
 # --- portal.* (/portal command player feedback; P2c) ---
 portal:
