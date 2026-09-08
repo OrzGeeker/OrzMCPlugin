@@ -15,8 +15,8 @@
 # 【Adding a language】Add messages/messages_<code>.yml resource + one line in
 # I18nLoader.CODES — no business code changes needed.
 #
-# Keys are populated incrementally per migration PR (docs/dev/i18n-plan.md §5);
-# currently an empty skeleton, structurally identical to the zh-CN master.
+# Keys were populated per migration PRs P1-P5 (docs/dev/i18n-plan.md §5, ledger §8);
+# the file is kept structurally identical to the zh-CN master.
 #
 # --- common.* (cross-channel generic feedback; migrated with command interceptors, P1) ---
 common:
@@ -53,7 +53,7 @@ whitelist:
     blocked: "{player} attempted to join but was blocked by the whitelist."
     toggle_off: "Whitelist disabled."
   bot:
-    add_title: "------ Whitelist additions ------" 
+    add_title: "------ Whitelist additions ------"
     remove_title: "------ Whitelist removals ------"
 
 # --- event.* (group event notification bodies, migrated in P4b; templates.yml no longer carries
@@ -221,8 +221,8 @@ review:
   multiple_pending: "{player} has multiple pending applications ({types}). Use the group command $v to handle them by type."
   approved_notify: "Your \"{name}\" application was approved!"
   rejected_notify: "Your \"{name}\" application was rejected."
-  approved_ok: "Approved {player}\"s \"{name}\" application."
-  rejected_ok: "Rejected {player}\"s \"{name}\" application."
+  approved_ok: "Approved {player}'s \"{name}\" application."
+  rejected_ok: "Rejected {player}'s \"{name}\" application."
   reason_arg: "[reason]"
 
 # --- rank.* (/rank status and promote/demote notices; P2f3. Unified default language R1;
@@ -337,9 +337,9 @@ bot:
     p: "{name} u Steve\n{name} d Steve"
     d: "{name}\n{name} 1.2.3.4\n{name} -1.2.3.4\n{name} player exact Steve\n{name} player prefix bot_\n{name} player suffix _test\n{name} player contains admin\n{name} player glob bot_*\n{name} player regex ^bot\n{name} -player prefix bot_"
   list:
-    online_header: "------ Online ({count}/{max}) ------" 
-    whitelist_header: "------ Whitelisted players ({count}) ------" 
-    cleanup_title: "------ Whitelist cleanup ------" 
+    online_header: "------ Online ({count}/{max}) ------"
+    whitelist_header: "------ Whitelisted players ({count}) ------"
+    cleanup_title: "------ Whitelist cleanup ------"
     page_meta: "Page {page}/{total}"
     empty_whitelist: "(no whitelisted players)"
   e:
@@ -393,7 +393,7 @@ access_rule:
   not_found: "Player-name rule not found: {rule}"
   added: "Added player-name rule: {rule}"
   exists: "Player-name rule already exists; not added again: {rule}"
-  # P5-4：in-game /blacklist ops feedback (security ops commands use default-lang R1, consistent with guard/bot)
+  # P5-4: in-game /blacklist ops feedback (security ops commands use default-lang R1, consistent with guard/bot)
   usage_ip_add: "Usage: /blacklist add <IP>"
   usage_ip_remove: "Usage: /blacklist remove <IP>"
   usage_player_add: "Player-name rules: use /blacklist add player <type> <value>"
@@ -412,7 +412,7 @@ access_rule:
   player_rules_empty: "No player-name rules configured"
   player_rules_title: "Current player-name rules:"
 
-# --- serverlife.*（server lifecycle / maintenance MOTD shell；P5-2。default-lang R1；{prompt_help} etc kept code-injected） ---
+# --- serverlife.* (server lifecycle / maintenance MOTD shell; P5-2. default-lang R1; dynamic values stay code-injected) ---
 serverlife:
   mode_online: "Online-mode server"
   mode_offline: "Offline-mode server"
@@ -423,7 +423,7 @@ serverlife:
   discord_label: "Discord: "
   discord_hover: "Click to join Discord"
 
-# --- audit.*（startup security self-check var-value vocabulary；P5-2。default-lang R1） ---
+# --- audit.* (startup security self-check var-value vocabulary; P5-2. default-lang R1) ---
 audit:
   online_on: "Online-mode verified"
   online_off: "Offline (HIGH RISK)"
@@ -439,7 +439,7 @@ audit:
   ops_list: "{count}: {names}"
   plugins_none: "None installed (HIGH RISK)"
 
-# --- playermode.*（player-row game-mode vocabulary；P5-5。bot/group event var values, R1） ---
+# --- playermode.* (player-row game-mode vocabulary; P5-5. bot/group event var values, R1) ---
 playermode:
   creative: "Creative"
   survival: "Survival"
