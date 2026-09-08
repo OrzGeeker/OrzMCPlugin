@@ -55,37 +55,35 @@
   e) WorldMaintenanceService 内联 zh 仍多（callback 提示/日志/“损坏区块”汇总等，控制台日志域按 D1 不做）
 
 ## 进行中卡
-- P4 事件/模板管线全部完成；P4d 拆两棒：P4d-1 升级链 ✓（PR #395，config-version 14），**P4d-2（下一卡）**：
-  Templates 记录 vestige 收编（见「下一棒开场指令」）
+- **P4 阶段（事件/模板管线）已全部完成**：P4a 命令回复直通 → P4b 事件正文 24 键 → P4c-1 维护事件 6 键 →
+  P4c-2 场景/MOTD/阶段名 → P4d-1 存量盘升级链（config-version 14）→ P4d-2 Templates 记录 vestige 收编删除
+- 里程碑状态：templates.yml 仅剩直通壳/格式/配色/数据键；**存量服一次升级即随 default_lang 双语（定制保留）**
+- **下一卡 P5 收尾**（见「下一棒开场指令」）
 
 ## 未完成清单（顺序）
-1. P4d-2 Templates 记录 vestige 收编：Templates record 事件字段（player/geoip/whitelist/tnt/exception/
-   maintenance，P4 后零消费）删除；serverLoad/serverStop {message} 直通壳评估（并入语言包 or 保留直通壳）；
-   templateForEvent/DefaultTypedConfigProvider.templates()/ConfigHealthCheck 豁免逻辑同步收编；连带清理
-   TemplatesBodyMigration 事件比对在 renderEvent 侧的兜底一致性（升级后存量服事件键磁盘缺失 → 语言包，已闭环）
-2. P5 收尾：全量 rg 中文残留审计（已知残留：BlacklistCommandRegistrar 游戏命令域、事件 var 值内联 zh
-   security_audit 描述、server_load 组装片段 zh、Paginator 空列表 body、孤儿 guard/exploit/ratelimit/login.alert_*
-   域键清理）、YAML 布尔键排查、docs/features/README/CHANGELOG/plan §7 同步、
-   集成回归（维护/审核/bot 双语实机冒烟：新装 vs 13→14 升级存量盘对照）
+1. P5 收尾：全量 rg 中文残留审计（已知残留：BlacklistCommandRegistrar 游戏命令域、事件 var 值内联 zh
+   （security_audit 描述等）、server_load 组装消息 zh 片段（buildServerLoadMessage）、Paginator 空列表 body、
+   孤儿 guard/exploit/ratelimit/login.alert_* 域键 + MessageKeys 清理）、YAML 布尔键排查、
+   docs/features.md/README/CHANGELOG/plan §7 同步、集成回归（维护/审核/bot 双语实机冒烟：新装 vs 13→14 升级对照）
 
 ## 风险/注意
-- **升级链已闭环（P4d-1）**：config-version 现为 14；存量盘 13 → 首次启动自动迁移正文（备份 .bak）；
-  磁盘已 14 或全新安装（bundled 14）零动作。TemplatesBodyMigration 幂等，重复调用零操作
-- Templates 记录 18 个事件字段目前仍由 DefaultTypedConfigProvider.templates() 构建（vestige，仅
-  templateForEvent 用 serverLoad/serverStop）→ P4d-2 裁剪前先 rg 确证零消费
+- 升级链已闭环（P4d-1）：config-version 14；存量盘 13 → 首次启动自动迁移正文（.bak）；已 14/全新零动作
+- Templates 记录已删（P4d-2）：事件渲染全走 renderEvent（lang-backed 磁盘→语言包；server_load/stop 直读磁盘
+  缺省 {message} 壳）；port templates() 已移除
 - 语言包与 MessageKeys 为「文件尾追加」型文件 → 触碰语言包的 PR 串行链式合入
-- zh 主目录正文必须与迁移前逐字一致；登录前踢出/MOTD 无 locale → 默认语言 R1（D6 不变）
+- zh 主目录正文必须与迁移前逐字一致；登录前踢出/MOTD 无 locale → 默认语言 R1
 - 每域 PR：`spotlessApply && :test --tests <域>` → 全量 test + integration 编译绿 → PR；CI 绿即 squash 合入；
-  **禁止直接 commit/push develop**（#395 曾误落 develop，已分支纠正——先落卡到 feature 分支再 PR）
+  禁止直接 commit/push develop（#395 教训：先建 feature 分支再落码）
 
 ## 下一棒开场指令
-读 docs/dev/i18n-migration-handoff.md，从卡 P4d-2 开始：checkout 分支 feature/i18n-p4d2-templates-trim（基 origin/develop），
-先 rg 确证 Templates record 各事件字段零消费（playerJoin/playerQuit/playerKick/playerDigest/exceptionAlert/
-geoipBlock/geoipUnverifiable/tntAlert/whitelistBlock/whitelistToggleAlert/commandGuardBlocked 等——
-templateForEvent 现仅用 serverLoad/serverStop）；改动：
-① Templates record 收窄为仅 serverLoad/serverStop（或并入语言包直通壳评估）；
-② DefaultTypedConfigProvider.templates()/renderEvent 签名相应瘦身（renderEvent 的 Templates 参数如不再用可移除）；
-③ ConfigHealthCheck/任何残留引用清理；④ 连带：确认 TemplatesBodyMigration 与 renderEvent 磁盘优先机制在
-   升级后闭环（存量盘事件键已删 → 语言包；有定制 → 磁盘仍在渲染）；
-验收：affected :test 绿 + `spotlessApply && ./gradlew test` + `./gradlew :compileIntegrationTestJava`；
-开 PR（base develop）后 CI 绿即 squash 合入，合入后更新本文件继续 P5。
+读 docs/dev/i18n-migration-handoff.md，从卡 P5 开始：checkout 分支 feature/i18n-p5-finalize（基 origin/develop）；
+按残留清单逐项收口（每项 ≤ ~500 行独立小 PR，串行链式）：
+① 孤儿域键清理（guard/exploit/ratelimit/login.alert_* 5 键 + 对应 MessageKeys 常量与引用收口）；
+② 事件 var 值内联 zh 审计（security_audit online_mode/command_block/rcon/whitelist/ops/plugins 等值 →
+   评估迁移或白名单记录）；
+③ server_load 组装消息（buildServerLoadMessage zh 片段）与 Paginator 空列表 body、其他 bot 内联 zh → 语言包；
+④ /blacklist 游戏命令域（BlacklistCommandRegistrar，P2 遗漏，需 sender locale 决议评估）；
+⑤ YAML 布尔键排查；⑥ docs/features.md + README + CHANGELOG + plan §7 勾验；
+⑦ 双语实机冒烟（Folia 测试服：新装 default_lang=zh/en 对照 + 存量盘 13→14 升级对照，按 folia-luckperms-gotchas.md §6）；
+验收：每项 affected :test 绿 + 全量 `spotlessApply && ./gradlew test` + `./gradlew :compileIntegrationTestJava`；
+开 PR（base develop）后 CI 绿即 squash 合入；P5 完成后更新本文件并同步 docs/features.md + CHANGELOG 做整体收尾。
