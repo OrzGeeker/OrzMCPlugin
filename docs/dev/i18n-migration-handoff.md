@@ -1,10 +1,13 @@
 # i18n 多语言迁移 交接
-> 状态：现行 ｜ 最后更新：2026-09-08（P0–P5 全部完成；develop @ 0da06d1）
+> 状态：现行 ｜ 最后更新：2026-09-08（i18n 一期全部完成收口；develop @ 5cacf33）
 
 ## 任务与目标
 仓库级 i18n 一期（中英双语 + 可扩展语言包）：游戏内 + Bot 交互 + 事件通知全部用户可见文案迁入语言包（zh 原文零回归基线）。方案：docs/dev/i18n-plan.md（§4 决策全拍板，§8 完成台账）。验收：方案 §7 全部勾验；本文件列出残余项。
 
-## 已完成（倒序；develop 历史 @ 0da06d1）
+## 已完成（倒序；develop 历史 @ 5cacf33）
+- PR #405 fix（冒烟缺陷）：validator 跳过 lang-backed body 变量集校验（存量盘残留 {message} 壳误告警）；
+  语言包 access_rule.added/exists 重复键去重（YamlConstructor duplicate 告警）；测试语义化 + handoff/CHANGELOG 冒烟结论
+- PR #404 docs：P5 收尾文档同步（plan §7 勾验 + §8 台账、交接终态、features 语言本地化、README/CHANGELOG）
 - PR #403 P5-5：玩家行游戏模式词汇语言化（playermode.* 4 键，I18nServiceHolder R1）；OrzConstants 告警前缀孤儿常量删除
 - PR #402 P5-4：/blacklist 游戏命令域去内联 zh（access_rule.* 新增 18 键；安全运维命令统一 R1）
 - PR #401 P5-3：Paginator 空列表正文 emptyBody 参数化（bot.list.empty_whitelist；Review 空态 guard 早已用 bot.v.list_empty）
@@ -20,14 +23,12 @@
 ## 进行中卡
 - 无（代码侧 P0–P5 全完成并合入 develop）
 
-## 未完成清单（按依赖排序；除 1 外均为 owner/测试服动作）
-1. **真机冒烟（2026-09-08 已用本机 runServer/runFolia 无头执行）**：Paper 存量盘 11→14 升级对照——正文迁移 42 项
-   与预期一致（30 事件+4 motd+4 stage+4 command）、.bak 齐、config-version 14、二次启动幂等零动作；default_lang=zh/en
-   各启动零健康告警；Folia 全新安装 bundled v14 零升级/零告警/插件生效。冒烟暴露两缺陷（validator 误告警、语言包
-   duplicate keys）已随 fix PR 修复。残余：需 QQ/玩家环境的 bot 交互/进服踢出/MOTD 视觉对照（owner 测试服，方法见
-   folia-luckperms-gotchas.md §6）。
-2. **en 校对（owner，D7）**：en-US 为 AI 初译，逐域人工校对后可合后续 PR。
-3. 已知 out-of-scope 残留（文档已记，D1/数据内容白名单）：
+## 未完成清单（均为 owner 动作）
+1. **QQ/玩家环境视觉对照冒烟**：进服踢出/MOTD/bot 交互/审核链路 zh↔en 真人观感（无头部分已 2026-09-08 完成：Paper
+   存量盘 11→14 升级对照 42 项迁移 + zh/en 双语启动零告警 + Folia 全新安装零升级；方法见 folia-luckperms-gotchas.md §6）
+2. **en 校对（owner，D7）**：en-US 为 AI 初译，逐域人工校对（改动走串行语言包 PR）
+3. **里程碑发布决策**：i18n 一期完成，develop→main（1 个 beta）或 tag 正式发版由 owner 择时
+4. 已知 out-of-scope 残留（文档已记，D1/数据内容白名单）：
    - 控制台/日志 zh（D1）
    - 内容数据文件（config.yml 各 message 默认值、guide_book、portal 名牌「传送门/跨服传送」、world_alias 数据键默认值）——管理员可配内容非 i18n
    - Paginator 老入口 paginate()（生产零调用）页标签 zh；保持现状
@@ -39,5 +40,5 @@
 - 禁止直接 commit/push develop（#395 教训：先建 feature 分支再落码）
 
 ## 下一棒开场指令
-读本文件后：owner 按「未完成清单 1」做真机双语冒烟（含 13→14 升级对照），发现问题开 hotfix/feature PR（base develop）
-修完合入后刷新本文件；en 校对改动直接尾追加语言包 PR（串行）。代码侧无待办。
+读本文件后：i18n 代码侧无待办（P0–P5 + 冒烟修复已全部合入 develop @ 5cacf33）。
+owner 后续动作见「未完成清单」：QQ/玩家视觉冒烟、en 校对（串行语言包 PR）、里程碑发布决策；任一完成后刷新本文件。
