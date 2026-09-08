@@ -341,6 +341,7 @@ bot:
     whitelist_header: "------ Whitelisted players ({count}) ------" 
     cleanup_title: "------ Whitelist cleanup ------" 
     page_meta: "Page {page}/{total}"
+    empty_whitelist: "(no whitelisted players)"
   e:
     overflow: "⚠️ Log buffer overflow; output may be incomplete."
   p:

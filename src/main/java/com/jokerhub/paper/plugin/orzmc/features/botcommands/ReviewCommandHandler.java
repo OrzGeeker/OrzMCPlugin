@@ -104,6 +104,8 @@ final class ReviewCommandHandler extends BotCommandContext {
                     emit(callback, "command_review_list", Map.of("message", text), text);
                 },
                 I18nServiceHolder.msg("bot.v.list_header"),
+                // 空列表在上方 guard 已提前短路；此处占位仅为签名完整（不会触发）
+                I18nServiceHolder.msg("bot.v.list_empty"),
                 lines,
                 5,
                 page);
