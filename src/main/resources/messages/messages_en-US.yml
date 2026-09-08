@@ -440,3 +440,10 @@ audit:
   ops_count: "{count}"
   ops_list: "{count}: {names}"
   plugins_none: "None installed (HIGH RISK)"
+
+# --- playermode.*（player-row game-mode vocabulary；P5-5。bot/group event var values, R1） ---
+playermode:
+  creative: "Creative"
+  survival: "Survival"
+  adventure: "Adventure"
+  spectator: "Spectator"

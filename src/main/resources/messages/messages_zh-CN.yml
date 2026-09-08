@@ -432,3 +432,10 @@ audit:
   ops_count: "{count} 个"
   ops_list: "{count} 个: {names}"
   plugins_none: "均未安装（高危）"
+
+# --- playermode.*（玩家行游戏模式词汇；P5-5。bot/群事件 var 值 R1） ---
+playermode:
+  creative: "创造模式"
+  survival: "生存模式"
+  adventure: "冒险模式"
+  spectator: "观察模式"
