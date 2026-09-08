@@ -6,7 +6,6 @@ import com.jokerhub.paper.plugin.orzmc.features.maintenance.MaintenanceModeServi
 import com.jokerhub.paper.plugin.orzmc.features.maintenance.MaintenanceModeService.MaintenanceProgress;
 import com.jokerhub.paper.plugin.orzmc.features.maintenance.MaintenanceModeService.MaintenanceReason;
 import com.jokerhub.paper.plugin.orzmc.infra.config.configs.BotConfig;
-import com.jokerhub.paper.plugin.orzmc.infra.config.configs.Templates;
 import com.jokerhub.paper.plugin.orzmc.infra.server.ServerFacade;
 import com.jokerhub.paper.plugin.orzmc.infra.styles.OrzTextStyles;
 import net.kyori.adventure.text.Component;
@@ -58,9 +57,8 @@ public final class ServerFeedbackService {
         MaintenanceReason reason = maintenanceModeService.reason();
         // 进度快照取一次：场景文案渲染与进度行拼接用同一快照，避免两次读不同快照拼出不一致 MOTD
         MaintenanceProgress progress = maintenanceModeService.progress();
-        // 统一渲染入口：场景文案（templates.yml maintenance_motd_*）+ 进度行（maintenance_motd_progress_line）
-        Templates templates = configs.templates();
-        String msg = MaintenanceModeService.renderMotdText(reason, templates, progress);
+        // 统一渲染入口：场景文案（maintenance.motd.* 语言包/磁盘正文）+ 进度行（MaintenanceTexts）
+        String msg = MaintenanceModeService.renderMotdText(reason, configs.maintenanceTexts(), progress);
         String discordLink = botConfig.discordServerLink();
         String qqGroupId = botConfig.qqGroupId();
         TextComponent.Builder motdBuilder = Component.text();

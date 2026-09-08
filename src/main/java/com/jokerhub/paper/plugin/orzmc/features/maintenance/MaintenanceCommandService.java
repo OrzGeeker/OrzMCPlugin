@@ -67,7 +67,7 @@ public final class MaintenanceCommandService {
         server.runSync(() -> {
             // 手动维护踢人：统一场景文案（templates.yml maintenance_motd_manual，PR4 迁移）
             String kickText =
-                    MaintenanceModeService.renderMotdText(MaintenanceReason.MANUAL, configs.templates(), null);
+                    MaintenanceModeService.renderMotdText(MaintenanceReason.MANUAL, configs.maintenanceTexts(), null);
             for (Player p : server.server().getOnlinePlayers()) {
                 p.getScheduler().run(server.plugin(), t -> p.kick(styles.warn(kickText)), () -> {});
             }
@@ -106,7 +106,10 @@ public final class MaintenanceCommandService {
                 };
         MaintenanceProgress progress = snap.progress();
         if (progress != null) {
-            return reasonText + " " + progress.progressMessage();
+            // 进度行经 maintenance.motd.progress_line（磁盘正文优先 → 语言包，默认语言 R1）渲染
+            String progressLine = MaintenanceModeService.renderTemplate(
+                    configs.maintenanceTexts().motdProgressLine(), progress);
+            return reasonText + " " + progressLine;
         }
         return reasonText;
     }

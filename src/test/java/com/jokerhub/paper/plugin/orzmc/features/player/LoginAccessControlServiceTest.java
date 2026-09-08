@@ -120,7 +120,7 @@ class LoginAccessControlServiceTest extends ServiceTestBase {
     void handlePreLogin_maintenance_backup_usesBackupMotdAndSkipsChecks() {
         when(maintenanceModeService.isActive()).thenReturn(true);
         when(maintenanceModeService.reason()).thenReturn(MaintenanceReason.BACKUP);
-        when(configs.templates()).thenReturn(maintenanceTemplates("服务器地图备份中，请稍后再试", null, null, null));
+        when(configs.maintenanceTexts()).thenReturn(maintenanceTexts("服务器地图备份中，请稍后再试", null, null, null));
 
         service.handlePreLogin(event);
 
@@ -132,7 +132,7 @@ class LoginAccessControlServiceTest extends ServiceTestBase {
     void handlePreLogin_maintenance_optimize_usesOptimizeMotd() {
         when(maintenanceModeService.isActive()).thenReturn(true);
         when(maintenanceModeService.reason()).thenReturn(MaintenanceReason.OPTIMIZE);
-        when(configs.templates()).thenReturn(maintenanceTemplates(null, "服务器地图优化中，请稍后再试", null, null));
+        when(configs.maintenanceTexts()).thenReturn(maintenanceTexts(null, "服务器地图优化中，请稍后再试", null, null));
 
         service.handlePreLogin(event);
 
@@ -143,7 +143,7 @@ class LoginAccessControlServiceTest extends ServiceTestBase {
     void handlePreLogin_maintenance_manual_usesManualMotd() {
         when(maintenanceModeService.isActive()).thenReturn(true);
         when(maintenanceModeService.reason()).thenReturn(MaintenanceReason.MANUAL);
-        when(configs.templates()).thenReturn(maintenanceTemplates(null, null, "服务器维护中，请稍后再试", null));
+        when(configs.maintenanceTexts()).thenReturn(maintenanceTexts(null, null, "服务器维护中，请稍后再试", null));
 
         service.handlePreLogin(event);
 
@@ -155,8 +155,8 @@ class LoginAccessControlServiceTest extends ServiceTestBase {
         // 场景模板未用进度占位符 + 有进度 → progress_line 模板（默认含 {eta}）渲染为第二行
         when(maintenanceModeService.isActive()).thenReturn(true);
         when(maintenanceModeService.reason()).thenReturn(MaintenanceReason.BACKUP);
-        when(configs.templates()).thenReturn(maintenanceTemplates("服务器地图备份中，请稍后再试", null, null, null));
-        when(maintenanceModeService.progress()).thenReturn(new MaintenanceProgress("区块", 35, 30, "进度：区块 35% 预计剩余 30秒"));
+        when(configs.maintenanceTexts()).thenReturn(maintenanceTexts("服务器地图备份中，请稍后再试", null, null, null));
+        when(maintenanceModeService.progress()).thenReturn(new MaintenanceProgress("区块", 35, 30));
 
         service.handlePreLogin(event);
 
@@ -169,8 +169,8 @@ class LoginAccessControlServiceTest extends ServiceTestBase {
     void handlePreLogin_maintenance_withEtaPlaceholder_replacesPlaceholders() {
         when(maintenanceModeService.isActive()).thenReturn(true);
         when(maintenanceModeService.reason()).thenReturn(MaintenanceReason.BACKUP);
-        when(configs.templates()).thenReturn(maintenanceTemplates("备份 {stage} {percent}% {eta}秒", null, null, null));
-        when(maintenanceModeService.progress()).thenReturn(new MaintenanceProgress("区块", 35, 30, "进度：区块 35% 预计剩余 30秒"));
+        when(configs.maintenanceTexts()).thenReturn(maintenanceTexts("备份 {stage} {percent}% {eta}秒", null, null, null));
+        when(maintenanceModeService.progress()).thenReturn(new MaintenanceProgress("区块", 35, 30));
 
         service.handlePreLogin(event);
 
