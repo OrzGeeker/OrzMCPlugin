@@ -385,6 +385,26 @@ access_rule:
   not_found: "未找到该玩家名规则: {rule}"
   added: "已添加玩家名规则: {rule}"
   exists: "玩家名规则已存在，未重复添加: {rule}"
+  added: "已添加玩家名规则: {rule}"
+  exists: "玩家名规则已存在，未重复添加: {rule}"
+  # P5-4：游戏内 /blacklist 运维反馈（安全运维命令统一默认语言 R1，与 guard/bot 安全提示一致）
+  usage_ip_add: "用法: /blacklist add <IP>"
+  usage_ip_remove: "用法: /blacklist remove <IP>"
+  usage_player_add: "玩家名规则请使用: /blacklist add player <type> <value>"
+  usage_player_remove: "玩家名规则请使用: /blacklist remove player <type> <value>"
+  usage_player_any: "玩家名规则请使用: /blacklist add|remove player <type> <value>"
+  usage_player_value_empty: "玩家名规则值不能为空: /blacklist {verb} player <type> <value>"
+  usage_player_shorthand: "用法: /blacklist {sign}player <type> <value>"
+  added_ip: "已添加黑名单: {pattern}"
+  exists_ip: "黑名单已存在: {pattern}"
+  removed_ip: "已从黑名单移除: {pattern}"
+  not_found_ip: "未在黑名单中找到: {pattern}"
+  list_empty_all: "访问规则为空"
+  list_title: "当前访问规则:"
+  ip_section: "  IP黑名单:"
+  rules_section: "  玩家名规则:"
+  player_rules_empty: "玩家名规则为空"
+  player_rules_title: "当前玩家名规则:"
 
 # --- serverlife.*（服务端生命周期/维护 MOTD 外壳；P5-2。R1 默认语言；{prompt_help} 等 var 值保持代码注入） ---
 serverlife:
