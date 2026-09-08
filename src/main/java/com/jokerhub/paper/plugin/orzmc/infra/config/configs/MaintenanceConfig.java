@@ -7,7 +7,7 @@ public record MaintenanceConfig(
         boolean optimizeEnabled, long optimizeTickTimeThreshold, int backupRetentionCount, long backupIntervalHours) {
 
     /**
-     * 维护场景文案/进度行已迁移到 templates.yml（{@code maintenance_motd_*} 4 键），
+     * 维护场景文案/进度行已迁语言包 maintenance.motd.*（MaintenanceTexts 承载，P4c-2），
      * 不再从此处读取 motd（2026-09-02 PR4）。本配置仅保留维护开关/阈值/保留数/自动备份间隔。
      */
     public static MaintenanceConfig from(ConfigurationSection cfg) {
@@ -34,7 +34,7 @@ public record MaintenanceConfig(
         if (thr <= 0) issues.add("非法: maintenance.optimize_tick_time_threshold 必须为正数");
         int retain = section.getInt("backup_retention_count", 5);
         if (retain < 0) issues.add("非法: maintenance.backup_retention_count 不得为负数");
-        // 维护场景文案/进度行已迁 templates.yml（maintenance_motd_*，Templates record 有默认兜底），
-        // config.yml maintenance 段不再含 motd 键，故此处不再校验（2026-09-02 PR4）
+        // 维护场景文案/进度行已迁语言包（maintenance.motd.* / MaintenanceTexts），config.yml maintenance 段
+        // 不再含 motd 键，故此处不再校验（2026-09-02 PR4；P4c-2 语言包承载）
     }
 }

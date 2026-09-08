@@ -11,22 +11,6 @@ import org.junit.jupiter.api.Test;
 class MoreConfigRecordsTest {
 
     @Nested
-    class TemplatesFromTest {
-        @Test
-        void fromNull_throwsNpe() {
-            assertThrows(NullPointerException.class, () -> Templates.from(null));
-        }
-
-        @Test
-        void fromSection_parsesValues() {
-            ConfigurationSection cfg = mock(ConfigurationSection.class);
-            when(cfg.getString(anyString(), anyString())).thenReturn("custom join");
-            Templates t = Templates.from(cfg);
-            assertEquals("custom join", t.playerJoin());
-        }
-    }
-
-    @Nested
     class EntityTeleportConfigFromTest {
         @Test
         void fromNull_returnsDefaults() {

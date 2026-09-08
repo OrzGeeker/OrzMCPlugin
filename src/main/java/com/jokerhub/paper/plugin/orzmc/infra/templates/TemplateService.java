@@ -2,7 +2,6 @@ package com.jokerhub.paper.plugin.orzmc.infra.templates;
 
 import com.jokerhub.paper.plugin.orzmc.core.bot.MessageEnvelope;
 import com.jokerhub.paper.plugin.orzmc.infra.config.TemplateKeys;
-import com.jokerhub.paper.plugin.orzmc.infra.config.configs.Templates;
 import com.jokerhub.paper.plugin.orzmc.infra.i18n.I18nServiceHolder;
 import java.util.Map;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -15,22 +14,25 @@ public final class TemplateService {
      *
      * <p>正文来源分两类：</p>
      * <ul>
-     *   <li>{@link TemplateKeys#isLangBacked(String)} 事件（player/geoip/whitelist/tnt/exception 等）：
-     *       磁盘 templates.yml 正文若存在（存量服/服主定制）优先渲染——P4d 升级链统一迁移前保 zh 基线、
-     *       不丢定制；磁盘缺失（全新安装）回落语言包 {@code event.<name>}（默认语言 R1，原文含占位符未渲染）。</li>
-     *   <li>其余（server_load / server_stop）仍走 {@link Templates} 记录默认（{message} 直通壳）。</li>
+     *   <li>{@link TemplateKeys#isLangBacked(String)} 事件：磁盘 templates.yml 正文若存在
+     *       （存量服/服主定制）优先渲染——P4d 升级链已把「磁盘正文 == 旧内置默认」的键清除，
+     *       存量服正文缺失后回落语言包 {@code event.<name>}（默认语言 R1）；有定制仍磁盘优先。</li>
+     *   <li>其余（server_load / server_stop）：{@code {message}} 直通壳——磁盘自定义正文优先，
+     *       缺失回落 {@code {message}}（消息由调用方组装后经 {@code message} 变量注入）。</li>
      * </ul>
      * 格式（CODE_BLOCK/PLAIN）一律由 templates.format 表承担。
      */
     public static MessageEnvelope renderEvent(
-            String eventKey, FileConfiguration templatesCfg, Templates templates, Map<String, String> vars) {
+            String eventKey, FileConfiguration templatesCfg, Map<String, String> vars) {
         String template;
         if (eventKey == null || eventKey.isEmpty()) {
             template = "";
         } else if (TemplateKeys.isLangBacked(eventKey)) {
             template = diskOrLangEventBody(eventKey, templatesCfg);
+        } else if ("server_load".equals(eventKey) || "server_stop".equals(eventKey)) {
+            template = shellOrDiskBody(eventKey, templatesCfg);
         } else {
-            template = templateForEvent(eventKey, templates);
+            template = "";
         }
         return TemplateRenderer.renderEnvelope(eventKey, template == null ? "" : template, vars, templatesCfg);
     }
@@ -46,12 +48,14 @@ public final class TemplateService {
         return I18nServiceHolder.msg("event." + eventKey);
     }
 
-    private static String templateForEvent(String eventKey, Templates templates) {
-        if (eventKey == null || eventKey.isEmpty()) {
-            return "";
+    /** 直通壳事件正文（server_load / server_stop）：磁盘自定义正文优先，缺失回落 {@code {message}}。 */
+    private static String shellOrDiskBody(String eventKey, FileConfiguration templatesCfg) {
+        if (templatesCfg != null) {
+            String disk = templatesCfg.getString("templates." + eventKey);
+            if (disk != null && !disk.isEmpty()) {
+                return disk;
+            }
         }
-        if ("server_load".equals(eventKey)) return templates.serverLoad();
-        if ("server_stop".equals(eventKey)) return templates.serverStop();
-        return "";
+        return "{message}";
     }
 }
