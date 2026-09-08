@@ -1313,7 +1313,7 @@ class ConfigHealthCheckTest {
                 .set("success", "#00FF00");
         List<String> issues = runValidate();
         assertTrue(issues.contains("缺失: templates.server_stop"));
-        assertTrue(issues.contains("缺失: templates.player_name_block"));
+        assertTrue(issues.contains("缺失: templates.command_review_list"));
     }
 
     // ================================================================

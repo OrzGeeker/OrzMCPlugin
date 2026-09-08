@@ -45,12 +45,9 @@ public class TemplateResourceSmokeTest extends ServiceTestBase {
 
     @Test
     public void testReviewTemplatesResolve() throws Exception {
+        // P4b-2：群通知正文已迁语言包 event.*（review/rank/prison）；命令回复类仍在 templates.yml
         YamlConfiguration cfg = load("templates.yml");
         List<String> keys = List.of(
-                "review_submitted",
-                "review_cancelled",
-                "review_approved",
-                "review_rejected",
                 "rank_status",
                 "command_review_list",
                 "command_review_list_empty",
@@ -60,29 +57,34 @@ public class TemplateResourceSmokeTest extends ServiceTestBase {
             String resolved = TemplateRenderer.resolveTemplate(key, cfg, "fallback-" + key);
             Assertions.assertFalse(resolved.isEmpty(), key + " 模板缺失");
         }
+        YamlConfiguration lang = load("messages/messages_zh-CN.yml");
+        for (String key : List.of("review_submitted", "review_cancelled", "review_approved", "review_rejected")) {
+            String body = lang.getString("event." + key);
+            Assertions.assertNotNull(body, "语言包缺 event." + key);
+            Assertions.assertFalse(body.isEmpty(), "event." + key + " 为空");
+        }
     }
 
     @Test
     public void testReviewGroupEventsRenderRealText_notLiteralMessage() throws Exception {
-        // 防回归：群通知模板必须渲染出真实中文文案，而非字面 "{message}"
-        // （ReviewNotifierAdapter 传 vars = player/type/summary/reviewer，不含 message 键）
-        YamlConfiguration cfg = load("templates.yml");
+        // 防回归：群通知正文（语言包 event.*，zh 主目录）必须渲染出真实中文文案，而非字面 "{message}"
+        YamlConfiguration cfg = load("messages/messages_zh-CN.yml");
         var vars = java.util.Map.of(
                 "player", "TestNewbie",
                 "type", "晋升建造者",
                 "summary", "申请晋升 builder：想用WorldEdit",
                 "reviewer", "群管理员");
 
-        String submitted = TemplateRenderer.render(TemplateRenderer.resolveTemplate("review_submitted", cfg, ""), vars);
+        String submitted = TemplateRenderer.render(cfg.getString("event.review_submitted"), vars);
         Assertions.assertTrue(submitted.contains("TestNewbie"), "submitted 应含玩家名: " + submitted);
         Assertions.assertFalse(submitted.contains("{message}"), "submitted 不得为字面 {message}: " + submitted);
 
-        String approved = TemplateRenderer.render(TemplateRenderer.resolveTemplate("review_approved", cfg, ""), vars);
+        String approved = TemplateRenderer.render(cfg.getString("event.review_approved"), vars);
         Assertions.assertTrue(
                 approved.contains("TestNewbie") && approved.contains("群管理员"), "approved 渲染异常: " + approved);
         Assertions.assertFalse(approved.contains("{message}"), "approved 不得为字面 {message}: " + approved);
 
-        String rejected = TemplateRenderer.render(TemplateRenderer.resolveTemplate("review_rejected", cfg, ""), vars);
+        String rejected = TemplateRenderer.render(cfg.getString("event.review_rejected"), vars);
         Assertions.assertFalse(rejected.contains("{message}"), "rejected 不得为字面 {message}: " + rejected);
     }
 
@@ -130,22 +132,37 @@ public class TemplateResourceSmokeTest extends ServiceTestBase {
     public void testAllBlockStyleTemplates_useUnifiedShortDivider() throws Exception {
         // 群消息统一样式（2026-08-19）：所有带分割线的模板必须用统一的 33 连字符分割线，
         // 且不得残留旧的 41 连字符长分割线（digest 版块与单发模板分割线须一致）。
-        // P4b 后已迁语言包的正文从 event.* 读取（zh），未迁的（review_*）仍读 templates.yml。
+        // P4b 后已迁语言包的正文从 event.* 读取（zh）：player/whitelist/exception/review 带分割线；
+        // 安全类无分割线（尾部校验）
         YamlConfiguration lang = load("messages/messages_zh-CN.yml");
-        YamlConfiguration tpls = load("templates.yml");
-        List<String> langKeys =
-                List.of("player_join", "player_quit", "player_kick", "exception_alert", "whitelist_toggle_alert");
+        List<String> langKeys = List.of(
+                "player_join",
+                "player_quit",
+                "player_kick",
+                "exception_alert",
+                "whitelist_toggle_alert",
+                "review_submitted",
+                "review_cancelled",
+                "review_approved",
+                "review_rejected");
         for (String key : langKeys) {
             String tpl = lang.getString("event." + key);
             Assertions.assertNotNull(tpl, "语言包缺 event." + key);
             assertUnifiedDivider(key, tpl);
         }
-        List<String> templateKeys =
-                List.of("review_submitted", "review_cancelled", "review_approved", "review_rejected");
-        for (String key : templateKeys) {
-            String tpl = tpls.getString("templates." + key, "");
-            Assertions.assertFalse(tpl.isEmpty(), key + " 模板缺失");
-            assertUnifiedDivider(key, tpl);
+        // 安全告警类正文不得含纯连字符行（不属于统一分割线块样式）
+        for (String key : List.of(
+                "command_guard_blocked",
+                "login_rate_limit_alert",
+                "exploit_blocked",
+                "ip_blacklist_block",
+                "player_name_block",
+                "security_audit")) {
+            String tpl = lang.getString("event." + key);
+            Assertions.assertNotNull(tpl, "语言包缺 event." + key);
+            for (String line : tpl.split("\n")) {
+                Assertions.assertFalse(line.matches("-+"), key + " 不应含纯连字符行: " + tpl);
+            }
         }
         // player_digest 的分割线由 Java 侧 buildSection 动态注入（不在正文字面中），
         // 单独校验其不含任何纯连字符行即可（33 连字符一致性由 PlayerEventAggregatorTest 覆盖）
@@ -170,10 +187,10 @@ public class TemplateResourceSmokeTest extends ServiceTestBase {
 
     @Test
     public void testSecurityAuditTemplateResolvesWithRealText() throws Exception {
-        // 安全加固 P1-2：启动自检报告模板必须渲染真实中文文案，而非字面 "{online_mode}" 等占位符
-        YamlConfiguration cfg = load("templates.yml");
-        String resolved = TemplateRenderer.resolveTemplate("security_audit", cfg, "");
-        Assertions.assertFalse(resolved.isEmpty(), "security_audit 模板缺失");
+        // 安全加固 P1-2：启动自检报告正文（语言包 event.* zh）必须渲染真实中文文案，而非字面占位符
+        YamlConfiguration cfg = load("messages/messages_zh-CN.yml");
+        String resolved = cfg.getString("event.security_audit");
+        Assertions.assertNotNull(resolved, "语言包缺 event.security_audit");
 
         var vars = java.util.Map.of(
                 "online_mode", "正版验证开启",
@@ -192,10 +209,10 @@ public class TemplateResourceSmokeTest extends ServiceTestBase {
 
     @Test
     public void testLoginRateLimitAlertTemplateResolvesWithRealText() throws Exception {
-        // 安全加固 P2-2：进服限流告警模板必须渲染真实中文文案，而非字面 "{ip}" 等占位符
-        YamlConfiguration cfg = load("templates.yml");
-        String resolved = TemplateRenderer.resolveTemplate("login_rate_limit_alert", cfg, "");
-        Assertions.assertFalse(resolved.isEmpty(), "login_rate_limit_alert 模板缺失");
+        // 安全加固 P2-2：进服限流告警正文（语言包 event.* zh）必须渲染真实中文文案，而非字面占位符
+        YamlConfiguration cfg = load("messages/messages_zh-CN.yml");
+        String resolved = cfg.getString("event.login_rate_limit_alert");
+        Assertions.assertNotNull(resolved, "语言包缺 event.login_rate_limit_alert");
 
         var vars = java.util.Map.of(
                 "ip", "1.2.3.4",
@@ -212,10 +229,10 @@ public class TemplateResourceSmokeTest extends ServiceTestBase {
 
     @Test
     public void testExploitBlockedTemplateResolvesWithRealText() throws Exception {
-        // 安全加固 P2-3：漏洞利用拦截模板必须渲染真实中文文案，而非字面 "{player}" 等占位符
-        YamlConfiguration cfg = load("templates.yml");
-        String resolved = TemplateRenderer.resolveTemplate("exploit_blocked", cfg, "");
-        Assertions.assertFalse(resolved.isEmpty(), "exploit_blocked 模板缺失");
+        // 安全加固 P2-3：漏洞利用拦截正文（语言包 event.* zh）必须渲染真实中文文案，而非字面占位符
+        YamlConfiguration cfg = load("messages/messages_zh-CN.yml");
+        String resolved = cfg.getString("event.exploit_blocked");
+        Assertions.assertNotNull(resolved, "语言包缺 event.exploit_blocked");
 
         var vars = java.util.Map.of(
                 "player", "alice",
@@ -230,10 +247,10 @@ public class TemplateResourceSmokeTest extends ServiceTestBase {
 
     @Test
     public void testIpBlacklistBlockTemplateResolvesWithRealText() throws Exception {
-        // 安全加固 P2-4：封禁命中告警模板必须渲染真实中文文案，而非字面 "{ip}" 等占位符
-        YamlConfiguration cfg = load("templates.yml");
-        String resolved = TemplateRenderer.resolveTemplate("ip_blacklist_block", cfg, "");
-        Assertions.assertFalse(resolved.isEmpty(), "ip_blacklist_block 模板缺失");
+        // 安全加固 P2-4：封禁命中告警正文（语言包 event.* zh）必须渲染真实中文文案，而非字面占位符
+        YamlConfiguration cfg = load("messages/messages_zh-CN.yml");
+        String resolved = cfg.getString("event.ip_blacklist_block");
+        Assertions.assertNotNull(resolved, "语言包缺 event.ip_blacklist_block");
 
         var vars = java.util.Map.of(
                 "player", "alice",
@@ -250,9 +267,9 @@ public class TemplateResourceSmokeTest extends ServiceTestBase {
 
     @Test
     public void testPlayerNameBlockTemplateResolvesWithRealText() throws Exception {
-        YamlConfiguration cfg = load("templates.yml");
-        String resolved = TemplateRenderer.resolveTemplate("player_name_block", cfg, "");
-        Assertions.assertFalse(resolved.isEmpty(), "player_name_block 模板缺失");
+        YamlConfiguration cfg = load("messages/messages_zh-CN.yml");
+        String resolved = cfg.getString("event.player_name_block");
+        Assertions.assertNotNull(resolved, "语言包缺 event.player_name_block");
 
         var vars = java.util.Map.of("player", "alice", "rule", "prefix:bot_");
         String rendered = TemplateRenderer.render(resolved, vars);

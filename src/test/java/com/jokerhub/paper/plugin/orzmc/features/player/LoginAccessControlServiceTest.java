@@ -80,7 +80,7 @@ class LoginAccessControlServiceTest extends ServiceTestBase {
         when(maintenanceModeService.isActive()).thenReturn(false);
         when(accessRuleService.matchedIpPattern(anyString())).thenReturn(null);
         when(accessRuleService.matchedPlayerNameRule(anyString())).thenReturn(null);
-        when(configs.renderTemplate(anyString(), anyMap(), anyString()))
+        when(configs.renderEvent(anyString(), anyMap()))
                 .thenReturn(MessageEnvelope.publicMessage("ip_blacklist_block"));
         when(server.logger()).thenReturn(logger);
         when(styles.warn(anyString())).thenAnswer(i -> Component.text((String) i.getArgument(0)));
@@ -196,7 +196,7 @@ class LoginAccessControlServiceTest extends ServiceTestBase {
 
         verify(event).disallow(eq(AsyncPlayerPreLoginEvent.Result.KICK_OTHER), any(Component.class));
         verify(notifier).event(eq("ip_blacklist_block"), any(MessageEnvelope.class));
-        verify(configs).renderTemplate(eq("ip_blacklist_block"), anyMap(), anyString());
+        verify(configs).renderEvent(eq("ip_blacklist_block"), anyMap());
         verify(logger).warning(anyString());
         verifyNoInteractions(geoIpAccessService, playerEventService);
     }
@@ -211,7 +211,7 @@ class LoginAccessControlServiceTest extends ServiceTestBase {
 
         verify(event).disallow(eq(AsyncPlayerPreLoginEvent.Result.KICK_OTHER), any(Component.class));
         verify(notifier).event(eq("ip_blacklist_block"), any(MessageEnvelope.class));
-        verify(configs).renderTemplate(eq("ip_blacklist_block"), anyMap(), anyString());
+        verify(configs).renderEvent(eq("ip_blacklist_block"), anyMap());
     }
 
     @Test
@@ -223,7 +223,7 @@ class LoginAccessControlServiceTest extends ServiceTestBase {
 
         verify(event).disallow(eq(AsyncPlayerPreLoginEvent.Result.KICK_OTHER), any(Component.class));
         verify(notifier).event(eq("player_name_block"), any(MessageEnvelope.class));
-        verify(configs).renderTemplate(eq("player_name_block"), anyMap(), anyString());
+        verify(configs).renderEvent(eq("player_name_block"), anyMap());
         verify(logger).warning(anyString());
         verifyNoInteractions(geoIpAccessService, playerEventService);
     }
@@ -264,7 +264,7 @@ class LoginAccessControlServiceTest extends ServiceTestBase {
         @SuppressWarnings("unchecked")
         org.mockito.ArgumentCaptor<java.util.Map<String, String>> captor =
                 org.mockito.ArgumentCaptor.forClass(java.util.Map.class);
-        verify(configs).renderTemplate(eq("ip_blacklist_block"), captor.capture(), anyString());
+        verify(configs).renderEvent(eq("ip_blacklist_block"), captor.capture());
         org.junit.jupiter.api.Assertions.assertEquals("未知玩家", captor.getValue().get("player"));
     }
 

@@ -107,6 +107,21 @@ public final class TemplateKeys {
         TNT_ALERT,
         WHITELIST_BLOCK,
         WHITELIST_TOGGLE_ALERT,
+        // P4b-2：安全/审核/权限/坐牢域事件（原先走 renderTemplate 直发 + 内联 fallback）
+        COMMAND_GUARD_BLOCKED,
+        SECURITY_AUDIT,
+        LOGIN_RATE_LIMIT_ALERT,
+        EXPLOIT_BLOCKED,
+        IP_BLACKLIST_BLOCK,
+        PLAYER_NAME_BLOCK,
+        REVIEW_SUBMITTED,
+        REVIEW_CANCELLED,
+        REVIEW_APPROVED,
+        REVIEW_REJECTED,
+        RANK_PROMOTED,
+        RANK_DEMOTED,
+        PRISON_IMPRISONED,
+        PRISON_RELEASED,
     };
 
     /** 事件键是否为语言包承载正文（event.*）。 */

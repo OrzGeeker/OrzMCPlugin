@@ -41,7 +41,7 @@ class CommandGuardEventServiceTest {
 
     private void withConfig(SecurityGuardConfig config) {
         when(configs.securityGuard()).thenReturn(config);
-        when(configs.renderTemplate(eq(TemplateKeys.COMMAND_GUARD_BLOCKED), anyMap(), anyString()))
+        when(configs.renderEvent(eq(TemplateKeys.COMMAND_GUARD_BLOCKED), anyMap()))
                 .thenReturn(MessageEnvelope.publicMessage("envelope"));
         service = new CommandGuardEventService(
                 new CommandGuardService(() -> configs.securityGuard(), TestI18n.newService()),
@@ -84,7 +84,10 @@ class CommandGuardEventServiceTest {
         assertInstanceOf(TextComponent.class, feedbackCaptor.getValue());
         assertTrue(((TextComponent) feedbackCaptor.getValue()).content().contains("已被安全拦截"));
         verify(audit).record(CommandAuditService.SOURCE_GAME, "steve", "/op steve", true);
-        verify(configs).renderTemplate(eq(TemplateKeys.COMMAND_GUARD_BLOCKED), anyMap(), contains("op steve"));
+        verify(configs)
+                .renderEvent(
+                        eq(TemplateKeys.COMMAND_GUARD_BLOCKED),
+                        argThat(vars -> vars.getOrDefault("command", "").contains("op steve")));
         verify(notifier).event(eq(TemplateKeys.COMMAND_GUARD_BLOCKED), any(MessageEnvelope.class));
         verify(logger, never()).warning(anyString());
     }
@@ -115,13 +118,12 @@ class CommandGuardEventServiceTest {
 
         // 变量应包含 command / source / sender / reason
         verify(configs)
-                .renderTemplate(
+                .renderEvent(
                         eq(TemplateKeys.COMMAND_GUARD_BLOCKED),
                         argThat(vars -> "/op steve".equals(vars.get("command"))
                                 && "玩家".equals(vars.get("source"))
                                 && "steve".equals(vars.get("sender"))
-                                && vars.get("reason").contains("deny-list")),
-                        anyString());
+                                && vars.get("reason").contains("deny-list")));
     }
 
     // ---- BLOCK：控制台命令 ----
@@ -139,10 +141,9 @@ class CommandGuardEventServiceTest {
         verify(console).sendMessage(any(Component.class));
         verify(audit).record(CommandAuditService.SOURCE_CONSOLE, "CONSOLE", "op steve", true);
         verify(configs)
-                .renderTemplate(
+                .renderEvent(
                         eq(TemplateKeys.COMMAND_GUARD_BLOCKED),
-                        argThat(vars -> "控制台/RCON".equals(vars.get("source")) && "CONSOLE".equals(vars.get("sender"))),
-                        anyString());
+                        argThat(vars -> "控制台/RCON".equals(vars.get("source")) && "CONSOLE".equals(vars.get("sender"))));
         verify(notifier).event(eq(TemplateKeys.COMMAND_GUARD_BLOCKED), any(MessageEnvelope.class));
     }
 

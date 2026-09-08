@@ -69,6 +69,20 @@ event:
   geoip_block: "{name}({ip}) region {country_code} not in allow list ({allow_list})\n{address_info}\nYour region ({country_code}) is not allowed. Please contact an admin if you have questions"
   geoip_unverifiable: "{name}: region resolution is temporarily unavailable, cannot verify your region (IP: {ip}). Please try logging in again later. Contact an admin if this keeps happening"
   tnt_alert: "{msg}\nWorld: {world_alias} Coords: {x_unit},{y_unit},{z_unit} ({coord_unit})\nTriggered by: {actor} Block: {block_type}"
+  command_guard_blocked: "⚠ Dangerous command blocked\nCommand: {command}\nSource: {source} | Sender: {sender}\nReason: {reason}"
+  security_audit: "🛡 Security self-check report\nOnline mode: {online_mode}\nCommand blocks: {command_block}\nRCON: {rcon}\nWhitelist: {whitelist}\nOPs: {ops}\nKey plugins: {plugins}"
+  login_rate_limit_alert: "⚠ Login rate limited\nIP: {ip}\nPlayer: {player}\nReason: {reason}"
+  exploit_blocked: "⚠ Exploit blocked\nPlayer: {player}\nReason: {reason}"
+  ip_blacklist_block: "⚠ IP blacklist blocked\nPlayer: {player}\nIP: {ip}\nMatched rule: {pattern}"
+  player_name_block: "⚠ Player-name rule blocked\nPlayer: {player}\nMatched rule: {rule}"
+  review_submitted: "🙋🏻‍♂️ [Application submitted] {player}\n---------------------------------\n{summary}"
+  review_cancelled: "↩️ [Application withdrawn] {player}\n---------------------------------\n{summary}"
+  review_approved: "✅ [Application approved] {player}\n---------------------------------\n{summary}\n---------------------------------\nReviewer: {reviewer}"
+  review_rejected: "❌ [Application rejected] {player}\n---------------------------------\n{summary}\n---------------------------------\nReviewer: {reviewer}"
+  rank_promoted: "🎉 {player} has been promoted to {group}"
+  rank_demoted: "⬇️ {player} has been demoted to {group}"
+  prison_imprisoned: "🔒 {player} has been imprisoned (original group: {group})"
+  prison_released: "🔓 {player} has been released from prison (restored group: {group})"
 
 # --- portal.* (/portal command player feedback; P2c) ---
 portal:

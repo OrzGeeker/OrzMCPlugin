@@ -33,7 +33,7 @@ class LoginRateLimitEventServiceTest {
         limiter = mock(LoginRateLimitService.class);
         configs = mock(TypedConfigProvider.class);
         when(configs.loginRateLimit()).thenReturn(config);
-        when(configs.renderTemplate(anyString(), anyMap(), anyString()))
+        when(configs.renderEvent(anyString(), anyMap()))
                 .thenReturn(MessageEnvelope.publicMessage("login_rate_limit_alert"));
         notifier = mock(Notifier.class);
         styles = mock(OrzTextStyles.class);

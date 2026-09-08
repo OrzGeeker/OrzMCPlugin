@@ -35,15 +35,6 @@ public final class StartupSecurityAuditService {
     /** 文章 26 §3 推荐安装的关键防护插件。 */
     private static final String[] SECURITY_PLUGINS = {"LuckPerms", "LoginSecurity", "Grim", "Vulcan"};
 
-    /** 模板缺失时的 Java 兜底正文（与 templates.yml 的 security_audit 一致）。 */
-    private static final String DEFAULT_BODY = "🛡 安全自检报告\n"
-            + "在线模式: {online_mode}\n"
-            + "命令方块: {command_block}\n"
-            + "RCON: {rcon}\n"
-            + "白名单: {whitelist}\n"
-            + "OP: {ops}\n"
-            + "关键插件: {plugins}";
-
     private final ServerFacade server;
     private final TypedConfigProvider configs;
     private final Notifier notifier;
@@ -73,7 +64,8 @@ public final class StartupSecurityAuditService {
         vars.put("whitelist", whitelistDescription(bukkit));
         vars.put("ops", opsDescription(bukkit));
         vars.put("plugins", pluginsDescription(bukkit));
-        MessageEnvelope env = configs.renderTemplate(TemplateKeys.SECURITY_AUDIT, vars, DEFAULT_BODY);
+        // P4b-2：自检报告正文迁语言包 event.security_audit（默认语言 R1）
+        MessageEnvelope env = configs.renderEvent(TemplateKeys.SECURITY_AUDIT, vars);
         notifier.event(TemplateKeys.SECURITY_AUDIT, env);
     }
 
