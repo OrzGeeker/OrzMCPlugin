@@ -47,7 +47,7 @@ whitelist:
   kick:
     join_hint_prefix: "不在服务器白名单中，请先加入QQ群:"
     join_hint_suffix: "，联系管理员添加白名单"
-    discord_join: "you can also join the discord server: "
+    discord_join: "You can also join the Discord server: "
   notify:
     blocked: "{player} 尝试加入服务器，被白名单拦截"
     toggle_off: "白名单关闭"
@@ -112,7 +112,7 @@ tnt:
   dispense_forbidden: "发射{item}被禁止"
   explode: "{type}爆炸"
   block_explode: "方块爆炸"
-  placement_msg: "放置TNT"
+  placement_msg: "已放置 TNT"
   at: "在"
   placed: "放置了 TNT"
   prefix_tnt: "[TNT警报] "
@@ -135,8 +135,8 @@ geoip:
   outcome_allowed: "已放行"
   outcome_denied: "已拒绝"
   alert_exception: "IP地址解析服务异常: {detail}"
-  alert_lookup_failed: "IP地址解析服务异常，{outcome}: {player}({ip})"
-  alert_timeout: "IP地址解析超时({timeout}ms)，{outcome}: {player}({ip})"
+  alert_lookup_failed: "IP地址解析查询失败，{outcome}: {player}({ip})"
+  alert_timeout: "IP地址解析查询超时({timeout}ms)，{outcome}: {player}({ip})"
 
 # --- login.*（IP 黑名单/玩家名规则登录拦截与通知；P2d2。登录前无客户端 locale → 默认语言） ---
 login:
