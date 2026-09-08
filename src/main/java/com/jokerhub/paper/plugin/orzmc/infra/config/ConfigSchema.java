@@ -18,8 +18,11 @@ import java.util.Map;
 public final class ConfigSchema {
     private ConfigSchema() {}
 
-    /** 当前最新 schema 版本（config/templates/easybot 同步发版，共享一个版本号）。 */
-    public static final int LATEST_VERSION = 13;
+    /** 当前最新 schema 版本（config/templates/easybot 同步发版，共享一个版本号）。
+     *  v14（i18n P4d）：templates.yml 存量盘旧正文自动迁移（事件/维护/阶段/命令正文 == 旧内置默认
+     *  → 删键/翻 {message} 走语言包，服主定制保留），由 {@link TemplatesBodyMigration} 在
+     *  {@code ConfigUpgrader} 内执行。 */
+    public static final int LATEST_VERSION = 14;
 
     /** 可信版本下限：磁盘值低于此值（含缺失、旧版 config-version: 2）一律按 legacy 处理。 */
     public static final int MIN_TRUSTED_VERSION = 10;

@@ -102,13 +102,20 @@ public final class ConfigUpgrader {
                 ? LegacyDefaultFlips.apply(cfg, defaults)
                 : new LegacyDefaultFlips.FlipResult(new ArrayList<>(), new ArrayList<>());
 
+        // i18n P4d：templates.yml 存量盘旧正文迁移（config-version 13→14 触发；磁盘正文 == 旧内置默认
+        // → 删键/翻 {message} 走语言包，服主定制保留）。须在备份后（可回滚）、merge 前执行；幂等。
+        TemplatesBodyMigration.MigrationSummary bodies = TemplatesBodyMigration.NONE;
+        if ("templates.yml".equals(file.getName())) {
+            bodies = TemplatesBodyMigration.migrate(cfg);
+        }
+
         DefaultsMerger.MergeResult merge = DefaultsMerger.mergeMissingKeys(cfg, defaults);
         for (String conflict : merge.conflicts()) {
             logger.warning("配置合并冲突（" + file.getName() + " " + conflict + " 与内置默认结构不一致，已保留磁盘值，请人工检查）");
         }
         cfg.set(ConfigSchema.VERSION_KEY, ConfigSchema.LATEST_VERSION);
 
-        logReport(file, from, merge.addedKeys(), flips);
+        logReport(file, from, merge.addedKeys(), flips, bodies);
         return Outcome.MIGRATED;
     }
 
@@ -147,7 +154,12 @@ public final class ConfigUpgrader {
         }
     }
 
-    private void logReport(File file, int from, List<String> addedKeys, LegacyDefaultFlips.FlipResult flips) {
+    private void logReport(
+            File file,
+            int from,
+            List<String> addedKeys,
+            LegacyDefaultFlips.FlipResult flips,
+            TemplatesBodyMigration.MigrationSummary bodies) {
         String fromLabel = from >= ConfigSchema.MIN_TRUSTED_VERSION
                 ? String.valueOf(from)
                 : from > 0 ? "legacy(config-version=" + from + ")" : "legacy(无版本标记)";
@@ -172,6 +184,17 @@ public final class ConfigUpgrader {
                     .append(flips.keptCustom().size())
                     .append(" 项：")
                     .append(String.join("；", flips.keptCustom()));
+        }
+        if (!bodies.isEmpty()) {
+            List<String> acted = new ArrayList<>(bodies.removedKeys());
+            acted.addAll(bodies.flippedKeys());
+            sb.append("，正文迁移（删键走语言包/翻直通壳） ").append(acted.size()).append(" 项：").append(String.join("；", acted));
+            if (!bodies.keptCustomKeys().isEmpty()) {
+                sb.append("，正文保留定制 ")
+                        .append(bodies.keptCustomKeys().size())
+                        .append(" 项：")
+                        .append(String.join("；", bodies.keptCustomKeys()));
+            }
         }
         if (new File(file.getParentFile(), file.getName() + BACKUP_SUFFIX).exists()) {
             sb.append("（原文件已备份为 ").append(file.getName()).append(BACKUP_SUFFIX).append("）");
