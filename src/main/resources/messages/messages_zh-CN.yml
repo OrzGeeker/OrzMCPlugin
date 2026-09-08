@@ -141,8 +141,6 @@ login:
   unknown_player: "未知玩家"
   ip_banned: "你的IP已被禁止访问"
   name_rule_denied: "你的玩家名不符合服务器访问规则"
-  alert_ip_block: "⚠ IP 黑名单拦截\n玩家: {player}\nIP: {ip}\n命中规则: {pattern}"
-  alert_name_block: "⚠ 玩家名规则拦截\n玩家: {player}\n命中规则: {rule}"
 
 # --- guard.*（危险命令拦截；P2e。安全提示统一默认语言 R1） ---
 guard:
@@ -150,19 +148,16 @@ guard:
   selector_warn: "命令含未限定范围的 {selector}，可能影响全体实体/玩家，请确认已用 type=.. 或 distance=.. 限定"
   source_player: "玩家"
   source_console: "控制台/RCON"
-  alert_blocked: "⚠ 高危命令已被拦截\n命令: {command}\n来源: {source} | 发送者: {sender}\n原因: {reason}"
 
 # --- exploit.*（漏洞利用加固；P2e） ---
 exploit:
   notify_pages: "书页超限（{count} 页）"
   notify_attributes: "物品属性修饰符异常（清理 {count} 件）"
-  alert_blocked: "⚠ 漏洞利用拦截\n玩家: {player}\n原因: {reason}"
 
 # --- ratelimit.*（登录限流；P2e） ---
 ratelimit:
   reason_frequency: "频率超限（{limit} 次/分钟）"
   reason_concurrent: "同 IP 并发超限（{limit} 人）"
-  alert_blocked: "⚠ 登录限流\nIP: {ip}\n玩家: {player}\n原因: {reason}"
 
 # --- prison.*（坐牢；P2f1。管理员结果文案随默认语言 R1，当事人私聊随当事人语言） ---
 prison:
