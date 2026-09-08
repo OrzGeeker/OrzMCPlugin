@@ -40,7 +40,7 @@ class ServerFeedbackServiceTest extends ServiceTestBase {
     }
 
     @Test
-    void buildServerLoadMessage_startup_containsStartup() {
+    void buildServerLoadVars_startup_containsStartupVocab() {
         Server bukkitServer = mock(Server.class);
         when(server.server()).thenReturn(bukkitServer);
         when(bukkitServer.getOnlineMode()).thenReturn(true);
@@ -48,17 +48,15 @@ class ServerFeedbackServiceTest extends ServiceTestBase {
         when(configs.bot()).thenReturn(new BotConfig("$", null, null));
         when(event.getType()).thenReturn(ServerLoadEvent.LoadType.STARTUP);
 
-        String msg = service.buildServerLoadMessage(event);
-        assertTrue(msg.contains("Minecraft 1.21.4"));
-        assertTrue(msg.contains("正版服"));
-        assertTrue(msg.contains("启动完成"));
-        assertTrue(msg.contains("$h"));
-        // 分割线统一 33 连字符（群消息统一样式防回归）
-        assertTrue(msg.contains("\n---------------------------------\n"), "启动消息分割线应为 33 连字符: " + msg);
+        java.util.Map<String, String> vars = service.buildServerLoadVars(event);
+        assertEquals("1.21.4", vars.get("version"));
+        assertEquals("正版服", vars.get("mode"));
+        assertEquals("启动完成", vars.get("status"));
+        assertEquals("$h", vars.get("prompt_help"));
     }
 
     @Test
-    void buildServerLoadMessage_reload_containsReload() {
+    void buildServerLoadVars_reload_containsReloadVocab() {
         Server bukkitServer = mock(Server.class);
         when(server.server()).thenReturn(bukkitServer);
         when(bukkitServer.getOnlineMode()).thenReturn(false);
@@ -66,11 +64,10 @@ class ServerFeedbackServiceTest extends ServiceTestBase {
         when(configs.bot()).thenReturn(new BotConfig("!", null, null));
         when(event.getType()).thenReturn(ServerLoadEvent.LoadType.RELOAD);
 
-        String msg = service.buildServerLoadMessage(event);
-        assertTrue(msg.contains("离线服"));
-        assertTrue(msg.contains("重启完成"));
-        assertTrue(msg.contains("!h"));
-        assertTrue(msg.contains("\n---------------------------------\n"), "重启消息分割线应为 33 连字符: " + msg);
+        java.util.Map<String, String> vars = service.buildServerLoadVars(event);
+        assertEquals("离线服", vars.get("mode"));
+        assertEquals("重启完成", vars.get("status"));
+        assertEquals("!h", vars.get("prompt_help"));
     }
 
     @Test

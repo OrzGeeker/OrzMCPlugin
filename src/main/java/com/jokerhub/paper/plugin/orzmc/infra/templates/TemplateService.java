@@ -12,15 +12,10 @@ public final class TemplateService {
     /**
      * 渲染事件通知包络（i18n P4b 起）。
      *
-     * <p>正文来源分两类：</p>
-     * <ul>
-     *   <li>{@link TemplateKeys#isLangBacked(String)} 事件：磁盘 templates.yml 正文若存在
-     *       （存量服/服主定制）优先渲染——P4d 升级链已把「磁盘正文 == 旧内置默认」的键清除，
-     *       存量服正文缺失后回落语言包 {@code event.<name>}（默认语言 R1）；有定制仍磁盘优先。</li>
-     *   <li>其余（server_load / server_stop）：{@code {message}} 直通壳——磁盘自定义正文优先，
-     *       缺失回落 {@code {message}}（消息由调用方组装后经 {@code message} 变量注入）。</li>
-     * </ul>
-     * 格式（CODE_BLOCK/PLAIN）一律由 templates.format 表承担。
+     * <p>正文来源：所有事件已迁语言包 {@code event.<name>}（P4b-P5 逐域）；磁盘 templates.yml 正文若存在且非
+     * {@code {message}} 直通壳（存量服/服主定制）优先渲染——P4d 升级链已把「磁盘正文 == 旧内置默认」的键清除，
+     * 存量服正文缺失/壳后回落语言包（默认语言 R1）；有定制仍磁盘优先。
+     * 格式（CODE_BLOCK/PLAIN）一律由 templates.format 表承担。</p>
      */
     public static MessageEnvelope renderEvent(
             String eventKey, FileConfiguration templatesCfg, Map<String, String> vars) {
@@ -29,8 +24,6 @@ public final class TemplateService {
             template = "";
         } else if (TemplateKeys.isLangBacked(eventKey)) {
             template = diskOrLangEventBody(eventKey, templatesCfg);
-        } else if ("server_load".equals(eventKey) || "server_stop".equals(eventKey)) {
-            template = shellOrDiskBody(eventKey, templatesCfg);
         } else {
             template = "";
         }
@@ -41,21 +34,11 @@ public final class TemplateService {
     private static String diskOrLangEventBody(String eventKey, FileConfiguration templatesCfg) {
         if (templatesCfg != null) {
             String disk = templatesCfg.getString("templates." + eventKey);
-            if (disk != null && !disk.isEmpty()) {
+            // P5-2：磁盘 {message} 直通壳视为无正文（历史升级残留/新装缺省），回落语言包；非壳正文 = 服主定制仍优先
+            if (disk != null && !disk.isEmpty() && !"{message}".equals(disk)) {
                 return disk;
             }
         }
         return I18nServiceHolder.msg("event." + eventKey);
-    }
-
-    /** 直通壳事件正文（server_load / server_stop）：磁盘自定义正文优先，缺失回落 {@code {message}}。 */
-    private static String shellOrDiskBody(String eventKey, FileConfiguration templatesCfg) {
-        if (templatesCfg != null) {
-            String disk = templatesCfg.getString("templates." + eventKey);
-            if (disk != null && !disk.isEmpty()) {
-                return disk;
-            }
-        }
-        return "{message}";
     }
 }

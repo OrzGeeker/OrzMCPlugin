@@ -167,7 +167,8 @@ class ConfigServiceTest {
 
         FileConfiguration diskTemplates = YamlConfiguration.loadConfiguration(new File(tempDir, "templates.yml"));
         assertEquals(ConfigSchema.LATEST_VERSION, diskTemplates.getInt(ConfigSchema.VERSION_KEY));
-        assertTrue(diskTemplates.contains("templates.server_stop"), "缺失模板键应补齐落盘");
+        assertTrue(diskTemplates.contains("templates.command_output"), "缺失模板键应补齐落盘");
+        assertFalse(diskTemplates.contains("templates.server_stop"), "P5-2 server_stop 正文迁语言包，不再回填");
         assertEquals(2.0, diskTemplates.getDouble("templates.coord.scale"), "自定义值不得被覆盖");
 
         FileConfiguration diskEasybot = YamlConfiguration.loadConfiguration(new File(tempDir, "easybot.yml"));

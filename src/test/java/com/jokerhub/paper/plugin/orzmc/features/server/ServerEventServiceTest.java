@@ -1,5 +1,6 @@
 package com.jokerhub.paper.plugin.orzmc.features.server;
 
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -9,6 +10,7 @@ import com.jokerhub.paper.plugin.orzmc.core.ports.config.TypedConfigProvider;
 import com.jokerhub.paper.plugin.orzmc.features.maintenance.MaintenanceModeService;
 import com.jokerhub.paper.plugin.orzmc.infra.notify.Notifier;
 import com.jokerhub.paper.plugin.orzmc.testutil.ServiceTestBase;
+import java.util.Map;
 import net.kyori.adventure.text.Component;
 import org.bukkit.event.server.ServerListPingEvent;
 import org.bukkit.event.server.ServerLoadEvent;
@@ -57,12 +59,14 @@ class ServerEventServiceTest extends ServiceTestBase {
 
     @Test
     void handleServerLoad_sendsNotification() {
-        when(feedbackService.buildServerLoadMessage(loadEvent)).thenReturn("server loaded");
+        when(feedbackService.buildServerLoadVars(loadEvent))
+                .thenReturn(Map.of("version", "1.21.4", "mode", "正版服", "status", "启动完成", "prompt_help", "$h"));
         when(configs.renderEvent(eq("server_load"), anyMap()))
                 .thenReturn(MessageEnvelope.publicMessage("server loaded"));
 
         service.handleServerLoad(loadEvent);
 
+        verify(feedbackService).buildServerLoadVars(loadEvent);
         verify(notifier).event(eq("server_load"), any(MessageEnvelope.class));
     }
 

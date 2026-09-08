@@ -89,6 +89,8 @@ event:
   maintenance_optimize_stage: "Map {label} Stage: {stage} ({stage_name}/{stage_i18n}) Progress: {percent}% {current}/{total} Rate: {rate_per}{rate_unit} ETA: {eta_value}{eta_unit}"
   maintenance_optimize_done: "Map {label} finished in {duration_human}"
   maintenance_optimize_error: "Map {label} failed after {duration_human}"
+  server_load: "Minecraft {version} ({mode})\n---------------------------------\n{status}\n\nSend \"{prompt_help}\" for a list of supported commands"
+  server_stop: "Minecraft {version}\n---------------------------------\nServer stopped\n\nCannot respond to commands while stopping"
 
 # --- portal.* (/portal command player feedback; P2c) ---
 portal:
@@ -391,3 +393,29 @@ access_rule:
   added: "Added player-name rule: {rule}"
   exists: "Player-name rule already exists; not added again: {rule}"
 
+# --- serverlife.*（server lifecycle / maintenance MOTD shell；P5-2。default-lang R1；{prompt_help} etc kept code-injected） ---
+serverlife:
+  mode_online: "Online-mode server"
+  mode_offline: "Offline-mode server"
+  status_startup: "Startup complete"
+  status_reload: "Reload complete"
+  motd_title: "⚠ Maintenance"
+  qq_label: "QQ group: "
+  discord_label: "Discord: "
+  discord_hover: "Click to join Discord"
+
+# --- audit.*（startup security self-check var-value vocabulary；P5-2。default-lang R1） ---
+audit:
+  online_on: "Online-mode verified"
+  online_off: "Offline (HIGH RISK)"
+  command_block_on: "Enabled (HIGH RISK)"
+  command_block_off: "Disabled"
+  rcon_off: "Not enabled"
+  rcon_on: "Enabled (port: {port})"
+  whitelist_off: "Off"
+  whitelist_enforced: "On (enforced)"
+  whitelist_not_enforced: "On (not enforced)"
+  ops_zero: "0"
+  ops_count: "{count}"
+  ops_list: "{count}: {names}"
+  plugins_none: "None installed (HIGH RISK)"
