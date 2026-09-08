@@ -179,23 +179,18 @@ public final class MessageKeys {
     public static final String LOGIN_UNKNOWN_PLAYER = "login.unknown_player";
     public static final String LOGIN_IP_BANNED = "login.ip_banned";
     public static final String LOGIN_NAME_RULE_DENIED = "login.name_rule_denied";
-    public static final String LOGIN_ALERT_IP_BLOCK = "login.alert_ip_block";
-    public static final String LOGIN_ALERT_NAME_BLOCK = "login.alert_name_block";
 
     // ---- guard.*：危险命令拦截（P2e；安全提示默认语言 R1） ----
     public static final String GUARD_DENY_REASON = "guard.deny_reason";
     public static final String GUARD_SELECTOR_WARN = "guard.selector_warn";
     public static final String GUARD_SOURCE_PLAYER = "guard.source_player";
     public static final String GUARD_SOURCE_CONSOLE = "guard.source_console";
-    public static final String GUARD_ALERT_BLOCKED = "guard.alert_blocked";
 
     // ---- exploit.*：漏洞利用加固（P2e） ----
     public static final String EXPLOIT_NOTIFY_PAGES = "exploit.notify_pages";
     public static final String EXPLOIT_NOTIFY_ATTRIBUTES = "exploit.notify_attributes";
-    public static final String EXPLOIT_ALERT_BLOCKED = "exploit.alert_blocked";
 
     // ---- ratelimit.*：登录限流（P2e） ----
     public static final String RATELIMIT_REASON_FREQUENCY = "ratelimit.reason_frequency";
     public static final String RATELIMIT_REASON_CONCURRENT = "ratelimit.reason_concurrent";
-    public static final String RATELIMIT_ALERT_BLOCKED = "ratelimit.alert_blocked";
 }
