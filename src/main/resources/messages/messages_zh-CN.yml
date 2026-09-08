@@ -333,6 +333,7 @@ bot:
     whitelist_header: "------当前白名单玩家({count})------"
     cleanup_title: "------白名单清理------"
     page_meta: "第{page}/{total}页"
+    empty_whitelist: "(暂无白名单玩家)"
   e:
     overflow: "⚠️ 日志缓冲溢出，输出可能不完整"
   p:
