@@ -12,20 +12,8 @@ class OrzConstantsTest {
     }
 
     @Test
-    void prefixTntAlert() {
-        assertEquals("[TNT警报] ", OrzConstants.PREFIX_TNT_ALERT);
-    }
-
-    @Test
-    void prefixExplosionAlert() {
-        assertEquals("[爆炸警报] ", OrzConstants.PREFIX_EXPLOSION_ALERT);
-    }
-
-    @Test
     void constantsAreFinalStrings() {
         // Verify they're non-null and non-empty
         assertNotNull(OrzConstants.TPBOW_KEY);
-        assertNotNull(OrzConstants.PREFIX_TNT_ALERT);
-        assertNotNull(OrzConstants.PREFIX_EXPLOSION_ALERT);
     }
 }
