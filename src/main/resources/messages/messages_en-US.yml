@@ -393,6 +393,26 @@ access_rule:
   not_found: "Player-name rule not found: {rule}"
   added: "Added player-name rule: {rule}"
   exists: "Player-name rule already exists; not added again: {rule}"
+  added: "Added player-name rule: {rule}"
+  exists: "Player-name rule already exists; not added again: {rule}"
+  # P5-4：in-game /blacklist ops feedback (security ops commands use default-lang R1, consistent with guard/bot)
+  usage_ip_add: "Usage: /blacklist add <IP>"
+  usage_ip_remove: "Usage: /blacklist remove <IP>"
+  usage_player_add: "Player-name rules: use /blacklist add player <type> <value>"
+  usage_player_remove: "Player-name rules: use /blacklist remove player <type> <value>"
+  usage_player_any: "Player-name rules: use /blacklist add|remove player <type> <value>"
+  usage_player_value_empty: "Player-name rule value cannot be empty: /blacklist {verb} player <type> <value>"
+  usage_player_shorthand: "Usage: /blacklist {sign}player <type> <value>"
+  added_ip: "Added to IP blacklist: {pattern}"
+  exists_ip: "Already in IP blacklist: {pattern}"
+  removed_ip: "Removed from IP blacklist: {pattern}"
+  not_found_ip: "Not found in IP blacklist: {pattern}"
+  list_empty_all: "No access rules configured"
+  list_title: "Current access rules:"
+  ip_section: "  IP blacklist:"
+  rules_section: "  Player-name rules:"
+  player_rules_empty: "No player-name rules configured"
+  player_rules_title: "Current player-name rules:"
 
 # --- serverlife.*（server lifecycle / maintenance MOTD shell；P5-2。default-lang R1；{prompt_help} etc kept code-injected） ---
 serverlife:
