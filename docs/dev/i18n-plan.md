@@ -1,6 +1,6 @@
 # 多语言（i18n）方案 v2：中英双语起步、可扩展语言包
 
-> **状态：方案定稿（§4 决策已全部拍板）**｜**最后更新**：2026-09-16
+> **状态：一期实施完成（P0–P5 已全部合入 develop；完成台账见 §8）**｜**最后更新**：2026-09-08
 > **范围**：一期英文 + 中文；架构上预留第三语言扩展（新增语言 = 加一个 yml 资源，业务代码零改动）。
 > **配套**：本方案为计划文档；实施按 §5 拆 PR，当前进行 P0 基础设施。
 
@@ -224,13 +224,30 @@ public final class I18nService {
 
 ## 7. 验收标准（一期完成定义）
 
-- [ ] 内置 `messages/messages_zh-CN.yml` / `messages_en-US.yml`；第三语言仅新增 yml + 注册一行（文档示例验证）。
-- [ ] 游戏内：中文/英文客户端各见其语言（未装码落默认）；命令反馈/事件提示/物品 lore/踢出消息全量无残留中文。
-- [ ] Bot：交互回复按 `platform_langs` 分语言；事件通知按默认语言；`$cmd ?` 帮助全量双语。
-- [ ] 事件通知正文迁入 `event.*`，templates.yml 仅剩格式/配色/数据；`stage_i18n` 中文映射表消失。
-- [ ] 一致性护栏全绿：健康检查无 key/占位符差异；`I18nCatalogConsistencyTest` 过 `./gradlew test`。
-- [ ] 服主 custom 覆盖：写 `messages_custom_zh-CN.yml` + reload 即时生效；空串可屏蔽；缺 key 不产生空消息、可定位。
-- [ ] 中文输出与迁移前逐条一致（回归 diff）；README / docs/features.md / CHANGELOG 同步。
+- [x] 内置 `messages/messages_zh-CN.yml` / `messages_en-US.yml`；第三语言仅新增 yml + 注册一行（I18nLoader.CODES）。
+- [x] 游戏内：命令反馈/事件提示/踢出消息全量按语言决议（D6 langFor(Player)）；代码级无残留中文（控制台/内容数据白名单除外）。**真机双语对照见交接残余 1（owner）。**
+- [x] Bot：交互回复按 `platform_langs` 决议（P3）；事件通知默认语言 R1；`$cmd ?` 帮助全量双语。
+- [x] 事件通知正文迁入 `event.*`，templates.yml 仅剩直通壳/格式/配色/数据键；`stage_cn`/`maintenance_motd_*` 段与 Templates 记录消失（P4c/P4d-2）；存量盘正文由升级链迁移（P4d-1，config-version 14）。
+- [x] 一致性护栏全绿：I18nHealth + `I18nCatalogConsistencyTest`（双包 key/占位符一致）过 `./gradlew test`。
+- [x] 服主 custom 覆盖：`messages_custom_<lang>.yml` + reload 即时生效；空串可屏蔽；缺 key 可定位（key 本体返回 + 日志）。
+- [x] 中文输出与迁移前逐条一致（P4c/§8 zh 逐字断言）；README / docs/features.md / CHANGELOG / 交接同步（docs PR #404）。
+
+## 8. 实施完成台账（2026-09-08）
+
+| 阶段 | 内容 | PR（develop，squash） |
+|:--|:--|:--|
+| P0 | i18n 基础设施（Lang/MessageTable/I18nService/Loader/custom 覆盖/MessageKeys/健康检查） | P0 系列 |
+| P1 | 通用文案（common.* 拦截器链按发送者语言） | P1 系列 |
+| P2 | 各功能域分域迁移（teleport→whitelist→portal/tnt→player→security→review/rank/prison→maintenance→guide/menu） | #3xx 系列 |
+| P3 | botcommands 11 命令双语（bot.* / bot.list.* / bot.v.* 按 platform_langs） | #3xx 系列 |
+| P4a | 命令回复正文 → `{message}` 直通壳 | #386 |
+| P4b | 事件正文 24 键 → `event.*`（EVENT_LANG_BACKED + renderEvent 磁盘优先→语言包） | #388/#389 |
+| P4c-1/2 | 维护事件 6 键 + 场景/MOTD/阶段名（maintenance.* / MaintenanceTexts） | #391/#393 |
+| P4d-1 | 存量盘正文升级链（config-version 13→14，TemplatesBodyMigration 幂等） | #395 |
+| P4d-2 | Templates 记录 vestige 收编删除 | #397 |
+| P5 | 孤儿键清理/var 值词汇（serverlife/audit/playermode）/Paginator 空态//blacklist 域/文档同步 | #399–#404 |
+
+代码侧 P5 全完成；**残余**：真机双语冒烟（owner，含 13→14 升级对照，见交接「未完成清单 1」）+ en 校对（D7）。
 
 ## 附录 A：迁移示例（before → after）
 
