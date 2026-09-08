@@ -393,8 +393,6 @@ access_rule:
   not_found: "Player-name rule not found: {rule}"
   added: "Added player-name rule: {rule}"
   exists: "Player-name rule already exists; not added again: {rule}"
-  added: "Added player-name rule: {rule}"
-  exists: "Player-name rule already exists; not added again: {rule}"
   # P5-4：in-game /blacklist ops feedback (security ops commands use default-lang R1, consistent with guard/bot)
   usage_ip_add: "Usage: /blacklist add <IP>"
   usage_ip_remove: "Usage: /blacklist remove <IP>"

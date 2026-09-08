@@ -1,5 +1,6 @@
 package com.jokerhub.paper.plugin.orzmc.infra.templates;
 
+import com.jokerhub.paper.plugin.orzmc.infra.config.TemplateKeys;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -25,6 +26,11 @@ public final class TemplatePlaceholderValidator {
         Map<String, Set<String>> allowedByKey = allowedVarsByTemplateKey();
 
         for (String key : allowedByKey.keySet()) {
+            if (TemplateKeys.isLangBacked(key)) {
+                // P5-2：语言包承载正文的键不再校验磁盘 body 变量集——磁盘残留 {message} 直通壳/
+                // 旧正文/服主定制均不经过该渲染路径的变量白名单（回落或原样磁盘渲染）
+                continue;
+            }
             String tpl = templatesCfg.getString("templates." + key, "");
             if (tpl.isEmpty()) {
                 continue;

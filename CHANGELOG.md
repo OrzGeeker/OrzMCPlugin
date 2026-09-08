@@ -9,7 +9,8 @@
 - **P5 收尾** — 孤儿告警域键清理（login/guard/exploit/ratelimit alert_*）；server_load/server_stop 与 var 值词汇语言化（serverlife/audit/playermode）；Paginator 空列表正文参数化；/blacklist 游戏命令域去内联 zh（access_rule.* 18 键）；docs/features/README/CHANGELOG/交接同步
 
 ### 附注（owner 后续动作）
-- 真机双语冒烟（新装 zh/en 对照 + 存量盘 13→14 升级对照）与 en 校对（D7）见 `docs/dev/i18n-migration-handoff.md` 未完成清单
+- en 校对（D7）见 `docs/dev/i18n-migration-handoff.md`；真机双语冒烟已用本机 runServer/runFolia 无头执行
+  （Paper 存量盘 11→14 升级对照 42 项迁移 + zh/en 双语启动零告警 + Folia 全新安装零升级），残留 QQ/玩家视觉对照见交接
 
 ## [1.0.24] - 2026-09-06
 
