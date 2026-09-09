@@ -223,4 +223,15 @@ public final class MessageKeys {
     public static final String CMD_DESC_APPLY = "cmd.desc.apply";
     public static final String CMD_DESC_REVIEW = "cmd.desc.review";
     public static final String CMD_REVIEW_FAILED = "cmd.review_failed";
+    public static final String CMD_DESC_GUIDE = "cmd.desc.guide";
+    public static final String CMD_DESC_MENU = "cmd.desc.menu";
+    public static final String CMD_DESC_TPBOW = "cmd.desc.tpbow";
+    public static final String CMD_DESC_BOT = "cmd.desc.bot";
+    public static final String CMD_DESC_ORZDEBUG = "cmd.desc.orzdebug";
+    public static final String CMD_DESC_MAINTENANCE = "cmd.desc.maintenance";
+    public static final String CMD_ORZDEBUG_ACCEPTED = "cmd.orzdebug_accepted";
+    public static final String CMD_ORZDEBUG_USAGE = "cmd.orzdebug_usage";
+    public static final String CMD_MAINTENANCE_ON = "cmd.maintenance_on";
+    public static final String CMD_MAINTENANCE_OFF = "cmd.maintenance_off";
+    public static final String CMD_MAINTENANCE_USAGE = "cmd.maintenance_usage";
 }
