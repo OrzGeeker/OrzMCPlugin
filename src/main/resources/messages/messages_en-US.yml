@@ -445,3 +445,9 @@ playermode:
   survival: "Survival"
   adventure: "Adventure"
   spectator: "Spectator"
+# --- cmd.* (in-game command help/messages; P6. desc static per default_lang, errors per sender locale) ---
+cmd:
+  desc:
+    apply: "Submit, check or withdraw review applications (e.g. /apply builder [reason])"
+    review: "Approve or reject review applications (/review approve|reject <player>)"
+  review_failed: "Review processing failed: {detail}"
