@@ -437,3 +437,9 @@ playermode:
   survival: "生存模式"
   adventure: "冒险模式"
   spectator: "观察模式"
+# --- cmd.*（游戏内命令帮助/提示；P6。desc 注册期 R1，错误提示按 sender locale） ---
+cmd:
+  desc:
+    apply: "提交/查询/撤回审核申请（如 /apply builder [理由]）"
+    review: "管理员审核申请（/review approve|reject <玩家>）"
+  review_failed: "审核处理异常: {detail}"

@@ -218,4 +218,9 @@ public final class MessageKeys {
     public static final String AUDIT_OPS_COUNT = "audit.ops_count";
     public static final String AUDIT_OPS_LIST = "audit.ops_list";
     public static final String AUDIT_PLUGINS_NONE = "audit.plugins_none";
+
+    // ---- cmd.*（游戏内命令帮助/提示，P6。desc 注册期 default_lang；错误提示按 sender） ----
+    public static final String CMD_DESC_APPLY = "cmd.desc.apply";
+    public static final String CMD_DESC_REVIEW = "cmd.desc.review";
+    public static final String CMD_REVIEW_FAILED = "cmd.review_failed";
 }
