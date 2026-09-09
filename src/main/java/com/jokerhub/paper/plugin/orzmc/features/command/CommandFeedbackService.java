@@ -59,6 +59,11 @@ public final class CommandFeedbackService {
         return i18n.msg(i18n.langFor(), key);
     }
 
+    /** 带变量的管理/运维命令提示（R1）。 */
+    public String defaultMessage(String key, Map<String, String> vars) {
+        return i18n.msg(i18n.langFor(), key, vars);
+    }
+
     /** 带变量的按 sender 决议渲染（P6 起供 Registrar 内联提示使用）。 */
     public String message(CommandSender sender, String key, Map<String, String> vars) {
         Lang lang = sender instanceof Player player ? i18n.langFor(player) : i18n.langFor();

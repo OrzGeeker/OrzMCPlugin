@@ -234,4 +234,12 @@ public final class MessageKeys {
     public static final String CMD_MAINTENANCE_ON = "cmd.maintenance_on";
     public static final String CMD_MAINTENANCE_OFF = "cmd.maintenance_off";
     public static final String CMD_MAINTENANCE_USAGE = "cmd.maintenance_usage";
+    public static final String CMD_DESC_BLACKLIST = "cmd.desc.blacklist";
+    public static final String CMD_DESC_RANK = "cmd.desc.rank";
+    public static final String CMD_DESC_PRISON = "cmd.desc.prison";
+    public static final String CMD_DESC_UPDATE = "cmd.desc.update";
+    public static final String CMD_RANK_PLAYER_NOT_FOUND = "cmd.rank_player_not_found";
+    public static final String CMD_PRISON_USAGE = "cmd.prison_usage";
+    public static final String CMD_PRISON_FAILED = "cmd.prison_failed";
+    public static final String CMD_UPDATE_USAGE = "cmd.update_usage";
 }

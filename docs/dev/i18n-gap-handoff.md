@@ -15,14 +15,19 @@
 - 键命名空间：`cmd.desc.<name>`、`cmd.error.*`、`cmd.<topic>_<verb>`；MessageKeys 常量同步；语言包尾部追加（串行链式合入）。
 
 ## 已完成（按时间倒序）
-- PR #414 @ b25d8d3：$ 群帮助注入真实 I18nService（装配断点修复；非本卡但前置）。
-- G1 @ 未合（本轮分支）：CommandFeedbackService 加 String/描述/带变量渲染；ReviewCommandRegistrar 全量替换（desc ×2、仅玩家可用 ×7、review 异常外壳 ×1）；语言包 + MessageKeys 加 cmd.desc.apply/review、cmd.review_failed。
+- PR #416 @ 7819f3f：G2 FeatureCommandRegistrar（desc ×6 → cmd.desc.*、orzdebug/maintenance 运维提示 defaultMessage R1、registerSimple 仅玩家可用 → common.player_required；CommandFeedbackService.defaultMessage；FeatureModule 仅日志豁免）
+- PR #415 @ b11fc20：G1 ReviewCommandRegistrar 样板（CommandFeedbackService 扩展 commandDescription/message/playerRequiredMessage；desc×2、仅玩家可用×7、review_failed 外壳）
+- PR #414 @ b25d8d3：$ 群帮助注入真实 I18nService（装配断点修复；前置）
+- 已知：DiscordGatewayClientTest reconnectRequest 偶发 flake（重跑 PASSED，CI 侧 gh run rerun --failed）
+- FeatureModule review type 展示名（builder-promotion「晋升建造者」等 + 申请列表 data->"申请"+name）→ 新增卡 G4b 评估（ReviewService 渲染层）
 
 ## 卡规划（依赖序；每卡单 PR，语言包尾部追加需串行）
-- [ ] **G1** ReviewCommandRegistrar（本轮，行）
-- [ ] **G2** FeatureCommandRegistrar（registerSimple 描述 guide/menu/bot/gamemode… + registerSimple「仅玩家可用」+ /bot 等子命令提示 + orzdebug 运维提示）+ FeatureModule 7 处
-- [ ] **G3** BlacklistCommandRegistrar（45 处：/blacklist desc + 错误/列表提示；域键 `cmd.*` 或并入 access_rule 既有域）
-- [ ] **G4** Rank/Portal/Prison/Update Registrar + UpdateCommandService（/update 状态输出 4-5 条，可先独立小 PR）+ UpdateModule 10
+- [x] **G1** ReviewCommandRegistrar 样板（#415）
+- [x] **G2** FeatureCommandRegistrar 描述/提示（#416）
+- [ ] **G3** BlacklistCommandRegistrar（45 处候选，过滤注释后为 desc+提示：/blacklist desc + 错误/列表提示；域键 `cmd.*` 或并入 access_rule 既有域）
+- [ ] **G3b** ReviewCommandService 层 review type 展示名 i18n（type id → 语言包键；FeatureModule 注册处 data 名来源）
+- [ ] **G4** Rank/Portal/Prison Registrar（Portal desc「传送门…」/rank desc/prison desc/usage 提示）
+- [ ] **G4u** UpdateCommandService /update 状态输出（4-5 条 styles.success 中文）+ UpdateCommandRegistrar desc
 - [ ] **G5** B 面：builtin 未绑定会话绑定引导文本语言包化（Qq/Telegram/Feishu/Discord InboundProcessor 同构；公共渲染点或 4 平台键）
 - [ ] **G6** C 面 /config 树（量最大）：ConfigCommandRegistrar 26 + ImCommandRegistrar 14 + ImAdminService 24 + OrzConfigCommand 46（/config 各子树说明）+ /orzdebug；可能拆 2-3 卡
 - [ ] 真机双语验证（game 命令 zh↔en、builtin 未绑定引导）→ docs 更新 i18n-plan §8 台账 + features 小节 + CHANGELOG
