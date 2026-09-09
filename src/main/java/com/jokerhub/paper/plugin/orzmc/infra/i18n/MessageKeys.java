@@ -242,4 +242,16 @@ public final class MessageKeys {
     public static final String CMD_PRISON_USAGE = "cmd.prison_usage";
     public static final String CMD_PRISON_FAILED = "cmd.prison_failed";
     public static final String CMD_UPDATE_USAGE = "cmd.update_usage";
+    public static final String CMD_UPDATE_CHECK_FAILED_REASON = "cmd.update_check_failed_reason";
+    public static final String CMD_UPDATE_CHECK_FAILED = "cmd.update_check_failed";
+    public static final String CMD_UPDATE_UNKNOWN_LOCAL = "cmd.update_unknown_local";
+    public static final String CMD_UPDATE_AVAILABLE = "cmd.update_available";
+    public static final String CMD_UPDATE_UP_TO_DATE = "cmd.update_up_to_date";
+    public static final String CMD_UPDATE_NO_CHANNEL_INFO = "cmd.update_no_channel_info";
+    public static final String CMD_UPDATE_DOWNLOADED = "cmd.update_downloaded";
+    public static final String CMD_UPDATE_ALREADY_DOWNLOADED = "cmd.update_already_downloaded";
+    public static final String CMD_UPDATE_NO_UPDATE = "cmd.update_no_update";
+    public static final String CMD_UPDATE_BUSY = "cmd.update_busy";
+    public static final String CMD_UPDATE_DOWNLOAD_FAILED = "cmd.update_download_failed";
+    public static final String CMD_UPDATE_DOWNLOAD_FAILED_REASON = "cmd.update_download_failed_reason";
 }
