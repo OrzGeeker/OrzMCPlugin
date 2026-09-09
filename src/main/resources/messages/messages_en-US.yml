@@ -471,4 +471,17 @@ cmd:
   prison_usage: "Usage: /prison <player> on|off"
   prison_failed: "Prison operation failed: {detail}"
   update_usage: "Usage: /update check|now"
+  update_check_failed_reason: "Update check failed: {reason}"
+  update_check_failed: "Update check failed; see the console log"
+  update_unknown_local: "Cannot identify the running version (build info missing); latest Hangar version is {version}"
+  update_available: "New version {version} found. Run /update now to download; it applies after a restart"
+  update_up_to_date: "Already up to date: {version} (local {current})"
+  update_no_channel_info: "No version information available for the current channel"
+  update_downloaded: "New version downloaded to {path}; applies after a restart"
+  update_already_downloaded: "New version already downloaded (applies after restart)"
+  update_no_update: "No update available (already on the latest version)"
+  update_busy: "A download task is already in progress; please wait"
+  update_download_failed: "Download failed; see the console log"
+  update_download_failed_reason: "Download failed: {reason}"
+
 

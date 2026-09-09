@@ -463,4 +463,17 @@ cmd:
   prison_usage: "用法: /prison <玩家> on|off"
   prison_failed: "坐牢操作异常: {detail}"
   update_usage: "用法: /update check|now"
+  update_check_failed_reason: "检查更新失败：{reason}"
+  update_check_failed: "检查更新失败，请查看控制台日志"
+  update_unknown_local: "无法识别当前运行版本（构建信息缺失）；Hangar 最新版本 {version}"
+  update_available: "发现新版本 {version}。执行 /update now 下载，重启服务器后生效"
+  update_up_to_date: "已是最新版本 {version}（本地 {current}）"
+  update_no_channel_info: "当前通道无可用版本信息"
+  update_downloaded: "新版本已下载到 {path}，重启服务器后生效"
+  update_already_downloaded: "新版本已下载（重启后生效）"
+  update_no_update: "没有可更新的版本（已是最新）"
+  update_busy: "已有下载任务进行中，请稍候"
+  update_download_failed: "下载失败，请查看控制台日志"
+  update_download_failed_reason: "下载失败：{reason}"
+
 
